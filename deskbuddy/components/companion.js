@@ -1,9 +1,9 @@
 /**
  * Companion module.
- * Creates the companion DOM element (a pair of glowing eyes), manages
- * position, gaze direction via gradient shift, idle blinking, and mouse
- * interaction.  The companion fills the viewport; position offsets create
- * subtle drift.
+ * Creates the companion DOM element (a pair of glowing eyes with pupils),
+ * manages position, gaze direction via gradient shift and pupil movement,
+ * idle blinking, and mouse interaction.  The companion fills the viewport;
+ * position offsets create subtle drift.
  */
 const Companion = (() => {
   let el = null;
@@ -19,6 +19,20 @@ const Companion = (() => {
   const GAZE_MAX_X = 15; // percent shift for gradient center
   const GAZE_MAX_Y = 10;
 
+  // Pupil tracking
+  const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
+  const PUPIL_LERP = 0.15;
+  const PUPIL_DISTANCE_SCALE = 500;
+  let pupilCurrentX = 0;
+  let pupilCurrentY = 0;
+  let pupilTargetX = 0;
+  let pupilTargetY = 0;
+
+  /** Convert vmin units to current pixel value. */
+  function pupilMaxPx() {
+    return PUPIL_MOVEMENT_RADIUS_VMIN * Math.min(window.innerWidth, window.innerHeight) / 100;
+  }
+
   /**
    * Build the companion DOM tree and insert it into the world container.
    */
@@ -29,8 +43,8 @@ const Companion = (() => {
     el.innerHTML = `
       <div class="companion-inner">
         <div class="eyes">
-          <div class="eye eye-left"></div>
-          <div class="eye eye-right"></div>
+          <div class="eye eye-left"><div class="pupil"></div></div>
+          <div class="eye eye-right"><div class="pupil"></div></div>
         </div>
       </div>
     `;
@@ -112,7 +126,7 @@ const Companion = (() => {
   }
 
   /**
-   * Shift the eye gradient toward a screen coordinate to indicate gaze.
+   * Shift the eye gradient and pupil target toward a screen coordinate.
    */
   function lookAt(targetX, targetY) {
     if (!el) return;
@@ -121,19 +135,52 @@ const Companion = (() => {
     const dy = targetY - c.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0) return;
-    var gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
-    var gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
+
+    // Gradient gaze shift
+    const gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
+    const gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
     el.style.setProperty('--gaze-x', gx + '%');
     el.style.setProperty('--gaze-y', gy + '%');
+
+    // Pupil target (scaled by distance, clamped to max radius)
+    const maxPx = pupilMaxPx();
+    const scale = Math.min(1, dist / PUPIL_DISTANCE_SCALE) * maxPx;
+    pupilTargetX = (dx / dist) * scale;
+    pupilTargetY = (dy / dist) * scale;
   }
 
   /**
-   * Reset gaze to center.
+   * Reset gaze and pupil to center.
    */
   function resetLook() {
     if (!el) return;
     el.style.setProperty('--gaze-x', '0%');
     el.style.setProperty('--gaze-y', '0%');
+    pupilTargetX = 0;
+    pupilTargetY = 0;
+  }
+
+  /**
+   * Smoothly interpolate pupils toward their target each frame.
+   * Called from the main rAF loop.
+   */
+  function updatePupils() {
+    pupilCurrentX += (pupilTargetX - pupilCurrentX) * PUPIL_LERP;
+    pupilCurrentY += (pupilTargetY - pupilCurrentY) * PUPIL_LERP;
+
+    // Clamp to max radius
+    const maxPx = pupilMaxPx();
+    const dist = Math.sqrt(pupilCurrentX * pupilCurrentX + pupilCurrentY * pupilCurrentY);
+    if (dist > maxPx) {
+      pupilCurrentX = (pupilCurrentX / dist) * maxPx;
+      pupilCurrentY = (pupilCurrentY / dist) * maxPx;
+    }
+
+    if (!el) return;
+    var pupils = el.querySelectorAll('.pupil');
+    for (var i = 0; i < pupils.length; i++) {
+      pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
+    }
   }
 
   function applyPosition() {
@@ -160,5 +207,5 @@ const Companion = (() => {
     }, delay);
   }
 
-  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook };
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils };
 })();

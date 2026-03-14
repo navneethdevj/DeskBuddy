@@ -242,6 +242,32 @@ html, body {
               0 0 24vmin rgba(160, 140, 245, 0.05);
 }
 
+/* ===== Pupil (moves inside eye to track cursor) ===== */
+.pupil {
+  position: absolute;
+  width: 12vmin;
+  height: 12vmin;
+  background: radial-gradient(
+    circle,
+    #5a9ac8  0%,
+    #5686b8 10%,
+    #4f6faa 22%,
+    #51629e 34%,
+    #5c6ba6 46%,
+    #6b79b4 58%,
+    #7584c4 68%,
+    #7b8bd8 80%,
+    rgba(123, 139, 216, 0) 100%
+  );
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  margin-top: -6vmin;
+  margin-left: -6vmin;
+  pointer-events: none;
+  will-change: transform;
+}
+
 /* ===== Blink (cute squish — overrides all expressions) ===== */
 .companion.blink .eyes .eye {
   height: 1.5vmin;
@@ -259,6 +285,64 @@ html, body {
 }
 .companion.sprite-idle-3 .companion-inner {
   transform: translateY(0.1vh) scale(0.997);
+}
+
+/* ===== Particles ===== */
+.particles-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: particleFade 2s ease-out forwards;
+}
+
+.particle-focused {
+  width: 3px;
+  height: 3px;
+  background: rgba(120, 135, 235, 0.8);
+  box-shadow: 0 0 4px rgba(120, 135, 235, 0.6);
+}
+
+.particle-idle {
+  width: 4px;
+  height: 4px;
+  background: rgba(160, 165, 220, 0.4);
+}
+
+.particle-sleepy {
+  width: 5px;
+  height: 5px;
+  background: rgba(130, 140, 210, 0.3);
+}
+
+.particle-happy {
+  width: 3px;
+  height: 3px;
+  background: rgba(180, 160, 245, 0.8);
+  box-shadow: 0 0 6px rgba(180, 160, 245, 0.6);
+}
+
+.particle-curious {
+  width: 3px;
+  height: 3px;
+  background: rgba(115, 125, 245, 0.7);
+  box-shadow: 0 0 4px rgba(115, 125, 245, 0.5);
+}
+
+@keyframes particleFade {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--drift-x, 10px), var(--drift-y, -20px)) scale(0); }
 }
 
 /* ===== Status Bar ===== */
