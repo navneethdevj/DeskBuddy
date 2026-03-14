@@ -55,8 +55,18 @@ const FaceDetection = (() => {
   // ===== Initialisation =====
 
   async function init() {
+    console.log('[FaceDetection] Initializing...');
+
     if (typeof vision === 'undefined') {
       console.warn('[FaceDetection] MediaPipe vision bundle not loaded — disabled.');
+      userState = 'NoFace';
+      return false;
+    }
+    console.log('[FaceDetection] MediaPipe vision bundle found.');
+
+    // Verify camera API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('[FaceDetection] navigator.mediaDevices.getUserMedia not available.');
       userState = 'NoFace';
       return false;
     }
@@ -69,37 +79,58 @@ const FaceDetection = (() => {
       videoElement.setAttribute('playsinline', '');
       document.body.appendChild(videoElement);
 
+      console.log('[FaceDetection] Requesting camera access...');
       var stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 320, height: 240, frameRate: { ideal: 15 } }
       });
       videoElement.srcObject = stream;
       await videoElement.play();
-      console.log('Camera access granted');
+      console.log('[FaceDetection] Camera access granted, video playing.');
 
+      console.log('[FaceDetection] Loading MediaPipe FilesetResolver...');
       var filesetResolver = await vision.FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
       );
+      console.log('[FaceDetection] FilesetResolver loaded.');
 
-      faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU'
-        },
-        outputFaceBlendshapes: true,
-        runningMode: 'VIDEO',
-        numFaces: 1
-      });
+      var modelUrl =
+        'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+      // Try GPU delegate first; fall back to CPU if GPU fails
+      console.log('[FaceDetection] Creating FaceLandmarker (trying GPU)...');
+      try {
+        faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
+          outputFaceBlendshapes: true,
+          runningMode: 'VIDEO',
+          numFaces: 1
+        });
+        console.log('[FaceDetection] FaceLandmarker created (GPU).');
+      } catch (gpuErr) {
+        console.warn('[FaceDetection] GPU delegate failed:', gpuErr.message, '— retrying with CPU...');
+        faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
+          outputFaceBlendshapes: true,
+          runningMode: 'VIDEO',
+          numFaces: 1
+        });
+        console.log('[FaceDetection] FaceLandmarker created (CPU).');
+      }
 
       lastFaceTime = Date.now();
       running = true;
       intervalId = setInterval(detect, DETECTION_INTERVAL_MS);
+      console.log('[FaceDetection] Detection loop started (~' +
+        Math.round(1000 / DETECTION_INTERVAL_MS) + ' FPS).');
       return true;
     } catch (err) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        console.log('Camera access denied');
+        console.warn('[FaceDetection] Camera access denied by user or system.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        console.warn('[FaceDetection] No camera device found.');
+      } else {
+        console.warn('[FaceDetection] Init failed:', err.name, err.message);
       }
-      console.warn('[FaceDetection] Init failed:', err.message);
       userState = 'NoFace';
       return false;
     }
@@ -114,7 +145,8 @@ const FaceDetection = (() => {
     var results;
     try {
       results = faceLandmarker.detectForVideo(videoElement, now);
-    } catch (_) {
+    } catch (e) {
+      console.debug('[FaceDetection] detectForVideo error:', e.message);
       return;
     }
 

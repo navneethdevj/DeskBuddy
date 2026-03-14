@@ -1,18 +1,28 @@
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
+// Enable PipeWire for camera access on Linux Wayland
+app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+
 let mainWindow;
 
 function createWindow() {
   const { screen } = require('electron');
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  // Allow media (webcam) access for camera awareness
+  // Allow media (webcam) access for camera awareness.
+  // The check handler is called synchronously for permission queries;
+  // return true for 'media' so the async request handler is reached.
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-    return permission === 'media';
+    if (permission === 'media') return true;
+    return false;
   });
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    callback(permission === 'media');
+    if (permission === 'media') {
+      callback(true);
+      return;
+    }
+    callback(false);
   });
 
   mainWindow = new BrowserWindow({
