@@ -245,14 +245,25 @@ html, body {
 /* ===== Pupil (moves inside eye to track cursor) ===== */
 .pupil {
   position: absolute;
-  width: 10vmin;
-  height: 10vmin;
-  background: radial-gradient(circle, #4a5296 0%, #6874c0 50%, transparent 100%);
+  width: 12vmin;
+  height: 12vmin;
+  background: radial-gradient(
+    circle,
+    #5a9ac8  0%,
+    #5686b8 10%,
+    #4f6faa 22%,
+    #51629e 34%,
+    #5c6ba6 46%,
+    #6b79b4 58%,
+    #7584c4 68%,
+    #7b8bd8 80%,
+    rgba(123, 139, 216, 0) 100%
+  );
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -5vmin;
-  margin-left: -5vmin;
+  margin-top: -6vmin;
+  margin-left: -6vmin;
   pointer-events: none;
   will-change: transform;
 }
