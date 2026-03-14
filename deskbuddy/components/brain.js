@@ -12,6 +12,12 @@ const Brain = (() => {
   const STATE_MAX = 5000;
   const CURSOR_RADIUS = 180;
   const PADDING = 60;
+  const COMPANION_SIZE = 90;
+  const COMPANION_HALF = COMPANION_SIZE / 2;
+  const INSPECT_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
+  const INSPECT_RETREAT_THRESHOLD = 80;
+  const RETREAT_FACTOR = -0.3;
+  const APPROACH_FACTOR = 0.15;
 
   const STATE_LABELS = {
     wander: 'Wandering',
@@ -79,7 +85,7 @@ const Brain = (() => {
       case 'inspectCursor':
         updateInspectCursor();
         if (!near) {
-          inspectCooldown = 120; // ~2 s cooldown at 60 fps
+          inspectCooldown = INSPECT_COOLDOWN_FRAMES;
           pickNextState();
         }
         break;
@@ -155,8 +161,8 @@ const Brain = (() => {
 
   function isCursorNear() {
     var pos = Companion.getPosition();
-    var cx = pos.x + 45;
-    var cy = pos.y + 45;
+    var cx = pos.x + COMPANION_HALF;
+    var cy = pos.y + COMPANION_HALF;
     var dx = mouseX - cx;
     var dy = mouseY - cy;
     return Math.sqrt(dx * dx + dy * dy) < CURSOR_RADIUS;
@@ -181,8 +187,8 @@ const Brain = (() => {
   /** Look toward cursor and drift slightly toward / away from it. */
   function updateInspectCursor() {
     var pos = Companion.getPosition();
-    var cx = pos.x + 45;
-    var cy = pos.y + 45;
+    var cx = pos.x + COMPANION_HALF;
+    var cy = pos.y + COMPANION_HALF;
     var dx = mouseX - cx;
     var dy = mouseY - cy;
     var dist = Math.sqrt(dx * dx + dy * dy);
@@ -196,12 +202,12 @@ const Brain = (() => {
     }
 
     if (dist > 0 && dist < CURSOR_RADIUS) {
-      var factor = dist < 80 ? -0.3 : 0.15;
+      var factor = dist < INSPECT_RETREAT_THRESHOLD ? RETREAT_FACTOR : APPROACH_FACTOR;
       var mx = (dx / dist) * factor;
       var my = (dy / dist) * factor;
       Companion.setPosition(
-        clamp(pos.x + mx, PADDING, window.innerWidth - 150),
-        clamp(pos.y + my, PADDING, window.innerHeight - 150)
+        clamp(pos.x + mx, PADDING, window.innerWidth - COMPANION_SIZE - PADDING),
+        clamp(pos.y + my, PADDING, window.innerHeight - COMPANION_SIZE - PADDING)
       );
     }
   }

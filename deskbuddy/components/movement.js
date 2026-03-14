@@ -13,6 +13,7 @@ const Movement = (() => {
   const STEER_STRENGTH = 0.06;
   const CURVE_AMOUNT = 0.3;
   const DECAY_FACTOR = 0.9;
+  const COMPANION_SIZE = 90;
 
   let targetX = 0;
   let targetY = 0;
@@ -69,8 +70,8 @@ const Movement = (() => {
     const newX = pos.x + vx + push.dx;
     const newY = pos.y + vy + push.dy;
 
-    const clampedX = clamp(newX, PADDING, window.innerWidth - 90 - PADDING);
-    const clampedY = clamp(newY, PADDING, window.innerHeight - 90 - PADDING);
+    const clampedX = clamp(newX, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
+    const clampedY = clamp(newY, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
 
     Companion.setPosition(clampedX, clampedY);
   }
@@ -87,8 +88,8 @@ const Movement = (() => {
     vx *= DECAY_FACTOR;
     vy *= DECAY_FACTOR;
     const pos = Companion.getPosition();
-    const newX = clamp(pos.x + vx, PADDING, window.innerWidth - 90 - PADDING);
-    const newY = clamp(pos.y + vy, PADDING, window.innerHeight - 90 - PADDING);
+    const newX = clamp(pos.x + vx, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
+    const newY = clamp(pos.y + vy, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
     Companion.setPosition(newX, newY);
   }
 
@@ -100,8 +101,8 @@ const Movement = (() => {
   }
 
   function pickNewTarget() {
-    const maxX = window.innerWidth - 90 - PADDING;
-    const maxY = window.innerHeight - 90 - PADDING;
+    const maxX = window.innerWidth - COMPANION_SIZE - PADDING;
+    const maxY = window.innerHeight - COMPANION_SIZE - PADDING;
     targetX = PADDING + Math.random() * (maxX - PADDING);
     targetY = PADDING + Math.random() * (maxY - PADDING);
     curveDir = Math.random() < 0.5 ? 1 : -1;
