@@ -1,30 +1,29 @@
 /**
- * Creature Brain — behavior state machine.
- * Cycles through states (wander, idle, hop, lookAround) on a timer and
- * switches to inspectCursor when the mouse cursor is nearby.
+ * Creature Brain — attention-based behavior state machine.
+ * Cycles through states (observe, curious, idle, sleepy) on a timer and
+ * switches to followCursor when the mouse cursor is nearby.
  *
  * Owns the main requestAnimationFrame loop and coordinates Movement,
  * SpriteAnimator, Companion, Emotion, and Status modules.
  */
 const Brain = (() => {
-  const STATES = ['wander', 'idle', 'hop', 'lookAround'];
+  const STATES = ['observe', 'curious', 'idle', 'sleepy'];
   const STATE_MIN = 2000;
   const STATE_MAX = 5000;
-  const CURSOR_RADIUS = 180;
+  const CURSOR_RADIUS = 200;
   const PADDING = 60;
-  const COMPANION_SIZE = 90;
+  const COMPANION_SIZE = 160;
   const COMPANION_HALF = COMPANION_SIZE / 2;
-  const INSPECT_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
-  const INSPECT_RETREAT_THRESHOLD = 80;
-  const RETREAT_FACTOR = -0.3;
-  const APPROACH_FACTOR = 0.15;
+  const FOLLOW_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
+  const RETREAT_THRESHOLD = 100;
+  const RETREAT_FACTOR = -0.4;
 
   const STATE_LABELS = {
-    wander: 'Wandering',
+    observe: 'Observing',
+    curious: 'Curious',
     idle: 'Idle',
-    hop: 'Hopping',
-    lookAround: 'Looking Around',
-    inspectCursor: 'Curious'
+    followCursor: 'Watching You',
+    sleepy: 'Sleepy'
   };
 
   let currentState = 'idle';
@@ -32,14 +31,14 @@ const Brain = (() => {
   let animFrameId = null;
   let mouseX = -1000;
   let mouseY = -1000;
-  let inspectCooldown = 0;
+  let followCooldown = 0;
 
   // ===== Public API =====
 
   function start() {
     document.addEventListener('mousemove', onMouseMove);
     Movement.init();
-    enterState('wander');
+    enterState('idle');
     tick();
   }
 
@@ -63,33 +62,40 @@ const Brain = (() => {
   function tick() {
     animFrameId = requestAnimationFrame(tick);
 
-    if (inspectCooldown > 0) inspectCooldown--;
+    if (followCooldown > 0) followCooldown--;
 
     var near = isCursorNear();
-    if (near && currentState !== 'inspectCursor' && inspectCooldown <= 0) {
-      enterState('inspectCursor');
+    if (near && currentState !== 'followCursor' && followCooldown <= 0) {
+      enterState('followCursor');
       return;
     }
 
     switch (currentState) {
-      case 'wander':
+      case 'observe':
         Movement.update();
-        applyMovementRotation();
-        syncWalkAnimation();
+        // Eyes slowly scan the environment
+        var time = Date.now() * 0.001;
+        var pos = Companion.getPosition();
+        Companion.lookAt(
+          pos.x + COMPANION_HALF + Math.sin(time * 0.8) * 300,
+          pos.y + COMPANION_HALF + Math.sin(time * 0.5) * 100
+        );
+        break;
+      case 'curious':
+        Movement.decay();
         break;
       case 'idle':
-      case 'lookAround':
         Movement.decay();
-        applyMovementRotation();
         break;
-      case 'inspectCursor':
-        updateInspectCursor();
+      case 'followCursor':
+        updateFollowCursor();
         if (!near) {
-          inspectCooldown = INSPECT_COOLDOWN_FRAMES;
+          followCooldown = FOLLOW_COOLDOWN_FRAMES;
+          Companion.resetLook();
           pickNextState();
         }
         break;
-      case 'hop':
+      case 'sleepy':
         Movement.decay();
         break;
     }
@@ -98,11 +104,6 @@ const Brain = (() => {
   // ===== State Management =====
 
   function enterState(state) {
-    var el = Companion.getElement();
-    if (el) {
-      el.classList.remove('look-left', 'look-right');
-    }
-
     currentState = state;
     Status.setText('Status: ' + (STATE_LABELS[state] || state));
 
@@ -111,37 +112,36 @@ const Brain = (() => {
       stateTimer = null;
     }
 
-    if (state !== 'inspectCursor') {
-      Emotion.setState('happy');
-    }
+    Companion.setRotation(0);
 
     switch (state) {
-      case 'wander':
-        SpriteAnimator.play('walk');
-        break;
-      case 'idle':
-        Companion.setRotation(0);
-        SpriteAnimator.play('idle');
-        break;
-      case 'hop':
-        Companion.setRotation(0);
-        SpriteAnimator.play('jump', function () {
-          SpriteAnimator.play('idle');
-        });
-        break;
-      case 'lookAround':
-        Companion.setRotation(0);
-        SpriteAnimator.play('idle');
-        triggerLookSequence();
-        break;
-      case 'inspectCursor':
-        Companion.setRotation(0);
+      case 'observe':
         Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
+      case 'curious':
+        Emotion.setState('curious');
+        SpriteAnimator.play('idle');
+        triggerLookSequence();
+        break;
+      case 'idle':
+        Emotion.setState('idle');
+        Companion.resetLook();
+        SpriteAnimator.play('idle');
+        scheduleHappyFlash();
+        break;
+      case 'followCursor':
+        Emotion.setState('focused');
+        SpriteAnimator.play('idle');
+        break;
+      case 'sleepy':
+        Emotion.setState('sleepy');
+        Companion.resetLook();
+        SpriteAnimator.play('idle');
+        break;
     }
 
-    if (state !== 'inspectCursor') {
+    if (state !== 'followCursor') {
       scheduleNext();
     }
   }
@@ -168,24 +168,8 @@ const Brain = (() => {
     return Math.sqrt(dx * dx + dy * dy) < CURSOR_RADIUS;
   }
 
-  function applyMovementRotation() {
-    var vel = Movement.getVelocity();
-    Companion.setRotation(vel.vx * 2);
-  }
-
-  /** Switch between walk and idle sprites based on current velocity. */
-  function syncWalkAnimation() {
-    var vel = Movement.getVelocity();
-    var speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
-    if (speed < 0.3 && SpriteAnimator.getAnimation() === 'walk') {
-      SpriteAnimator.play('idle');
-    } else if (speed >= 0.3 && SpriteAnimator.getAnimation() === 'idle' && currentState === 'wander') {
-      SpriteAnimator.play('walk');
-    }
-  }
-
-  /** Look toward cursor and drift slightly toward / away from it. */
-  function updateInspectCursor() {
+  /** Track cursor with eyes; retreat if cursor is very close. */
+  function updateFollowCursor() {
     var pos = Companion.getPosition();
     var cx = pos.x + COMPANION_HALF;
     var cy = pos.y + COMPANION_HALF;
@@ -193,37 +177,51 @@ const Brain = (() => {
     var dy = mouseY - cy;
     var dist = Math.sqrt(dx * dx + dy * dy);
 
-    var el = Companion.getElement();
-    if (el) {
-      el.classList.remove('look-left', 'look-right');
-      if (Math.abs(dx) > 5) {
-        el.classList.add(dx < 0 ? 'look-left' : 'look-right');
-      }
-    }
+    Companion.lookAt(mouseX, mouseY);
 
-    if (dist > 0 && dist < CURSOR_RADIUS) {
-      var factor = dist < INSPECT_RETREAT_THRESHOLD ? RETREAT_FACTOR : APPROACH_FACTOR;
-      var mx = (dx / dist) * factor;
-      var my = (dy / dist) * factor;
+    if (dist > 0 && dist < RETREAT_THRESHOLD) {
+      Emotion.setState('suspicious');
+      var mx = (dx / dist) * RETREAT_FACTOR;
+      var my = (dy / dist) * RETREAT_FACTOR;
       Companion.setPosition(
         clamp(pos.x + mx, PADDING, window.innerWidth - COMPANION_SIZE - PADDING),
         clamp(pos.y + my, PADDING, window.innerHeight - COMPANION_SIZE - PADDING)
       );
+    } else {
+      Emotion.setState('focused');
     }
   }
 
+  /** Animate pupils looking left → right → up → center. */
   function triggerLookSequence() {
-    var el = Companion.getElement();
-    if (!el) return;
-    el.classList.add('look-left');
+    var pos = Companion.getPosition();
+    var cx = pos.x + COMPANION_HALF;
+    var cy = pos.y + COMPANION_HALF;
+
+    Companion.lookAt(cx - 300, cy);
     setTimeout(function () {
-      if (!el) return;
-      el.classList.remove('look-left');
-      el.classList.add('look-right');
+      if (currentState !== 'curious') return;
+      Companion.lookAt(cx + 300, cy);
       setTimeout(function () {
-        if (el) el.classList.remove('look-right');
-      }, 800 + Math.random() * 400);
-    }, 800 + Math.random() * 400);
+        if (currentState !== 'curious') return;
+        Companion.lookAt(cx, cy - 200);
+        setTimeout(function () {
+          if (currentState === 'curious') Companion.resetLook();
+        }, 600 + Math.random() * 400);
+      }, 600 + Math.random() * 400);
+    }, 600 + Math.random() * 400);
+  }
+
+  /** Briefly flash a happy expression during idle. */
+  function scheduleHappyFlash() {
+    var delay = 4000 + Math.random() * 6000;
+    setTimeout(function () {
+      if (currentState !== 'idle') return;
+      Emotion.setState('happy');
+      setTimeout(function () {
+        if (currentState === 'idle') Emotion.setState('idle');
+      }, 400);
+    }, delay);
   }
 
   function onMouseMove(e) {

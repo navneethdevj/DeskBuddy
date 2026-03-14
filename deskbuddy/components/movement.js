@@ -1,20 +1,23 @@
 /**
  * Movement engine for the companion.
  * Provides velocity-based motion with smooth interpolation, curved paths,
- * edge avoidance, and mouse-push integration.
+ * and edge avoidance.  Targets stay within a small radius of a "home"
+ * position so the companion drifts gently instead of roaming the screen.
  *
- * Called per-frame by Brain during the wander state.
+ * Called per-frame by Brain during the observe state.
  */
 const Movement = (() => {
   const PADDING = 60;
-  const SPEED = 1.8;
-  const ARRIVAL_THRESHOLD = 8;
-  const DIRECTION_CHANGE_CHANCE = 0.008;
-  const STEER_STRENGTH = 0.06;
-  const CURVE_AMOUNT = 0.3;
-  const DECAY_FACTOR = 0.9;
-  const COMPANION_SIZE = 90;
+  const SPEED = 0.4;
+  const HOME_RADIUS = 60;
+  const ARRIVAL_THRESHOLD = 5;
+  const STEER_STRENGTH = 0.04;
+  const CURVE_AMOUNT = 0.2;
+  const DECAY_FACTOR = 0.92;
+  const COMPANION_SIZE = 160;
 
+  let homeX = 0;
+  let homeY = 0;
   let targetX = 0;
   let targetY = 0;
   let vx = 0;
@@ -22,10 +25,12 @@ const Movement = (() => {
   let curveDir = 1;
 
   /**
-   * Initialize position and pick the first wander target.
+   * Initialize home position and pick the first drift target.
    */
   function init() {
     const pos = Companion.getPosition();
+    homeX = pos.x;
+    homeY = pos.y;
     targetX = pos.x;
     targetY = pos.y;
     vx = 0;
@@ -34,17 +39,13 @@ const Movement = (() => {
   }
 
   /**
-   * Advance one frame of wandering movement (called by Brain at 60 FPS).
+   * Advance one frame of drifting movement (called by Brain at 60 FPS).
    */
   function update() {
     const pos = Companion.getPosition();
     let dx = targetX - pos.x;
     let dy = targetY - pos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (Math.random() < DIRECTION_CHANGE_CHANCE) {
-      pickNewTarget();
-    }
 
     if (dist < ARRIVAL_THRESHOLD) {
       pickNewTarget();
@@ -101,11 +102,16 @@ const Movement = (() => {
   }
 
   function pickNewTarget() {
-    const maxX = window.innerWidth - COMPANION_SIZE - PADDING;
-    const maxY = window.innerHeight - COMPANION_SIZE - PADDING;
-    targetX = PADDING + Math.random() * (maxX - PADDING);
-    targetY = PADDING + Math.random() * (maxY - PADDING);
+    // Pick a target within HOME_RADIUS of the home position
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * HOME_RADIUS;
+    targetX = homeX + Math.cos(angle) * radius;
+    targetY = homeY + Math.sin(angle) * radius;
     curveDir = Math.random() < 0.5 ? 1 : -1;
+
+    // Clamp to screen bounds
+    targetX = clamp(targetX, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
+    targetY = clamp(targetY, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
   }
 
   function clamp(value, min, max) {

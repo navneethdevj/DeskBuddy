@@ -7,9 +7,7 @@
  */
 const SpriteAnimator = (() => {
   const animations = {
-    idle: { frames: ['sprite-idle-1', 'sprite-idle-2', 'sprite-idle-3', 'sprite-idle-2'], fps: 6, loop: true },
-    walk: { frames: ['sprite-walk-1', 'sprite-walk-2', 'sprite-walk-3', 'sprite-walk-4'], fps: 8, loop: true },
-    jump: { frames: ['sprite-jump-1', 'sprite-jump-2', 'sprite-jump-3'], fps: 10, loop: false }
+    idle: { frames: ['sprite-idle-1', 'sprite-idle-2', 'sprite-idle-3', 'sprite-idle-2'], fps: 4, loop: true }
   };
 
   let currentAnim = null;
@@ -38,7 +36,7 @@ const SpriteAnimator = (() => {
 
   /**
    * Play a named animation.
-   * @param {string} name  Animation key (idle | walk | jump).
+   * @param {string} name  Animation key (idle).
    * @param {Function} [callback]  Called when a non-looping animation finishes.
    */
   function play(name, callback) {

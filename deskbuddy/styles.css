@@ -9,7 +9,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0f0f0f;
+  background: transparent;
   user-select: none;
   cursor: default;
 }
@@ -23,315 +23,154 @@ html, body {
 /* ===== Companion Container ===== */
 .companion {
   position: absolute;
-  width: 90px;
-  height: 90px;
-  transition: transform 0.08s linear;
-  will-change: transform;
+  width: 160px;
+  height: 160px;
+  will-change: transform, filter;
+  animation: glowPulse 4s ease-in-out infinite;
 }
 
 .companion-inner {
   position: relative;
   width: 100%;
   height: 100%;
+  animation: breathe 3s ease-in-out infinite;
+  transform-origin: center center;
 }
 
-/* ===== Face ===== */
-.face {
-  position: absolute;
-  width: 90px;
-  height: 82px;
-  background: #f5e6d3;
-  border-radius: 50% 50% 46% 46%;
-  top: 8px;
-  left: 0;
-  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, 0.06);
+/* ===== Glow Pulse ===== */
+@keyframes glowPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 16px rgba(120, 220, 255, 0.5))
+            drop-shadow(0 0 40px rgba(120, 220, 255, 0.12));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(120, 220, 255, 0.7))
+            drop-shadow(0 0 50px rgba(120, 220, 255, 0.2));
+  }
 }
 
-/* ===== Ears ===== */
-.ear {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  background: #f5e6d3;
-  top: 0;
-  z-index: -1;
+/* ===== Breathing Animation ===== */
+@keyframes breathe {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
 }
 
-.ear::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: #f0b8b8;
-  border-radius: inherit;
-  top: 6px;
-  left: 6px;
-}
-
-.ear-left {
-  left: 6px;
-  border-radius: 50% 50% 0 50%;
-  transform: rotate(-15deg);
-}
-
-.ear-right {
-  right: 6px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(15deg);
+/* Disable CSS keyframe on companion-inner when sprite system drives frames */
+.companion.sprite-active .companion-inner {
+  animation: none;
+  transition: transform 0.1s ease;
 }
 
 /* ===== Eyes ===== */
 .eyes {
   position: absolute;
   display: flex;
-  justify-content: space-between;
-  width: 42px;
-  top: 36px;
+  justify-content: center;
+  gap: 32px;
+  width: 100%;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .eye {
-  width: 10px;
-  height: 12px;
-  background: #2c2c2c;
+  width: 28px;
+  height: 36px;
+  background: radial-gradient(ellipse at center, #ffffff 20%, #d0ecff 60%, #a8d8f0 100%);
   border-radius: 50%;
-  transition: height 0.15s ease, width 0.15s ease, border-radius 0.15s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  transition: height 0.3s ease, width 0.3s ease, border-radius 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 0 8px rgba(120, 220, 255, 0.3),
+              inset 0 0 4px rgba(120, 220, 255, 0.15);
 }
 
-/* Blink animation */
-.companion.blink .eye {
-  height: 2px;
-  border-radius: 4px;
-  transform: translateY(5px);
-}
-
-/* ===== Eyebrows ===== */
-.eyebrow {
+/* ===== Pupil ===== */
+.pupil {
   position: absolute;
   width: 14px;
-  height: 3px;
-  background: #8b7355;
-  border-radius: 2px;
-  top: 28px;
-  transition: transform 0.3s ease, top 0.3s ease;
-}
-
-.eyebrow-left {
-  left: 19px;
-}
-
-.eyebrow-right {
-  right: 19px;
-}
-
-/* ===== Mouth ===== */
-.mouth {
-  position: absolute;
-  width: 10px;
-  height: 5px;
-  border-bottom: 2.5px solid #c4877a;
-  border-radius: 0 0 50% 50%;
-  top: 56px;
+  height: 16px;
+  background: radial-gradient(ellipse at 40% 35%, #2c2c50, #0d0d1a);
+  border-radius: 50%;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease, border-color 0.3s ease, top 0.3s ease;
+  transform: translate(calc(-50% + var(--pupil-x, 0px)), calc(-50% + var(--pupil-y, 0px)));
+  transition: transform 0.15s ease, width 0.15s ease, height 0.15s ease;
 }
 
-/* ===== Cheeks ===== */
-.cheek {
+/* Highlight / catchlight */
+.pupil::after {
+  content: '';
   position: absolute;
-  width: 14px;
-  height: 8px;
-  background: rgba(255, 150, 150, 0.35);
-  border-radius: 50%;
-  top: 52px;
-  transition: opacity 0.3s ease;
-}
-
-.cheek-left {
-  left: 10px;
-}
-
-.cheek-right {
-  right: 10px;
-}
-
-/* ===== Expression: Happy ===== */
-.companion.happy .eye {
-  height: 6px;
-  border-radius: 6px 6px 0 0;
-  transform: translateY(2px);
-}
-
-.companion.happy .mouth {
-  width: 14px;
-  height: 7px;
-  border-bottom: 2.5px solid #e08080;
-  border-radius: 0 0 50% 50%;
-}
-
-.companion.happy .cheek {
-  opacity: 1;
-}
-
-/* ===== Expression: Focused ===== */
-.companion.focused .eye {
-  height: 10px;
-  width: 9px;
-}
-
-.companion.focused .eyebrow {
-  top: 26px;
-}
-
-.companion.focused .mouth {
-  width: 6px;
-  height: 2px;
-  border-radius: 50%;
-  border-bottom-color: #b0897a;
-}
-
-/* ===== Expression: Suspicious ===== */
-.companion.suspicious .eye {
+  width: 5px;
   height: 5px;
-  border-radius: 2px;
-  transform: translateY(3px);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  top: 18%;
+  right: 14%;
 }
 
-.companion.suspicious .eyebrow-left {
-  transform: rotate(-12deg);
-  top: 26px;
+/* ===== Expression: Idle (default relaxed) ===== */
+/* Default eye shape IS the idle expression — no overrides needed */
+
+/* ===== Expression: Curious (eyes widen) ===== */
+.companion.curious .eye {
+  height: 42px;
+  width: 30px;
 }
 
-.companion.suspicious .eyebrow-right {
-  transform: rotate(12deg);
-  top: 26px;
+.companion.curious .pupil {
+  height: 18px;
+  width: 15px;
 }
 
-.companion.suspicious .mouth {
-  width: 8px;
-  height: 2px;
-  border-radius: 2px;
-  border-bottom-color: #a07060;
-  top: 58px;
+/* ===== Expression: Focused (eyes narrow slightly) ===== */
+.companion.focused .eye {
+  height: 30px;
+  width: 26px;
 }
 
-/* ===== Expression: Sleepy ===== */
+/* ===== Expression: Sleepy (half-closed eyelids) ===== */
 .companion.sleepy .eye {
+  height: 12px;
+  border-radius: 40% 40% 50% 50%;
+}
+
+/* ===== Expression: Suspicious (angled narrowed eyes) ===== */
+.companion.suspicious .eye {
+  height: 16px;
+  border-radius: 3px 3px 50% 50%;
+}
+
+.companion.suspicious .eye-left {
+  transform: skewY(3deg);
+}
+
+.companion.suspicious .eye-right {
+  transform: skewY(-3deg);
+}
+
+/* ===== Expression: Happy (quick blink / ^_^ eyes) ===== */
+.companion.happy .eye {
+  height: 12px;
+  border-radius: 12px 12px 4px 4px;
+}
+
+/* ===== Blink (overrides all expressions — declared last for specificity) ===== */
+.companion.blink .eyes .eye {
   height: 3px;
-  border-radius: 4px;
-  transform: translateY(4px);
+  border-radius: 10px;
 }
 
-.companion.sleepy .eyebrow {
-  top: 30px;
-}
-
-.companion.sleepy .mouth {
-  width: 10px;
-  height: 6px;
-  border-radius: 50%;
-  border-bottom-color: #c4877a;
-}
-
-.companion.sleepy .cheek {
-  opacity: 0.5;
-}
-
-/* ===== Expression: Confused ===== */
-.companion.confused .eyebrow-left {
-  transform: rotate(15deg);
-  top: 24px;
-}
-
-.companion.confused .eyebrow-right {
-  transform: rotate(-5deg);
-  top: 28px;
-}
-
-.companion.confused .mouth {
-  width: 8px;
-  height: 4px;
-  border-radius: 50%;
-  border-bottom-color: #b0897a;
-  transform: translateX(-50%) translateX(3px);
-}
-
-/* ===== Hop Animation ===== */
-@keyframes hop {
-  0%   { transform: translateY(0) scaleX(1) scaleY(1); }
-  15%  { transform: translateY(0) scaleX(1.08) scaleY(0.9); }
-  40%  { transform: translateY(-18px) scaleX(0.95) scaleY(1.08); }
-  60%  { transform: translateY(-18px) scaleX(0.95) scaleY(1.08); }
-  80%  { transform: translateY(0) scaleX(1.06) scaleY(0.92); }
-  100% { transform: translateY(0) scaleX(1) scaleY(1); }
-}
-
-.companion.hopping .companion-inner {
-  animation: hop 0.4s ease-in-out;
-}
-
-/* ===== Idle Breathing ===== */
-@keyframes breathe {
-  0%, 100% { transform: scaleY(1); }
-  50%      { transform: scaleY(1.02); }
-}
-
-.companion-inner {
-  animation: breathe 3s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-/* Disable CSS keyframe animations when the sprite system drives frames */
-.companion.sprite-active .companion-inner {
-  animation: none;
-  transition: transform 0.08s ease;
-}
-
-/* ===== Sprite Frames: Idle (gentle breathing) ===== */
+/* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {
-  transform: scaleY(1) translateY(0);
+  transform: translateY(0);
 }
 .companion.sprite-idle-2 .companion-inner {
-  transform: scaleY(1.025) translateY(-1px);
+  transform: translateY(-1.5px) scale(1.008);
 }
 .companion.sprite-idle-3 .companion-inner {
-  transform: scaleY(0.99) translateY(0.5px);
-}
-
-/* ===== Sprite Frames: Walk (waddle) ===== */
-.companion.sprite-walk-1 .companion-inner {
-  transform: rotate(-2.5deg) translateY(0);
-}
-.companion.sprite-walk-2 .companion-inner {
-  transform: rotate(0deg) translateY(-3px);
-}
-.companion.sprite-walk-3 .companion-inner {
-  transform: rotate(2.5deg) translateY(0);
-}
-.companion.sprite-walk-4 .companion-inner {
-  transform: rotate(0deg) translateY(-3px);
-}
-
-/* ===== Sprite Frames: Jump (squash & stretch) ===== */
-.companion.sprite-jump-1 .companion-inner {
-  transform: scaleX(1.12) scaleY(0.85);
-}
-.companion.sprite-jump-2 .companion-inner {
-  transform: scaleX(0.9) scaleY(1.12) translateY(-22px);
-}
-.companion.sprite-jump-3 .companion-inner {
-  transform: scaleX(1.1) scaleY(0.88);
-}
-
-/* ===== Look Around ===== */
-.companion.look-left .eyes {
-  transform: translateX(-50%) translateX(-3px);
-}
-
-.companion.look-right .eyes {
-  transform: translateX(-50%) translateX(3px);
+  transform: translateY(0.5px) scale(0.995);
 }
 
 /* ===== Status Bar ===== */
@@ -346,4 +185,5 @@ html, body {
   letter-spacing: 0.5px;
   pointer-events: none;
   z-index: 1000;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
 }

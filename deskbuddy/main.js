@@ -15,7 +15,7 @@ function createWindow() {
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: false,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
