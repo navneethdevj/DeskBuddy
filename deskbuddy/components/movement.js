@@ -10,7 +10,7 @@ const Movement = (() => {
   const PAUSE_MIN = 800;
   const PAUSE_MAX = 2200;
   const HOP_CHANCE = 0.3;
-  const DIRECTION_CHANGE_CHANCE = 0.008; // per-frame chance to pick a new target mid-move
+  const DIRECTION_CHANGE_CHANCE = 0.008; // ~0.8% chance per frame (~every ~2s at 60fps) to pick a new target mid-move
 
   let targetX = 0;
   let targetY = 0;

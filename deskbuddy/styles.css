@@ -283,10 +283,6 @@ html, body {
   transform-origin: bottom center;
 }
 
-.companion.hopping .companion-inner {
-  animation: hop 0.4s ease-in-out;
-}
-
 /* ===== Look Around ===== */
 .companion.look-left .eyes {
   transform: translateX(-50%) translateX(-3px);
