@@ -20,13 +20,18 @@ const Companion = (() => {
   const GAZE_MAX_Y = 10;
 
   // Pupil tracking
-  const PUPIL_MAX_RADIUS = 8;
+  const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
   const PUPIL_LERP = 0.15;
   const PUPIL_DISTANCE_SCALE = 500;
   let pupilCurrentX = 0;
   let pupilCurrentY = 0;
   let pupilTargetX = 0;
   let pupilTargetY = 0;
+
+  /** Convert vmin units to current pixel value. */
+  function pupilMaxPx() {
+    return PUPIL_MOVEMENT_RADIUS_VMIN * Math.min(window.innerWidth, window.innerHeight) / 100;
+  }
 
   /**
    * Build the companion DOM tree and insert it into the world container.
@@ -138,7 +143,8 @@ const Companion = (() => {
     el.style.setProperty('--gaze-y', gy + '%');
 
     // Pupil target (scaled by distance, clamped to max radius)
-    const scale = Math.min(1, dist / PUPIL_DISTANCE_SCALE) * PUPIL_MAX_RADIUS;
+    const maxPx = pupilMaxPx();
+    const scale = Math.min(1, dist / PUPIL_DISTANCE_SCALE) * maxPx;
     pupilTargetX = (dx / dist) * scale;
     pupilTargetY = (dy / dist) * scale;
   }
@@ -163,10 +169,11 @@ const Companion = (() => {
     pupilCurrentY += (pupilTargetY - pupilCurrentY) * PUPIL_LERP;
 
     // Clamp to max radius
+    const maxPx = pupilMaxPx();
     const dist = Math.sqrt(pupilCurrentX * pupilCurrentX + pupilCurrentY * pupilCurrentY);
-    if (dist > PUPIL_MAX_RADIUS) {
-      pupilCurrentX = (pupilCurrentX / dist) * PUPIL_MAX_RADIUS;
-      pupilCurrentY = (pupilCurrentY / dist) * PUPIL_MAX_RADIUS;
+    if (dist > maxPx) {
+      pupilCurrentX = (pupilCurrentX / dist) * maxPx;
+      pupilCurrentY = (pupilCurrentY / dist) * maxPx;
     }
 
     if (!el) return;
