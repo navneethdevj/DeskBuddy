@@ -41,67 +41,67 @@ html, body {
 
 @keyframes glowIdle {
   0%, 100% {
-    filter: drop-shadow(0 0 6vmin rgba(255, 240, 220, 0.30))
-            drop-shadow(0 0 16vmin rgba(255, 240, 220, 0.08));
+    filter: drop-shadow(0 0 4vmin rgba(255, 255, 255, 0.15))
+            drop-shadow(0 0 12vmin rgba(255, 255, 255, 0.04));
   }
   50% {
-    filter: drop-shadow(0 0 9vmin rgba(255, 240, 220, 0.45))
-            drop-shadow(0 0 22vmin rgba(255, 240, 220, 0.12));
+    filter: drop-shadow(0 0 6vmin rgba(255, 255, 255, 0.22))
+            drop-shadow(0 0 18vmin rgba(255, 255, 255, 0.06));
   }
 }
 
 @keyframes glowCurious {
   0%, 100% {
-    filter: drop-shadow(0 0 8vmin rgba(255, 250, 235, 0.55))
-            drop-shadow(0 0 22vmin rgba(255, 250, 235, 0.15));
+    filter: drop-shadow(0 0 6vmin rgba(255, 255, 255, 0.30))
+            drop-shadow(0 0 18vmin rgba(255, 255, 255, 0.08));
   }
   50% {
-    filter: drop-shadow(0 0 14vmin rgba(255, 250, 235, 0.75))
-            drop-shadow(0 0 32vmin rgba(255, 250, 235, 0.20));
+    filter: drop-shadow(0 0 10vmin rgba(255, 255, 255, 0.45))
+            drop-shadow(0 0 28vmin rgba(255, 255, 255, 0.12));
   }
 }
 
 @keyframes glowFocused {
   0%, 100% {
-    filter: drop-shadow(0 0 5vmin rgba(220, 230, 255, 0.35))
-            drop-shadow(0 0 14vmin rgba(220, 230, 255, 0.10));
+    filter: drop-shadow(0 0 4vmin rgba(230, 240, 255, 0.20))
+            drop-shadow(0 0 12vmin rgba(230, 240, 255, 0.05));
   }
   50% {
-    filter: drop-shadow(0 0 8vmin rgba(220, 230, 255, 0.50))
-            drop-shadow(0 0 20vmin rgba(220, 230, 255, 0.14));
+    filter: drop-shadow(0 0 7vmin rgba(230, 240, 255, 0.32))
+            drop-shadow(0 0 16vmin rgba(230, 240, 255, 0.08));
   }
 }
 
 @keyframes glowSleepy {
   0%, 100% {
-    filter: drop-shadow(0 0 3vmin rgba(255, 200, 150, 0.15))
-            drop-shadow(0 0 8vmin rgba(255, 200, 150, 0.04));
+    filter: drop-shadow(0 0 2vmin rgba(255, 255, 255, 0.08))
+            drop-shadow(0 0 6vmin rgba(255, 255, 255, 0.02));
   }
   50% {
-    filter: drop-shadow(0 0 5vmin rgba(255, 200, 150, 0.25))
-            drop-shadow(0 0 12vmin rgba(255, 200, 150, 0.07));
+    filter: drop-shadow(0 0 4vmin rgba(255, 255, 255, 0.14))
+            drop-shadow(0 0 10vmin rgba(255, 255, 255, 0.04));
   }
 }
 
 @keyframes glowSuspicious {
   0%, 100% {
-    filter: drop-shadow(0 0 4vmin rgba(230, 210, 255, 0.25))
-            drop-shadow(0 0 10vmin rgba(230, 210, 255, 0.06));
+    filter: drop-shadow(0 0 3vmin rgba(255, 255, 255, 0.12))
+            drop-shadow(0 0 8vmin rgba(255, 255, 255, 0.03));
   }
   50% {
-    filter: drop-shadow(0 0 6vmin rgba(230, 210, 255, 0.40))
-            drop-shadow(0 0 15vmin rgba(230, 210, 255, 0.10));
+    filter: drop-shadow(0 0 5vmin rgba(255, 255, 255, 0.22))
+            drop-shadow(0 0 12vmin rgba(255, 255, 255, 0.06));
   }
 }
 
 @keyframes glowHappy {
   0%, 100% {
-    filter: drop-shadow(0 0 8vmin rgba(255, 225, 160, 0.50))
-            drop-shadow(0 0 20vmin rgba(255, 225, 160, 0.12));
+    filter: drop-shadow(0 0 6vmin rgba(255, 255, 255, 0.28))
+            drop-shadow(0 0 16vmin rgba(255, 255, 255, 0.07));
   }
   50% {
-    filter: drop-shadow(0 0 14vmin rgba(255, 225, 160, 0.70))
-            drop-shadow(0 0 30vmin rgba(255, 225, 160, 0.18));
+    filter: drop-shadow(0 0 10vmin rgba(255, 255, 255, 0.42))
+            drop-shadow(0 0 24vmin rgba(255, 255, 255, 0.11));
   }
 }
 
@@ -137,25 +137,26 @@ html, body {
   left: 0;
 }
 
-/* Eye — solid warm-white gradient; gaze shifts gradient center */
+/* Eye — clean flat cartoon style; gaze shifts a subtle inner highlight */
 .eye {
   width: 28vmin;
   height: 33vmin;
   background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    ellipse at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
     #ffffff 0%,
-    #fff8f0 18%,
-    #ede4d6 40%,
-    #c4b8a4 60%,
-    rgba(100, 90, 75, 0.25) 80%,
-    rgba(40, 35, 28, 0.0) 100%
+    #ffffff 55%,
+    #f0eee8 75%,
+    #e0ddd5 100%
   );
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  transition: height 0.4s ease, width 0.4s ease, border-radius 0.4s ease,
-              transform 0.4s ease, opacity 0.6s ease;
-  box-shadow: 0 0 4vmin rgba(255, 240, 220, 0.12);
+  transition: height 0.4s cubic-bezier(.4, 0, .2, 1),
+              width 0.4s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.4s cubic-bezier(.4, 0, .2, 1),
+              transform 0.4s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.5s ease;
+  box-shadow: 0 0 3vmin rgba(255, 255, 255, 0.08);
 }
 
 /* ===== Expression: Idle (default — relaxed round eyes) ===== */
