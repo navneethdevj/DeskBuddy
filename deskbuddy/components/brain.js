@@ -10,12 +10,10 @@ const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
   const STATE_MIN = 2000;
   const STATE_MAX = 5000;
-  const CURSOR_RADIUS = 8000;
-  const PADDING = 60;
-  const COMPANION_SIZE = 6400;
-  const COMPANION_HALF = COMPANION_SIZE / 2;
+  const CURSOR_RADIUS = 500;
+  const MAX_DRIFT = 40;
   const FOLLOW_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
-  const RETREAT_THRESHOLD = 4000;
+  const RETREAT_THRESHOLD = 200;
   const RETREAT_FACTOR = -0.4;
 
   const STATE_LABELS = {
@@ -75,10 +73,10 @@ const Brain = (() => {
         Movement.update();
         // Eyes slowly scan the environment
         var time = Date.now() * 0.001;
-        var pos = Companion.getPosition();
+        var c = Companion.getCenter();
         Companion.lookAt(
-          pos.x + COMPANION_HALF + Math.sin(time * 0.8) * 300,
-          pos.y + COMPANION_HALF + Math.sin(time * 0.5) * 100
+          c.x + Math.sin(time * 0.8) * 300,
+          c.y + Math.sin(time * 0.5) * 100
         );
         break;
       case 'curious':
@@ -160,51 +158,46 @@ const Brain = (() => {
   // ===== Helpers =====
 
   function isCursorNear() {
-    var pos = Companion.getPosition();
-    var cx = pos.x + COMPANION_HALF;
-    var cy = pos.y + COMPANION_HALF;
-    var dx = mouseX - cx;
-    var dy = mouseY - cy;
+    var c = Companion.getCenter();
+    var dx = mouseX - c.x;
+    var dy = mouseY - c.y;
     return Math.sqrt(dx * dx + dy * dy) < CURSOR_RADIUS;
   }
 
   /** Track cursor with eyes; retreat if cursor is very close. */
   function updateFollowCursor() {
-    var pos = Companion.getPosition();
-    var cx = pos.x + COMPANION_HALF;
-    var cy = pos.y + COMPANION_HALF;
-    var dx = mouseX - cx;
-    var dy = mouseY - cy;
+    var c = Companion.getCenter();
+    var dx = mouseX - c.x;
+    var dy = mouseY - c.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
 
     Companion.lookAt(mouseX, mouseY);
 
     if (dist > 0 && dist < RETREAT_THRESHOLD) {
       Emotion.setState('suspicious');
+      var pos = Companion.getPosition();
       var mx = (dx / dist) * RETREAT_FACTOR;
       var my = (dy / dist) * RETREAT_FACTOR;
       Companion.setPosition(
-        clamp(pos.x + mx, PADDING, window.innerWidth - COMPANION_SIZE - PADDING),
-        clamp(pos.y + my, PADDING, window.innerHeight - COMPANION_SIZE - PADDING)
+        clamp(pos.x + mx, -MAX_DRIFT, MAX_DRIFT),
+        clamp(pos.y + my, -MAX_DRIFT, MAX_DRIFT)
       );
     } else {
       Emotion.setState('focused');
     }
   }
 
-  /** Animate pupils looking left → right → up → center. */
+  /** Animate gaze looking left → right → up → center. */
   function triggerLookSequence() {
-    var pos = Companion.getPosition();
-    var cx = pos.x + COMPANION_HALF;
-    var cy = pos.y + COMPANION_HALF;
+    var c = Companion.getCenter();
 
-    Companion.lookAt(cx - 300, cy);
+    Companion.lookAt(c.x - 300, c.y);
     setTimeout(function () {
       if (currentState !== 'curious') return;
-      Companion.lookAt(cx + 300, cy);
+      Companion.lookAt(c.x + 300, c.y);
       setTimeout(function () {
         if (currentState !== 'curious') return;
-        Companion.lookAt(cx, cy - 200);
+        Companion.lookAt(c.x, c.y - 200);
         setTimeout(function () {
           if (currentState === 'curious') Companion.resetLook();
         }, 600 + Math.random() * 400);

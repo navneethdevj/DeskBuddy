@@ -1,7 +1,9 @@
 /**
  * Companion module.
  * Creates the companion DOM element (a pair of glowing eyes), manages
- * position, rotation, pupil tracking, idle blinking, and mouse interaction.
+ * position, gaze direction via gradient shift, idle blinking, and mouse
+ * interaction.  The companion fills the viewport; position offsets create
+ * subtle drift.
  */
 const Companion = (() => {
   let el = null;
@@ -12,12 +14,10 @@ const Companion = (() => {
   let mouseX = 0;
   let mouseY = 0;
 
-  const SIZE = 6400;
-  const HALF = SIZE / 2;
-  const MOUSE_REACT_RADIUS = 7200;
-  const MOUSE_PUSH_STRENGTH = 0.6;
-  const PUPIL_MAX_X = 200;
-  const PUPIL_MAX_Y = 120;
+  const MOUSE_REACT_RADIUS = 400;
+  const MOUSE_PUSH_STRENGTH = 0.3;
+  const GAZE_MAX_X = 15; // percent shift for gradient center
+  const GAZE_MAX_Y = 10;
 
   /**
    * Build the companion DOM tree and insert it into the world container.
@@ -29,20 +29,16 @@ const Companion = (() => {
     el.innerHTML = `
       <div class="companion-inner">
         <div class="eyes">
-          <div class="eye eye-left">
-            <div class="pupil"></div>
-          </div>
-          <div class="eye eye-right">
-            <div class="pupil"></div>
-          </div>
+          <div class="eye eye-left"></div>
+          <div class="eye eye-right"></div>
         </div>
       </div>
     `;
 
     container.appendChild(el);
 
-    x = (window.innerWidth - SIZE) / 2;
-    y = (window.innerHeight - SIZE) / 2;
+    x = 0;
+    y = 0;
     applyPosition();
 
     Emotion.init(el);
@@ -60,7 +56,7 @@ const Companion = (() => {
   }
 
   /**
-   * Set companion position directly.
+   * Set companion position directly (drift offset from origin).
    */
   function setPosition(nx, ny) {
     x = nx;
@@ -69,20 +65,26 @@ const Companion = (() => {
   }
 
   /**
-   * Get current position.
+   * Get current position (drift offset from origin).
    */
   function getPosition() {
     return { x, y };
   }
 
   /**
+   * Get the screen-space center of the companion.
+   */
+  function getCenter() {
+    return { x: x + window.innerWidth / 2, y: y + window.innerHeight / 2 };
+  }
+
+  /**
    * Get mouse push offset based on cursor proximity.
    */
   function getMousePush() {
-    const cx = x + HALF;
-    const cy = y + HALF;
-    const dx = cx - mouseX;
-    const dy = cy - mouseY;
+    const c = getCenter();
+    const dx = c.x - mouseX;
+    const dy = c.y - mouseY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < MOUSE_REACT_RADIUS && dist > 0) {
@@ -110,29 +112,28 @@ const Companion = (() => {
   }
 
   /**
-   * Point the pupils toward a screen coordinate.
+   * Shift the eye gradient toward a screen coordinate to indicate gaze.
    */
   function lookAt(targetX, targetY) {
     if (!el) return;
-    const cx = x + HALF;
-    const cy = y + HALF;
-    const dx = targetX - cx;
-    const dy = targetY - cy;
+    const c = getCenter();
+    const dx = targetX - c.x;
+    const dy = targetY - c.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0) return;
-    var nx = Math.max(-PUPIL_MAX_X, Math.min(PUPIL_MAX_X, (dx / dist) * PUPIL_MAX_X));
-    var ny = Math.max(-PUPIL_MAX_Y, Math.min(PUPIL_MAX_Y, (dy / dist) * PUPIL_MAX_Y));
-    el.style.setProperty('--pupil-x', nx + 'px');
-    el.style.setProperty('--pupil-y', ny + 'px');
+    var gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
+    var gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
+    el.style.setProperty('--gaze-x', gx + '%');
+    el.style.setProperty('--gaze-y', gy + '%');
   }
 
   /**
-   * Reset pupils to center.
+   * Reset gaze to center.
    */
   function resetLook() {
     if (!el) return;
-    el.style.setProperty('--pupil-x', '0px');
-    el.style.setProperty('--pupil-y', '0px');
+    el.style.setProperty('--gaze-x', '0%');
+    el.style.setProperty('--gaze-y', '0%');
   }
 
   function applyPosition() {
@@ -159,5 +160,5 @@ const Companion = (() => {
     }, delay);
   }
 
-  return { create, setPosition, getPosition, getMousePush, getElement, setRotation, lookAt, resetLook };
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook };
 })();

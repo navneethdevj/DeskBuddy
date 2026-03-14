@@ -1,20 +1,22 @@
 /**
  * Movement engine for the companion.
  * Provides velocity-based motion with smooth interpolation, curved paths,
- * and edge avoidance.  Targets stay within a small radius of a "home"
- * position so the companion drifts gently instead of roaming the screen.
+ * and drift limits.  Targets stay within a small radius of the origin
+ * so the companion drifts gently instead of roaming the screen.
+ *
+ * The companion fills the viewport, so position offsets represent small
+ * drifts rather than absolute screen coordinates.
  *
  * Called per-frame by Brain during the observe state.
  */
 const Movement = (() => {
-  const PADDING = 60;
-  const SPEED = 0.4;
-  const HOME_RADIUS = 2400;
-  const ARRIVAL_THRESHOLD = 5;
+  const MAX_DRIFT = 40;
+  const SPEED = 0.3;
+  const HOME_RADIUS = 25;
+  const ARRIVAL_THRESHOLD = 3;
   const STEER_STRENGTH = 0.04;
   const CURVE_AMOUNT = 0.2;
   const DECAY_FACTOR = 0.92;
-  const COMPANION_SIZE = 6400;
 
   let homeX = 0;
   let homeY = 0;
@@ -71,8 +73,8 @@ const Movement = (() => {
     const newX = pos.x + vx + push.dx;
     const newY = pos.y + vy + push.dy;
 
-    const clampedX = clamp(newX, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
-    const clampedY = clamp(newY, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
+    const clampedX = clamp(newX, -MAX_DRIFT, MAX_DRIFT);
+    const clampedY = clamp(newY, -MAX_DRIFT, MAX_DRIFT);
 
     Companion.setPosition(clampedX, clampedY);
   }
@@ -89,8 +91,8 @@ const Movement = (() => {
     vx *= DECAY_FACTOR;
     vy *= DECAY_FACTOR;
     const pos = Companion.getPosition();
-    const newX = clamp(pos.x + vx, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
-    const newY = clamp(pos.y + vy, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
+    const newX = clamp(pos.x + vx, -MAX_DRIFT, MAX_DRIFT);
+    const newY = clamp(pos.y + vy, -MAX_DRIFT, MAX_DRIFT);
     Companion.setPosition(newX, newY);
   }
 
@@ -109,9 +111,9 @@ const Movement = (() => {
     targetY = homeY + Math.sin(angle) * radius;
     curveDir = Math.random() < 0.5 ? 1 : -1;
 
-    // Clamp to screen bounds
-    targetX = clamp(targetX, PADDING, window.innerWidth - COMPANION_SIZE - PADDING);
-    targetY = clamp(targetY, PADDING, window.innerHeight - COMPANION_SIZE - PADDING);
+    // Clamp to drift bounds
+    targetX = clamp(targetX, -MAX_DRIFT, MAX_DRIFT);
+    targetY = clamp(targetY, -MAX_DRIFT, MAX_DRIFT);
   }
 
   function clamp(value, min, max) {
