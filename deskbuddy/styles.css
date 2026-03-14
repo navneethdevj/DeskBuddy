@@ -37,71 +37,79 @@ html, body {
   transform-origin: center center;
 }
 
-/* ===== Per-Expression Glow Animations (soft cyan tint) ===== */
+/* ===== Per-Expression Glow Animations (soft purple tint) ===== */
 
 @keyframes glowIdle {
   0%, 100% {
-    filter: drop-shadow(0 0 4vmin rgba(100, 200, 255, 0.18))
-            drop-shadow(0 0 12vmin rgba(100, 200, 255, 0.05));
+    filter: drop-shadow(0 0 5vmin rgba(160, 130, 255, 0.22))
+            drop-shadow(0 0 14vmin rgba(160, 130, 255, 0.07))
+            drop-shadow(0 0 24vmin rgba(160, 130, 255, 0.03));
   }
   50% {
-    filter: drop-shadow(0 0 7vmin rgba(100, 200, 255, 0.28))
-            drop-shadow(0 0 18vmin rgba(100, 200, 255, 0.08));
+    filter: drop-shadow(0 0 8vmin rgba(160, 130, 255, 0.34))
+            drop-shadow(0 0 20vmin rgba(160, 130, 255, 0.10))
+            drop-shadow(0 0 32vmin rgba(160, 130, 255, 0.04));
   }
 }
 
 @keyframes glowCurious {
   0%, 100% {
-    filter: drop-shadow(0 0 6vmin rgba(100, 220, 255, 0.35))
-            drop-shadow(0 0 20vmin rgba(100, 220, 255, 0.10));
+    filter: drop-shadow(0 0 7vmin rgba(170, 120, 255, 0.40))
+            drop-shadow(0 0 22vmin rgba(170, 120, 255, 0.12))
+            drop-shadow(0 0 34vmin rgba(170, 120, 255, 0.04));
   }
   50% {
-    filter: drop-shadow(0 0 12vmin rgba(100, 220, 255, 0.50))
-            drop-shadow(0 0 30vmin rgba(100, 220, 255, 0.14));
+    filter: drop-shadow(0 0 14vmin rgba(170, 120, 255, 0.55))
+            drop-shadow(0 0 32vmin rgba(170, 120, 255, 0.16))
+            drop-shadow(0 0 44vmin rgba(170, 120, 255, 0.06));
   }
 }
 
 @keyframes glowFocused {
   0%, 100% {
-    filter: drop-shadow(0 0 4vmin rgba(120, 180, 255, 0.22))
-            drop-shadow(0 0 12vmin rgba(120, 180, 255, 0.06));
+    filter: drop-shadow(0 0 5vmin rgba(140, 130, 255, 0.26))
+            drop-shadow(0 0 14vmin rgba(140, 130, 255, 0.08))
+            drop-shadow(0 0 22vmin rgba(140, 130, 255, 0.03));
   }
   50% {
-    filter: drop-shadow(0 0 7vmin rgba(120, 180, 255, 0.36))
-            drop-shadow(0 0 16vmin rgba(120, 180, 255, 0.10));
+    filter: drop-shadow(0 0 8vmin rgba(140, 130, 255, 0.40))
+            drop-shadow(0 0 18vmin rgba(140, 130, 255, 0.12))
+            drop-shadow(0 0 28vmin rgba(140, 130, 255, 0.04));
   }
 }
 
 @keyframes glowSleepy {
   0%, 100% {
-    filter: drop-shadow(0 0 2vmin rgba(140, 180, 220, 0.10))
-            drop-shadow(0 0 6vmin rgba(140, 180, 220, 0.03));
+    filter: drop-shadow(0 0 3vmin rgba(160, 150, 220, 0.14))
+            drop-shadow(0 0 8vmin rgba(160, 150, 220, 0.05));
   }
   50% {
-    filter: drop-shadow(0 0 4vmin rgba(140, 180, 220, 0.18))
-            drop-shadow(0 0 10vmin rgba(140, 180, 220, 0.05));
+    filter: drop-shadow(0 0 5vmin rgba(160, 150, 220, 0.22))
+            drop-shadow(0 0 12vmin rgba(160, 150, 220, 0.07));
   }
 }
 
 @keyframes glowSuspicious {
   0%, 100% {
-    filter: drop-shadow(0 0 3vmin rgba(160, 140, 255, 0.15))
-            drop-shadow(0 0 8vmin rgba(160, 140, 255, 0.04));
+    filter: drop-shadow(0 0 4vmin rgba(180, 120, 255, 0.20))
+            drop-shadow(0 0 10vmin rgba(180, 120, 255, 0.06));
   }
   50% {
-    filter: drop-shadow(0 0 5vmin rgba(160, 140, 255, 0.26))
-            drop-shadow(0 0 12vmin rgba(160, 140, 255, 0.07));
+    filter: drop-shadow(0 0 6vmin rgba(180, 120, 255, 0.32))
+            drop-shadow(0 0 14vmin rgba(180, 120, 255, 0.09));
   }
 }
 
 @keyframes glowHappy {
   0%, 100% {
-    filter: drop-shadow(0 0 6vmin rgba(255, 200, 100, 0.30))
-            drop-shadow(0 0 16vmin rgba(255, 200, 100, 0.08));
+    filter: drop-shadow(0 0 7vmin rgba(255, 170, 210, 0.34))
+            drop-shadow(0 0 18vmin rgba(255, 170, 210, 0.10))
+            drop-shadow(0 0 28vmin rgba(255, 170, 210, 0.04));
   }
   50% {
-    filter: drop-shadow(0 0 12vmin rgba(255, 200, 100, 0.48))
-            drop-shadow(0 0 26vmin rgba(255, 200, 100, 0.13));
+    filter: drop-shadow(0 0 14vmin rgba(255, 170, 210, 0.52))
+            drop-shadow(0 0 28vmin rgba(255, 170, 210, 0.15))
+            drop-shadow(0 0 38vmin rgba(255, 170, 210, 0.06));
   }
 }
 
@@ -137,32 +145,32 @@ html, body {
   left: 0;
 }
 
-/* Eye — single-color radial gradient: darkest at gaze center, smoothly
-   fading lighter toward the edges.  --gaze-x / --gaze-y shift the dark
-   focal point so the whole color field follows the "pupil" direction. */
+/* Eye — soft purple radial gradient: medium-purple center fading gently
+   to light lavender at edges.  --gaze-x / --gaze-y shift the darker
+   focal point so the whole color field follows the gaze direction. */
 .eye {
   width: 28vmin;
   height: 33vmin;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #0d2b3e  0%,
-    #103350  6%,
-    #143c5c  12%,
-    #194668  18%,
-    #1f5276  24%,
-    #275f84  30%,
-    #306e94  36%,
-    #3b7ea4  42%,
-    #4890b4  48%,
-    #58a2c4  54%,
-    #6ab4d2  60%,
-    #80c4de  66%,
-    #98d2e8  72%,
-    #b0e0f0  78%,
-    #c8ecf6  84%,
-    #daf2fa  90%,
-    #eaf8fc  95%,
-    #f2fbfe 100%
+    #9178c4  0%,
+    #967ec7  6%,
+    #9c85ca 12%,
+    #a18bcd 18%,
+    #a792d0 24%,
+    #ac98d3 30%,
+    #b29ed6 36%,
+    #b7a5d9 42%,
+    #bdabdc 48%,
+    #c2b2df 54%,
+    #c8b8e2 60%,
+    #cebee5 66%,
+    #d3c5e8 72%,
+    #d9cbeb 78%,
+    #ded2ee 84%,
+    #e4d8f1 90%,
+    #e9def4 95%,
+    #ece4f6 100%
   );
   border-radius: 50%;
   position: relative;
@@ -173,8 +181,9 @@ html, body {
               transform 0.4s cubic-bezier(.4, 0, .2, 1),
               opacity 0.5s ease,
               box-shadow 0.4s ease;
-  box-shadow: 0 0 3vmin rgba(100, 200, 255, 0.30),
-              0 0 8vmin rgba(100, 200, 255, 0.12);
+  box-shadow: 0 0 4vmin rgba(160, 130, 255, 0.35),
+              0 0 12vmin rgba(160, 130, 255, 0.15),
+              0 0 22vmin rgba(160, 130, 255, 0.06);
 }
 
 /* ===== Expression: Idle (default — relaxed round eyes) ===== */
@@ -184,16 +193,18 @@ html, body {
 .companion.curious .eye {
   width: 34vmin;
   height: 42vmin;
-  box-shadow: 0 0 5vmin rgba(100, 220, 255, 0.40),
-              0 0 14vmin rgba(100, 220, 255, 0.14);
+  box-shadow: 0 0 6vmin rgba(170, 120, 255, 0.45),
+              0 0 16vmin rgba(170, 120, 255, 0.16),
+              0 0 26vmin rgba(170, 120, 255, 0.06);
 }
 
 /* ===== Expression: Focused (determined narrow gaze) ===== */
 .companion.focused .eye {
   width: 25vmin;
   height: 22vmin;
-  box-shadow: 0 0 3vmin rgba(120, 180, 255, 0.25),
-              0 0 8vmin rgba(120, 180, 255, 0.10);
+  box-shadow: 0 0 4vmin rgba(140, 130, 255, 0.30),
+              0 0 10vmin rgba(140, 130, 255, 0.12),
+              0 0 18vmin rgba(140, 130, 255, 0.04);
 }
 
 /* ===== Expression: Sleepy (cozy thin slits — dimmed) ===== */
@@ -201,8 +212,8 @@ html, body {
   height: 6vmin;
   border-radius: 40% 40% 50% 50%;
   opacity: 0.65;
-  box-shadow: 0 0 2vmin rgba(140, 180, 220, 0.14),
-              0 0 5vmin rgba(140, 180, 220, 0.06);
+  box-shadow: 0 0 3vmin rgba(160, 150, 220, 0.18),
+              0 0 7vmin rgba(160, 150, 220, 0.08);
 }
 
 /* ===== Expression: Suspicious (angular side-eye — skewed) ===== */
@@ -210,8 +221,8 @@ html, body {
   width: 25vmin;
   height: 13vmin;
   border-radius: 1vmin 1vmin 50% 50%;
-  box-shadow: 0 0 3vmin rgba(160, 140, 255, 0.20),
-              0 0 8vmin rgba(160, 140, 255, 0.08);
+  box-shadow: 0 0 4vmin rgba(180, 120, 255, 0.24),
+              0 0 10vmin rgba(180, 120, 255, 0.10);
 }
 
 .companion.suspicious .eye-left {
@@ -226,8 +237,9 @@ html, body {
 .companion.happy .eye {
   height: 11vmin;
   border-radius: 10vmin 10vmin 2vmin 2vmin;
-  box-shadow: 0 0 5vmin rgba(255, 200, 100, 0.35),
-              0 0 12vmin rgba(255, 200, 100, 0.12);
+  box-shadow: 0 0 6vmin rgba(255, 170, 210, 0.40),
+              0 0 14vmin rgba(255, 170, 210, 0.14),
+              0 0 24vmin rgba(255, 170, 210, 0.05);
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
