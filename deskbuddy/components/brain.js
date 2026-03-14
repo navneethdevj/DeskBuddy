@@ -10,12 +10,12 @@ const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
   const STATE_MIN = 2000;
   const STATE_MAX = 5000;
-  const CURSOR_RADIUS = 200;
+  const CURSOR_RADIUS = 8000;
   const PADDING = 60;
-  const COMPANION_SIZE = 160;
+  const COMPANION_SIZE = 6400;
   const COMPANION_HALF = COMPANION_SIZE / 2;
   const FOLLOW_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
-  const RETREAT_THRESHOLD = 100;
+  const RETREAT_THRESHOLD = 4000;
   const RETREAT_FACTOR = -0.4;
 
   const STATE_LABELS = {

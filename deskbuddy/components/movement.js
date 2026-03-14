@@ -9,12 +9,12 @@
 const Movement = (() => {
   const PADDING = 60;
   const SPEED = 0.4;
-  const HOME_RADIUS = 60;
+  const HOME_RADIUS = 2400;
   const ARRIVAL_THRESHOLD = 5;
   const STEER_STRENGTH = 0.04;
   const CURVE_AMOUNT = 0.2;
   const DECAY_FACTOR = 0.92;
-  const COMPANION_SIZE = 160;
+  const COMPANION_SIZE = 6400;
 
   let homeX = 0;
   let homeY = 0;

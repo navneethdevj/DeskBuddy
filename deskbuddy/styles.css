@@ -9,7 +9,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: transparent;
+  background: #1a1a1a;
   user-select: none;
   cursor: default;
 }
@@ -23,8 +23,8 @@ html, body {
 /* ===== Companion Container ===== */
 .companion {
   position: absolute;
-  width: 160px;
-  height: 160px;
+  width: 6400px;
+  height: 6400px;
   will-change: transform, filter;
   animation: glowPulse 4s ease-in-out infinite;
 }
@@ -40,19 +40,19 @@ html, body {
 /* ===== Glow Pulse ===== */
 @keyframes glowPulse {
   0%, 100% {
-    filter: drop-shadow(0 0 16px rgba(120, 220, 255, 0.5))
-            drop-shadow(0 0 40px rgba(120, 220, 255, 0.12));
+    filter: drop-shadow(0 0 640px rgba(120, 220, 255, 0.5))
+            drop-shadow(0 0 1600px rgba(120, 220, 255, 0.12));
   }
   50% {
-    filter: drop-shadow(0 0 22px rgba(120, 220, 255, 0.7))
-            drop-shadow(0 0 50px rgba(120, 220, 255, 0.2));
+    filter: drop-shadow(0 0 880px rgba(120, 220, 255, 0.7))
+            drop-shadow(0 0 2000px rgba(120, 220, 255, 0.2));
   }
 }
 
 /* ===== Breathing Animation ===== */
 @keyframes breathe {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-2px); }
+  50%      { transform: translateY(-80px); }
 }
 
 /* Disable CSS keyframe on companion-inner when sprite system drives frames */
@@ -66,7 +66,7 @@ html, body {
   position: absolute;
   display: flex;
   justify-content: center;
-  gap: 32px;
+  gap: 1280px;
   width: 100%;
   top: 50%;
   left: 50%;
@@ -74,22 +74,22 @@ html, body {
 }
 
 .eye {
-  width: 28px;
-  height: 36px;
+  width: 1120px;
+  height: 1440px;
   background: radial-gradient(ellipse at center, #ffffff 20%, #d0ecff 60%, #a8d8f0 100%);
   border-radius: 50%;
   position: relative;
   overflow: hidden;
   transition: height 0.3s ease, width 0.3s ease, border-radius 0.3s ease, transform 0.3s ease;
-  box-shadow: 0 0 8px rgba(120, 220, 255, 0.3),
-              inset 0 0 4px rgba(120, 220, 255, 0.15);
+  box-shadow: 0 0 320px rgba(120, 220, 255, 0.3),
+              inset 0 0 160px rgba(120, 220, 255, 0.15);
 }
 
 /* ===== Pupil ===== */
 .pupil {
   position: absolute;
-  width: 14px;
-  height: 16px;
+  width: 560px;
+  height: 640px;
   background: radial-gradient(ellipse at 40% 35%, #2c2c50, #0d0d1a);
   border-radius: 50%;
   top: 50%;
@@ -102,8 +102,8 @@ html, body {
 .pupil::after {
   content: '';
   position: absolute;
-  width: 5px;
-  height: 5px;
+  width: 200px;
+  height: 200px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   top: 18%;
@@ -115,31 +115,31 @@ html, body {
 
 /* ===== Expression: Curious (eyes widen) ===== */
 .companion.curious .eye {
-  height: 42px;
-  width: 30px;
+  height: 1680px;
+  width: 1200px;
 }
 
 .companion.curious .pupil {
-  height: 18px;
-  width: 15px;
+  height: 720px;
+  width: 600px;
 }
 
 /* ===== Expression: Focused (eyes narrow slightly) ===== */
 .companion.focused .eye {
-  height: 30px;
-  width: 26px;
+  height: 1200px;
+  width: 1040px;
 }
 
 /* ===== Expression: Sleepy (half-closed eyelids) ===== */
 .companion.sleepy .eye {
-  height: 12px;
+  height: 480px;
   border-radius: 40% 40% 50% 50%;
 }
 
 /* ===== Expression: Suspicious (angled narrowed eyes) ===== */
 .companion.suspicious .eye {
-  height: 16px;
-  border-radius: 3px 3px 50% 50%;
+  height: 640px;
+  border-radius: 120px 120px 50% 50%;
 }
 
 .companion.suspicious .eye-left {
@@ -152,14 +152,14 @@ html, body {
 
 /* ===== Expression: Happy (quick blink / ^_^ eyes) ===== */
 .companion.happy .eye {
-  height: 12px;
-  border-radius: 12px 12px 4px 4px;
+  height: 480px;
+  border-radius: 480px 480px 160px 160px;
 }
 
 /* ===== Blink (overrides all expressions — declared last for specificity) ===== */
 .companion.blink .eyes .eye {
-  height: 3px;
-  border-radius: 10px;
+  height: 120px;
+  border-radius: 400px;
 }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
@@ -167,10 +167,10 @@ html, body {
   transform: translateY(0);
 }
 .companion.sprite-idle-2 .companion-inner {
-  transform: translateY(-1.5px) scale(1.008);
+  transform: translateY(-60px) scale(1.008);
 }
 .companion.sprite-idle-3 .companion-inner {
-  transform: translateY(0.5px) scale(0.995);
+  transform: translateY(20px) scale(0.995);
 }
 
 /* ===== Status Bar ===== */

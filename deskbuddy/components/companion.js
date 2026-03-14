@@ -12,12 +12,12 @@ const Companion = (() => {
   let mouseX = 0;
   let mouseY = 0;
 
-  const SIZE = 160;
+  const SIZE = 6400;
   const HALF = SIZE / 2;
-  const MOUSE_REACT_RADIUS = 180;
+  const MOUSE_REACT_RADIUS = 7200;
   const MOUSE_PUSH_STRENGTH = 0.6;
-  const PUPIL_MAX_X = 5;
-  const PUPIL_MAX_Y = 3;
+  const PUPIL_MAX_X = 200;
+  const PUPIL_MAX_Y = 120;
 
   /**
    * Build the companion DOM tree and insert it into the world container.
