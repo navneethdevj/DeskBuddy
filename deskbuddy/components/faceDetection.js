@@ -72,13 +72,18 @@ const FaceDetection = (() => {
 
     // --- Step 1: Access the camera FIRST (independent of MediaPipe) ---
     try {
-      videoElement = document.createElement('video');
-      videoElement.className = 'camera-feed-hidden';
-      videoElement.setAttribute('autoplay', '');
-      videoElement.setAttribute('playsinline', '');
-      document.body.appendChild(videoElement);
+      videoElement = document.getElementById('cameraVideo');
+      if (!videoElement) {
+        videoElement = document.createElement('video');
+        videoElement.id = 'cameraVideo';
+        videoElement.setAttribute('autoplay', '');
+        videoElement.setAttribute('playsinline', '');
+        videoElement.style.display = 'none';
+        document.body.appendChild(videoElement);
+      }
+      videoElement.muted = true;
 
-      var stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       videoElement.srcObject = stream;
       await videoElement.play();
       console.log('Camera access granted');
