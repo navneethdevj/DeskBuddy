@@ -10,20 +10,24 @@ function createWindow() {
   const { screen } = require('electron');
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  // Allow media (webcam) access for camera awareness.
-  // The check handler is called synchronously for permission queries;
-  // return true for 'media' so the async request handler is reached.
-  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-    if (permission === 'media') return true;
-    return false;
-  });
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    if (permission === 'media') {
-      callback(true);
-      return;
+  // Auto-grant media (webcam) permission so the camera activates without a
+  // dialog.  The check handler is called synchronously for every permission
+  // query; the request handler is the async follow-up for getUserMedia.
+  session.defaultSession.setPermissionCheckHandler(
+    (_webContents, permission, _requestingOrigin, _details) => {
+      if (permission === 'media') return true;
+      return false;
     }
-    callback(false);
-  });
+  );
+  session.defaultSession.setPermissionRequestHandler(
+    (_webContents, permission, callback, _details) => {
+      if (permission === 'media') {
+        callback(true);
+        return;
+      }
+      callback(false);
+    }
+  );
 
   mainWindow = new BrowserWindow({
     width,

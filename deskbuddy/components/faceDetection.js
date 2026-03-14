@@ -55,38 +55,49 @@ const FaceDetection = (() => {
   // ===== Initialisation =====
 
   async function init() {
-    console.log('[FaceDetection] Initializing...');
-
-    if (typeof vision === 'undefined') {
-      console.warn('[FaceDetection] MediaPipe vision bundle not loaded — disabled.');
-      userState = 'NoFace';
-      return false;
-    }
-    console.log('[FaceDetection] MediaPipe vision bundle found.');
+    console.log('Starting camera...');
 
     // Verify camera API is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.log('Camera access denied');
       console.warn('[FaceDetection] navigator.mediaDevices.getUserMedia not available.');
       userState = 'NoFace';
       return false;
     }
 
+    // --- Step 1: Access the camera FIRST (independent of MediaPipe) ---
     try {
-      // Create a hidden video element for the webcam feed
       videoElement = document.createElement('video');
       videoElement.className = 'camera-feed-hidden';
       videoElement.setAttribute('autoplay', '');
       videoElement.setAttribute('playsinline', '');
       document.body.appendChild(videoElement);
 
-      console.log('[FaceDetection] Requesting camera access...');
-      var stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240, frameRate: { ideal: 15 } }
-      });
+      var stream = await navigator.mediaDevices.getUserMedia({ video: true });
       videoElement.srcObject = stream;
       await videoElement.play();
-      console.log('[FaceDetection] Camera access granted, video playing.');
+      console.log('Camera access granted');
+    } catch (err) {
+      console.log('Camera access denied');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        console.warn('[FaceDetection] Camera permission denied by user or system.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        console.warn('[FaceDetection] No camera device found.');
+      } else {
+        console.warn('[FaceDetection] Camera init failed:', err.name, err.message);
+      }
+      userState = 'NoFace';
+      return false;
+    }
 
+    // --- Step 2: Initialize MediaPipe face detection (optional) ---
+    if (typeof vision === 'undefined') {
+      console.warn('[FaceDetection] MediaPipe vision bundle not loaded — camera is running but face detection disabled.');
+      userState = 'NoFace';
+      return false;
+    }
+
+    try {
       console.log('[FaceDetection] Loading MediaPipe FilesetResolver...');
       var filesetResolver = await vision.FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
@@ -124,13 +135,8 @@ const FaceDetection = (() => {
         Math.round(1000 / DETECTION_INTERVAL_MS) + ' FPS).');
       return true;
     } catch (err) {
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        console.warn('[FaceDetection] Camera access denied by user or system.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        console.warn('[FaceDetection] No camera device found.');
-      } else {
-        console.warn('[FaceDetection] Init failed:', err.name, err.message);
-      }
+      console.warn('[FaceDetection] MediaPipe init failed:', err.name, err.message);
+      console.warn('[FaceDetection] Camera is running but face detection is disabled.');
       userState = 'NoFace';
       return false;
     }
