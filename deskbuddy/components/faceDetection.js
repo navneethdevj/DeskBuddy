@@ -82,6 +82,7 @@ const FaceDetection = (() => {
       videoElement.srcObject = stream;
       await videoElement.play();
       console.log('Camera access granted');
+      running = true;
     } catch (err) {
       console.log('Camera access denied');
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -98,8 +99,7 @@ const FaceDetection = (() => {
     // --- Step 2: Initialize MediaPipe face detection (optional) ---
     if (typeof vision === 'undefined') {
       console.warn('[FaceDetection] MediaPipe vision bundle not loaded — camera is running but face detection disabled.');
-      userState = 'NoFace';
-      return false;
+      return true;
     }
 
     try {
@@ -134,7 +134,6 @@ const FaceDetection = (() => {
       }
 
       lastFaceTime = Date.now();
-      running = true;
       intervalId = setInterval(detect, DETECTION_INTERVAL_MS);
       console.log('[FaceDetection] Detection loop started (~' +
         Math.round(1000 / DETECTION_INTERVAL_MS) + ' FPS).');
@@ -142,8 +141,7 @@ const FaceDetection = (() => {
     } catch (err) {
       console.warn('[FaceDetection] MediaPipe init failed:', err.name, err.message);
       console.warn('[FaceDetection] Camera is running but face detection is disabled.');
-      userState = 'NoFace';
-      return false;
+      return true;
     }
   }
 

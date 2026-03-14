@@ -497,10 +497,6 @@ const Brain = (() => {
 
   function enterState(state) {
     currentState = state;
-    // Only set status from state labels when camera is not running
-    if (!FaceDetection.isRunning()) {
-      Status.setText('User: ' + (STATE_LABELS[state] || state));
-    }
 
     if (stateTimer) {
       clearTimeout(stateTimer);

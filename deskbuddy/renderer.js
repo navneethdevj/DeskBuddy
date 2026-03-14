@@ -24,9 +24,7 @@
 
   // Initialize face detection (async — runs in background, auto-starts)
   FaceDetection.init().then(function (ok) {
-    if (ok) {
-      Status.setText('User: Detecting...');
-    } else {
+    if (!ok) {
       Status.setText('User: No Camera');
     }
   });
