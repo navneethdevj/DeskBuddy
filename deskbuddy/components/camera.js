@@ -25,7 +25,7 @@ const Camera = (() => {
 
   // Detected signals
   let facePresent = false;
-  let gazeDirection = { x: 0, y: 0 };     // –1 to 1 normalised
+  let gazeDirection = { x: 0, y: 0 };     // -1 to 1 normalized
   let eyeOpenness = 1.0;                   // 0 = closed, 1 = open
 
   // Timing

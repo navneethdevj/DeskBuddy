@@ -92,6 +92,7 @@ const Brain = (() => {
   let nextCuriosityGlanceTime = 0;
 
   // NoFace searching state
+  const NO_FACE_SEARCH_RATE = 0.002;  // phase increment per frame; ~52 s full cycle at 60 fps
   let noFaceSearchPhase = 0;
 
   // ===== Activity Helpers =====
@@ -301,7 +302,7 @@ const Brain = (() => {
   // ===== NoFace Searching Behaviour =====
 
   function triggerNoFaceSearching(now) {
-    noFaceSearchPhase += 0.002;
+    noFaceSearchPhase += NO_FACE_SEARCH_RATE;
     var c = Companion.getCenter();
     Companion.lookAt(
       c.x + Math.sin(noFaceSearchPhase * 3) * 250,

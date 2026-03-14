@@ -9,15 +9,10 @@ function createWindow() {
 
   // Allow media (webcam) access for camera awareness
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-    if (permission === 'media') return true;
-    return true;
+    return permission === 'media';
   });
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    if (permission === 'media') {
-      callback(true);
-    } else {
-      callback(true);
-    }
+    callback(permission === 'media');
   });
 
   mainWindow = new BrowserWindow({
