@@ -113,12 +113,60 @@ html, body {
   }
 }
 
+@keyframes glowScared {
+  0%, 100% {
+    filter: drop-shadow(0 0 6vmin rgba(180, 120, 235, 0.40))
+            drop-shadow(0 0 14vmin rgba(180, 120, 235, 0.14));
+  }
+  50% {
+    filter: drop-shadow(0 0 12vmin rgba(180, 120, 235, 0.60))
+            drop-shadow(0 0 24vmin rgba(180, 120, 235, 0.20));
+  }
+}
+
+@keyframes glowEmbarrassed {
+  0%, 100% {
+    filter: drop-shadow(0 0 5vmin rgba(200, 140, 180, 0.30))
+            drop-shadow(0 0 12vmin rgba(200, 140, 180, 0.10));
+  }
+  50% {
+    filter: drop-shadow(0 0 8vmin rgba(200, 140, 180, 0.45))
+            drop-shadow(0 0 18vmin rgba(200, 140, 180, 0.14));
+  }
+}
+
+@keyframes glowAngry {
+  0%, 100% {
+    filter: drop-shadow(0 0 5vmin rgba(200, 100, 100, 0.32))
+            drop-shadow(0 0 12vmin rgba(200, 100, 100, 0.10));
+  }
+  50% {
+    filter: drop-shadow(0 0 10vmin rgba(200, 100, 100, 0.50))
+            drop-shadow(0 0 20vmin rgba(200, 100, 100, 0.16));
+  }
+}
+
+@keyframes glowSad {
+  0%, 100% {
+    filter: drop-shadow(0 0 4vmin rgba(100, 120, 200, 0.20))
+            drop-shadow(0 0 10vmin rgba(100, 120, 200, 0.08));
+  }
+  50% {
+    filter: drop-shadow(0 0 6vmin rgba(100, 120, 200, 0.32))
+            drop-shadow(0 0 14vmin rgba(100, 120, 200, 0.10));
+  }
+}
+
 /* Expression → glow override (each has unique color + speed) */
 .companion.curious    { animation: glowCurious 2.5s ease-in-out infinite; }
 .companion.focused    { animation: glowFocused 3.5s ease-in-out infinite; }
 .companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite; }
 .companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite; }
 .companion.happy      { animation: glowHappy 1.8s ease-in-out infinite; }
+.companion.scared     { animation: glowScared 1.5s ease-in-out infinite; }
+.companion.embarrassed { animation: glowEmbarrassed 2.5s ease-in-out infinite; }
+.companion.angry      { animation: glowAngry 2s ease-in-out infinite; }
+.companion.sad        { animation: glowSad 5s ease-in-out infinite; }
 
 /* ===== Breathing Animation ===== */
 @keyframes breathe {
@@ -240,6 +288,59 @@ html, body {
   box-shadow: 0 0 6vmin rgba(160, 140, 245, 0.40),
               0 0 14vmin rgba(160, 140, 245, 0.14),
               0 0 24vmin rgba(160, 140, 245, 0.05);
+}
+
+/* ===== Expression: Scared (wide eyes, pupils small — alarmed) ===== */
+.companion.scared .eye {
+  width: 36vmin;
+  height: 40vmin;
+  box-shadow: 0 0 8vmin rgba(180, 120, 235, 0.50),
+              0 0 20vmin rgba(180, 120, 235, 0.18),
+              0 0 30vmin rgba(180, 120, 235, 0.06);
+}
+
+.companion.scared .pupil {
+  width: 8vmin;
+  height: 8vmin;
+  margin-top: -4vmin;
+  margin-left: -4vmin;
+}
+
+/* ===== Expression: Embarrassed (slightly squished, warm tint) ===== */
+.companion.embarrassed .eye {
+  width: 24vmin;
+  height: 18vmin;
+  border-radius: 50%;
+  opacity: 0.85;
+  box-shadow: 0 0 5vmin rgba(200, 140, 180, 0.35),
+              0 0 12vmin rgba(200, 140, 180, 0.12);
+}
+
+/* ===== Expression: Angry (narrow aggressive slits — angular) ===== */
+.companion.angry .eye {
+  width: 26vmin;
+  height: 14vmin;
+  border-radius: 2vmin 2vmin 50% 50%;
+  box-shadow: 0 0 5vmin rgba(200, 100, 100, 0.36),
+              0 0 12vmin rgba(200, 100, 100, 0.14);
+}
+
+.companion.angry .eye-left {
+  transform: skewY(8deg);
+}
+
+.companion.angry .eye-right {
+  transform: skewY(-8deg);
+}
+
+/* ===== Expression: Sad (droopy rounded eyes — dimmed) ===== */
+.companion.sad .eye {
+  width: 26vmin;
+  height: 28vmin;
+  border-radius: 50% 50% 40% 40%;
+  opacity: 0.7;
+  box-shadow: 0 0 4vmin rgba(100, 120, 200, 0.24),
+              0 0 10vmin rgba(100, 120, 200, 0.10);
 }
 
 /* ===== Pupil (moves inside eye to track cursor) ===== */
@@ -369,4 +470,21 @@ html, body {
   pointer-events: none;
   z-index: 1000;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* User status line (above the timer) */
+.status-text {
+  font-size: 10px;
+  opacity: 0.7;
+  letter-spacing: 0.8px;
+}
+
+/* Focus timer (very small, low opacity — should not distract) */
+.focus-timer {
+  font-size: 10px;
+  opacity: 0.4;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
 }

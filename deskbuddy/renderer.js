@@ -25,9 +25,9 @@
   // Initialize camera awareness (async — runs in background)
   Camera.init().then(function (ok) {
     if (ok) {
-      Status.setText('Status: Camera Active');
+      Status.setText('User: Detecting...');
     } else {
-      Status.setText('Status: No Camera');
+      Status.setText('User: No Camera');
     }
   });
 })();

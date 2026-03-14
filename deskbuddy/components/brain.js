@@ -1,13 +1,29 @@
 /**
- * Creature Brain — attention-based behavior state machine with focus meter,
- * camera awareness integration, attention engine, and micro-intent animations.
+ * Creature Brain — attention-based behavior state machine with focus timer,
+ * camera awareness integration, attention engine, gaze-driven drift,
+ * and emotion engine.
  *
- * Camera user states (Focused / Distracted / NoFace / Sleepy) drive emotion
- * and attention.  The attention engine decides where the eyes look:
- *   1. cursor (if moving)
- *   2. userFace (if camera detects face)
- *   3. screenCenter (if typing)
- *   4. curiosityPoint (when idle)
+ * Camera user states (Focused / Distracted / LookingAway / NoFace / Sleepy)
+ * drive emotion and attention.
+ *
+ * Focus Timer:
+ *   - Starts when user state becomes Focused
+ *   - Pauses when Distracted or LookingAway
+ *   - Pauses when NoFace detected
+ *   - Resets when NoFace lasts longer than 60 seconds
+ *
+ * Emotion mapping:
+ *   Focused → Happy
+ *   Focused for long time without movement → Curious
+ *   No movement anywhere → Sleepy
+ *   User looking away → Suspicious
+ *   User leaves frame → Scared
+ *
+ * Attention targets (priority order via Attention module):
+ *   1. userMovement
+ *   2. userFace
+ *   3. curiosityPoint
+ *   4. environmentScan
  *
  * Micro-intent behaviours:
  *   - Reaction delay (50–120 ms) when the attention target type changes
@@ -54,6 +70,12 @@ const Brain = (() => {
   const IDLE_DRIFT_SPEED = 0.0004;  // radians per ms
   const IDLE_DRIFT_AMPLITUDE = 60;  // pixels
 
+  // Focus timer
+  const FOCUS_TIMER_NOFACE_RESET = 60000; // reset timer after 60 s NoFace
+
+  // Emotion mapping: long focus without movement threshold
+  const LONG_FOCUS_CURIOUS_MS = 30000;  // 30 s focused without much movement → Curious
+
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -94,6 +116,16 @@ const Brain = (() => {
   // NoFace searching state
   const NO_FACE_SEARCH_RATE = 0.002;  // phase increment per frame; ~52 s full cycle at 60 fps
   let noFaceSearchPhase = 0;
+
+  // Focus timer state
+  let focusTimerSeconds = 0;
+  let focusTimerRunning = false;
+  let lastFocusTimerTick = 0;
+  let noFaceStartTime = 0;
+
+  // Emotion mapping state
+  let focusedSinceTime = 0;       // when Focused state began (for long-focus detection)
+  let lastMovementCheckTime = 0;
 
   // ===== Activity Helpers =====
 
@@ -144,6 +176,7 @@ const Brain = (() => {
 
     var now = Date.now();
     updateFocusMeter(now);
+    updateFocusTimer(now);
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -219,8 +252,8 @@ const Brain = (() => {
         break;
     }
 
-    // Emotion: camera state takes priority, focus-meter as fallback
-    applyCameraOrFocusEmotion(now);
+    // Emotion engine: camera state drives emotion, focus-meter as fallback
+    applyEmotionEngine(now);
   }
 
   // ===== Micro-intent: Curiosity Glance =====
@@ -253,36 +286,112 @@ const Brain = (() => {
     }
   }
 
-  // ===== Emotion (camera-aware with focus fallback) =====
+  // ===== Focus Timer =====
+
+  function updateFocusTimer(now) {
+    if (!Camera.isRunning()) return;
+
+    var userState = Camera.getUserState();
+
+    switch (userState) {
+      case 'Focused':
+        if (!focusTimerRunning) {
+          focusTimerRunning = true;
+          lastFocusTimerTick = now;
+        }
+        noFaceStartTime = 0;
+        break;
+      case 'Distracted':
+      case 'LookingAway':
+        focusTimerRunning = false;
+        noFaceStartTime = 0;
+        break;
+      case 'NoFace':
+        focusTimerRunning = false;
+        if (noFaceStartTime === 0) {
+          noFaceStartTime = now;
+        } else if (now - noFaceStartTime > FOCUS_TIMER_NOFACE_RESET) {
+          focusTimerSeconds = 0;
+          noFaceStartTime = now; // prevent repeated resets
+        }
+        break;
+      case 'Sleepy':
+        focusTimerRunning = false;
+        noFaceStartTime = 0;
+        break;
+    }
+
+    // Accumulate focused time
+    if (focusTimerRunning) {
+      var elapsed = (now - lastFocusTimerTick) / 1000;
+      focusTimerSeconds += elapsed;
+      lastFocusTimerTick = now;
+    }
+
+    Status.setTimer(focusTimerSeconds);
+  }
+
+  // ===== Emotion Engine =====
 
   /**
    * Camera user state drives expression when available.
+   * Emotion mapping:
+   *   Focused → Happy
+   *   Focused for long time without movement → Curious
+   *   No movement anywhere → Sleepy
+   *   User looking away (Distracted/LookingAway) → Suspicious
+   *   User leaves frame (NoFace) → Scared
    * Falls back to focus-meter emotion when camera is inactive.
    */
-  function applyCameraOrFocusEmotion(now) {
+  function applyEmotionEngine(now) {
     if (currentState === 'followCursor' || currentState === 'curious') return;
 
     if (Camera.isRunning()) {
       var userState = Camera.getUserState();
+      var mouseActive = isMouseActive(now);
+      var keyActive = isKeyActive(now);
+      var anyActivity = mouseActive || keyActive;
+
       switch (userState) {
         case 'Focused':
-          Emotion.setState('focused');
+          // Track how long we've been focused
+          if (focusedSinceTime === 0) focusedSinceTime = now;
+
+          // Long focus without movement → Curious
+          if (!anyActivity && (now - focusedSinceTime) > LONG_FOCUS_CURIOUS_MS) {
+            Emotion.setState('curious');
+          } else {
+            Emotion.setState('happy');
+          }
           break;
         case 'Distracted':
+        case 'LookingAway':
+          focusedSinceTime = 0;
           Emotion.setState('suspicious');
           break;
         case 'NoFace':
-          Emotion.setState('curious');
+          focusedSinceTime = 0;
+          Emotion.setState('scared');
           triggerNoFaceSearching(now);
           break;
         case 'Sleepy':
+          focusedSinceTime = 0;
           Emotion.setState('sleepy');
           break;
         default:
+          focusedSinceTime = 0;
           applyFocusEmotion();
           break;
       }
-      Status.setText('Status: ' + userState);
+
+      // No movement anywhere → Sleepy (overrides other emotions except NoFace)
+      if (userState !== 'NoFace' && !anyActivity &&
+          Camera.getMovementLevel() < 0.002 && focusLevel < 20) {
+        Emotion.setState('sleepy');
+      }
+
+      var displayState = userState === 'NoFace' ? 'Away' : userState;
+      Status.setText('User: ' + displayState);
     } else {
       applyFocusEmotion();
     }
@@ -385,7 +494,7 @@ const Brain = (() => {
     currentState = state;
     // Only set status from state labels when camera is not running
     if (!Camera.isRunning()) {
-      Status.setText('Status: ' + (STATE_LABELS[state] || state));
+      Status.setText('User: ' + (STATE_LABELS[state] || state));
     }
 
     if (stateTimer) {

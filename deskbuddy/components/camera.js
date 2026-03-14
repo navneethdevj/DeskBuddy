@@ -1,13 +1,14 @@
 /**
  * Camera Awareness module.
- * Uses MediaPipe Face Landmarker to detect face presence, gaze direction,
- * and eye openness from a hidden webcam feed at 10–15 FPS.
+ * Uses MediaPipe Face Landmarker to detect face presence, head direction,
+ * eye openness, and movement level from a hidden webcam feed at 10–15 FPS.
  *
- * Converts camera signals into a simple user state:
- *   Focused    – face present and looking toward screen
- *   Distracted – face present but gaze turned away
- *   NoFace     – no face detected for > 3 seconds
- *   Sleepy     – eyes mostly closed for several seconds
+ * Converts camera signals into user states:
+ *   Focused      – face present, eyes open, head oriented toward screen
+ *   Distracted   – face present, gaze slightly away
+ *   LookingAway  – face present, head significantly turned
+ *   Sleepy       – eyes mostly closed for several seconds
+ *   NoFace       – no face detected for > 3 seconds
  *
  * The webcam video is never rendered on screen.
  */
@@ -16,7 +17,8 @@ const Camera = (() => {
   const NO_FACE_THRESHOLD = 3000;          // ms before NoFace state
   const SLEEPY_THRESHOLD = 3000;           // ms of closed eyes before Sleepy
   const EYE_CLOSED_VALUE = 0.45;           // blendshape threshold
-  const GAZE_AWAY_THRESHOLD = 0.35;        // horizontal/vertical gaze away
+  const GAZE_AWAY_THRESHOLD = 0.25;        // mild gaze deviation → Distracted
+  const HEAD_AWAY_THRESHOLD = 0.45;        // strong head turn → LookingAway
 
   let faceLandmarker = null;
   let videoElement = null;
@@ -26,7 +28,12 @@ const Camera = (() => {
   // Detected signals
   let facePresent = false;
   let gazeDirection = { x: 0, y: 0 };     // -1 to 1 normalized
+  let headDirection = { x: 0, y: 0 };     // -1 to 1 normalized (nose offset)
   let eyeOpenness = 1.0;                   // 0 = closed, 1 = open
+  let movementLevel = 0;                   // 0 = still, higher = more motion
+
+  // Movement tracking (frame-to-frame landmark delta)
+  let prevNosePos = null;
 
   // Timing
   let lastFaceTime = 0;
@@ -103,6 +110,25 @@ const Camera = (() => {
       facePresent = true;
       lastFaceTime = ts;
 
+      var landmarks = results.faceLandmarks[0];
+
+      // Head direction from nose tip (landmark 1) relative to face center
+      var noseTip = landmarks[1];
+      if (noseTip) {
+        headDirection.x = (noseTip.x - 0.5) * 2;   // -1 (left) to 1 (right)
+        headDirection.y = (noseTip.y - 0.5) * 2;   // -1 (up) to 1 (down)
+      }
+
+      // Movement level: frame-to-frame nose displacement
+      if (noseTip && prevNosePos) {
+        var mdx = noseTip.x - prevNosePos.x;
+        var mdy = noseTip.y - prevNosePos.y;
+        movementLevel = movementLevel * 0.7 + Math.sqrt(mdx * mdx + mdy * mdy) * 0.3;
+      }
+      if (noseTip) {
+        prevNosePos = { x: noseTip.x, y: noseTip.y };
+      }
+
       if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
         var map = {};
         results.faceBlendshapes[0].categories.forEach(function (s) {
@@ -137,11 +163,21 @@ const Camera = (() => {
         }
       } else {
         eyeClosedSince = 0;
-        var deviation = Math.abs(gazeDirection.x) + Math.abs(gazeDirection.y);
-        userState = deviation > GAZE_AWAY_THRESHOLD ? 'Distracted' : 'Focused';
+        var headDev = Math.abs(headDirection.x) + Math.abs(headDirection.y);
+        var gazeDev = Math.abs(gazeDirection.x) + Math.abs(gazeDirection.y);
+
+        if (headDev > HEAD_AWAY_THRESHOLD) {
+          userState = 'LookingAway';
+        } else if (gazeDev > GAZE_AWAY_THRESHOLD) {
+          userState = 'Distracted';
+        } else {
+          userState = 'Focused';
+        }
       }
     } else {
       facePresent = false;
+      prevNosePos = null;
+      movementLevel = movementLevel * 0.9;  // decay when no face
       if (ts - lastFaceTime > NO_FACE_THRESHOLD) {
         userState = 'NoFace';
       }
@@ -150,11 +186,13 @@ const Camera = (() => {
 
   // ===== Public API =====
 
-  function getUserState()      { return userState; }
-  function isFacePresent()     { return facePresent; }
-  function getGazeDirection()  { return { x: gazeDirection.x, y: gazeDirection.y }; }
-  function getEyeOpenness()    { return eyeOpenness; }
-  function isRunning()         { return running; }
+  function getUserState()       { return userState; }
+  function isFacePresent()      { return facePresent; }
+  function getGazeDirection()   { return { x: gazeDirection.x, y: gazeDirection.y }; }
+  function getHeadDirection()   { return { x: headDirection.x, y: headDirection.y }; }
+  function getEyeOpenness()     { return eyeOpenness; }
+  function getMovementLevel()   { return movementLevel; }
+  function isRunning()          { return running; }
 
   function stop() {
     running = false;
@@ -169,7 +207,9 @@ const Camera = (() => {
     getUserState: getUserState,
     isFacePresent: isFacePresent,
     getGazeDirection: getGazeDirection,
+    getHeadDirection: getHeadDirection,
     getEyeOpenness: getEyeOpenness,
+    getMovementLevel: getMovementLevel,
     isRunning: isRunning,
     stop: stop
   };

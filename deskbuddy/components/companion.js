@@ -2,6 +2,7 @@
  * Companion module.
  * Creates the companion DOM element (a pair of glowing eyes with pupils),
  * manages position, gaze direction via gradient shift and pupil movement,
+ * gaze-driven drift (eye container follows pupil direction with delay),
  * idle blinking, and mouse interaction.  The companion fills the viewport;
  * position offsets create subtle drift.
  */
@@ -30,6 +31,13 @@ const Companion = (() => {
   let pupilTargetY = 0;
   let pupilVelocityX = 0;
   let pupilVelocityY = 0;
+
+  // Gaze-driven drift (eye container follows gaze with delay)
+  const GAZE_DRIFT_MIN = 3;    // px
+  const GAZE_DRIFT_MAX = 8;    // px
+  const GAZE_DRIFT_LERP = 0.03; // slow follow speed
+  let gazeDriftX = 0;
+  let gazeDriftY = 0;
 
   /** Convert vmin units to current pixel value. */
   function pupilMaxPx() {
@@ -166,6 +174,7 @@ const Companion = (() => {
   /**
    * Smoothly interpolate pupils toward their target each frame using
    * spring-damper physics for organic overshoot motion.
+   * Also updates gaze-driven drift on the eye container.
    * Called from the main rAF loop.
    */
   function updatePupils() {
@@ -192,11 +201,26 @@ const Companion = (() => {
     for (var i = 0; i < pupils.length; i++) {
       pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
     }
+
+    // Gaze-driven drift: eye container follows pupil direction with delay
+    if (maxPx > 0 && dist > 0) {
+      var driftRange = GAZE_DRIFT_MIN + (dist / maxPx) * (GAZE_DRIFT_MAX - GAZE_DRIFT_MIN);
+      var driftTargetX = (pupilCurrentX / maxPx) * driftRange;
+      var driftTargetY = (pupilCurrentY / maxPx) * driftRange;
+      gazeDriftX += (driftTargetX - gazeDriftX) * GAZE_DRIFT_LERP;
+      gazeDriftY += (driftTargetY - gazeDriftY) * GAZE_DRIFT_LERP;
+    } else {
+      gazeDriftX *= 0.95;
+      gazeDriftY *= 0.95;
+    }
+    applyPosition();
   }
 
   function applyPosition() {
     if (!el) return;
-    el.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`;
+    var totalX = x + gazeDriftX;
+    var totalY = y + gazeDriftY;
+    el.style.transform = `translate(${totalX}px, ${totalY}px) rotate(${rotation}deg)`;
   }
 
   // ===== Idle Behaviors =====
