@@ -1,0 +1,14 @@
+{
+  "name": "deskbuddy",
+  "version": "1.0.0",
+  "description": "Cute animated AI study companion that lives on your screen",
+  "main": "deskbuddy/main.js",
+  "scripts": {
+    "start": "electron deskbuddy/main.js"
+  },
+  "keywords": ["electron", "desktop-pet", "companion", "animation"],
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^34.2.0"
+  }
+}
