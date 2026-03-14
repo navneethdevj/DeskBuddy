@@ -1,10 +1,14 @@
 /**
- * Creature Brain — attention-based behavior state machine.
+ * Creature Brain — attention-based behavior state machine with focus meter.
  * Cycles through states (observe, curious, idle, sleepy) on a timer and
  * switches to followCursor when the mouse cursor is nearby.
  *
+ * Tracks user activity (mouse + keyboard) via a focus meter (0–100).
+ * Focus level drives emotional expression: focused (>70), idle (30–70),
+ * sleepy (<30).
+ *
  * Owns the main requestAnimationFrame loop and coordinates Movement,
- * SpriteAnimator, Companion, Emotion, and Status modules.
+ * SpriteAnimator, Companion, Emotion, Particles, and Status modules.
  */
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
@@ -15,6 +19,15 @@ const Brain = (() => {
   const FOLLOW_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
   const RETREAT_THRESHOLD = 200;
   const RETREAT_FACTOR = -0.4;
+
+  // Focus meter tuning
+  const FOCUS_INCREASE_MOUSE = 0.4;
+  const FOCUS_INCREASE_KEY = 0.8;
+  const FOCUS_DECAY_RATE = 0.04; // per frame when inactive
+
+  // Idle look timing
+  const IDLE_LOOK_MIN_WAIT = 3000;
+  const IDLE_LOOK_MAX_WAIT = 6000;
 
   const STATE_LABELS = {
     observe: 'Observing',
@@ -31,10 +44,24 @@ const Brain = (() => {
   let mouseY = -1000;
   let followCooldown = 0;
 
+  // Activity tracking
+  let focusLevel = 50;
+  let lastMouseMoveTime = 0;
+  let lastKeyTime = 0;
+
+  // Idle look state
+  let idleLookActive = false;
+  let nextIdleLookTime = 0;
+
+  // Screen awareness: typing glance
+  let wasTyping = false;
+  let typingGlanceUntil = 0;
+
   // ===== Public API =====
 
   function start() {
     document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
     Movement.init();
     enterState('idle');
     tick();
@@ -55,6 +82,10 @@ const Brain = (() => {
     return currentState;
   }
 
+  function getFocusLevel() {
+    return focusLevel;
+  }
+
   // ===== Main Loop =====
 
   function tick() {
@@ -62,17 +93,29 @@ const Brain = (() => {
 
     if (followCooldown > 0) followCooldown--;
 
+    var now = Date.now();
+    updateFocusMeter(now);
+
+    // Smooth pupil interpolation every frame
+    Companion.updatePupils();
+
+    // Particle effects based on current emotion
+    Particles.update(Emotion.getState());
+
     var near = isCursorNear();
     if (near && currentState !== 'followCursor' && followCooldown <= 0) {
       enterState('followCursor');
       return;
     }
 
+    var mouseActive = (now - lastMouseMoveTime) < 500;
+    var keyActive = (now - lastKeyTime) < 1000;
+
     switch (currentState) {
       case 'observe':
         Movement.update();
         // Eyes slowly scan the environment
-        var time = Date.now() * 0.001;
+        var time = now * 0.001;
         var c = Companion.getCenter();
         Companion.lookAt(
           c.x + Math.sin(time * 0.8) * 300,
@@ -84,6 +127,7 @@ const Brain = (() => {
         break;
       case 'idle':
         Movement.decay();
+        applyGaze(now, mouseActive, keyActive);
         break;
       case 'followCursor':
         updateFollowCursor();
@@ -95,8 +139,98 @@ const Brain = (() => {
         break;
       case 'sleepy':
         Movement.decay();
+        applyGaze(now, mouseActive, keyActive);
         break;
     }
+
+    // Focus-driven emotion (overridden by followCursor / curious)
+    applyFocusEmotion();
+  }
+
+  // ===== Focus Meter =====
+
+  function updateFocusMeter(now) {
+    var mouseActive = (now - lastMouseMoveTime) < 500;
+    var keyActive = (now - lastKeyTime) < 1000;
+
+    if (mouseActive) focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_MOUSE);
+    if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
+
+    if (!mouseActive && !keyActive) {
+      focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+    }
+  }
+
+  /** Set emotion based on focus level unless a special state overrides. */
+  function applyFocusEmotion() {
+    if (currentState === 'followCursor' || currentState === 'curious') return;
+
+    if (focusLevel > 70) {
+      Emotion.setState('focused');
+    } else if (focusLevel < 30) {
+      Emotion.setState('sleepy');
+    } else {
+      Emotion.setState('idle');
+    }
+  }
+
+  // ===== Gaze Logic (idle / sleepy states) =====
+
+  /**
+   * Determine where the eyes should look when in idle or sleepy state.
+   * Priority: screen-center glance when typing > follow cursor > idle look.
+   */
+  function applyGaze(now, mouseActive, keyActive) {
+    // Screen awareness: brief glance at screen center when typing starts
+    if (keyActive && !wasTyping) {
+      typingGlanceUntil = now + 1000;
+    }
+    wasTyping = keyActive;
+
+    if (now < typingGlanceUntil) {
+      Companion.lookAt(window.innerWidth / 2, window.innerHeight / 2);
+      return;
+    }
+
+    if (mouseActive) {
+      Companion.lookAt(mouseX, mouseY);
+      return;
+    }
+
+    // Idle look behavior
+    checkIdleLook(now);
+  }
+
+  // ===== Idle Look =====
+
+  function checkIdleLook(now) {
+    if (now - lastMouseMoveTime < IDLE_LOOK_MIN_WAIT) return;
+    if (idleLookActive) return;
+    if (now < nextIdleLookTime) return;
+
+    triggerIdleLook();
+  }
+
+  function triggerIdleLook() {
+    idleLookActive = true;
+    var c = Companion.getCenter();
+    var patterns = [
+      { x: c.x - 200, y: c.y },      // look left
+      { x: c.x + 200, y: c.y },      // look right
+      { x: c.x, y: c.y },            // look center
+      { x: window.innerWidth / 2, y: window.innerHeight / 2 } // screen center
+    ];
+    var target = patterns[Math.floor(Math.random() * patterns.length)];
+    Companion.lookAt(target.x, target.y);
+
+    var duration = 1000 + Math.random() * 1000;
+    setTimeout(function () {
+      if (currentState !== 'followCursor') {
+        Companion.resetLook();
+      }
+      idleLookActive = false;
+      nextIdleLookTime = Date.now() + IDLE_LOOK_MIN_WAIT + Math.random() * (IDLE_LOOK_MAX_WAIT - IDLE_LOOK_MIN_WAIT);
+    }, duration);
   }
 
   // ===== State Management =====
@@ -220,11 +354,16 @@ const Brain = (() => {
   function onMouseMove(e) {
     mouseX = e.clientX;
     mouseY = e.clientY;
+    lastMouseMoveTime = Date.now();
+  }
+
+  function onKeyDown() {
+    lastKeyTime = Date.now();
   }
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
-  return { start: start, stop: stop, getState: getState };
+  return { start: start, stop: stop, getState: getState, getFocusLevel: getFocusLevel };
 })();

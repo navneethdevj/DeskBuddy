@@ -1,6 +1,7 @@
 /**
  * Renderer — main frontend entry point.
- * Initializes the companion, sprite animator, status UI, and behavior brain.
+ * Initializes the companion, sprite animator, particles, status UI,
+ * and behavior brain.
  */
 (function main() {
   const world = document.getElementById('world');
@@ -11,6 +12,9 @@
 
   // Bind sprite animation engine to the companion element
   SpriteAnimator.init(Companion.getElement());
+
+  // Initialize particle effects inside the world container
+  Particles.init(world);
 
   // Initialize status UI
   Status.init(statusBar);
