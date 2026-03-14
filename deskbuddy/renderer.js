@@ -1,6 +1,6 @@
 /**
  * Renderer — main frontend entry point.
- * Initializes the companion, starts the movement engine, and sets up the status UI.
+ * Initializes the companion, sprite animator, status UI, and behavior brain.
  */
 (function main() {
   const world = document.getElementById('world');
@@ -9,9 +9,12 @@
   // Create companion and place it in the world
   Companion.create(world);
 
-  // Start wandering movement
-  Movement.start();
+  // Bind sprite animation engine to the companion element
+  SpriteAnimator.init(Companion.getElement());
 
   // Initialize status UI
   Status.init(statusBar);
+
+  // Start the creature brain (owns the main loop)
+  Brain.start();
 })();

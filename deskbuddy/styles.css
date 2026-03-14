@@ -283,6 +283,48 @@ html, body {
   transform-origin: bottom center;
 }
 
+/* Disable CSS keyframe animations when the sprite system drives frames */
+.companion.sprite-active .companion-inner {
+  animation: none;
+  transition: transform 0.08s ease;
+}
+
+/* ===== Sprite Frames: Idle (gentle breathing) ===== */
+.companion.sprite-idle-1 .companion-inner {
+  transform: scaleY(1) translateY(0);
+}
+.companion.sprite-idle-2 .companion-inner {
+  transform: scaleY(1.025) translateY(-1px);
+}
+.companion.sprite-idle-3 .companion-inner {
+  transform: scaleY(0.99) translateY(0.5px);
+}
+
+/* ===== Sprite Frames: Walk (waddle) ===== */
+.companion.sprite-walk-1 .companion-inner {
+  transform: rotate(-2.5deg) translateY(0);
+}
+.companion.sprite-walk-2 .companion-inner {
+  transform: rotate(0deg) translateY(-3px);
+}
+.companion.sprite-walk-3 .companion-inner {
+  transform: rotate(2.5deg) translateY(0);
+}
+.companion.sprite-walk-4 .companion-inner {
+  transform: rotate(0deg) translateY(-3px);
+}
+
+/* ===== Sprite Frames: Jump (squash & stretch) ===== */
+.companion.sprite-jump-1 .companion-inner {
+  transform: scaleX(1.12) scaleY(0.85);
+}
+.companion.sprite-jump-2 .companion-inner {
+  transform: scaleX(0.9) scaleY(1.12) translateY(-22px);
+}
+.companion.sprite-jump-3 .companion-inner {
+  transform: scaleX(1.1) scaleY(0.88);
+}
+
 /* ===== Look Around ===== */
 .companion.look-left .eyes {
   transform: translateX(-50%) translateX(-3px);

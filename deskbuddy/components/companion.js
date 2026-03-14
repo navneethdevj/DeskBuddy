@@ -1,12 +1,14 @@
 /**
  * Companion module.
- * Creates the companion DOM element, manages position, applies emotion states,
- * triggers idle behaviors (blinking, look-around), and handles mouse interaction.
+ * Creates the companion DOM element, manages position and rotation,
+ * applies emotion states, triggers idle behaviors (blinking),
+ * and handles mouse interaction.
  */
 const Companion = (() => {
   let el = null;
   let x = 0;
   let y = 0;
+  let rotation = 0;
 
   // Mouse interaction state
   let mouseX = 0;
@@ -107,18 +109,22 @@ const Companion = (() => {
     return el;
   }
 
+  /**
+   * Set the companion's body rotation in degrees.
+   */
+  function setRotation(deg) {
+    rotation = deg;
+  }
+
   function applyPosition() {
     if (!el) return;
-    el.style.transform = `translate(${x}px, ${y}px)`;
+    el.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`;
   }
 
   // ===== Idle Behaviors =====
 
   function startIdleBehaviors() {
-    // Blink every 2.5-5 seconds
     scheduleBlink();
-    // Look around every 4-8 seconds
-    scheduleLookAround();
   }
 
   function scheduleBlink() {
@@ -133,18 +139,5 @@ const Companion = (() => {
     }, delay);
   }
 
-  function scheduleLookAround() {
-    const delay = 4000 + Math.random() * 4000;
-    setTimeout(() => {
-      if (!el) return;
-      const dir = Math.random() < 0.5 ? 'look-left' : 'look-right';
-      el.classList.add(dir);
-      setTimeout(() => {
-        if (el) el.classList.remove(dir);
-      }, 600 + Math.random() * 400);
-      scheduleLookAround();
-    }, delay);
-  }
-
-  return { create, setPosition, getPosition, getMousePush, getElement };
+  return { create, setPosition, getPosition, getMousePush, getElement, setRotation };
 })();
