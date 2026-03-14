@@ -16,8 +16,8 @@ const Companion = (() => {
 
   const MOUSE_REACT_RADIUS = 400;
   const MOUSE_PUSH_STRENGTH = 0.3;
-  const PUPIL_MAX_X = 3.5; // vmin offset for pupil movement
-  const PUPIL_MAX_Y = 3.0;
+  const GAZE_MAX_X = 15; // percent shift for gradient center
+  const GAZE_MAX_Y = 10;
 
   /**
    * Build the companion DOM tree and insert it into the world container.

@@ -137,11 +137,33 @@ html, body {
   left: 0;
 }
 
-/* Eye — clean white sclera with soft cyan glow ring */
+/* Eye — single-color radial gradient: darkest at gaze center, smoothly
+   fading lighter toward the edges.  --gaze-x / --gaze-y shift the dark
+   focal point so the whole color field follows the "pupil" direction. */
 .eye {
   width: 28vmin;
   height: 33vmin;
-  background: #ffffff;
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #0d2b3e  0%,
+    #103350  6%,
+    #143c5c  12%,
+    #194668  18%,
+    #1f5276  24%,
+    #275f84  30%,
+    #306e94  36%,
+    #3b7ea4  42%,
+    #4890b4  48%,
+    #58a2c4  54%,
+    #6ab4d2  60%,
+    #80c4de  66%,
+    #98d2e8  72%,
+    #b0e0f0  78%,
+    #c8ecf6  84%,
+    #daf2fa  90%,
+    #eaf8fc  95%,
+    #f2fbfe 100%
+  );
   border-radius: 50%;
   position: relative;
   overflow: hidden;
@@ -151,51 +173,8 @@ html, body {
               transform 0.4s cubic-bezier(.4, 0, .2, 1),
               opacity 0.5s ease,
               box-shadow 0.4s ease;
-  box-shadow: 0 0 3vmin rgba(100, 200, 255, 0.25),
-              0 0 8vmin rgba(100, 200, 255, 0.10),
-              inset 0 0 2vmin rgba(0, 0, 0, 0.03);
-}
-
-/* Pupil — dark circle that tracks cursor, with cute highlight */
-.pupil {
-  position: absolute;
-  width: 48%;
-  height: 48%;
-  top: 50%;
-  left: 50%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #3a3a4a 0%, #1a1a2e 60%, #0d0d1a 100%);
-  transform: translate(
-    calc(-50% + var(--pupil-x, 0px)),
-    calc(-50% + var(--pupil-y, 0px))
-  );
-  transition: width 0.35s cubic-bezier(.4, 0, .2, 1),
-              height 0.35s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.3s ease;
-}
-
-/* Specular highlight — cute anime-style dot */
-.pupil::after {
-  content: '';
-  position: absolute;
-  width: 28%;
-  height: 28%;
-  top: 18%;
-  left: 58%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-/* Secondary smaller highlight */
-.pupil::before {
-  content: '';
-  position: absolute;
-  width: 14%;
-  height: 14%;
-  bottom: 22%;
-  left: 24%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 3vmin rgba(100, 200, 255, 0.30),
+              0 0 8vmin rgba(100, 200, 255, 0.12);
 }
 
 /* ===== Expression: Idle (default — relaxed round eyes) ===== */
@@ -205,26 +184,16 @@ html, body {
 .companion.curious .eye {
   width: 34vmin;
   height: 42vmin;
-  box-shadow: 0 0 4vmin rgba(100, 220, 255, 0.35),
-              0 0 12vmin rgba(100, 220, 255, 0.12),
-              inset 0 0 2vmin rgba(0, 0, 0, 0.03);
-}
-.companion.curious .pupil {
-  width: 52%;
-  height: 52%;
+  box-shadow: 0 0 5vmin rgba(100, 220, 255, 0.40),
+              0 0 14vmin rgba(100, 220, 255, 0.14);
 }
 
 /* ===== Expression: Focused (determined narrow gaze) ===== */
 .companion.focused .eye {
   width: 25vmin;
   height: 22vmin;
-  box-shadow: 0 0 3vmin rgba(120, 180, 255, 0.22),
-              0 0 8vmin rgba(120, 180, 255, 0.08),
-              inset 0 0 2vmin rgba(0, 0, 0, 0.03);
-}
-.companion.focused .pupil {
-  width: 40%;
-  height: 55%;
+  box-shadow: 0 0 3vmin rgba(120, 180, 255, 0.25),
+              0 0 8vmin rgba(120, 180, 255, 0.10);
 }
 
 /* ===== Expression: Sleepy (cozy thin slits — dimmed) ===== */
@@ -232,11 +201,8 @@ html, body {
   height: 6vmin;
   border-radius: 40% 40% 50% 50%;
   opacity: 0.65;
-  box-shadow: 0 0 2vmin rgba(140, 180, 220, 0.12),
-              0 0 5vmin rgba(140, 180, 220, 0.05);
-}
-.companion.sleepy .pupil {
-  opacity: 0.3;
+  box-shadow: 0 0 2vmin rgba(140, 180, 220, 0.14),
+              0 0 5vmin rgba(140, 180, 220, 0.06);
 }
 
 /* ===== Expression: Suspicious (angular side-eye — skewed) ===== */
@@ -244,12 +210,8 @@ html, body {
   width: 25vmin;
   height: 13vmin;
   border-radius: 1vmin 1vmin 50% 50%;
-  box-shadow: 0 0 3vmin rgba(160, 140, 255, 0.18),
-              0 0 8vmin rgba(160, 140, 255, 0.06);
-}
-.companion.suspicious .pupil {
-  width: 38%;
-  height: 60%;
+  box-shadow: 0 0 3vmin rgba(160, 140, 255, 0.20),
+              0 0 8vmin rgba(160, 140, 255, 0.08);
 }
 
 .companion.suspicious .eye-left {
@@ -264,11 +226,8 @@ html, body {
 .companion.happy .eye {
   height: 11vmin;
   border-radius: 10vmin 10vmin 2vmin 2vmin;
-  box-shadow: 0 0 4vmin rgba(255, 200, 100, 0.30),
-              0 0 10vmin rgba(255, 200, 100, 0.10);
-}
-.companion.happy .pupil {
-  opacity: 0;
+  box-shadow: 0 0 5vmin rgba(255, 200, 100, 0.35),
+              0 0 12vmin rgba(255, 200, 100, 0.12);
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
@@ -277,10 +236,6 @@ html, body {
   width: 30vmin;
   border-radius: 50%;
   transition: height 0.1s ease, width 0.1s ease;
-}
-.companion.blink .pupil {
-  opacity: 0;
-  transition: opacity 0.05s ease;
 }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
