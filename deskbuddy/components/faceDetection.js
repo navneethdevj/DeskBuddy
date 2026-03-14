@@ -170,7 +170,7 @@ const FaceDetection = (() => {
       var landmarks = results.faceLandmarks[0];
 
       // --- Head direction from nose tip relative to face outline centre ---
-      var noseTip    = landmarks[1];
+      var noseTip    = landmarks[4];
       var leftFace   = landmarks[234];
       var rightFace  = landmarks[454];
       var topFace    = landmarks[10];
