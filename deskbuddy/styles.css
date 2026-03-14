@@ -9,7 +9,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0f0f0f;
+  background: #111111;
   user-select: none;
   cursor: default;
 }
@@ -20,276 +20,245 @@ html, body {
   height: 100%;
 }
 
-/* ===== Companion Container ===== */
+/* ===== Companion Container (fills viewport) ===== */
 .companion {
   position: absolute;
-  width: 90px;
-  height: 90px;
-  transition: transform 0.08s linear;
-  will-change: transform;
+  width: 100vw;
+  height: 100vh;
+  will-change: transform, filter;
+  animation: glowIdle 4s ease-in-out infinite;
 }
 
 .companion-inner {
   position: relative;
   width: 100%;
   height: 100%;
+  animation: breathe 3s ease-in-out infinite;
+  transform-origin: center center;
 }
 
-/* ===== Face ===== */
-.face {
-  position: absolute;
-  width: 90px;
-  height: 82px;
-  background: #f5e6d3;
-  border-radius: 50% 50% 46% 46%;
-  top: 8px;
-  left: 0;
-  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, 0.06);
+/* ===== Per-Expression Glow Animations (soft periwinkle tint) ===== */
+
+@keyframes glowIdle {
+  0%, 100% {
+    filter: drop-shadow(0 0 5vmin rgba(120, 135, 235, 0.24))
+            drop-shadow(0 0 14vmin rgba(120, 135, 235, 0.08))
+            drop-shadow(0 0 24vmin rgba(120, 135, 235, 0.03));
+  }
+  50% {
+    filter: drop-shadow(0 0 8vmin rgba(120, 135, 235, 0.36))
+            drop-shadow(0 0 20vmin rgba(120, 135, 235, 0.11))
+            drop-shadow(0 0 32vmin rgba(120, 135, 235, 0.04));
+  }
 }
 
-/* ===== Ears ===== */
-.ear {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  background: #f5e6d3;
-  top: 0;
-  z-index: -1;
+@keyframes glowCurious {
+  0%, 100% {
+    filter: drop-shadow(0 0 7vmin rgba(115, 125, 245, 0.40))
+            drop-shadow(0 0 22vmin rgba(115, 125, 245, 0.12))
+            drop-shadow(0 0 34vmin rgba(115, 125, 245, 0.04));
+  }
+  50% {
+    filter: drop-shadow(0 0 14vmin rgba(115, 125, 245, 0.55))
+            drop-shadow(0 0 32vmin rgba(115, 125, 245, 0.16))
+            drop-shadow(0 0 44vmin rgba(115, 125, 245, 0.06));
+  }
 }
 
-.ear::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: #f0b8b8;
-  border-radius: inherit;
-  top: 6px;
-  left: 6px;
+@keyframes glowFocused {
+  0%, 100% {
+    filter: drop-shadow(0 0 5vmin rgba(110, 130, 225, 0.26))
+            drop-shadow(0 0 14vmin rgba(110, 130, 225, 0.08))
+            drop-shadow(0 0 22vmin rgba(110, 130, 225, 0.03));
+  }
+  50% {
+    filter: drop-shadow(0 0 8vmin rgba(110, 130, 225, 0.40))
+            drop-shadow(0 0 18vmin rgba(110, 130, 225, 0.12))
+            drop-shadow(0 0 28vmin rgba(110, 130, 225, 0.04));
+  }
 }
 
-.ear-left {
-  left: 6px;
-  border-radius: 50% 50% 0 50%;
-  transform: rotate(-15deg);
+@keyframes glowSleepy {
+  0%, 100% {
+    filter: drop-shadow(0 0 3vmin rgba(130, 140, 210, 0.14))
+            drop-shadow(0 0 8vmin rgba(130, 140, 210, 0.05));
+  }
+  50% {
+    filter: drop-shadow(0 0 5vmin rgba(130, 140, 210, 0.22))
+            drop-shadow(0 0 12vmin rgba(130, 140, 210, 0.07));
+  }
 }
 
-.ear-right {
-  right: 6px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(15deg);
+@keyframes glowSuspicious {
+  0%, 100% {
+    filter: drop-shadow(0 0 4vmin rgba(115, 120, 240, 0.20))
+            drop-shadow(0 0 10vmin rgba(115, 120, 240, 0.06));
+  }
+  50% {
+    filter: drop-shadow(0 0 6vmin rgba(115, 120, 240, 0.32))
+            drop-shadow(0 0 14vmin rgba(115, 120, 240, 0.09));
+  }
+}
+
+@keyframes glowHappy {
+  0%, 100% {
+    filter: drop-shadow(0 0 7vmin rgba(160, 140, 245, 0.34))
+            drop-shadow(0 0 18vmin rgba(160, 140, 245, 0.10))
+            drop-shadow(0 0 28vmin rgba(160, 140, 245, 0.04));
+  }
+  50% {
+    filter: drop-shadow(0 0 14vmin rgba(160, 140, 245, 0.52))
+            drop-shadow(0 0 28vmin rgba(160, 140, 245, 0.15))
+            drop-shadow(0 0 38vmin rgba(160, 140, 245, 0.06));
+  }
+}
+
+/* Expression → glow override (each has unique color + speed) */
+.companion.curious    { animation: glowCurious 2.5s ease-in-out infinite; }
+.companion.focused    { animation: glowFocused 3.5s ease-in-out infinite; }
+.companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite; }
+.companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite; }
+.companion.happy      { animation: glowHappy 1.8s ease-in-out infinite; }
+
+/* ===== Breathing Animation ===== */
+@keyframes breathe {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-0.4vh); }
+}
+
+/* Disable CSS keyframe on companion-inner when sprite system drives frames */
+.companion.sprite-active .companion-inner {
+  animation: none;
+  transition: transform 0.1s ease;
 }
 
 /* ===== Eyes ===== */
 .eyes {
   position: absolute;
   display: flex;
-  justify-content: space-between;
-  width: 42px;
-  top: 36px;
-  left: 50%;
-  transform: translateX(-50%);
+  justify-content: center;
+  align-items: center;
+  gap: 8vmin;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
 }
 
+/* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
+   to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
+   focal point so the whole color field follows the gaze direction. */
 .eye {
-  width: 10px;
-  height: 12px;
-  background: #2c2c2c;
+  width: 28vmin;
+  height: 33vmin;
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #7b8bd8  0%,
+    #8190d9  6%,
+    #8795db 12%,
+    #8d9adc 18%,
+    #949fdd 24%,
+    #9aa4de 30%,
+    #a0aae0 36%,
+    #a6afe1 42%,
+    #acb4e2 48%,
+    #b2b9e3 54%,
+    #b8bee5 60%,
+    #bec3e6 66%,
+    #c4c8e7 72%,
+    #cbcde8 78%,
+    #d1d2ea 84%,
+    #d7d8eb 90%,
+    #ddddec 95%,
+    #e3e2ee 100%
+  );
   border-radius: 50%;
-  transition: height 0.15s ease, width 0.15s ease, border-radius 0.15s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  transition: height 0.4s cubic-bezier(.4, 0, .2, 1),
+              width 0.4s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.4s cubic-bezier(.4, 0, .2, 1),
+              transform 0.4s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.5s ease,
+              box-shadow 0.4s ease;
+  box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
+              0 0 12vmin rgba(120, 135, 235, 0.15),
+              0 0 22vmin rgba(120, 135, 235, 0.06);
 }
 
-/* Blink animation */
-.companion.blink .eye {
-  height: 2px;
-  border-radius: 4px;
-  transform: translateY(5px);
+/* ===== Expression: Idle (default — relaxed round eyes) ===== */
+/* Default eye shape IS the idle expression — no overrides needed */
+
+/* ===== Expression: Curious (wide-eyed wonder — big adorable eyes) ===== */
+.companion.curious .eye {
+  width: 34vmin;
+  height: 42vmin;
+  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.45),
+              0 0 16vmin rgba(115, 125, 245, 0.16),
+              0 0 26vmin rgba(115, 125, 245, 0.06);
 }
 
-/* ===== Eyebrows ===== */
-.eyebrow {
-  position: absolute;
-  width: 14px;
-  height: 3px;
-  background: #8b7355;
-  border-radius: 2px;
-  top: 28px;
-  transition: transform 0.3s ease, top 0.3s ease;
-}
-
-.eyebrow-left {
-  left: 19px;
-}
-
-.eyebrow-right {
-  right: 19px;
-}
-
-/* ===== Mouth ===== */
-.mouth {
-  position: absolute;
-  width: 10px;
-  height: 5px;
-  border-bottom: 2.5px solid #c4877a;
-  border-radius: 0 0 50% 50%;
-  top: 56px;
-  left: 50%;
-  transform: translateX(-50%);
-  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease, border-color 0.3s ease, top 0.3s ease;
-}
-
-/* ===== Cheeks ===== */
-.cheek {
-  position: absolute;
-  width: 14px;
-  height: 8px;
-  background: rgba(255, 150, 150, 0.35);
-  border-radius: 50%;
-  top: 52px;
-  transition: opacity 0.3s ease;
-}
-
-.cheek-left {
-  left: 10px;
-}
-
-.cheek-right {
-  right: 10px;
-}
-
-/* ===== Expression: Happy ===== */
-.companion.happy .eye {
-  height: 6px;
-  border-radius: 6px 6px 0 0;
-  transform: translateY(2px);
-}
-
-.companion.happy .mouth {
-  width: 14px;
-  height: 7px;
-  border-bottom: 2.5px solid #e08080;
-  border-radius: 0 0 50% 50%;
-}
-
-.companion.happy .cheek {
-  opacity: 1;
-}
-
-/* ===== Expression: Focused ===== */
+/* ===== Expression: Focused (determined narrow gaze) ===== */
 .companion.focused .eye {
-  height: 10px;
-  width: 9px;
+  width: 25vmin;
+  height: 22vmin;
+  box-shadow: 0 0 4vmin rgba(110, 130, 225, 0.30),
+              0 0 10vmin rgba(110, 130, 225, 0.12),
+              0 0 18vmin rgba(110, 130, 225, 0.04);
 }
 
-.companion.focused .eyebrow {
-  top: 26px;
-}
-
-.companion.focused .mouth {
-  width: 6px;
-  height: 2px;
-  border-radius: 50%;
-  border-bottom-color: #b0897a;
-}
-
-/* ===== Expression: Suspicious ===== */
-.companion.suspicious .eye {
-  height: 5px;
-  border-radius: 2px;
-  transform: translateY(3px);
-}
-
-.companion.suspicious .eyebrow-left {
-  transform: rotate(-12deg);
-  top: 26px;
-}
-
-.companion.suspicious .eyebrow-right {
-  transform: rotate(12deg);
-  top: 26px;
-}
-
-.companion.suspicious .mouth {
-  width: 8px;
-  height: 2px;
-  border-radius: 2px;
-  border-bottom-color: #a07060;
-  top: 58px;
-}
-
-/* ===== Expression: Sleepy ===== */
+/* ===== Expression: Sleepy (cozy thin slits — dimmed) ===== */
 .companion.sleepy .eye {
-  height: 3px;
-  border-radius: 4px;
-  transform: translateY(4px);
+  height: 6vmin;
+  border-radius: 40% 40% 50% 50%;
+  opacity: 0.65;
+  box-shadow: 0 0 3vmin rgba(130, 140, 210, 0.18),
+              0 0 7vmin rgba(130, 140, 210, 0.08);
 }
 
-.companion.sleepy .eyebrow {
-  top: 30px;
+/* ===== Expression: Suspicious (angular side-eye — skewed) ===== */
+.companion.suspicious .eye {
+  width: 25vmin;
+  height: 13vmin;
+  border-radius: 1vmin 1vmin 50% 50%;
+  box-shadow: 0 0 4vmin rgba(115, 120, 240, 0.24),
+              0 0 10vmin rgba(115, 120, 240, 0.10);
 }
 
-.companion.sleepy .mouth {
-  width: 10px;
-  height: 6px;
+.companion.suspicious .eye-left {
+  transform: skewY(6deg);
+}
+
+.companion.suspicious .eye-right {
+  transform: skewY(-6deg);
+}
+
+/* ===== Expression: Happy (^_^ joyful squint — warm) ===== */
+.companion.happy .eye {
+  height: 11vmin;
+  border-radius: 10vmin 10vmin 2vmin 2vmin;
+  box-shadow: 0 0 6vmin rgba(160, 140, 245, 0.40),
+              0 0 14vmin rgba(160, 140, 245, 0.14),
+              0 0 24vmin rgba(160, 140, 245, 0.05);
+}
+
+/* ===== Blink (cute squish — overrides all expressions) ===== */
+.companion.blink .eyes .eye {
+  height: 1.5vmin;
+  width: 30vmin;
   border-radius: 50%;
-  border-bottom-color: #c4877a;
+  transition: height 0.1s ease, width 0.1s ease;
 }
 
-.companion.sleepy .cheek {
-  opacity: 0.5;
+/* ===== Sprite Frames: Idle (subtle breathing) ===== */
+.companion.sprite-idle-1 .companion-inner {
+  transform: translateY(0);
 }
-
-/* ===== Expression: Confused ===== */
-.companion.confused .eyebrow-left {
-  transform: rotate(15deg);
-  top: 24px;
+.companion.sprite-idle-2 .companion-inner {
+  transform: translateY(-0.3vh) scale(1.005);
 }
-
-.companion.confused .eyebrow-right {
-  transform: rotate(-5deg);
-  top: 28px;
-}
-
-.companion.confused .mouth {
-  width: 8px;
-  height: 4px;
-  border-radius: 50%;
-  border-bottom-color: #b0897a;
-  transform: translateX(-50%) translateX(3px);
-}
-
-/* ===== Hop Animation ===== */
-@keyframes hop {
-  0%   { transform: translateY(0) scaleX(1) scaleY(1); }
-  15%  { transform: translateY(0) scaleX(1.08) scaleY(0.9); }
-  40%  { transform: translateY(-18px) scaleX(0.95) scaleY(1.08); }
-  60%  { transform: translateY(-18px) scaleX(0.95) scaleY(1.08); }
-  80%  { transform: translateY(0) scaleX(1.06) scaleY(0.92); }
-  100% { transform: translateY(0) scaleX(1) scaleY(1); }
-}
-
-.companion.hopping .companion-inner {
-  animation: hop 0.4s ease-in-out;
-}
-
-/* ===== Idle Breathing ===== */
-@keyframes breathe {
-  0%, 100% { transform: scaleY(1); }
-  50%      { transform: scaleY(1.02); }
-}
-
-.companion-inner {
-  animation: breathe 3s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-/* ===== Look Around ===== */
-.companion.look-left .eyes {
-  transform: translateX(-50%) translateX(-3px);
-}
-
-.companion.look-right .eyes {
-  transform: translateX(-50%) translateX(3px);
+.companion.sprite-idle-3 .companion-inner {
+  transform: translateY(0.1vh) scale(0.997);
 }
 
 /* ===== Status Bar ===== */
@@ -298,10 +267,11 @@ html, body {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.35);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 12px;
   letter-spacing: 0.5px;
   pointer-events: none;
   z-index: 1000;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
 }

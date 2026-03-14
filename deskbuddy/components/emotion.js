@@ -3,7 +3,7 @@
  * Defines emotion states, applies CSS classes, and manages expression transitions.
  */
 const Emotion = (() => {
-  const STATES = ['happy', 'focused', 'suspicious', 'sleepy', 'confused'];
+  const STATES = ['idle', 'curious', 'focused', 'sleepy', 'suspicious', 'happy'];
   let currentState = null;
   let element = null;
 

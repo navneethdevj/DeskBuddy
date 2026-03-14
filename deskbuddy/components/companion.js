@@ -1,58 +1,50 @@
 /**
  * Companion module.
- * Creates the companion DOM element, manages position, applies emotion states,
- * triggers idle behaviors (blinking, look-around), and handles mouse interaction.
+ * Creates the companion DOM element (a pair of glowing eyes), manages
+ * position, gaze direction via gradient shift, idle blinking, and mouse
+ * interaction.  The companion fills the viewport; position offsets create
+ * subtle drift.
  */
 const Companion = (() => {
   let el = null;
   let x = 0;
   let y = 0;
+  let rotation = 0;
 
-  // Mouse interaction state
   let mouseX = 0;
   let mouseY = 0;
 
-  const MOUSE_REACT_RADIUS = 180;
-  const MOUSE_PUSH_STRENGTH = 0.6;
+  const MOUSE_REACT_RADIUS = 400;
+  const MOUSE_PUSH_STRENGTH = 0.3;
+  const GAZE_MAX_X = 15; // percent shift for gradient center
+  const GAZE_MAX_Y = 10;
 
   /**
    * Build the companion DOM tree and insert it into the world container.
    */
   function create(container) {
     el = document.createElement('div');
-    el.className = 'companion happy';
+    el.className = 'companion';
 
     el.innerHTML = `
       <div class="companion-inner">
-        <div class="ear ear-left"></div>
-        <div class="ear ear-right"></div>
-        <div class="face">
-          <div class="eyebrow eyebrow-left"></div>
-          <div class="eyebrow eyebrow-right"></div>
-          <div class="eyes">
-            <div class="eye eye-left"></div>
-            <div class="eye eye-right"></div>
-          </div>
-          <div class="mouth"></div>
-          <div class="cheek cheek-left"></div>
-          <div class="cheek cheek-right"></div>
+        <div class="eyes">
+          <div class="eye eye-left"></div>
+          <div class="eye eye-right"></div>
         </div>
       </div>
     `;
 
     container.appendChild(el);
 
-    // Center on screen
-    x = (window.innerWidth - 90) / 2;
-    y = (window.innerHeight - 90) / 2;
+    x = 0;
+    y = 0;
     applyPosition();
 
     Emotion.init(el);
 
-    // Track mouse
     document.addEventListener('mousemove', onMouseMove);
 
-    // Start idle behaviors
     startIdleBehaviors();
 
     return el;
@@ -64,7 +56,7 @@ const Companion = (() => {
   }
 
   /**
-   * Set companion position directly.
+   * Set companion position directly (drift offset from origin).
    */
   function setPosition(nx, ny) {
     x = nx;
@@ -73,21 +65,26 @@ const Companion = (() => {
   }
 
   /**
-   * Get current position.
+   * Get current position (drift offset from origin).
    */
   function getPosition() {
     return { x, y };
   }
 
   /**
+   * Get the screen-space center of the companion.
+   */
+  function getCenter() {
+    return { x: x + window.innerWidth / 2, y: y + window.innerHeight / 2 };
+  }
+
+  /**
    * Get mouse push offset based on cursor proximity.
-   * Returns {dx, dy} offset to push the companion away from cursor.
    */
   function getMousePush() {
-    const cx = x + 45; // center of companion
-    const cy = y + 45;
-    const dx = cx - mouseX;
-    const dy = cy - mouseY;
+    const c = getCenter();
+    const dx = c.x - mouseX;
+    const dy = c.y - mouseY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < MOUSE_REACT_RADIUS && dist > 0) {
@@ -107,18 +104,47 @@ const Companion = (() => {
     return el;
   }
 
+  /**
+   * Set the companion's body rotation in degrees.
+   */
+  function setRotation(deg) {
+    rotation = deg;
+  }
+
+  /**
+   * Shift the eye gradient toward a screen coordinate to indicate gaze.
+   */
+  function lookAt(targetX, targetY) {
+    if (!el) return;
+    const c = getCenter();
+    const dx = targetX - c.x;
+    const dy = targetY - c.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist === 0) return;
+    var gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
+    var gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
+    el.style.setProperty('--gaze-x', gx + '%');
+    el.style.setProperty('--gaze-y', gy + '%');
+  }
+
+  /**
+   * Reset gaze to center.
+   */
+  function resetLook() {
+    if (!el) return;
+    el.style.setProperty('--gaze-x', '0%');
+    el.style.setProperty('--gaze-y', '0%');
+  }
+
   function applyPosition() {
     if (!el) return;
-    el.style.transform = `translate(${x}px, ${y}px)`;
+    el.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`;
   }
 
   // ===== Idle Behaviors =====
 
   function startIdleBehaviors() {
-    // Blink every 2.5-5 seconds
     scheduleBlink();
-    // Look around every 4-8 seconds
-    scheduleLookAround();
   }
 
   function scheduleBlink() {
@@ -126,25 +152,13 @@ const Companion = (() => {
     setTimeout(() => {
       if (!el) return;
       el.classList.add('blink');
+      var blinkDuration = 150 + Math.random() * 150; // 150–300 ms
       setTimeout(() => {
         if (el) el.classList.remove('blink');
-      }, 150);
+      }, blinkDuration);
       scheduleBlink();
     }, delay);
   }
 
-  function scheduleLookAround() {
-    const delay = 4000 + Math.random() * 4000;
-    setTimeout(() => {
-      if (!el) return;
-      const dir = Math.random() < 0.5 ? 'look-left' : 'look-right';
-      el.classList.add(dir);
-      setTimeout(() => {
-        if (el) el.classList.remove(dir);
-      }, 600 + Math.random() * 400);
-      scheduleLookAround();
-    }, delay);
-  }
-
-  return { create, setPosition, getPosition, getMousePush, getElement };
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook };
 })();
