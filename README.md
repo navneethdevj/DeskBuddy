@@ -1,8 +1,8 @@
-# 🐱 DeskBuddy
+# 👀 DeskBuddy
 
 **A cute animated desktop companion that lives on your screen while you study or work.**
 
-DeskBuddy is an Electron desktop-pet application featuring **Mochi Kitty** — a tiny animated creature that wanders around your screen, hops, blinks, and reacts to your cursor.
+DeskBuddy is an Electron desktop-pet application featuring a pair of **glowing watchful eyes** — a tiny animated creature that drifts gently on your screen, blinks, and reacts to your cursor.
 
 ![Electron](https://img.shields.io/badge/Electron-34-47848F?logo=electron&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -13,13 +13,13 @@ DeskBuddy is an Electron desktop-pet application featuring **Mochi Kitty** — a
 
 | Feature | Description |
 |---------|-------------|
-| 🐾 **Mochi Kitty** | Adorable CSS-drawn companion with expressive face, ears, and cheeks |
-| 🧠 **Creature Brain** | Behavior state machine — wander, idle, hop, look around, inspect cursor |
-| 🎬 **Sprite Animation** | Frame-based walk, idle, and jump animations at 6–12 FPS |
-| 🖱️ **Cursor Interaction** | Kitty looks at your cursor and reacts when you move close |
-| ✨ **Micro Animations** | Blinking, breathing, head tilts — the kitty is never frozen |
-| 🎯 **Smooth Movement** | Velocity-based curved paths with edge avoidance at 60 FPS |
-| 😊 **Emotion System** | Five expressions — happy, focused, suspicious, sleepy, confused |
+| 👀 **Glowing Eyes** | Soft cyan-glowing eyes with pupils, highlights, and expressive animations |
+| 🧠 **Creature Brain** | Attention-based state machine — observe, curious, idle, followCursor, sleepy |
+| 🎬 **Sprite Animation** | Frame-based idle breathing animation at 4 FPS |
+| 🖱️ **Cursor Interaction** | Eyes follow your cursor and the companion retreats when you get too close |
+| ✨ **Micro Animations** | Blinking, breathing, glow pulsing — the companion is never frozen |
+| 🎯 **Smooth Movement** | Home-area drift with velocity-based curved paths at 60 FPS |
+| 😊 **Emotion System** | Six expressions — idle, curious, focused, sleepy, suspicious, happy |
 
 ---
 
@@ -39,7 +39,7 @@ npm install
 npm start
 ```
 
-The Mochi Kitty will appear as a transparent overlay on your screen.
+The glowing eyes will appear as a transparent overlay on your screen.
 
 ---
 
@@ -52,12 +52,11 @@ deskbuddy/
 ├── renderer.js             # Frontend entry point — boots all modules
 ├── index.html              # App shell
 ├── styles.css              # All styles, expressions, and sprite-frame CSS
-├── assets/kitty/           # Sprite image assets (placeholder)
 ├── components/
-│   ├── brain.js            # Creature Brain — behavior state machine
-│   ├── companion.js        # Companion DOM, position, rotation, idle behaviors
+│   ├── brain.js            # Creature Brain — attention-based behavior state machine
+│   ├── companion.js        # Companion DOM, position, pupil tracking, idle behaviors
 │   ├── spriteAnimator.js   # Frame-based sprite animation engine
-│   ├── movement.js         # Velocity-based movement with curved paths
+│   ├── movement.js         # Home-area drift with velocity-based curved paths
 │   └── emotion.js          # Expression / emotion state system
 └── ui/
     └── status.js           # Status bar text display
@@ -65,27 +64,27 @@ deskbuddy/
 
 ### How It Works
 
-1. **Brain** (`brain.js`) runs the main `requestAnimationFrame` loop and manages the behavior state machine. It cycles through states — `wander`, `idle`, `hop`, `lookAround` — each lasting 2–5 seconds. When the mouse cursor moves nearby, the brain switches to `inspectCursor`.
+1. **Brain** (`brain.js`) runs the main `requestAnimationFrame` loop and manages the attention-based state machine. It cycles through states — `observe`, `curious`, `idle`, `sleepy` — each lasting 2–5 seconds. When the mouse cursor moves nearby, the brain switches to `followCursor`.
 
-2. **Movement** (`movement.js`) handles physics. It steers the kitty toward random screen targets using smooth velocity interpolation with perpendicular curve offsets. Mouse proximity creates a push force.
+2. **Movement** (`movement.js`) handles physics. It drifts the companion within a small radius (60 px) of a home position using smooth velocity interpolation with perpendicular curve offsets. Mouse proximity creates a push force.
 
-3. **SpriteAnimator** (`spriteAnimator.js`) cycles CSS frame classes at 6–12 FPS to create body animation — walk waddle, idle breathing, and jump squash-and-stretch.
+3. **SpriteAnimator** (`spriteAnimator.js`) cycles CSS frame classes at 4 FPS to create subtle idle breathing animation through small translate and scale transforms.
 
-4. **Companion** (`companion.js`) builds the kitty's DOM tree, manages position/rotation transforms, and runs independent micro-animations like blinking.
+4. **Companion** (`companion.js`) builds the eye/pupil DOM tree, manages position/rotation transforms, provides `lookAt()` / `resetLook()` for pupil tracking via CSS custom properties, and runs independent micro-animations like blinking.
 
-5. **Emotion** (`emotion.js`) swaps CSS expression classes on the companion element to change eyes, mouth, and eyebrow styles.
+5. **Emotion** (`emotion.js`) swaps CSS expression classes on the companion element to change eye shape and style.
 
 ---
 
 ## 🧠 Behavior States
 
-| State | Animation | What Happens |
+| State | Expression | What Happens |
 |-------|-----------|--------------|
-| `wander` | walk | Moves toward random screen targets along curved paths |
-| `idle` | idle | Stands still with gentle breathing motion |
-| `hop` | jump | Squash → jump → stretch → land bounce |
-| `lookAround` | idle | Pauses and moves eyes left then right |
-| `inspectCursor` | idle | Looks toward your cursor; may approach or retreat |
+| `observe` | focused | Drifts gently while eyes slowly scan the environment |
+| `curious` | curious | Eyes widen; pupils look left → right → up → center |
+| `idle` | idle | Relaxed eyes with occasional happy flash |
+| `followCursor` | focused / suspicious | Eyes track the cursor; retreats if cursor is very close |
+| `sleepy` | sleepy | Eyes half-close; no movement |
 
 ---
 
@@ -95,26 +94,24 @@ The sprite system uses CSS class–based placeholder frames (no image assets req
 
 | Animation | Frames | FPS | Loop | Visual Effect |
 |-----------|--------|-----|------|---------------|
-| `idle` | 4 | 6 | ✅ | Gentle vertical scale (breathing) |
-| `walk` | 4 | 8 | ✅ | Alternating rotation (waddle) |
-| `jump` | 3 | 10 | ❌ | Squash → stretch up → land squash |
+| `idle` | 3 unique (4 total) | 4 | ✅ | Subtle vertical translate and scale (breathing) |
 
-When real sprite PNGs are added to `assets/kitty/`, the animator can be extended to swap `<img>` sources instead of CSS classes.
+When real sprite PNGs are added to `assets/`, the animator can be extended to swap `<img>` sources instead of CSS classes.
 
 ---
 
 ## ⚡ Performance
 
 - **Movement loop**: `requestAnimationFrame` at 60 FPS
-- **Sprite frames**: `setInterval` at 6–12 FPS
-- **DOM updates**: minimal — only `transform` and `classList` changes
-- **Rendering**: GPU-accelerated via `will-change: transform`
+- **Sprite frames**: `setInterval` at 4 FPS
+- **DOM updates**: minimal — only `transform`, `classList`, and CSS custom property changes
+- **Rendering**: GPU-accelerated via `will-change: transform, filter`
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Real sprite image assets for Mochi Kitty
+- [ ] Real sprite image assets for the companion
 - [ ] Multiple companion characters
 - [ ] Webcam-based focus detection
 - [ ] AI study session tracking

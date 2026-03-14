@@ -3,7 +3,7 @@
  * Manages frame-based animations for the companion.
  * Uses CSS classes as placeholder frames until real sprite images are available.
  *
- * Animations run at 6–12 FPS independently from the 60 FPS movement loop.
+ * Animations run at 4 FPS independently from the 60 FPS movement loop.
  */
 const SpriteAnimator = (() => {
   const animations = {
