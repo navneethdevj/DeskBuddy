@@ -24,7 +24,7 @@ const Particles = (() => {
     if (!container) return;
     if (particles.length >= MAX_PARTICLES) return;
 
-    var p = document.createElement('div');
+    const p = document.createElement('div');
     p.className = 'particle particle-' + type;
 
     // Random position near the center of the viewport
@@ -32,8 +32,8 @@ const Particles = (() => {
     p.style.top = (40 + Math.random() * 20) + '%';
 
     // Random drift direction for the fade animation
-    var driftX = (Math.random() - 0.5) * 40;
-    var driftY = -(10 + Math.random() * 30);
+    const driftX = (Math.random() - 0.5) * 40;
+    const driftY = -(10 + Math.random() * 30);
     p.style.setProperty('--drift-x', driftX + 'px');
     p.style.setProperty('--drift-y', driftY + 'px');
 

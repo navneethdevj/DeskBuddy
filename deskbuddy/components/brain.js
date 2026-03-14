@@ -25,9 +25,15 @@ const Brain = (() => {
   const FOCUS_INCREASE_KEY = 0.8;
   const FOCUS_DECAY_RATE = 0.04; // per frame when inactive
 
+  // Activity detection thresholds
+  const MOUSE_ACTIVITY_TIMEOUT = 500;
+  const KEY_ACTIVITY_TIMEOUT = 1000;
+
   // Idle look timing
   const IDLE_LOOK_MIN_WAIT = 3000;
   const IDLE_LOOK_MAX_WAIT = 6000;
+  const IDLE_LOOK_MIN_DURATION = 1000;
+  const IDLE_LOOK_MAX_DURATION = 2000;
 
   const STATE_LABELS = {
     observe: 'Observing',
@@ -56,6 +62,16 @@ const Brain = (() => {
   // Screen awareness: typing glance
   let wasTyping = false;
   let typingGlanceUntil = 0;
+
+  // ===== Activity Helpers =====
+
+  function isMouseActive(now) {
+    return (now - lastMouseMoveTime) < MOUSE_ACTIVITY_TIMEOUT;
+  }
+
+  function isKeyActive(now) {
+    return (now - lastKeyTime) < KEY_ACTIVITY_TIMEOUT;
+  }
 
   // ===== Public API =====
 
@@ -108,8 +124,8 @@ const Brain = (() => {
       return;
     }
 
-    var mouseActive = (now - lastMouseMoveTime) < 500;
-    var keyActive = (now - lastKeyTime) < 1000;
+    var mouseActive = isMouseActive(now);
+    var keyActive = isKeyActive(now);
 
     switch (currentState) {
       case 'observe':
@@ -150,8 +166,8 @@ const Brain = (() => {
   // ===== Focus Meter =====
 
   function updateFocusMeter(now) {
-    var mouseActive = (now - lastMouseMoveTime) < 500;
-    var keyActive = (now - lastKeyTime) < 1000;
+    var mouseActive = isMouseActive(now);
+    var keyActive = isKeyActive(now);
 
     if (mouseActive) focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_MOUSE);
     if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
@@ -223,7 +239,7 @@ const Brain = (() => {
     var target = patterns[Math.floor(Math.random() * patterns.length)];
     Companion.lookAt(target.x, target.y);
 
-    var duration = 1000 + Math.random() * 1000;
+    var duration = IDLE_LOOK_MIN_DURATION + Math.random() * (IDLE_LOOK_MAX_DURATION - IDLE_LOOK_MIN_DURATION);
     setTimeout(function () {
       if (currentState !== 'followCursor') {
         Companion.resetLook();

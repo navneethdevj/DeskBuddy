@@ -22,6 +22,7 @@ const Companion = (() => {
   // Pupil tracking
   const PUPIL_MAX_RADIUS = 8;
   const PUPIL_LERP = 0.15;
+  const PUPIL_DISTANCE_SCALE = 500;
   let pupilCurrentX = 0;
   let pupilCurrentY = 0;
   let pupilTargetX = 0;
@@ -131,13 +132,13 @@ const Companion = (() => {
     if (dist === 0) return;
 
     // Gradient gaze shift
-    var gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
-    var gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
+    const gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
+    const gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
     el.style.setProperty('--gaze-x', gx + '%');
     el.style.setProperty('--gaze-y', gy + '%');
 
     // Pupil target (scaled by distance, clamped to max radius)
-    var scale = Math.min(1, dist / 500) * PUPIL_MAX_RADIUS;
+    const scale = Math.min(1, dist / PUPIL_DISTANCE_SCALE) * PUPIL_MAX_RADIUS;
     pupilTargetX = (dx / dist) * scale;
     pupilTargetY = (dy / dist) * scale;
   }
@@ -162,7 +163,7 @@ const Companion = (() => {
     pupilCurrentY += (pupilTargetY - pupilCurrentY) * PUPIL_LERP;
 
     // Clamp to max radius
-    var dist = Math.sqrt(pupilCurrentX * pupilCurrentX + pupilCurrentY * pupilCurrentY);
+    const dist = Math.sqrt(pupilCurrentX * pupilCurrentX + pupilCurrentY * pupilCurrentY);
     if (dist > PUPIL_MAX_RADIUS) {
       pupilCurrentX = (pupilCurrentX / dist) * PUPIL_MAX_RADIUS;
       pupilCurrentY = (pupilCurrentY / dist) * PUPIL_MAX_RADIUS;
