@@ -1,14 +1,21 @@
 /**
- * Creature Brain — attention-based behavior state machine with focus meter.
- * Cycles through states (observe, curious, idle, sleepy) on a timer and
- * switches to followCursor when the mouse cursor is nearby.
+ * Creature Brain — attention-based behavior state machine with focus meter,
+ * camera awareness integration, attention engine, and micro-intent animations.
  *
- * Tracks user activity (mouse + keyboard) via a focus meter (0–100).
- * Focus level drives emotional expression: focused (>70), idle (30–70),
- * sleepy (<30).
+ * Camera user states (Focused / Distracted / NoFace / Sleepy) drive emotion
+ * and attention.  The attention engine decides where the eyes look:
+ *   1. cursor (if moving)
+ *   2. userFace (if camera detects face)
+ *   3. screenCenter (if typing)
+ *   4. curiosityPoint (when idle)
+ *
+ * Micro-intent behaviours:
+ *   - Reaction delay (50–120 ms) when the attention target type changes
+ *   - Curiosity glances (occasional small random offsets)
+ *   - Idle drift (slow sinusoidal wander)
  *
  * Owns the main requestAnimationFrame loop and coordinates Movement,
- * SpriteAnimator, Companion, Emotion, Particles, and Status modules.
+ * SpriteAnimator, Companion, Emotion, Particles, Attention, Camera, and Status.
  */
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
@@ -34,6 +41,18 @@ const Brain = (() => {
   const IDLE_LOOK_MAX_WAIT = 6000;
   const IDLE_LOOK_MIN_DURATION = 1000;
   const IDLE_LOOK_MAX_DURATION = 2000;
+
+  // Micro-intent: reaction delay
+  const REACTION_DELAY_MIN = 50;
+  const REACTION_DELAY_MAX = 120;
+
+  // Micro-intent: curiosity glance
+  const CURIOSITY_GLANCE_MIN_INTERVAL = 3000;
+  const CURIOSITY_GLANCE_MAX_INTERVAL = 7000;
+
+  // Micro-intent: idle drift
+  const IDLE_DRIFT_SPEED = 0.0004;  // radians per ms
+  const IDLE_DRIFT_AMPLITUDE = 60;  // pixels
 
   const STATE_LABELS = {
     observe: 'Observing',
@@ -63,6 +82,18 @@ const Brain = (() => {
   let wasTyping = false;
   let typingGlanceUntil = 0;
 
+  // Micro-intent: reaction delay state
+  let lastAttentionType = '';
+  let reactionDelayUntil = 0;
+
+  // Micro-intent: curiosity glance state
+  let curiosityGlanceOffsetX = 0;
+  let curiosityGlanceOffsetY = 0;
+  let nextCuriosityGlanceTime = 0;
+
+  // NoFace searching state
+  let noFaceSearchPhase = 0;
+
   // ===== Activity Helpers =====
 
   function isMouseActive(now) {
@@ -79,6 +110,7 @@ const Brain = (() => {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
     Movement.init();
+    Attention.init();
     enterState('idle');
     tick();
   }
@@ -112,7 +144,33 @@ const Brain = (() => {
     var now = Date.now();
     updateFocusMeter(now);
 
-    // Smooth pupil interpolation every frame
+    var mouseActive = isMouseActive(now);
+    var keyActive = isKeyActive(now);
+
+    // --- Attention engine update ---
+    Attention.update(mouseX, mouseY, keyActive, now);
+    var attTarget = Attention.getTarget();
+    var attPos = Attention.getTargetPosition();
+
+    // --- Micro-intent: reaction delay on target type change ---
+    if (attTarget !== lastAttentionType) {
+      reactionDelayUntil = now + REACTION_DELAY_MIN +
+        Math.random() * (REACTION_DELAY_MAX - REACTION_DELAY_MIN);
+      lastAttentionType = attTarget;
+    }
+
+    // --- Micro-intent: curiosity glance (small random offset) ---
+    updateCuriosityGlance(now);
+
+    // --- Micro-intent: idle drift ---
+    var idleDriftX = 0;
+    var idleDriftY = 0;
+    if (!mouseActive && !keyActive) {
+      idleDriftX = Math.sin(now * IDLE_DRIFT_SPEED) * IDLE_DRIFT_AMPLITUDE;
+      idleDriftY = Math.cos(now * IDLE_DRIFT_SPEED * 0.7) * IDLE_DRIFT_AMPLITUDE * 0.5;
+    }
+
+    // Smooth pupil interpolation every frame (spring-damper in Companion)
     Companion.updatePupils();
 
     // Particle effects based on current emotion
@@ -124,26 +182,25 @@ const Brain = (() => {
       return;
     }
 
-    var mouseActive = isMouseActive(now);
-    var keyActive = isKeyActive(now);
-
     switch (currentState) {
       case 'observe':
         Movement.update();
-        // Eyes slowly scan the environment
-        var time = now * 0.001;
-        var c = Companion.getCenter();
-        Companion.lookAt(
-          c.x + Math.sin(time * 0.8) * 300,
-          c.y + Math.sin(time * 0.5) * 100
-        );
+        // Use attention target with reaction delay
+        if (now >= reactionDelayUntil) {
+          Companion.lookAt(
+            attPos.x + curiosityGlanceOffsetX + idleDriftX,
+            attPos.y + curiosityGlanceOffsetY + idleDriftY
+          );
+        }
         break;
       case 'curious':
         Movement.decay();
         break;
       case 'idle':
         Movement.decay();
-        applyGaze(now, mouseActive, keyActive);
+        if (now >= reactionDelayUntil) {
+          applyGaze(now, mouseActive, keyActive, attPos, idleDriftX, idleDriftY);
+        }
         break;
       case 'followCursor':
         updateFollowCursor();
@@ -155,12 +212,30 @@ const Brain = (() => {
         break;
       case 'sleepy':
         Movement.decay();
-        applyGaze(now, mouseActive, keyActive);
+        if (now >= reactionDelayUntil) {
+          applyGaze(now, mouseActive, keyActive, attPos, idleDriftX, idleDriftY);
+        }
         break;
     }
 
-    // Focus-driven emotion (overridden by followCursor / curious)
-    applyFocusEmotion();
+    // Emotion: camera state takes priority, focus-meter as fallback
+    applyCameraOrFocusEmotion(now);
+  }
+
+  // ===== Micro-intent: Curiosity Glance =====
+
+  function updateCuriosityGlance(now) {
+    if (now < nextCuriosityGlanceTime) return;
+    if (Math.random() < 0.3) {
+      curiosityGlanceOffsetX = (Math.random() - 0.5) * 100;
+      curiosityGlanceOffsetY = (Math.random() - 0.5) * 60;
+      setTimeout(function () {
+        curiosityGlanceOffsetX = 0;
+        curiosityGlanceOffsetY = 0;
+      }, 200 + Math.random() * 300);
+    }
+    nextCuriosityGlanceTime = now + CURIOSITY_GLANCE_MIN_INTERVAL +
+      Math.random() * (CURIOSITY_GLANCE_MAX_INTERVAL - CURIOSITY_GLANCE_MIN_INTERVAL);
   }
 
   // ===== Focus Meter =====
@@ -177,10 +252,43 @@ const Brain = (() => {
     }
   }
 
-  /** Set emotion based on focus level unless a special state overrides. */
-  function applyFocusEmotion() {
+  // ===== Emotion (camera-aware with focus fallback) =====
+
+  /**
+   * Camera user state drives expression when available.
+   * Falls back to focus-meter emotion when camera is inactive.
+   */
+  function applyCameraOrFocusEmotion(now) {
     if (currentState === 'followCursor' || currentState === 'curious') return;
 
+    if (Camera.isRunning()) {
+      var userState = Camera.getUserState();
+      switch (userState) {
+        case 'Focused':
+          Emotion.setState('focused');
+          break;
+        case 'Distracted':
+          Emotion.setState('suspicious');
+          break;
+        case 'NoFace':
+          Emotion.setState('curious');
+          triggerNoFaceSearching(now);
+          break;
+        case 'Sleepy':
+          Emotion.setState('sleepy');
+          break;
+        default:
+          applyFocusEmotion();
+          break;
+      }
+      Status.setText('Status: ' + userState);
+    } else {
+      applyFocusEmotion();
+    }
+  }
+
+  /** Set emotion based on focus level (fallback when camera unavailable). */
+  function applyFocusEmotion() {
     if (focusLevel > 70) {
       Emotion.setState('focused');
     } else if (focusLevel < 30) {
@@ -190,13 +298,25 @@ const Brain = (() => {
     }
   }
 
+  // ===== NoFace Searching Behaviour =====
+
+  function triggerNoFaceSearching(now) {
+    noFaceSearchPhase += 0.002;
+    var c = Companion.getCenter();
+    Companion.lookAt(
+      c.x + Math.sin(noFaceSearchPhase * 3) * 250,
+      c.y + Math.cos(noFaceSearchPhase * 2) * 120
+    );
+  }
+
   // ===== Gaze Logic (idle / sleepy states) =====
 
   /**
    * Determine where the eyes should look when in idle or sleepy state.
-   * Priority: screen-center glance when typing > follow cursor > idle look.
+   * Uses the attention engine target, with curiosity glance offsets and
+   * idle drift applied for organic motion.
    */
-  function applyGaze(now, mouseActive, keyActive) {
+  function applyGaze(now, mouseActive, keyActive, attPos, driftX, driftY) {
     // Screen awareness: brief glance at screen center when typing starts
     if (keyActive && !wasTyping) {
       typingGlanceUntil = now + 1000;
@@ -209,9 +329,18 @@ const Brain = (() => {
     }
 
     if (mouseActive) {
-      Companion.lookAt(mouseX, mouseY);
+      Companion.lookAt(
+        mouseX + curiosityGlanceOffsetX,
+        mouseY + curiosityGlanceOffsetY
+      );
       return;
     }
+
+    // Use attention engine target with micro-intent offsets
+    Companion.lookAt(
+      attPos.x + curiosityGlanceOffsetX + driftX,
+      attPos.y + curiosityGlanceOffsetY + driftY
+    );
 
     // Idle look behavior
     checkIdleLook(now);
@@ -253,7 +382,10 @@ const Brain = (() => {
 
   function enterState(state) {
     currentState = state;
-    Status.setText('Status: ' + (STATE_LABELS[state] || state));
+    // Only set status from state labels when camera is not running
+    if (!Camera.isRunning()) {
+      Status.setText('Status: ' + (STATE_LABELS[state] || state));
+    }
 
     if (stateTimer) {
       clearTimeout(stateTimer);
@@ -321,7 +453,7 @@ const Brain = (() => {
     var dy = mouseY - c.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
 
-    Companion.lookAt(mouseX, mouseY);
+    Companion.lookAt(mouseX + curiosityGlanceOffsetX, mouseY + curiosityGlanceOffsetY);
 
     if (dist > 0 && dist < RETREAT_THRESHOLD) {
       Emotion.setState('suspicious');

@@ -1,7 +1,7 @@
 /**
  * Renderer — main frontend entry point.
  * Initializes the companion, sprite animator, particles, status UI,
- * and behavior brain.
+ * camera awareness, attention engine, and behavior brain.
  */
 (function main() {
   const world = document.getElementById('world');
@@ -21,4 +21,13 @@
 
   // Start the creature brain (owns the main loop)
   Brain.start();
+
+  // Initialize camera awareness (async — runs in background)
+  Camera.init().then(function (ok) {
+    if (ok) {
+      Status.setText('Status: Camera Active');
+    } else {
+      Status.setText('Status: No Camera');
+    }
+  });
 })();

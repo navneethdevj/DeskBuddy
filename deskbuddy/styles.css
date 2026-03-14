@@ -345,6 +345,17 @@ html, body {
   100% { opacity: 0; transform: translate(var(--drift-x, 10px), var(--drift-y, -20px)) scale(0); }
 }
 
+/* ===== Hidden Camera Feed (webcam for analysis only — never shown) ===== */
+.camera-feed-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
+}
+
 /* ===== Status Bar ===== */
 #status-bar {
   position: fixed;

@@ -19,14 +19,17 @@ const Companion = (() => {
   const GAZE_MAX_X = 15; // percent shift for gradient center
   const GAZE_MAX_Y = 10;
 
-  // Pupil tracking
+  // Pupil tracking (spring-damper for organic overshoot)
   const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
-  const PUPIL_LERP = 0.15;
   const PUPIL_DISTANCE_SCALE = 500;
+  const SPRING_STIFFNESS = 0.08;
+  const SPRING_DAMPING = 0.72;
   let pupilCurrentX = 0;
   let pupilCurrentY = 0;
   let pupilTargetX = 0;
   let pupilTargetY = 0;
+  let pupilVelocityX = 0;
+  let pupilVelocityY = 0;
 
   /** Convert vmin units to current pixel value. */
   function pupilMaxPx() {
@@ -161,12 +164,20 @@ const Companion = (() => {
   }
 
   /**
-   * Smoothly interpolate pupils toward their target each frame.
+   * Smoothly interpolate pupils toward their target each frame using
+   * spring-damper physics for organic overshoot motion.
    * Called from the main rAF loop.
    */
   function updatePupils() {
-    pupilCurrentX += (pupilTargetX - pupilCurrentX) * PUPIL_LERP;
-    pupilCurrentY += (pupilTargetY - pupilCurrentY) * PUPIL_LERP;
+    // Spring force toward target
+    pupilVelocityX += (pupilTargetX - pupilCurrentX) * SPRING_STIFFNESS;
+    pupilVelocityY += (pupilTargetY - pupilCurrentY) * SPRING_STIFFNESS;
+    // Damping
+    pupilVelocityX *= SPRING_DAMPING;
+    pupilVelocityY *= SPRING_DAMPING;
+    // Integrate
+    pupilCurrentX += pupilVelocityX;
+    pupilCurrentY += pupilVelocityY;
 
     // Clamp to max radius
     const maxPx = pupilMaxPx();
@@ -202,9 +213,25 @@ const Companion = (() => {
       var blinkDuration = 150 + Math.random() * 150; // 150–300 ms
       setTimeout(() => {
         if (el) el.classList.remove('blink');
+        // Blink combination: occasionally glance after blink
+        if (Math.random() < 0.3) {
+          triggerPostBlinkGlance();
+        }
       }, blinkDuration);
       scheduleBlink();
     }, delay);
+  }
+
+  /** Small glance immediately after a blink for alive feeling. */
+  function triggerPostBlinkGlance() {
+    if (!el) return;
+    var c = getCenter();
+    var glanceX = c.x + (Math.random() - 0.5) * 160;
+    var glanceY = c.y + (Math.random() - 0.5) * 80;
+    lookAt(glanceX, glanceY);
+    setTimeout(function () {
+      resetLook();
+    }, 250 + Math.random() * 200);
   }
 
   return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils };

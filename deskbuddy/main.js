@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -6,6 +6,19 @@ let mainWindow;
 function createWindow() {
   const { screen } = require('electron');
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+  // Allow media (webcam) access for camera awareness
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'media') return true;
+    return true;
+  });
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(true);
+    } else {
+      callback(true);
+    }
+  });
 
   mainWindow = new BrowserWindow({
     width,
