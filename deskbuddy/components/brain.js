@@ -346,10 +346,16 @@ const Brain = (() => {
    * Falls back to focus-meter emotion when face detection is inactive.
    */
   function applyEmotionEngine(now) {
-    if (currentState === 'followCursor' || currentState === 'curious') return;
-
     if (FaceDetection.isRunning()) {
       var userState = FaceDetection.getUserState();
+
+      // Always update status text from camera state
+      var displayState = userState === 'NoFace' ? 'Away' : userState;
+      Status.setText('User: ' + displayState);
+
+      // Skip emotion changes during certain brain states
+      if (currentState === 'followCursor' || currentState === 'curious') return;
+
       var mouseActive = isMouseActive(now);
       var keyActive = isKeyActive(now);
       var anyActivity = mouseActive || keyActive;
@@ -390,10 +396,8 @@ const Brain = (() => {
           FaceDetection.getMovementLevel() < MOVEMENT_SLEEPY_THRESHOLD && focusLevel < 20) {
         Emotion.setState('sleepy');
       }
-
-      var displayState = userState === 'NoFace' ? 'Away' : userState;
-      Status.setText('User: ' + displayState);
     } else {
+      if (currentState === 'followCursor' || currentState === 'curious') return;
       applyFocusEmotion();
     }
   }
