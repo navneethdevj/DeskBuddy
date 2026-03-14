@@ -7,8 +7,8 @@
  *
  * Detected signals:
  *   - face presence
- *   - head direction   (nose landmark offset from centre)
- *   - eye openness     (inverse of blink blend-shapes)
+ *   - head direction   (nose position relative to face outline centre)
+ *   - eye openness     (eyelid landmark distance + blink blend-shapes)
  *
  * Derived user states:
  *   Focused    – face present, head facing screen, eyes open
@@ -28,7 +28,8 @@ const FaceDetection = (() => {
 
   // Signal thresholds
   const EYE_CLOSED_THRESHOLD   = 0.45; // blink blend-shape score (0–1)
-  const HEAD_AWAY_THRESHOLD    = 0.45; // combined head deviation for Distracted
+  const HEAD_AWAY_THRESHOLD    = 0.55; // combined normalised head deviation for Distracted
+  const STATE_HOLD_MS          = 300;  // ms candidate state must persist before committing
 
   let faceLandmarker = null;
   let videoElement   = null;
@@ -51,6 +52,10 @@ const FaceDetection = (() => {
 
   // Derived state
   let userState = 'NoFace';
+
+  // State smoothing
+  let candidateState = 'NoFace';
+  let candidateSince = 0;
 
   // ===== Initialisation =====
 
@@ -164,11 +169,22 @@ const FaceDetection = (() => {
 
       var landmarks = results.faceLandmarks[0];
 
-      // --- Head direction from nose tip (landmark 1) relative to face centre ---
-      var noseTip = landmarks[1];
-      if (noseTip) {
-        headDirection.x = (noseTip.x - 0.5) * 2;   // -1 (left) to 1 (right)
-        headDirection.y = (noseTip.y - 0.5) * 2;   // -1 (up)   to 1 (down)
+      // --- Head direction from nose tip relative to face outline centre ---
+      var noseTip    = landmarks[1];
+      var leftFace   = landmarks[234];
+      var rightFace  = landmarks[454];
+      var topFace    = landmarks[10];
+      var bottomFace = landmarks[152];
+
+      if (noseTip && leftFace && rightFace) {
+        var faceCenterX = (leftFace.x + rightFace.x) / 2;
+        var halfWidth   = Math.abs(rightFace.x - leftFace.x) / 2 || 0.001;
+        headDirection.x = (noseTip.x - faceCenterX) / halfWidth;
+      }
+      if (noseTip && topFace && bottomFace) {
+        var faceCenterY = (topFace.y + bottomFace.y) / 2;
+        var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
+        headDirection.y = (noseTip.y - faceCenterY) / halfHeight;
       }
 
       // --- Movement level: frame-to-frame nose displacement ---
@@ -207,22 +223,49 @@ const FaceDetection = (() => {
         gazeDirection.y = ((lookDownL - lookUpL) + (lookDownR - lookUpR)) / 2;
       }
 
-      // --- Derive user state ---
+      // --- Landmark-based eye openness (eyelid distance) ---
+      var upperLidL = landmarks[159];
+      var lowerLidL = landmarks[145];
+      var upperLidR = landmarks[386];
+      var lowerLidR = landmarks[374];
+      if (upperLidL && lowerLidL && upperLidR && lowerLidR && topFace && bottomFace) {
+        var faceH = Math.abs(bottomFace.y - topFace.y) || 0.001;
+        var leftEyeRatio  = Math.abs(upperLidL.y - lowerLidL.y) / faceH;
+        var rightEyeRatio = Math.abs(upperLidR.y - lowerLidR.y) / faceH;
+        // Normalise: ~0.04 is typical open-eye ratio; clamp to 0–1
+        var landmarkOpenness = Math.min(1, Math.max(0, ((leftEyeRatio + rightEyeRatio) / 2) / 0.04));
+        // Use the lower of blendshape and landmark estimates (catches closure better)
+        eyeOpenness = Math.min(eyeOpenness, landmarkOpenness);
+      }
+
+      // --- Derive raw state ---
+      var rawState;
       if (eyeOpenness < EYE_CLOSED_THRESHOLD) {
         // Eyes mostly closed — track duration
         if (eyeClosedSince === 0) eyeClosedSince = ts;
         if (ts - eyeClosedSince > SLEEPY_THRESHOLD_MS) {
-          userState = 'Sleepy';
+          rawState = 'Sleepy';
+        } else {
+          rawState = userState;   // hold current state during eye-close transition
         }
       } else {
         eyeClosedSince = 0;
         var headDev = Math.abs(headDirection.x) + Math.abs(headDirection.y);
 
         if (headDev > HEAD_AWAY_THRESHOLD) {
-          userState = 'Distracted';
+          rawState = 'Distracted';
         } else {
-          userState = 'Focused';
+          rawState = 'Focused';
         }
+      }
+
+      // --- State smoothing: hold candidate for STATE_HOLD_MS before committing ---
+      if (rawState !== candidateState) {
+        candidateState = rawState;
+        candidateSince = ts;
+      }
+      if (ts - candidateSince >= STATE_HOLD_MS) {
+        userState = candidateState;
       }
     } else {
       // No face in frame
@@ -231,6 +274,8 @@ const FaceDetection = (() => {
       movementLevel = movementLevel * 0.9;
       if (ts - lastFaceTime > NO_FACE_THRESHOLD_MS) {
         userState = 'NoFace';
+        candidateState = 'NoFace';
+        candidateSince = ts;
       }
     }
   }
