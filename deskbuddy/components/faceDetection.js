@@ -1,58 +1,68 @@
 /**
- * Camera Awareness module.
- * Uses MediaPipe Face Landmarker to detect face presence, head direction,
- * eye openness, and movement level from a hidden webcam feed at 10–15 FPS.
+ * Face Detection module.
+ * Uses MediaPipe Face Landmarker to analyze frames from a hidden webcam
+ * stream and derive the user's attention state.
  *
- * Converts camera signals into user states:
- *   Focused      – face present, eyes open, head oriented toward screen
- *   Distracted   – face present, gaze slightly away
- *   LookingAway  – face present, head significantly turned
- *   Sleepy       – eyes mostly closed for several seconds
- *   NoFace       – no face detected for > 3 seconds
+ * Detection loop runs at approximately 10–15 FPS.
+ *
+ * Detected signals:
+ *   - face presence
+ *   - head direction   (nose landmark offset from centre)
+ *   - eye openness     (inverse of blink blend-shapes)
+ *
+ * Derived user states:
+ *   Focused    – face present, head facing screen, eyes open
+ *   Distracted – face present but head turned away from screen
+ *   Sleepy     – face present but eyes mostly closed for several seconds
+ *   NoFace     – no face detected in the frame
  *
  * The webcam video is never rendered on screen.
  */
-const Camera = (() => {
-  const DETECTION_INTERVAL = 80;           // ~12 FPS (10–15 range)
-  const NO_FACE_THRESHOLD = 3000;          // ms before NoFace state
-  const SLEEPY_THRESHOLD = 3000;           // ms of closed eyes before Sleepy
-  const EYE_CLOSED_VALUE = 0.45;           // blendshape threshold
-  const GAZE_AWAY_THRESHOLD = 0.25;        // mild gaze deviation → Distracted
-  const HEAD_AWAY_THRESHOLD = 0.45;        // strong head turn → LookingAway
+const FaceDetection = (() => {
+  // Detection interval — targets ~12 FPS (within the 10–15 FPS range)
+  const DETECTION_INTERVAL_MS = 80;
+
+  // Timing thresholds
+  const NO_FACE_THRESHOLD_MS = 3000;   // ms without face before NoFace state
+  const SLEEPY_THRESHOLD_MS  = 3000;   // ms of closed eyes before Sleepy state
+
+  // Signal thresholds
+  const EYE_CLOSED_THRESHOLD   = 0.45; // blink blend-shape score (0–1)
+  const HEAD_AWAY_THRESHOLD    = 0.45; // combined head deviation for Distracted
 
   let faceLandmarker = null;
-  let videoElement = null;
-  let running = false;
-  let intervalId = null;
+  let videoElement   = null;
+  let running        = false;
+  let intervalId     = null;
 
   // Detected signals
-  let facePresent = false;
-  let gazeDirection = { x: 0, y: 0 };     // -1 to 1 normalized
-  let headDirection = { x: 0, y: 0 };     // -1 to 1 normalized (nose offset)
-  let eyeOpenness = 1.0;                   // 0 = closed, 1 = open
-  let movementLevel = 0;                   // 0 = still, higher = more motion
+  let facePresent    = false;
+  let gazeDirection  = { x: 0, y: 0 };
+  let headDirection  = { x: 0, y: 0 };
+  let eyeOpenness    = 1.0;
+  let movementLevel  = 0;
 
-  // Movement tracking (frame-to-frame landmark delta)
+  // Frame-to-frame movement tracking
   let prevNosePos = null;
 
-  // Timing
-  let lastFaceTime = 0;
-  let eyeClosedSince = 0;
+  // Timing bookkeeping
+  let lastFaceTime    = 0;
+  let eyeClosedSince  = 0;
 
   // Derived state
-  let userState = 'Focused';
+  let userState = 'NoFace';
 
   // ===== Initialisation =====
 
   async function init() {
-    // Guard: MediaPipe must be loaded via CDN
     if (typeof vision === 'undefined') {
-      console.warn('[Camera] MediaPipe vision bundle not loaded – camera disabled.');
+      console.warn('[FaceDetection] MediaPipe vision bundle not loaded — disabled.');
       userState = 'NoFace';
       return false;
     }
 
     try {
+      // Create a hidden video element for the webcam feed
       videoElement = document.createElement('video');
       videoElement.className = 'camera-feed-hidden';
       videoElement.setAttribute('autoplay', '');
@@ -64,6 +74,7 @@ const Camera = (() => {
       });
       videoElement.srcObject = stream;
       await videoElement.play();
+      console.log('Camera access granted');
 
       var filesetResolver = await vision.FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
@@ -82,10 +93,13 @@ const Camera = (() => {
 
       lastFaceTime = Date.now();
       running = true;
-      intervalId = setInterval(detect, DETECTION_INTERVAL);
+      intervalId = setInterval(detect, DETECTION_INTERVAL_MS);
       return true;
     } catch (err) {
-      console.warn('[Camera] Init failed:', err.message);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        console.log('Camera access denied');
+      }
+      console.warn('[FaceDetection] Init failed:', err.message);
       userState = 'NoFace';
       return false;
     }
@@ -112,14 +126,14 @@ const Camera = (() => {
 
       var landmarks = results.faceLandmarks[0];
 
-      // Head direction from nose tip (landmark 1) relative to face center
+      // --- Head direction from nose tip (landmark 1) relative to face centre ---
       var noseTip = landmarks[1];
       if (noseTip) {
         headDirection.x = (noseTip.x - 0.5) * 2;   // -1 (left) to 1 (right)
-        headDirection.y = (noseTip.y - 0.5) * 2;   // -1 (up) to 1 (down)
+        headDirection.y = (noseTip.y - 0.5) * 2;   // -1 (up)   to 1 (down)
       }
 
-      // Movement level: frame-to-frame nose displacement
+      // --- Movement level: frame-to-frame nose displacement ---
       if (noseTip && prevNosePos) {
         var mdx = noseTip.x - prevNosePos.x;
         var mdy = noseTip.y - prevNosePos.y;
@@ -129,56 +143,55 @@ const Camera = (() => {
         prevNosePos = { x: noseTip.x, y: noseTip.y };
       }
 
+      // --- Eye openness & gaze from blend-shapes ---
       if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
         var map = {};
         results.faceBlendshapes[0].categories.forEach(function (s) {
           map[s.categoryName] = s.score;
         });
 
-        // Eye openness (inverse of blink)
-        var blinkL = map['eyeBlinkLeft'] || 0;
+        var blinkL = map['eyeBlinkLeft']  || 0;
         var blinkR = map['eyeBlinkRight'] || 0;
         eyeOpenness = 1 - (blinkL + blinkR) / 2;
 
         // Horizontal gaze (positive = right)
-        var lookInL  = map['eyeLookInLeft']  || 0;
-        var lookOutL = map['eyeLookOutLeft'] || 0;
+        var lookInL  = map['eyeLookInLeft']   || 0;
+        var lookOutL = map['eyeLookOutLeft']  || 0;
         var lookInR  = map['eyeLookInRight']  || 0;
         var lookOutR = map['eyeLookOutRight'] || 0;
         gazeDirection.x = ((lookOutL - lookInL) + (lookInR - lookOutR)) / 2;
 
         // Vertical gaze (positive = down)
-        var lookUpL   = map['eyeLookUpLeft']   || 0;
-        var lookDownL = map['eyeLookDownLeft'] || 0;
+        var lookUpL   = map['eyeLookUpLeft']    || 0;
+        var lookDownL = map['eyeLookDownLeft']  || 0;
         var lookUpR   = map['eyeLookUpRight']   || 0;
         var lookDownR = map['eyeLookDownRight'] || 0;
         gazeDirection.y = ((lookDownL - lookUpL) + (lookDownR - lookUpR)) / 2;
       }
 
       // --- Derive user state ---
-      if (eyeOpenness < EYE_CLOSED_VALUE) {
+      if (eyeOpenness < EYE_CLOSED_THRESHOLD) {
+        // Eyes mostly closed — track duration
         if (eyeClosedSince === 0) eyeClosedSince = ts;
-        if (ts - eyeClosedSince > SLEEPY_THRESHOLD) {
+        if (ts - eyeClosedSince > SLEEPY_THRESHOLD_MS) {
           userState = 'Sleepy';
         }
       } else {
         eyeClosedSince = 0;
         var headDev = Math.abs(headDirection.x) + Math.abs(headDirection.y);
-        var gazeDev = Math.abs(gazeDirection.x) + Math.abs(gazeDirection.y);
 
         if (headDev > HEAD_AWAY_THRESHOLD) {
-          userState = 'LookingAway';
-        } else if (gazeDev > GAZE_AWAY_THRESHOLD) {
           userState = 'Distracted';
         } else {
           userState = 'Focused';
         }
       }
     } else {
+      // No face in frame
       facePresent = false;
       prevNosePos = null;
-      movementLevel = movementLevel * 0.9;  // decay when no face
-      if (ts - lastFaceTime > NO_FACE_THRESHOLD) {
+      movementLevel = movementLevel * 0.9;
+      if (ts - lastFaceTime > NO_FACE_THRESHOLD_MS) {
         userState = 'NoFace';
       }
     }
@@ -186,13 +199,13 @@ const Camera = (() => {
 
   // ===== Public API =====
 
-  function getUserState()       { return userState; }
-  function isFacePresent()      { return facePresent; }
-  function getGazeDirection()   { return { x: gazeDirection.x, y: gazeDirection.y }; }
-  function getHeadDirection()   { return { x: headDirection.x, y: headDirection.y }; }
-  function getEyeOpenness()     { return eyeOpenness; }
-  function getMovementLevel()   { return movementLevel; }
-  function isRunning()          { return running; }
+  function getUserState()      { return userState; }
+  function isFacePresent()     { return facePresent; }
+  function getGazeDirection()  { return { x: gazeDirection.x, y: gazeDirection.y }; }
+  function getHeadDirection()  { return { x: headDirection.x, y: headDirection.y }; }
+  function getEyeOpenness()    { return eyeOpenness; }
+  function getMovementLevel()  { return movementLevel; }
+  function isRunning()         { return running; }
 
   function stop() {
     running = false;
@@ -203,14 +216,14 @@ const Camera = (() => {
   }
 
   return {
-    init: init,
-    getUserState: getUserState,
-    isFacePresent: isFacePresent,
+    init:             init,
+    getUserState:     getUserState,
+    isFacePresent:    isFacePresent,
     getGazeDirection: getGazeDirection,
     getHeadDirection: getHeadDirection,
-    getEyeOpenness: getEyeOpenness,
+    getEyeOpenness:   getEyeOpenness,
     getMovementLevel: getMovementLevel,
-    isRunning: isRunning,
-    stop: stop
+    isRunning:        isRunning,
+    stop:             stop
   };
 })();

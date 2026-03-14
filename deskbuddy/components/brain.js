@@ -3,12 +3,12 @@
  * camera awareness integration, attention engine, gaze-driven drift,
  * and emotion engine.
  *
- * Camera user states (Focused / Distracted / LookingAway / NoFace / Sleepy)
+ * Face Detection user states (Focused / Distracted / NoFace / Sleepy)
  * drive emotion and attention.
  *
  * Focus Timer:
  *   - Starts when user state becomes Focused
- *   - Pauses when Distracted or LookingAway
+ *   - Pauses when Distracted
  *   - Pauses when NoFace detected
  *   - Resets when NoFace lasts longer than 60 seconds
  *
@@ -292,9 +292,9 @@ const Brain = (() => {
   // ===== Focus Timer =====
 
   function updateFocusTimer(now) {
-    if (!Camera.isRunning()) return;
+    if (!FaceDetection.isRunning()) return;
 
-    var userState = Camera.getUserState();
+    var userState = FaceDetection.getUserState();
 
     switch (userState) {
       case 'Focused':
@@ -305,7 +305,6 @@ const Brain = (() => {
         noFaceStartTime = 0;
         break;
       case 'Distracted':
-      case 'LookingAway':
         focusTimerRunning = false;
         noFaceStartTime = 0;
         break;
@@ -337,20 +336,20 @@ const Brain = (() => {
   // ===== Emotion Engine =====
 
   /**
-   * Camera user state drives expression when available.
+   * Face detection user state drives expression when available.
    * Emotion mapping:
    *   Focused → Happy
    *   Focused for long time without movement → Curious
    *   No movement anywhere → Sleepy
-   *   User looking away (Distracted/LookingAway) → Suspicious
+   *   User looking away (Distracted) → Suspicious
    *   User leaves frame (NoFace) → Scared
-   * Falls back to focus-meter emotion when camera is inactive.
+   * Falls back to focus-meter emotion when face detection is inactive.
    */
   function applyEmotionEngine(now) {
     if (currentState === 'followCursor' || currentState === 'curious') return;
 
-    if (Camera.isRunning()) {
-      var userState = Camera.getUserState();
+    if (FaceDetection.isRunning()) {
+      var userState = FaceDetection.getUserState();
       var mouseActive = isMouseActive(now);
       var keyActive = isKeyActive(now);
       var anyActivity = mouseActive || keyActive;
@@ -368,7 +367,6 @@ const Brain = (() => {
           }
           break;
         case 'Distracted':
-        case 'LookingAway':
           focusedSinceTime = 0;
           Emotion.setState('suspicious');
           break;
@@ -389,7 +387,7 @@ const Brain = (() => {
 
       // No movement anywhere → Sleepy (overrides other emotions except NoFace)
       if (userState !== 'NoFace' && !anyActivity &&
-          Camera.getMovementLevel() < MOVEMENT_SLEEPY_THRESHOLD && focusLevel < 20) {
+          FaceDetection.getMovementLevel() < MOVEMENT_SLEEPY_THRESHOLD && focusLevel < 20) {
         Emotion.setState('sleepy');
       }
 
@@ -496,7 +494,7 @@ const Brain = (() => {
   function enterState(state) {
     currentState = state;
     // Only set status from state labels when camera is not running
-    if (!Camera.isRunning()) {
+    if (!FaceDetection.isRunning()) {
       Status.setText('User: ' + (STATE_LABELS[state] || state));
     }
 

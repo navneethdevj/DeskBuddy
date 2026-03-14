@@ -58,8 +58,8 @@ const Attention = (() => {
     lastInputMouseY = mouseY;
 
     var mouseRecent = (now - lastMouseMoveTime) < MOUSE_IDLE_TIMEOUT;
-    var faceDetected = Camera.isRunning() && Camera.isFacePresent();
-    var userMoving = Camera.isRunning() && Camera.getMovementLevel() > USER_MOVEMENT_THRESHOLD;
+    var faceDetected = FaceDetection.isRunning() && FaceDetection.isFacePresent();
+    var userMoving = FaceDetection.isRunning() && FaceDetection.getMovementLevel() > USER_MOVEMENT_THRESHOLD;
 
     // Priority 1: user movement (cursor moving or user physically moving)
     if (mouseRecent || userMoving) {
@@ -69,7 +69,7 @@ const Attention = (() => {
         targetPosition.y = mouseY;
       } else {
         // User is physically moving — look toward camera (top center)
-        var head = Camera.getHeadDirection();
+        var head = FaceDetection.getHeadDirection();
         targetPosition.x = window.innerWidth / 2 + head.x * 150;
         targetPosition.y = window.innerHeight * 0.15;
       }
@@ -79,7 +79,7 @@ const Attention = (() => {
     // Priority 2: userFace if detected
     if (faceDetected) {
       currentTarget = 'userFace';
-      var gaze = Camera.getGazeDirection();
+      var gaze = FaceDetection.getGazeDirection();
       targetPosition.x = window.innerWidth / 2 + gaze.x * 200;
       targetPosition.y = window.innerHeight * 0.15;
       return;
