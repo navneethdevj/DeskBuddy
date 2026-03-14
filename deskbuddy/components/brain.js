@@ -71,7 +71,10 @@ const Brain = (() => {
   const IDLE_DRIFT_AMPLITUDE = 60;  // pixels
 
   // Focus timer
-  const FOCUS_TIMER_NOFACE_RESET = 60000; // reset timer after 60 s NoFace
+  const FOCUS_TIMER_NOFACE_RESET = 60000; // reset timer after 60 sec NoFace
+
+  // Emotion mapping: low camera movement → sleepy override
+  const MOVEMENT_SLEEPY_THRESHOLD = 0.002;
 
   // Emotion mapping: long focus without movement threshold
   const LONG_FOCUS_CURIOUS_MS = 30000;  // 30 s focused without much movement → Curious
@@ -386,7 +389,7 @@ const Brain = (() => {
 
       // No movement anywhere → Sleepy (overrides other emotions except NoFace)
       if (userState !== 'NoFace' && !anyActivity &&
-          Camera.getMovementLevel() < 0.002 && focusLevel < 20) {
+          Camera.getMovementLevel() < MOVEMENT_SLEEPY_THRESHOLD && focusLevel < 20) {
         Emotion.setState('sleepy');
       }
 

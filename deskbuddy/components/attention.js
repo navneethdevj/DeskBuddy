@@ -13,6 +13,8 @@
  */
 const Attention = (() => {
   const MOUSE_IDLE_TIMEOUT = 500;                // ms before cursor is "idle"
+  const MOUSE_MOVEMENT_THRESHOLD_PX = 2;          // min px delta to register as mouse activity
+  const USER_MOVEMENT_THRESHOLD = 0.005;           // min camera movement level to count as user motion
   const CURIOSITY_MIN_INTERVAL = 4000;
   const CURIOSITY_MAX_INTERVAL = 8000;
   const SCAN_STEP_INTERVAL = 2000;               // ms between environment scan steps
@@ -49,7 +51,7 @@ const Attention = (() => {
   function update(mouseX, mouseY, isTyping, now) {
     // Detect mouse movement
     var mouseDelta = Math.abs(mouseX - lastInputMouseX) + Math.abs(mouseY - lastInputMouseY);
-    if (mouseDelta > 2) {
+    if (mouseDelta > MOUSE_MOVEMENT_THRESHOLD_PX) {
       lastMouseMoveTime = now;
     }
     lastInputMouseX = mouseX;
@@ -57,7 +59,7 @@ const Attention = (() => {
 
     var mouseRecent = (now - lastMouseMoveTime) < MOUSE_IDLE_TIMEOUT;
     var faceDetected = Camera.isRunning() && Camera.isFacePresent();
-    var userMoving = Camera.isRunning() && Camera.getMovementLevel() > 0.005;
+    var userMoving = Camera.isRunning() && Camera.getMovementLevel() > USER_MOVEMENT_THRESHOLD;
 
     // Priority 1: user movement (cursor moving or user physically moving)
     if (mouseRecent || userMoving) {

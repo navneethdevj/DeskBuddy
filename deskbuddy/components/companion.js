@@ -21,6 +21,8 @@ const Companion = (() => {
   const GAZE_MAX_Y = 10;
 
   // Pupil tracking (spring-damper for organic overshoot)
+  // Stiffness: how quickly pupil accelerates toward target (higher = snappier)
+  // Damping: how quickly oscillation decays (higher = less overshoot)
   const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
   const PUPIL_DISTANCE_SCALE = 500;
   const SPRING_STIFFNESS = 0.08;
