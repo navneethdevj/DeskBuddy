@@ -63,12 +63,12 @@ html, body {
 
 @keyframes glowFocused {
   0%, 100% {
-    filter: drop-shadow(0 0 4vmin rgba(230, 240, 255, 0.20))
-            drop-shadow(0 0 12vmin rgba(230, 240, 255, 0.05));
+    filter: drop-shadow(0 0 4vmin rgba(255, 255, 255, 0.20))
+            drop-shadow(0 0 12vmin rgba(255, 255, 255, 0.05));
   }
   50% {
-    filter: drop-shadow(0 0 7vmin rgba(230, 240, 255, 0.32))
-            drop-shadow(0 0 16vmin rgba(230, 240, 255, 0.08));
+    filter: drop-shadow(0 0 7vmin rgba(255, 255, 255, 0.32))
+            drop-shadow(0 0 16vmin rgba(255, 255, 255, 0.08));
   }
 }
 
