@@ -22,6 +22,9 @@
   // Start the creature brain (owns the main loop)
   Brain.start();
 
+  // Initialize basic webcam access (runs in background)
+  CameraAccess.init();
+
   // Initialize camera awareness (async — runs in background)
   Camera.init().then(function (ok) {
     if (ok) {

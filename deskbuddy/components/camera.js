@@ -64,7 +64,6 @@ const Camera = (() => {
       });
       videoElement.srcObject = stream;
       await videoElement.play();
-      console.log('Camera access granted');
 
       var filesetResolver = await vision.FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
@@ -86,9 +85,6 @@ const Camera = (() => {
       intervalId = setInterval(detect, DETECTION_INTERVAL);
       return true;
     } catch (err) {
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        console.log('Camera access denied');
-      }
       console.warn('[Camera] Init failed:', err.message);
       userState = 'NoFace';
       return false;
