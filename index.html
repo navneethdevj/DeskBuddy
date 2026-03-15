@@ -262,13 +262,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
 (function () {
   'use strict';
 
-  // ===== Utility Functions =====
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function euclidean(p1, p2) {
-    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-  }
-  function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
-
   // ===== DOM References =====
   var buddyBody     = document.getElementById('buddy-body');
   var deskbuddy     = document.getElementById('deskbuddy');
@@ -288,93 +281,32 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
   var PUPIL_MAX_TRAVEL   = IRIS_RADIUS * 0.30;  // 30% of iris radius
   var DETECTION_INTERVAL = 80;    // ~12 FPS for face detection
 
-  // Stage 4 — Motion constants
-  var STILL_THRESHOLD_PX = 4;
-  var STILL_DURATION_MS  = 5000;
-
   // ===== State =====
   var cameraAvailable    = false;
   var faceLandmarker     = null;
+  var lastLandmarks      = null;
+  var lastBlendshapes    = null;
+  var lastDetectionTimestamp = 0;
 
   // Blink state
-  var lidTargetL  = 0.08;
+  var lidTargetL  = 0.08;  // 8% = neutral (proportion 0-1 of eye height)
   var lidTargetR  = 0.08;
   var lidCurrentL = 0.08;
   var lidCurrentR = 0.08;
-  var blinkPhase  = 'idle';
+  var blinkPhase  = 'idle';  // idle | closing | holding | opening
+  var blinkHoldTimeout = null;
   var nextBlinkTime = 0;
+
+  // Pupil gaze target (normalized -1..1)
+  var gazeTargetX = 0;
+  var gazeTargetY = 0;
+  var gazeCurrX   = 0;
+  var gazeCurrY   = 0;
 
   // Focus timer
   var focusTimerSeconds = 0;
   var focusTimerRunning = false;
   var lastFocusTickTime = 0;
-
-  // ===== STAGE 3 — Perception Layer State =====
-  var facePresent    = false;
-  var headYaw        = 0;    // degrees, from transformation matrix
-  var headPitch      = 0;    // degrees, from transformation matrix
-  var eyeOpenness    = 1;    // 0=closed, 1=open
-  var headMovement   = 0;    // euclidean px between frames
-  var faceX          = 0.5;  // normalized face center (0-1)
-  var faceY          = 0.5;
-  var faceNormX      = 0;    // (faceX - 0.5) * 2 → range -1 to +1
-  var faceNormY      = 0;
-
-  var prevNoseTip    = null; // { x, y } from previous frame
-
-  // State classification
-  var currentUserState   = 'NoFace';
-  var previousUserState  = 'NoFace';
-  var stateEntryTime     = performance.now();
-  var candidateState     = 'NoFace';
-  var candidateStateTime = performance.now();
-  var STATE_DEBOUNCE_MS  = 1000;
-
-  // Sleepy & NoFace timers (continuous hold)
-  var sleepyTimer    = 0;
-  var noFaceTimer    = 0;
-  var SLEEPY_HOLD_MS = 3000;
-  var NOFACE_HOLD_MS = 3000;
-
-  // Distracted detection: track yaw direction changes >20° in 10s window
-  var yawHistory = [];  // { time, yaw }
-
-  // ===== STAGE 4 — Motion Detection State =====
-  var stillTimer   = 0;
-  var userIsStill  = false;
-  var timeStillMs  = 0;
-  var wasStill     = false;  // previous frame's userIsStill, for P2 transition detect
-
-  // ===== STAGE 5 — Attention Brain State =====
-  var gazeTarget = { x: 0, y: 0 };
-
-  // Current emotion (set by emotion logic)
-  var currentEmotion       = 'happy';
-  var triggerEmbarrassed   = false;
-  var lastAttentionEvalTime = 0;
-  var ATTENTION_EVAL_MS     = 500;
-
-  // Curiosity scan
-  var curiosityScanActive  = false;
-  var curiosityScanStep    = 0;
-  var curiosityScanHoldEnd = 0;
-
-  // Search scan
-  var searchScanActive     = false;
-  var searchScanStep       = 0;
-  var searchScanHoldEnd    = 0;
-  var searchScanLerp       = 0.12;
-
-  // ===== STAGE 6 — Eye Motion System State =====
-  var pupilX       = 0;
-  var pupilY       = 0;
-  var pupilLerpSpeed = 0.070;
-
-  // Body lean (gaze drift)
-  var leanX       = 0;
-  var leanY       = 0;
-  var leanTargetX = 0;
-  var leanTargetY = 0;
 
   // ===== Helper: show emotion text =====
   function showEmotionText(text) {
@@ -394,15 +326,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
       String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
   }
 
-  // ===== Floating Motion (Phase 1 Layer 1 — preserved) =====
-  var lastFloatX = 0;
-  var lastFloatY = 0;
-  function computeFloat(t) {
-    lastFloatY = Math.sin(t * 0.0008) * 4.5 + Math.sin(t * 0.00131) * 2.0 + Math.sin(t * 0.00197) * 1.0;
-    lastFloatX = Math.sin(t * 0.00061) * 2.5 + Math.sin(t * 0.00109) * 1.5 + Math.sin(t * 0.00173) * 0.8;
+  // ===== Floating Motion =====
+  function updateFloat(t) {
+    var floatY = Math.sin(t * 0.0008) * 4.5 + Math.sin(t * 0.00131) * 2.0 + Math.sin(t * 0.00197) * 1.0;
+    var floatX = Math.sin(t * 0.00061) * 2.5 + Math.sin(t * 0.00109) * 1.5 + Math.sin(t * 0.00173) * 0.8;
+    buddyBody.style.transform = 'translate(' + floatX + 'px, ' + floatY + 'px)';
   }
 
-  // ===== Blinking (Phase 1 — preserved) =====
+  // ===== Blinking =====
   function scheduleNextBlink() {
     nextBlinkTime = performance.now() + 3000 + Math.random() * 2000;
   }
@@ -418,22 +349,25 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
       if (t >= nextBlinkTime) {
         startBlink();
       }
+      // Approach neutral (8%)
       lidTargetL = 0.08;
       lidTargetR = 0.08;
     }
 
-    var blinkLerp;
+    // Lerp eyelids
+    var lerpSpeed;
     if (blinkPhase === 'closing') {
-      blinkLerp = 0.25;
+      lerpSpeed = 0.25;
     } else if (blinkPhase === 'opening') {
-      blinkLerp = 0.18;
+      lerpSpeed = 0.18;
     } else {
-      blinkLerp = 0.18;
+      lerpSpeed = 0.18;
     }
 
-    lidCurrentL += (lidTargetL - lidCurrentL) * blinkLerp;
-    lidCurrentR += (lidTargetR - lidCurrentR) * blinkLerp;
+    lidCurrentL += (lidTargetL - lidCurrentL) * lerpSpeed;
+    lidCurrentR += (lidTargetR - lidCurrentR) * lerpSpeed;
 
+    // Check state transitions
     if (blinkPhase === 'closing' && lidCurrentL > 0.95) {
       lidCurrentL = 1.0;
       lidCurrentR = 1.0;
@@ -452,8 +386,36 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
       scheduleNextBlink();
     }
 
+    // Apply to DOM (percentage of eye height)
     lidLeft.style.height  = (lidCurrentL * 100) + '%';
     lidRight.style.height = (lidCurrentR * 100) + '%';
+  }
+
+  // ===== Pupil Movement =====
+  function updatePupils(t) {
+    // Micro-drift
+    var microDriftX = Math.sin(t * 0.002) * 0.05;
+    var microDriftY = Math.sin(t * 0.0027) * 0.04;
+
+    var targetX = gazeTargetX + microDriftX;
+    var targetY = gazeTargetY + microDriftY;
+
+    // Lerp toward target
+    gazeCurrX += (targetX - gazeCurrX) * 0.08;
+    gazeCurrY += (targetY - gazeCurrY) * 0.08;
+
+    // Clamp to max travel
+    var dist = Math.sqrt(gazeCurrX * gazeCurrX + gazeCurrY * gazeCurrY);
+    if (dist > 1) {
+      gazeCurrX /= dist;
+      gazeCurrY /= dist;
+    }
+
+    var px = gazeCurrX * PUPIL_MAX_TRAVEL;
+    var py = gazeCurrY * PUPIL_MAX_TRAVEL;
+
+    pupilLeft.style.transform  = 'translate(calc(-50% + ' + px + 'px), calc(-50% + ' + py + 'px))';
+    pupilRight.style.transform = 'translate(calc(-50% + ' + px + 'px), calc(-50% + ' + py + 'px))';
   }
 
   // CURSOR TRACKING — disabled. Camera is now the sole perceptual input.
@@ -467,15 +429,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
     var dy = e.clientY - cy;
     var dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 0) {
-      gazeTarget.x = Math.max(-1, Math.min(1, dx / 300));
-      gazeTarget.y = Math.max(-1, Math.min(1, dy / 300));
+      gazeTargetX = Math.max(-1, Math.min(1, dx / 300));
+      gazeTargetY = Math.max(-1, Math.min(1, dy / 300));
     }
   });
   */
 
-  // ===== Camera Initialization =====
+  // ===== Camera Awareness =====
 
   async function initCamera() {
+    // Attempt camera access
     try {
       var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       cameraAvailable = true;
@@ -490,6 +453,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
       return;
     }
 
+    // Initialize MediaPipe FaceLandmarker
     if (typeof vision === 'undefined') {
       console.warn('[DeskBuddy] MediaPipe vision bundle not loaded.');
       return;
@@ -533,478 +497,137 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
     }
   }
 
-  // ===== STAGE 3 — Perception: Face Detection + Signal Extraction =====
+  // ===== Face Detection Loop =====
 
   var lastDetectTime = 0;
+  var facePresent = false;
   var lastFaceSeenTime = 0;
-  var lastDetectionTime = 0;  // for computing delta between detection frames
+  var userState = 'NoFace';
 
   function detectFace() {
     if (!faceLandmarker || !videoElement || videoElement.readyState < 2) return;
 
     var now = performance.now();
-    // Ensure monotonically increasing timestamp for MediaPipe
-    if (now <= lastDetectTime) now = lastDetectTime + 0.1;
+    // Ensure monotonically increasing timestamp
+    if (now <= lastDetectTime) now = lastDetectTime + 1;
     lastDetectTime = now;
 
     var results;
     try {
       results = faceLandmarker.detectForVideo(videoElement, now);
     } catch (e) {
-      return; // Skip frame silently
+      // Skip frame silently
+      return;
     }
 
-    var ts = performance.now();
-    var detectionDelta = lastDetectionTime > 0 ? (ts - lastDetectionTime) : DETECTION_INTERVAL;
-    lastDetectionTime = ts;
+    var ts = Date.now();
 
-    // ---- Extract perception signals ----
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
       facePresent = true;
       lastFaceSeenTime = ts;
-      var landmarks = results.faceLandmarks[0];
+      lastLandmarks = results.faceLandmarks[0];
 
-      // Face center position (normalized 0-1)
-      var noseTip = landmarks[4];
-      faceX = noseTip ? noseTip.x : 0.5;
-      faceY = noseTip ? noseTip.y : 0.5;
-      faceNormX = (faceX - 0.5) * 2;  // range -1 to +1
-      faceNormY = (faceY - 0.5) * 2;
-
-      // Head movement (euclidean distance of nose tip between frames)
-      if (noseTip && prevNoseTip) {
-        headMovement = euclidean(
-          { x: noseTip.x * videoElement.videoWidth, y: noseTip.y * videoElement.videoHeight },
-          { x: prevNoseTip.x * videoElement.videoWidth, y: prevNoseTip.y * videoElement.videoHeight }
-        );
-      } else {
-        headMovement = 0;
-      }
-      prevNoseTip = noseTip ? { x: noseTip.x, y: noseTip.y } : null;
-
-      // Head yaw/pitch from transformation matrices
-      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
-        var matrix = results.facialTransformationMatrixes[0];
-        // matrix.data is a Float32Array with 16 elements (4x4 column-major)
-        if (matrix && matrix.data) {
-          var m = matrix.data;
-          // 4x4 column-major matrix layout:
-          //   m[0] m[4] m[8]  m[12]     (row 0)
-          //   m[1] m[5] m[9]  m[13]     (row 1)
-          //   m[2] m[6] m[10] m[14]     (row 2)
-          //   m[3] m[7] m[11] m[15]     (row 3)
-          // Yaw (Y-axis rotation): atan2(m[8], m[10]) = atan2(R[0][2], R[2][2])
-          // Pitch (X-axis rotation): asin(-m[9]) = asin(-R[1][2])
-          headYaw   = Math.atan2(m[8], m[10]) * (180 / Math.PI);
-          headPitch = Math.asin(-clamp(m[9], -1, 1)) * (180 / Math.PI);
-        }
-      } else {
-        // Fallback: derive from landmarks
-        var leftFace  = landmarks[234];
-        var rightFace = landmarks[454];
-        var topFace   = landmarks[10];
-        var bottomFace = landmarks[152];
-        if (noseTip && leftFace && rightFace && topFace && bottomFace) {
-          var faceCenterX = (leftFace.x + rightFace.x) / 2;
-          var halfWidth   = Math.abs(rightFace.x - leftFace.x) / 2 || 0.001;
-          var normX = (noseTip.x - faceCenterX) / halfWidth;
-          headYaw = normX * 30;  // rough approximation: ±1 → ±30°
-
-          var faceCenterY = (topFace.y + bottomFace.y) / 2;
-          var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
-          var normY = (noseTip.y - faceCenterY) / halfHeight;
-          headPitch = normY * 25;
-        }
-      }
-
-      // Eye openness from blendshapes
+      // Store blendshapes
       if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
-        var blendshapes = {};
+        lastBlendshapes = {};
         results.faceBlendshapes[0].categories.forEach(function (s) {
-          blendshapes[s.categoryName] = s.score;
+          lastBlendshapes[s.categoryName] = s.score;
         });
-        var blinkL = blendshapes['eyeBlinkLeft'] || 0;
-        var blinkR = blendshapes['eyeBlinkRight'] || 0;
-        eyeOpenness = 1 - (blinkL + blinkR) / 2;
       }
 
-      // Log signals periodically for debugging
-      if (Math.random() < 0.02) {
-        console.log('[Perception] yaw=' + headYaw.toFixed(1) + '° pitch=' + headPitch.toFixed(1) +
-          '° eyeOpen=' + eyeOpenness.toFixed(2) + ' move=' + headMovement.toFixed(1) +
-          ' fNorm=(' + faceNormX.toFixed(2) + ',' + faceNormY.toFixed(2) + ')' +
-          ' state=' + currentUserState);
+      lastDetectionTimestamp = ts;
+
+      // Derive gaze from head direction
+      var noseTip   = lastLandmarks[4];
+      var leftFace  = lastLandmarks[234];
+      var rightFace = lastLandmarks[454];
+      var topFace   = lastLandmarks[10];
+      var bottomFace = lastLandmarks[152];
+
+      if (noseTip && leftFace && rightFace && topFace && bottomFace) {
+        var faceCenterX = (leftFace.x + rightFace.x) / 2;
+        var halfWidth   = Math.abs(rightFace.x - leftFace.x) / 2 || 0.001;
+        var headX = (noseTip.x - faceCenterX) / halfWidth;
+
+        var faceCenterY = (topFace.y + bottomFace.y) / 2;
+        var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
+        var headY = (noseTip.y - faceCenterY) / halfHeight;
+
+        // Head direction affects pupil gaze (inverted X because camera mirrors)
+        gazeTargetX = Math.max(-1, Math.min(1, -headX * 1.5));
+        gazeTargetY = Math.max(-1, Math.min(1, headY * 1.2));
+
+        // Determine user state from head deviation
+        var headDev = Math.abs(headX) + Math.abs(headY);
+        if (headDev > 0.55) {
+          userState = 'Distracted';
+        } else {
+          userState = 'Focused';
+        }
+      }
+
+      // Check eye openness
+      if (lastBlendshapes) {
+        var blinkL = lastBlendshapes['eyeBlinkLeft'] || 0;
+        var blinkR = lastBlendshapes['eyeBlinkRight'] || 0;
+        var eyeOpen = 1 - (blinkL + blinkR) / 2;
+        if (eyeOpen < 0.45) {
+          userState = 'Sleepy';
+        }
+      }
+
+      // Update UI
+      showUserState('you: ' + userState.toLowerCase());
+      if (userState === 'Focused') {
+        showEmotionText('DeskBuddy: happy ˘ω˘');
+        if (!focusTimerRunning) {
+          focusTimerRunning = true;
+          lastFocusTickTime = ts;
+        }
+      } else if (userState === 'Distracted') {
+        showEmotionText('DeskBuddy: curious ˘ω˘?');
+        focusTimerRunning = false;
+      } else if (userState === 'Sleepy') {
+        showEmotionText('DeskBuddy: sleepy ˘ω˘ ~');
+        focusTimerRunning = false;
       }
 
     } else {
+      // No face detected
       facePresent = false;
-      headMovement = 0;
-    }
-
-    // ---- STAGE 3: User State Classification ----
-    classifyUserState(detectionDelta);
-
-    // ---- STAGE 4: Motion Detection ----
-    updateMotionDetection(detectionDelta);
-
-    // ---- Update UI from state ----
-    updateUIFromState(ts);
-  }
-
-  // ===== STAGE 3 — User State Classification =====
-  function classifyUserState(deltaMs) {
-    var rawState = 'NoFace';
-
-    if (facePresent) {
-      noFaceTimer = 0;
-
-      // Check Focused: face present + |headYaw| < 15 + eyeOpenness > 0.40
-      if (Math.abs(headYaw) < 15 && eyeOpenness > 0.40) {
-        rawState = 'Focused';
+      if (ts - lastFaceSeenTime > 3000) {
+        userState = 'NoFace';
+        showUserState('you: away');
+        showEmotionText('DeskBuddy: looking for you ˘ω˘');
+        focusTimerRunning = false;
+        // Reset gaze toward center
+        gazeTargetX *= 0.95;
+        gazeTargetY *= 0.95;
       }
-      // Check LookingAway: face present + |headYaw| > 20
-      else if (Math.abs(headYaw) > 20) {
-        rawState = 'LookingAway';
-      }
-      // Default with face present
-      else {
-        rawState = 'Focused';  // within 15-20° treated as focused
-      }
-
-      // Check Sleepy: eyeOpenness < 0.25 held ≥ 3000ms
-      if (eyeOpenness < 0.25) {
-        sleepyTimer += deltaMs;
-        if (sleepyTimer >= SLEEPY_HOLD_MS) {
-          rawState = 'Sleepy';
-        }
-      } else {
-        sleepyTimer = 0;
-      }
-
-      // Check Distracted: >3 headYaw direction-changes >20° within 10s
-      var nowMs = performance.now();
-      yawHistory.push({ time: nowMs, yaw: headYaw });
-      // Prune old entries (>10s)
-      while (yawHistory.length > 0 && nowMs - yawHistory[0].time > 10000) {
-        yawHistory.shift();
-      }
-      if (yawHistory.length >= 3) {
-        var dirChanges = 0;
-        for (var i = 1; i < yawHistory.length; i++) {
-          var diff = yawHistory[i].yaw - yawHistory[i - 1].yaw;
-          if (Math.abs(diff) > 20) {
-            // Check sign change from previous significant diff
-            if (i >= 2) {
-              var prevDiff = yawHistory[i - 1].yaw - yawHistory[i - 2].yaw;
-              if ((diff > 0 && prevDiff < 0) || (diff < 0 && prevDiff > 0)) {
-                dirChanges++;
-              }
-            }
-          }
-        }
-        if (dirChanges > 3) {
-          rawState = 'Distracted';
-        }
-      }
-    } else {
-      // No face
-      sleepyTimer = 0;
-      noFaceTimer += deltaMs;
-      if (noFaceTimer >= NOFACE_HOLD_MS) {
-        rawState = 'NoFace';
-      } else {
-        // Keep previous state briefly during transition
-        rawState = currentUserState !== 'NoFace' ? currentUserState : 'NoFace';
-      }
-    }
-
-    // Debounce: candidate must hold for ≥ 1000ms
-    if (rawState !== candidateState) {
-      candidateState = rawState;
-      candidateStateTime = performance.now();
-    }
-
-    if (rawState === candidateState && performance.now() - candidateStateTime >= STATE_DEBOUNCE_MS) {
-      if (currentUserState !== candidateState) {
-        previousUserState = currentUserState;
-        currentUserState = candidateState;
-        stateEntryTime = performance.now();
-        console.log('[State] ' + previousUserState + ' → ' + currentUserState);
-      }
-    }
-  }
-
-  // ===== STAGE 4 — Motion Detection =====
-  function updateMotionDetection(deltaMs) {
-    wasStill = userIsStill;
-
-    if (headMovement < STILL_THRESHOLD_PX) {
-      stillTimer += deltaMs;
-      timeStillMs += deltaMs;
-      if (stillTimer >= STILL_DURATION_MS) {
-        userIsStill = true;
-      }
-    } else {
-      stillTimer = 0;
-      timeStillMs = 0;
-      userIsStill = false;
-    }
-  }
-
-  // ===== STAGE 5 — Attention Brain =====
-  function evaluateAttention() {
-    var now = performance.now();
-
-    // P1 — Emotion lock (Grumpy / Sulking / Suspicious)
-    if (currentEmotion === 'grumpy' || currentEmotion === 'sulking' || currentEmotion === 'suspicious') {
-      // Lock gaze to last known face position. No scan. No drift.
-      curiosityScanActive = false;
-      searchScanActive = false;
-      return;
-    }
-
-    // P2 — User just started moving (userIsStill just became false)
-    if (wasStill && !userIsStill) {
-      gazeTarget.x = faceNormX;
-      gazeTarget.y = faceNormY;
-      if (curiosityScanActive || currentEmotion === 'sleepy') {
-        triggerEmbarrassed = true;
-      }
-      curiosityScanActive = false;
-      searchScanActive = false;
-      return;
-    }
-
-    // P3 — User present, recently moving (still < 5000ms)
-    if (facePresent && timeStillMs < STILL_DURATION_MS) {
-      curiosityScanActive = false;
-      searchScanActive = false;
-      var microX = (Math.random() - 0.5) * 0.04;
-      var microY = (Math.random() - 0.5) * 0.03;
-      gazeTarget.x = faceNormX + microX;
-      gazeTarget.y = faceNormY + microY;
-      return;
-    }
-
-    // P4 — User still 5000–15000ms
-    if (facePresent && userIsStill && timeStillMs < 15000) {
-      curiosityScanActive = false;
-      searchScanActive = false;
-      gazeTarget.x = lerp(gazeTarget.x, faceNormX + (Math.random() - 0.5) * 0.3, 0.003);
-      gazeTarget.y = lerp(gazeTarget.y, faceNormY + (Math.random() - 0.5) * 0.2, 0.003);
-      return;
-    }
-
-    // P5 — User still ≥ 15000ms — Curiosity Scan
-    if (facePresent && userIsStill && timeStillMs >= 15000) {
-      searchScanActive = false;
-      if (!curiosityScanActive) {
-        curiosityScanActive = true;
-        curiosityScanStep = 0;
-        curiosityScanHoldEnd = now + 2000 + Math.random() * 2000;
-      }
-      updateCuriosityScan(now);
-      return;
-    }
-
-    // P6 — NoFace
-    if (currentUserState === 'NoFace') {
-      curiosityScanActive = false;
-      if (!searchScanActive) {
-        searchScanActive = true;
-        searchScanStep = 0;
-        searchScanHoldEnd = now + 400 + Math.random() * 200;
-        searchScanLerp = 0.12;
-      }
-      updateSearchScan(now);
-      return;
-    }
-  }
-
-  // ===== Curiosity Scan Sequence =====
-  var curiosityScanPoints = [
-    { x: -0.50, y: +0.05 },  // peek left
-    { x: +0.50, y: +0.05 },  // peek right
-    { x: -0.10, y: -0.40 },  // look up curiously
-    { x: -0.65, y: -0.35 },  // background upper-left
-    { x: +0.65, y: -0.35 },  // background upper-right
-    null,                      // random (computed on enter)
-    null,                      // return to face (computed on enter)
-    null                       // hold face (computed on enter)
-  ];
-
-  function updateCuriosityScan(now) {
-    // Check if user moved during scan → abort to step 7
-    if (wasStill && !userIsStill) {
-      curiosityScanStep = 6;  // jump to face return
-      triggerEmbarrassed = true;
-      curiosityScanHoldEnd = now + 100;
-    }
-
-    if (now >= curiosityScanHoldEnd) {
-      curiosityScanStep = (curiosityScanStep + 1) % 8;
-      curiosityScanHoldEnd = now + 2000 + Math.random() * 2000;
-      if (curiosityScanStep === 7) {
-        // hold face step: 2000-3000ms
-        curiosityScanHoldEnd = now + 2000 + Math.random() * 1000;
-      }
-    }
-
-    var target;
-    if (curiosityScanStep < 5) {
-      target = curiosityScanPoints[curiosityScanStep];
-    } else if (curiosityScanStep === 5) {
-      // Random interesting point
-      target = {
-        x: (Math.random() - 0.5) * 0.8,
-        y: (Math.random() - 0.5) * 0.6
-      };
-    } else {
-      // Steps 6 & 7: return to / hold face
-      target = { x: faceNormX, y: faceNormY };
-    }
-
-    gazeTarget.x = lerp(gazeTarget.x, target.x, 0.035);
-    gazeTarget.y = lerp(gazeTarget.y, target.y, 0.035);
-  }
-
-  // ===== Search Scan (NoFace) =====
-  var searchScanPoints = [
-    { x: -0.70, y: 0.00 },
-    { x: +0.70, y: 0.00 },
-    { x:  0.00, y: -0.55 },
-    { x:  0.00, y: 0.00 }
-  ];
-
-  function updateSearchScan(now) {
-    if (now >= searchScanHoldEnd) {
-      searchScanStep = (searchScanStep + 1) % searchScanPoints.length;
-      searchScanHoldEnd = now + 400 + Math.random() * 200;
-      // Each loop iteration: slightly increase lerp speed
-      if (searchScanStep === 0) {
-        searchScanLerp = Math.min(searchScanLerp + 0.008, 0.25);
-      }
-    }
-
-    var target = searchScanPoints[searchScanStep];
-    gazeTarget.x = lerp(gazeTarget.x, target.x, searchScanLerp);
-    gazeTarget.y = lerp(gazeTarget.y, target.y, searchScanLerp);
-  }
-
-  // ===== UI Update from State =====
-  function updateUIFromState(ts) {
-    showUserState('you: ' + currentUserState.toLowerCase());
-
-    if (triggerEmbarrassed) {
-      currentEmotion = 'embarrassed';
-      showEmotionText('DeskBuddy: embarrassed ˘ω˘!');
-      triggerEmbarrassed = false;
-      // Reset after 2 seconds
-      setTimeout(function () {
-        if (currentEmotion === 'embarrassed') {
-          currentEmotion = 'happy';
-        }
-      }, 2000);
-    } else if (currentUserState === 'Focused') {
-      currentEmotion = 'happy';
-      showEmotionText('DeskBuddy: happy ˘ω˘');
-      if (!focusTimerRunning) {
-        focusTimerRunning = true;
-        lastFocusTickTime = ts;
-      }
-    } else if (currentUserState === 'LookingAway') {
-      currentEmotion = 'suspicious';
-      showEmotionText('DeskBuddy: suspicious ˘ω˘?');
-      focusTimerRunning = false;
-    } else if (currentUserState === 'Distracted') {
-      currentEmotion = 'curious';
-      showEmotionText('DeskBuddy: curious ˘ω˘?');
-      focusTimerRunning = false;
-    } else if (currentUserState === 'Sleepy') {
-      currentEmotion = 'sleepy';
-      showEmotionText('DeskBuddy: sleepy ˘ω˘ ~');
-      focusTimerRunning = false;
-    } else if (currentUserState === 'NoFace') {
-      currentEmotion = 'scared';
-      showEmotionText('DeskBuddy: looking for you ˘ω˘');
-      focusTimerRunning = false;
-    }
-
-    // Curiosity scan emotion
-    if (curiosityScanActive && currentEmotion !== 'embarrassed') {
-      currentEmotion = 'curious';
-      showEmotionText('DeskBuddy: curious ˘ω˘ ~');
     }
 
     // Accumulate focus time
     if (focusTimerRunning) {
       var elapsed = (ts - lastFocusTickTime) / 1000;
-      if (elapsed > 0 && elapsed < 1) {
-        focusTimerSeconds += elapsed;
-      }
+      focusTimerSeconds += elapsed;
       lastFocusTickTime = ts;
       updateFocusTimerDisplay();
     }
   }
 
-  // ===== STAGE 6 — Eye Motion System: Per-frame update =====
-  function updateEyeMotion(t) {
-    // Evaluate attention brain periodically or on state change
-    var now = performance.now();
-    if (now - lastAttentionEvalTime >= ATTENTION_EVAL_MS) {
-      evaluateAttention();
-      lastAttentionEvalTime = now;
-    }
-
-    // Layer 2 — Pupil gaze
-    var targetPX = gazeTarget.x * PUPIL_MAX_TRAVEL;
-    var targetPY = gazeTarget.y * PUPIL_MAX_TRAVEL;
-    pupilX += (targetPX - pupilX) * pupilLerpSpeed;
-    pupilY += (targetPY - pupilY) * pupilLerpSpeed;
-
-    // Clamp to 30% of iris radius
-    pupilX = clamp(pupilX, -PUPIL_MAX_TRAVEL, PUPIL_MAX_TRAVEL);
-    pupilY = clamp(pupilY, -PUPIL_MAX_TRAVEL, PUPIL_MAX_TRAVEL);
-
-    // Organic imperfection: slight offset for right eye
-    var rightOffsetX = (Math.random() - 0.5) * 0.5;
-    var rightOffsetY = (Math.random() - 0.5) * 0.5;
-
-    // Layer 3 — Body lean (gaze drift)
-    leanTargetX = gazeTarget.x * 8;   // max ±8px
-    leanTargetY = gazeTarget.y * 6;   // max ±6px
-    leanX += (leanTargetX - leanX) * 0.035;
-    leanY += (leanTargetY - leanY) * 0.035;
-
-    // Body tilt for curiosity scan
-    var bodyTilt = 0;
-    if (curiosityScanActive) {
-      bodyTilt = gazeTarget.x * 0.8;  // 0.8° toward scan direction
-    }
-
-    // ---- Combined Transform: ONE DOM write per element per frame ----
-
-    // Body: float + lean + tilt
-    computeFloat(t);
-    buddyBody.style.transform = 'translate(' + (lastFloatX + leanX) + 'px, ' +
-      (lastFloatY + leanY) + 'px) rotate(' + bodyTilt + 'deg)';
-
-    // Pupils
-    pupilLeft.style.transform = 'translate(calc(-50% + ' + pupilX + 'px), calc(-50% + ' + pupilY + 'px))';
-    pupilRight.style.transform = 'translate(calc(-50% + ' + (pupilX + rightOffsetX) +
-      'px), calc(-50% + ' + (pupilY + rightOffsetY) + 'px))';
-  }
-
   // ===== Main Animation Loop =====
+
   function animate() {
     requestAnimationFrame(animate);
     var t = performance.now();
 
+    updateFloat(t);
     updateBlink(t);
-    updateEyeMotion(t);
+    updatePupils(t);
   }
 
   // ===== Initialize =====
+
   scheduleNextBlink();
   animate();
   initCamera();

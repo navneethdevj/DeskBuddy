@@ -35,18 +35,13 @@ const FaceDetection = (() => {
   let videoElement   = null;
   let running        = false;
   let intervalId     = null;
-  let lastDetectTime = 0;  // track last timestamp sent to MediaPipe (must be strictly increasing)
 
   // Detected signals
   let facePresent    = false;
   let gazeDirection  = { x: 0, y: 0 };
   let headDirection  = { x: 0, y: 0 };
-  let headYaw        = 0;   // degrees, from transformation matrix
-  let headPitch      = 0;   // degrees, from transformation matrix
   let eyeOpenness    = 1.0;
   let movementLevel  = 0;
-  let faceNormX      = 0;   // normalized face X: -1 to +1
-  let faceNormY      = 0;   // normalized face Y: -1 to +1
 
   // Frame-to-frame movement tracking
   let prevNosePos = null;
@@ -128,7 +123,6 @@ const FaceDetection = (() => {
         faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
           outputFaceBlendshapes: true,
-          outputFacialTransformationMatrixes: true,
           runningMode: 'VIDEO',
           numFaces: 1
         });
@@ -138,20 +132,10 @@ const FaceDetection = (() => {
         faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
           outputFaceBlendshapes: true,
-          outputFacialTransformationMatrixes: true,
           runningMode: 'VIDEO',
           numFaces: 1
         });
         console.log('[FaceDetection] FaceLandmarker created (CPU).');
-      }
-
-      // Wait for video to have actual frame data before starting detection
-      if (videoElement.readyState < 2) {
-        await new Promise(function (resolve) {
-          videoElement.addEventListener('loadeddata', resolve, { once: true });
-          // Safety timeout: don't wait forever
-          setTimeout(resolve, 5000);
-        });
       }
 
       lastFaceTime = Date.now();
@@ -171,11 +155,7 @@ const FaceDetection = (() => {
   function detect() {
     if (!running || !faceLandmarker || !videoElement || videoElement.readyState < 2) return;
 
-    // MediaPipe requires strictly increasing timestamps
     var now = performance.now();
-    if (now <= lastDetectTime) now = lastDetectTime + 0.1;
-    lastDetectTime = now;
-
     var results;
     try {
       results = faceLandmarker.detectForVideo(videoElement, now);
@@ -208,27 +188,6 @@ const FaceDetection = (() => {
         var faceCenterY = (topFace.y + bottomFace.y) / 2;
         var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
         headDirection.y = (noseTip.y - faceCenterY) / halfHeight;
-      }
-
-      // --- Face center position (normalized -1 to +1) ---
-      if (noseTip) {
-        faceNormX = (noseTip.x - 0.5) * 2;
-        faceNormY = (noseTip.y - 0.5) * 2;
-      }
-
-      // --- Head yaw/pitch from transformation matrices ---
-      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
-        var matrix = results.facialTransformationMatrixes[0];
-        if (matrix && matrix.data) {
-          var m = matrix.data;
-          // 4x4 column-major: Yaw = atan2(m[8], m[10]), Pitch = asin(-m[9])
-          headYaw   = Math.atan2(m[8], m[10]) * (180 / Math.PI);
-          headPitch = Math.asin(-Math.max(-1, Math.min(1, m[9]))) * (180 / Math.PI);
-        }
-      } else {
-        // Fallback: approximate from landmark-based headDirection
-        headYaw   = headDirection.x * 30;
-        headPitch = headDirection.y * 25;
       }
 
       // --- Movement level: frame-to-frame nose displacement ---
@@ -330,11 +289,8 @@ const FaceDetection = (() => {
   function isFacePresent()     { return facePresent; }
   function getGazeDirection()  { return { x: gazeDirection.x, y: gazeDirection.y }; }
   function getHeadDirection()  { return { x: headDirection.x, y: headDirection.y }; }
-  function getHeadYaw()        { return headYaw; }
-  function getHeadPitch()      { return headPitch; }
   function getEyeOpenness()    { return eyeOpenness; }
   function getMovementLevel()  { return movementLevel; }
-  function getFaceNorm()       { return { x: faceNormX, y: faceNormY }; }
   function isRunning()         { return running; }
 
   function stop() {
@@ -351,11 +307,8 @@ const FaceDetection = (() => {
     isFacePresent:    isFacePresent,
     getGazeDirection: getGazeDirection,
     getHeadDirection: getHeadDirection,
-    getHeadYaw:       getHeadYaw,
-    getHeadPitch:     getHeadPitch,
     getEyeOpenness:   getEyeOpenness,
     getMovementLevel: getMovementLevel,
-    getFaceNorm:      getFaceNorm,
     isRunning:        isRunning,
     stop:             stop
   };
