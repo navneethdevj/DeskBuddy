@@ -41,8 +41,12 @@ const FaceDetection = (() => {
   let facePresent    = false;
   let gazeDirection  = { x: 0, y: 0 };
   let headDirection  = { x: 0, y: 0 };
+  let headYaw        = 0;   // degrees, from transformation matrix
+  let headPitch      = 0;   // degrees, from transformation matrix
   let eyeOpenness    = 1.0;
   let movementLevel  = 0;
+  let faceNormX      = 0;   // normalized face X: -1 to +1
+  let faceNormY      = 0;   // normalized face Y: -1 to +1
 
   // Frame-to-frame movement tracking
   let prevNosePos = null;
@@ -206,6 +210,27 @@ const FaceDetection = (() => {
         headDirection.y = (noseTip.y - faceCenterY) / halfHeight;
       }
 
+      // --- Face center position (normalized -1 to +1) ---
+      if (noseTip) {
+        faceNormX = (noseTip.x - 0.5) * 2;
+        faceNormY = (noseTip.y - 0.5) * 2;
+      }
+
+      // --- Head yaw/pitch from transformation matrices ---
+      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
+        var matrix = results.facialTransformationMatrixes[0];
+        if (matrix && matrix.data) {
+          var m = matrix.data;
+          // Extract rotation angles from 4x4 column-major matrix
+          headYaw   = Math.atan2(m[8], m[10]) * (180 / Math.PI);
+          headPitch = Math.asin(-Math.max(-1, Math.min(1, m[9]))) * (180 / Math.PI);
+        }
+      } else {
+        // Fallback: approximate from landmark-based headDirection
+        headYaw   = headDirection.x * 30;
+        headPitch = headDirection.y * 25;
+      }
+
       // --- Movement level: frame-to-frame nose displacement ---
       if (noseTip && prevNosePos) {
         var mdx = noseTip.x - prevNosePos.x;
@@ -305,8 +330,11 @@ const FaceDetection = (() => {
   function isFacePresent()     { return facePresent; }
   function getGazeDirection()  { return { x: gazeDirection.x, y: gazeDirection.y }; }
   function getHeadDirection()  { return { x: headDirection.x, y: headDirection.y }; }
+  function getHeadYaw()        { return headYaw; }
+  function getHeadPitch()      { return headPitch; }
   function getEyeOpenness()    { return eyeOpenness; }
   function getMovementLevel()  { return movementLevel; }
+  function getFaceNorm()       { return { x: faceNormX, y: faceNormY }; }
   function isRunning()         { return running; }
 
   function stop() {
@@ -323,8 +351,11 @@ const FaceDetection = (() => {
     isFacePresent:    isFacePresent,
     getGazeDirection: getGazeDirection,
     getHeadDirection: getHeadDirection,
+    getHeadYaw:       getHeadYaw,
+    getHeadPitch:     getHeadPitch,
     getEyeOpenness:   getEyeOpenness,
     getMovementLevel: getMovementLevel,
+    getFaceNorm:      getFaceNorm,
     isRunning:        isRunning,
     stop:             stop
   };
