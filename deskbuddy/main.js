@@ -19,9 +19,17 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false
     }
   });
+
+  // Phase 1 — Camera permission for MediaPipe face detection
+  mainWindow.webContents.session.setPermissionRequestHandler(
+    (webContents, permission, callback) => {
+      callback(permission === 'media' || permission === 'camera');
+    }
+  );
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
