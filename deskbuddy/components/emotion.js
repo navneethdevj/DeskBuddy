@@ -6,7 +6,7 @@ const Emotion = (() => {
   const STATES = [
     'idle', 'curious', 'focused', 'sleepy', 'suspicious', 'happy',
     'scared', 'sad', 'crying', 'embarrassed', 'pouty', 'grumpy',
-    'overjoyed', 'sulking'
+    'overjoyed', 'sulking', 'forgiven'
   ];
   let currentState = null;
   let element = null;
