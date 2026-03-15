@@ -20,6 +20,10 @@ const Brain = (() => {
   const RETREAT_THRESHOLD = 200;
   const RETREAT_FACTOR = -0.4;
 
+  // Phase 2: Face gaze
+  const FACE_GAZE_SOFTNESS = 0.25;
+  const FACE_GAZE_LERP     = 0.06;
+
   // Focus meter tuning
   const FOCUS_INCREASE_MOUSE = 0.4;
   const FOCUS_INCREASE_KEY = 0.8;
@@ -62,6 +66,11 @@ const Brain = (() => {
   // Screen awareness: typing glance
   let wasTyping = false;
   let typingGlanceUntil = 0;
+
+  let gazeCurrentX = 0;
+  let gazeCurrentY = 0;
+  let gazeTargetX  = 0;
+  let gazeTargetY  = 0;
 
   // ===== Activity Helpers =====
 
@@ -118,11 +127,13 @@ const Brain = (() => {
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
 
-    var near = isCursorNear();
-    if (near && currentState !== 'followCursor' && followCooldown <= 0) {
-      enterState('followCursor');
-      return;
-    }
+    // CURSOR TRACKING — disabled (Phase 2). Face camera is now attention source.
+    // var near = isCursorNear();
+    // if (near && currentState !== 'followCursor' && followCooldown <= 0) {
+    //   enterState('followCursor');
+    //   return;
+    // }
+    var near = false;
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -130,28 +141,29 @@ const Brain = (() => {
     switch (currentState) {
       case 'observe':
         Movement.update();
-        // Eyes slowly scan the environment
-        var time = now * 0.001;
-        var c = Companion.getCenter();
-        Companion.lookAt(
-          c.x + Math.sin(time * 0.8) * 300,
-          c.y + Math.sin(time * 0.5) * 100
-        );
+        if (window.perception?.facePresent) {
+          _applyFaceGaze();
+        } else {
+          var time = now * 0.001;
+          var c = Companion.getCenter();
+          Companion.lookAt(
+            c.x + Math.sin(time * 0.8) * 120,
+            c.y + Math.sin(time * 0.5) * 60
+          );
+        }
         break;
       case 'curious':
         Movement.decay();
+        if (window.perception?.facePresent) _applyFaceGaze();
         break;
       case 'idle':
         Movement.decay();
         applyGaze(now, mouseActive, keyActive);
         break;
       case 'followCursor':
-        updateFollowCursor();
-        if (!near) {
-          followCooldown = FOLLOW_COOLDOWN_FRAMES;
-          Companion.resetLook();
-          pickNextState();
-        }
+        // CURSOR TRACKING — disabled (Phase 2).
+        Companion.resetLook();
+        pickNextState();
         break;
       case 'sleepy':
         Movement.decay();
@@ -197,24 +209,25 @@ const Brain = (() => {
    * Priority: screen-center glance when typing > follow cursor > idle look.
    */
   function applyGaze(now, mouseActive, keyActive) {
-    // Screen awareness: brief glance at screen center when typing starts
-    if (keyActive && !wasTyping) {
-      typingGlanceUntil = now + 1000;
-    }
-    wasTyping = keyActive;
-
-    if (now < typingGlanceUntil) {
-      Companion.lookAt(window.innerWidth / 2, window.innerHeight / 2);
+    // CURSOR TRACKING — disabled (Phase 2).
+    if (window.perception?.facePresent) {
+      _applyFaceGaze();
       return;
     }
-
-    if (mouseActive) {
-      Companion.lookAt(mouseX, mouseY);
-      return;
-    }
-
-    // Idle look behavior
     checkIdleLook(now);
+  }
+
+  function _applyFaceGaze() {
+    const p = window.perception;
+    if (!p?.facePresent) return;
+    const center = Companion.getCenter();
+    const rawX   = p.faceX * window.innerWidth;
+    const rawY   = p.faceY * window.innerHeight;
+    gazeTargetX  = center.x + (rawX - center.x) * FACE_GAZE_SOFTNESS;
+    gazeTargetY  = center.y + (rawY - center.y) * FACE_GAZE_SOFTNESS;
+    gazeCurrentX += (gazeTargetX - gazeCurrentX) * FACE_GAZE_LERP;
+    gazeCurrentY += (gazeTargetY - gazeCurrentY) * FACE_GAZE_LERP;
+    Companion.lookAt(gazeCurrentX, gazeCurrentY);
   }
 
   // ===== Idle Look =====
@@ -301,6 +314,13 @@ const Brain = (() => {
   }
 
   function pickNextState() {
+    if (window.perception) {
+      const p = window.perception;
+      if (p.userState === 'NoFace')    { enterState('idle');   return; }
+      if (p.userState === 'Sleepy')    { enterState('sleepy'); return; }
+      if (p.userState === 'Focused' && p.timeInStateMs >= 15000) { enterState('curious'); return; }
+      if (p.userState === 'Focused' || p.userState === 'LookingAway') { enterState('observe'); return; }
+    }
     var next = STATES[Math.floor(Math.random() * STATES.length)];
     enterState(next);
   }
