@@ -20,7 +20,7 @@ const Companion = (() => {
   const GAZE_MAX_Y = 10;
 
   // Gradient gaze smoothing — prevents instant snap of --gaze-x/--gaze-y
-  // 0.18 at 60fps gives ~5 frame settle time; higher = snappier, lower = floatier
+  // 0.18 at 60fps: 1-(1-0.18)^5 ≈ 63% after 5 frames, 95% after 15 frames (~250ms)
   const GAZE_GRADIENT_LERP = 0.18;
   // Reference distance for proportional gradient shift (pixels from companion center)
   // At this distance gaze gradient reaches its maximum; closer = proportionally less.

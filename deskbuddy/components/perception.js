@@ -56,7 +56,7 @@ const Perception = (() => {
 
   // EMA (Exponential Moving Average) — smooths noisy MediaPipe signals
   // Higher alpha = more responsive; lower = smoother.
-  // At 15Hz eval rate, alpha 0.35 gives ~300ms convergence to 88%.
+  // At 15Hz: FACE alpha 0.35 → ~300ms to 88%; GAZE alpha 0.40 → ~250ms to 88%.
   const EMA_ALPHA_FACE = 0.35;
   const EMA_ALPHA_GAZE = 0.40;
   let emaFaceX = 0.5, emaFaceY = 0.5;
