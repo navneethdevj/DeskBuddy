@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeskBuddy</title>
+<style>
+/* ===== Reset ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
+
+/* ===== DeskBuddy Container ===== */
+#deskbuddy {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ===== Body ===== */
+#buddy-body {
+  position: relative;
+  width: 130px;
+  height: 105px;
+  border-radius: 50% 50% 48% 48% / 45% 45% 55% 55%;
+  background: radial-gradient(ellipse at 50% 45%, #fffcf8 0%, #FFF8F2 40%, #f5ede4 100%);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.09), 0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* ===== Ear Nubs ===== */
+.ear {
+  position: absolute;
+  width: 18px;
+  height: 14px;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(ellipse at 50% 60%, #fffcf8 0%, #FFF8F2 50%, #f5ede4 100%);
+  top: -6px;
+}
+.ear-left  { left: 22px;  transform: rotate(-12deg); }
+.ear-right { right: 22px; transform: rotate(12deg); }
+
+/* ===== Cheek Blushes ===== */
+.cheek {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,130,130,0.13) 0%, rgba(255,130,130,0) 70%);
+  bottom: 18px;
+  pointer-events: none;
+}
+.cheek-left  { left: 12px; }
+.cheek-right { right: 12px; }
+
+/* ===== Eyes Container ===== */
+#eyes-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== Eye ===== */
+.eye {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #FAFAF8;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+/* ===== Iris ===== */
+.iris {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #7dd9ff 0%, #5BC8F5 50%, #49aee0 100%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ===== Pupil ===== */
+.pupil {
+  position: absolute;
+  width: 12px;
+  height: 14px;
+  border-radius: 50%;
+  background: #181828;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: none;
+}
+
+/* ===== Shine Highlights (fixed, DO NOT move with pupil) ===== */
+.shine-large {
+  position: absolute;
+  width: 7px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  opacity: 0.92;
+  top: 8px;
+  left: 8px;
+  transform: rotate(-15deg);
+  z-index: 10;
+  pointer-events: none;
+}
+.shine-small {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  opacity: 0.60;
+  bottom: 10px;
+  right: 9px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ===== Eyelid ===== */
+.eyelid {
+  position: absolute;
+  top: 0;
+  left: -1px;
+  right: -1px;
+  height: 8%;
+  background: #FFF8F2;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  z-index: 20;
+  pointer-events: none;
+  transition: none;
+}
+
+/* ===== Eyelashes ===== */
+.eyelashes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  z-index: 21;
+  pointer-events: none;
+}
+.lash {
+  position: absolute;
+  width: 2px;
+  height: 4px;
+  background: #EEE0D5;
+  border-radius: 1px;
+  top: 0;
+}
+/* Left eye lashes */
+.eye:first-child .lash:nth-child(1) { left: 8px;  transform: rotate(-20deg); height: 5px; }
+.eye:first-child .lash:nth-child(2) { left: 14px; transform: rotate(-8deg);  height: 4px; }
+.eye:first-child .lash:nth-child(3) { left: 20px; transform: rotate(5deg);   height: 5px; }
+.eye:first-child .lash:nth-child(4) { left: 26px; transform: rotate(15deg);  height: 4px; }
+/* Right eye lashes */
+.eye:last-child .lash:nth-child(1) { left: 14px; transform: rotate(-15deg); height: 4px; }
+.eye:last-child .lash:nth-child(2) { left: 20px; transform: rotate(-5deg);  height: 5px; }
+.eye:last-child .lash:nth-child(3) { left: 26px; transform: rotate(8deg);   height: 4px; }
+.eye:last-child .lash:nth-child(4) { left: 32px; transform: rotate(20deg);  height: 5px; }
+
+/* ===== UI Text Elements ===== */
+#emotion-display {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  font-family: monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  opacity: 0.45;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: opacity 0.4s ease;
+  z-index: 10000;
+}
+#user-state-display {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.80);
+  opacity: 0.35;
+  pointer-events: none;
+  text-align: center;
+  z-index: 10000;
+}
+#focus-timer {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.70);
+  opacity: 0.20;
+  pointer-events: none;
+  text-align: center;
+  letter-spacing: 0.5px;
+  z-index: 10000;
+}
+</style>
+</head>
+<body>
+
+<!-- Hidden video element for webcam (never visible) -->
+<video id="cameraVideo" autoplay playsinline muted style="display:none"></video>
+
+<!-- DeskBuddy -->
+<div id="deskbuddy">
+  <div id="buddy-body">
+    <!-- Ears -->
+    <div class="ear ear-left"></div>
+    <div class="ear ear-right"></div>
+    <!-- Cheeks -->
+    <div class="cheek cheek-left"></div>
+    <div class="cheek cheek-right"></div>
+    <!-- Eyes -->
+    <div id="eyes-container">
+      <div class="eye" id="eye-left">
+        <div class="iris" id="iris-left">
+          <div class="pupil" id="pupil-left"></div>
+        </div>
+        <div class="shine-large"></div>
+        <div class="shine-small"></div>
+        <div class="eyelid" id="lid-left"></div>
+        <div class="eyelashes"><div class="lash"></div><div class="lash"></div><div class="lash"></div><div class="lash"></div></div>
+      </div>
+      <div class="eye" id="eye-right">
+        <div class="iris" id="iris-right">
+          <div class="pupil" id="pupil-right"></div>
+        </div>
+        <div class="shine-large"></div>
+        <div class="shine-small"></div>
+        <div class="eyelid" id="lid-right"></div>
+        <div class="eyelashes"><div class="lash"></div><div class="lash"></div><div class="lash"></div><div class="lash"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UI Text Elements -->
+<div id="emotion-display">DeskBuddy: happy ˘ω˘</div>
+<div id="user-state-display">you: focused</div>
+<div id="focus-timer">focus 00:00</div>
+
+<!-- MediaPipe Vision (Face Landmarker) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.js" crossorigin="anonymous"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===== DOM References =====
+  var buddyBody     = document.getElementById('buddy-body');
+  var deskbuddy     = document.getElementById('deskbuddy');
+  var pupilLeft     = document.getElementById('pupil-left');
+  var pupilRight    = document.getElementById('pupil-right');
+  var irisLeft      = document.getElementById('iris-left');
+  var irisRight     = document.getElementById('iris-right');
+  var lidLeft       = document.getElementById('lid-left');
+  var lidRight      = document.getElementById('lid-right');
+  var emotionEl     = document.getElementById('emotion-display');
+  var userStateEl   = document.getElementById('user-state-display');
+  var focusTimerEl  = document.getElementById('focus-timer');
+  var videoElement  = document.getElementById('cameraVideo');
+
+  // ===== Constants =====
+  var IRIS_RADIUS        = 13.5;  // half of 27px iris
+  var PUPIL_MAX_TRAVEL   = IRIS_RADIUS * 0.30;  // 30% of iris radius
+  var DETECTION_INTERVAL = 80;    // ~12 FPS for face detection
+
+  // ===== State =====
+  var cameraAvailable    = false;
+  var faceLandmarker     = null;
+  var lastLandmarks      = null;
+  var lastBlendshapes    = null;
+  var lastDetectionTimestamp = 0;
+
+  // Blink state
+  var lidTargetL  = 0.08;  // 8% = neutral (proportion 0-1 of eye height)
+  var lidTargetR  = 0.08;
+  var lidCurrentL = 0.08;
+  var lidCurrentR = 0.08;
+  var blinkPhase  = 'idle';  // idle | closing | holding | opening
+  var blinkHoldTimeout = null;
+  var nextBlinkTime = 0;
+
+  // Pupil gaze target (normalized -1..1)
+  var gazeTargetX = 0;
+  var gazeTargetY = 0;
+  var gazeCurrX   = 0;
+  var gazeCurrY   = 0;
+
+  // Focus timer
+  var focusTimerSeconds = 0;
+  var focusTimerRunning = false;
+  var lastFocusTickTime = 0;
+
+  // ===== Helper: show emotion text =====
+  function showEmotionText(text) {
+    emotionEl.textContent = text;
+  }
+
+  // ===== Helper: update user state text =====
+  function showUserState(text) {
+    userStateEl.textContent = text;
+  }
+
+  // ===== Helper: update focus timer text =====
+  function updateFocusTimerDisplay() {
+    var mins = Math.floor(focusTimerSeconds / 60);
+    var secs = Math.floor(focusTimerSeconds % 60);
+    focusTimerEl.textContent = 'focus ' +
+      String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+  }
+
+  // ===== Floating Motion =====
+  function updateFloat(t) {
+    var floatY = Math.sin(t * 0.0008) * 4.5 + Math.sin(t * 0.00131) * 2.0 + Math.sin(t * 0.00197) * 1.0;
+    var floatX = Math.sin(t * 0.00061) * 2.5 + Math.sin(t * 0.00109) * 1.5 + Math.sin(t * 0.00173) * 0.8;
+    buddyBody.style.transform = 'translate(' + floatX + 'px, ' + floatY + 'px)';
+  }
+
+  // ===== Blinking =====
+  function scheduleNextBlink() {
+    nextBlinkTime = performance.now() + 3000 + Math.random() * 2000;
+  }
+
+  function startBlink() {
+    blinkPhase = 'closing';
+    lidTargetL = 1.0;
+    lidTargetR = 1.0;
+  }
+
+  function updateBlink(t) {
+    if (blinkPhase === 'idle') {
+      if (t >= nextBlinkTime) {
+        startBlink();
+      }
+      // Approach neutral (8%)
+      lidTargetL = 0.08;
+      lidTargetR = 0.08;
+    }
+
+    // Lerp eyelids
+    var lerpSpeed;
+    if (blinkPhase === 'closing') {
+      lerpSpeed = 0.25;
+    } else if (blinkPhase === 'opening') {
+      lerpSpeed = 0.18;
+    } else {
+      lerpSpeed = 0.18;
+    }
+
+    lidCurrentL += (lidTargetL - lidCurrentL) * lerpSpeed;
+    lidCurrentR += (lidTargetR - lidCurrentR) * lerpSpeed;
+
+    // Check state transitions
+    if (blinkPhase === 'closing' && lidCurrentL > 0.95) {
+      lidCurrentL = 1.0;
+      lidCurrentR = 1.0;
+      blinkPhase = 'holding';
+      setTimeout(function () {
+        blinkPhase = 'opening';
+        lidTargetL = 0.08;
+        lidTargetR = 0.08;
+      }, 50);
+    }
+
+    if (blinkPhase === 'opening' && lidCurrentL < 0.12) {
+      lidCurrentL = 0.08;
+      lidCurrentR = 0.08;
+      blinkPhase = 'idle';
+      scheduleNextBlink();
+    }
+
+    // Apply to DOM (percentage of eye height)
+    lidLeft.style.height  = (lidCurrentL * 100) + '%';
+    lidRight.style.height = (lidCurrentR * 100) + '%';
+  }
+
+  // ===== Pupil Movement =====
+  function updatePupils(t) {
+    // Micro-drift
+    var microDriftX = Math.sin(t * 0.002) * 0.05;
+    var microDriftY = Math.sin(t * 0.0027) * 0.04;
+
+    var targetX = gazeTargetX + microDriftX;
+    var targetY = gazeTargetY + microDriftY;
+
+    // Lerp toward target
+    gazeCurrX += (targetX - gazeCurrX) * 0.08;
+    gazeCurrY += (targetY - gazeCurrY) * 0.08;
+
+    // Clamp to max travel
+    var dist = Math.sqrt(gazeCurrX * gazeCurrX + gazeCurrY * gazeCurrY);
+    if (dist > 1) {
+      gazeCurrX /= dist;
+      gazeCurrY /= dist;
+    }
+
+    var px = gazeCurrX * PUPIL_MAX_TRAVEL;
+    var py = gazeCurrY * PUPIL_MAX_TRAVEL;
+
+    pupilLeft.style.transform  = 'translate(calc(-50% + ' + px + 'px), calc(-50% + ' + py + 'px))';
+    pupilRight.style.transform = 'translate(calc(-50% + ' + px + 'px), calc(-50% + ' + py + 'px))';
+  }
+
+  // CURSOR TRACKING — disabled. Camera is now the sole perceptual input.
+  // To re-enable: uncomment this block and disable the attention brain gaze output.
+  /*
+  document.addEventListener('mousemove', function (e) {
+    var buddyRect = buddyBody.getBoundingClientRect();
+    var cx = buddyRect.left + buddyRect.width / 2;
+    var cy = buddyRect.top + buddyRect.height / 2;
+    var dx = e.clientX - cx;
+    var dy = e.clientY - cy;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 0) {
+      gazeTargetX = Math.max(-1, Math.min(1, dx / 300));
+      gazeTargetY = Math.max(-1, Math.min(1, dy / 300));
+    }
+  });
+  */
+
+  // ===== Camera Awareness =====
+
+  async function initCamera() {
+    // Attempt camera access
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      cameraAvailable = true;
+      videoElement.srcObject = stream;
+      await videoElement.play();
+      console.log('[DeskBuddy] Camera access granted.');
+    } catch (err) {
+      cameraAvailable = false;
+      console.warn('[DeskBuddy] Camera unavailable:', err.message);
+      showEmotionText('( ˘ω˘ ) no camera~');
+      setTimeout(function () { showEmotionText('DeskBuddy: happy ˘ω˘'); }, 3000);
+      return;
+    }
+
+    // Initialize MediaPipe FaceLandmarker
+    if (typeof vision === 'undefined') {
+      console.warn('[DeskBuddy] MediaPipe vision bundle not loaded.');
+      return;
+    }
+
+    try {
+      console.log('[DeskBuddy] Loading MediaPipe FilesetResolver...');
+      var filesetResolver = await vision.FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+
+      var modelUrl = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+      // Try GPU first, fall back to CPU
+      try {
+        faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
+          runningMode: 'VIDEO',
+          numFaces: 1
+        });
+        console.log('[DeskBuddy] FaceLandmarker created (GPU).');
+      } catch (gpuErr) {
+        console.warn('[DeskBuddy] GPU failed:', gpuErr.message, '— trying CPU...');
+        faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
+          runningMode: 'VIDEO',
+          numFaces: 1
+        });
+        console.log('[DeskBuddy] FaceLandmarker created (CPU).');
+      }
+
+      // Start detection loop
+      setInterval(detectFace, DETECTION_INTERVAL);
+      console.log('[DeskBuddy] Face detection loop started (~' + Math.round(1000 / DETECTION_INTERVAL) + ' FPS).');
+    } catch (err) {
+      console.warn('[DeskBuddy] MediaPipe init failed:', err.message);
+    }
+  }
+
+  // ===== Face Detection Loop =====
+
+  var lastDetectTime = 0;
+  var facePresent = false;
+  var lastFaceSeenTime = 0;
+  var userState = 'NoFace';
+
+  function detectFace() {
+    if (!faceLandmarker || !videoElement || videoElement.readyState < 2) return;
+
+    var now = performance.now();
+    // Ensure monotonically increasing timestamp
+    if (now <= lastDetectTime) now = lastDetectTime + 1;
+    lastDetectTime = now;
+
+    var results;
+    try {
+      results = faceLandmarker.detectForVideo(videoElement, now);
+    } catch (e) {
+      // Skip frame silently
+      return;
+    }
+
+    var ts = Date.now();
+
+    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+      facePresent = true;
+      lastFaceSeenTime = ts;
+      lastLandmarks = results.faceLandmarks[0];
+
+      // Store blendshapes
+      if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+        lastBlendshapes = {};
+        results.faceBlendshapes[0].categories.forEach(function (s) {
+          lastBlendshapes[s.categoryName] = s.score;
+        });
+      }
+
+      lastDetectionTimestamp = ts;
+
+      // Derive gaze from head direction
+      var noseTip   = lastLandmarks[4];
+      var leftFace  = lastLandmarks[234];
+      var rightFace = lastLandmarks[454];
+      var topFace   = lastLandmarks[10];
+      var bottomFace = lastLandmarks[152];
+
+      if (noseTip && leftFace && rightFace && topFace && bottomFace) {
+        var faceCenterX = (leftFace.x + rightFace.x) / 2;
+        var halfWidth   = Math.abs(rightFace.x - leftFace.x) / 2 || 0.001;
+        var headX = (noseTip.x - faceCenterX) / halfWidth;
+
+        var faceCenterY = (topFace.y + bottomFace.y) / 2;
+        var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
+        var headY = (noseTip.y - faceCenterY) / halfHeight;
+
+        // Head direction affects pupil gaze (inverted X because camera mirrors)
+        gazeTargetX = Math.max(-1, Math.min(1, -headX * 1.5));
+        gazeTargetY = Math.max(-1, Math.min(1, headY * 1.2));
+
+        // Determine user state from head deviation
+        var headDev = Math.abs(headX) + Math.abs(headY);
+        if (headDev > 0.55) {
+          userState = 'Distracted';
+        } else {
+          userState = 'Focused';
+        }
+      }
+
+      // Check eye openness
+      if (lastBlendshapes) {
+        var blinkL = lastBlendshapes['eyeBlinkLeft'] || 0;
+        var blinkR = lastBlendshapes['eyeBlinkRight'] || 0;
+        var eyeOpen = 1 - (blinkL + blinkR) / 2;
+        if (eyeOpen < 0.45) {
+          userState = 'Sleepy';
+        }
+      }
+
+      // Update UI
+      showUserState('you: ' + userState.toLowerCase());
+      if (userState === 'Focused') {
+        showEmotionText('DeskBuddy: happy ˘ω˘');
+        if (!focusTimerRunning) {
+          focusTimerRunning = true;
+          lastFocusTickTime = ts;
+        }
+      } else if (userState === 'Distracted') {
+        showEmotionText('DeskBuddy: curious ˘ω˘?');
+        focusTimerRunning = false;
+      } else if (userState === 'Sleepy') {
+        showEmotionText('DeskBuddy: sleepy ˘ω˘ ~');
+        focusTimerRunning = false;
+      }
+
+    } else {
+      // No face detected
+      facePresent = false;
+      if (ts - lastFaceSeenTime > 3000) {
+        userState = 'NoFace';
+        showUserState('you: away');
+        showEmotionText('DeskBuddy: looking for you ˘ω˘');
+        focusTimerRunning = false;
+        // Reset gaze toward center
+        gazeTargetX *= 0.95;
+        gazeTargetY *= 0.95;
+      }
+    }
+
+    // Accumulate focus time
+    if (focusTimerRunning) {
+      var elapsed = (ts - lastFocusTickTime) / 1000;
+      focusTimerSeconds += elapsed;
+      lastFocusTickTime = ts;
+      updateFocusTimerDisplay();
+    }
+  }
+
+  // ===== Main Animation Loop =====
+
+  function animate() {
+    requestAnimationFrame(animate);
+    var t = performance.now();
+
+    updateFloat(t);
+    updateBlink(t);
+    updatePupils(t);
+  }
+
+  // ===== Initialize =====
+
+  scheduleNextBlink();
+  animate();
+  initCamera();
+
+})();
+</script>
+</body>
+</html>
