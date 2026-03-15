@@ -229,8 +229,8 @@ const Brain = (() => {
     // CURSOR TRACKING — disabled (Phase 2).
     // if (mouseActive) { Companion.lookAt(mouseX, mouseY); return; }
 
-    // Face gaze — use facePresent as the sole guard (not cameraAvailable,
-    // which can be false if GPU delegate failed even though camera stream works)
+    // Face gaze — use facePresent as the sole guard (more reliable than
+    // cameraAvailable which may not reflect actual detection state)
     if (window.perception?.facePresent) {
       _updateFaceGaze();
       return;

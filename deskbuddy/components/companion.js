@@ -44,20 +44,14 @@ const Companion = (() => {
       <div class="companion-inner">
         <div class="eyes">
           <div class="eye eye-left">
-            <div class="iris">
-              <div class="pupil"></div>
-            </div>
-            <div class="shine-large"></div>
-            <div class="shine-small"></div>
-            <div class="eyelid-top"></div>
+            <div class="pupil"></div>
+            <div class="shine-a"></div>
+            <div class="shine-b"></div>
           </div>
           <div class="eye eye-right">
-            <div class="iris">
-              <div class="pupil"></div>
-            </div>
-            <div class="shine-large"></div>
-            <div class="shine-small"></div>
-            <div class="eyelid-top"></div>
+            <div class="pupil"></div>
+            <div class="shine-a"></div>
+            <div class="shine-b"></div>
           </div>
         </div>
       </div>
