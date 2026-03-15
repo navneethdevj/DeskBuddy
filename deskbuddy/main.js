@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -24,7 +24,17 @@ function createWindow() {
     }
   });
 
-  // Phase 1 — Camera permission for MediaPipe face detection
+  // Phase 1 — Camera permissions (Electron 34 requires BOTH handlers)
+  //
+  // setPermissionCheckHandler runs first, synchronously — pre-approves the permission.
+  // Without this, Electron 34 blocks getUserMedia before the request handler fires.
+  mainWindow.webContents.session.setPermissionCheckHandler(
+    (webContents, permission) => {
+      if (permission === 'media' || permission === 'camera') return true;
+      return false;
+    }
+  );
+
   mainWindow.webContents.session.setPermissionRequestHandler(
     (webContents, permission, callback) => {
       callback(permission === 'media' || permission === 'camera');
