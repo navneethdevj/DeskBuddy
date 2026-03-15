@@ -46,12 +46,12 @@ const Brain = (() => {
   const IDLE_LOOK_MAX_DURATION = 2000;
 
   // Emotion timing thresholds (ms) — from VERIFY spec
-  const LOOKING_AWAY_SUSPICIOUS_MS = 10000;   // 10s → suspicious
+  const LOOKING_AWAY_SUSPICIOUS_MS = 15000;   // 15s → suspicious
   const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 90000;   // 90s → grumpy
+  const LOOKING_AWAY_GRUMPY_MS     = 100000;  // 100s → grumpy
   const NOFACE_SCARED_MS           =  6000;   //  6s → scared
   const NOFACE_SAD_MS              = 35000;   // 35s → sad
-  const NOFACE_CRYING_MS           = 45000;   // 45s → crying
+  const NOFACE_CRYING_MS           = 50000;   // 50s → crying
 
   // Tear overlay tuning
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
@@ -271,7 +271,7 @@ const Brain = (() => {
     const p = window.perception;
 
     // No camera available — fall back to original focus meter logic
-    if (!p) {
+    if (!window.cameraAvailable || !p) {
       if      (focusLevel > 70) Emotion.setState('focused');
       else if (focusLevel < 30) Emotion.setState('sleepy');
       else                      Emotion.setState('idle');
@@ -285,8 +285,10 @@ const Brain = (() => {
       case 'Focused':
         // face-api concept: react to user expressions
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
+        // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
         if (p.userSmiling)              emotion = 'happy';
-        else if (tms >= 15000
+        else if (p.userSurprised)       emotion = 'curious';
+        else if (tms >= 20000
               && p.attentionScore > 50) emotion = 'curious';
         else                            emotion = 'focused';
         break;
@@ -529,7 +531,7 @@ const Brain = (() => {
       if (p.userState === 'NoFace')  { enterState('idle');    return; }
       if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
       if (p.userState === 'Focused'
-       && p.timeInStateMs >= 15000
+       && p.timeInStateMs >= 20000
        && p.attentionScore > 50)     { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }

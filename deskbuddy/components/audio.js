@@ -90,6 +90,9 @@ const Audio = (() => {
           _reliefSigh();
         }
         break;
+      case 'forgiven':
+        _reliefSigh();
+        break;
     }
   }
 
