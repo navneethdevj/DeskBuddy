@@ -21,8 +21,8 @@ const Brain = (() => {
   const RETREAT_FACTOR = -0.4;
 
   // Face gaze — two layer system (face position + iris direction)
-  const FACE_GAZE_SOFTNESS = 0.45;  // how much face position shifts gaze (higher = more pronounced following)
-  const IRIS_AMPLIFY       = 100;   // scale iris gazeX/Y to screen pixels
+  const FACE_GAZE_SOFTNESS = 0.55;  // how much face position shifts gaze (higher = more pronounced following)
+  const IRIS_AMPLIFY       = 120;   // scale iris gazeX/Y to screen pixels
   const IRIS_VERT_SCALE    = 0.6;   // vertical iris needs less amplification (eyes are wider than tall)
 
   // Neko-style body lean (https://github.com/mirandadam/neko)
@@ -77,15 +77,16 @@ const Brain = (() => {
   let typingGlanceUntil = 0;
 
   // Face gaze interpolation removed — smoothing handled by
-  // EMA in perception.js + lerp in companion.js (no double-lerp needed)
+  // One Euro Filter in perception.js + lerp in companion.js (no double-lerp needed)
 
   // Neko-style lean state — body offset toward face
   let leanCurrentX = 0, leanCurrentY = 0;
 
-  // Face dropout grace — hold last gaze briefly when face detection drops
-  // 500ms covers ~8 frames at 15fps (typical MediaPipe dropout duration)
+  // Face dropout grace — hold last gaze when face detection drops.
+  // 1500ms covers typical MediaPipe dropout bursts (1–3 frames at 15fps)
+  // and prevents eyes from teleporting to center on brief face loss.
   let lastFaceGazeTime = 0;
-  const FACE_GAZE_HOLD_MS = 500;
+  const FACE_GAZE_HOLD_MS = 1500;
 
   // ===== Activity Helpers =====
 
@@ -258,8 +259,9 @@ const Brain = (() => {
 
       case 'LookingAway':
         if      (tms >= 90000) emotion = 'grumpy';
-        else if (tms >= 45000) emotion = 'pouty';
-        else                   emotion = 'suspicious';
+        else if (tms >= 50000) emotion = 'pouty';
+        else if (tms >= 10000) emotion = 'suspicious';
+        else                   emotion = 'idle';
         break;
 
       case 'Sleepy':
@@ -268,8 +270,8 @@ const Brain = (() => {
 
       case 'NoFace':
         if      (tms >= 45000) emotion = 'crying';
-        else if (tms >= 30000) emotion = 'sad';
-        else if (tms >=  5000) emotion = 'scared';
+        else if (tms >= 35000) emotion = 'sad';
+        else if (tms >=  6000) emotion = 'scared';
         else                   emotion = 'idle';
         break;
 
@@ -303,9 +305,13 @@ const Brain = (() => {
    * Layer 1: face position on screen (where IS the user's face)
    * Layer 2: iris offset from perception.gazeX/Y (where eyes are POINTING)
    *
-   * Smoothing is handled upstream (EMA in perception.js) and downstream
-   * (gradient + pupil lerp in companion.js). No intermediate lerp needed —
-   * removing this double-lerp makes the eyes more responsive to face movement.
+   * Raw webcam faceX is horizontally flipped relative to the user's view
+   * (user moves left → face appears on RIGHT of raw image). Mirror X so
+   * the companion's eyes track toward the user's actual position.
+   *
+   * Smoothing is handled upstream (One Euro Filter in perception.js) and
+   * downstream (gradient + pupil lerp in companion.js). No intermediate
+   * lerp needed — removing double-lerp makes eyes responsive to face movement.
    *
    * Reference: https://github.com/arnaudlvq/Eye-Contact-RealTime-Detection
    * Combined face position + iris direction = more natural gaze than either alone.
@@ -316,14 +322,16 @@ const Brain = (() => {
 
     const center = Companion.getCenter();
 
-    // Layer 1 — face position (perception faceX/Y are already EMA-smoothed)
-    const facePosX = p.faceX * window.innerWidth;
+    // Layer 1 — face position (One Euro filtered in perception.js).
+    // Mirror X: raw webcam X is flipped relative to user's perspective.
+    const facePosX = (1 - p.faceX) * window.innerWidth;
     const facePosY = p.faceY * window.innerHeight;
     const softX    = center.x + (facePosX - center.x) * FACE_GAZE_SOFTNESS;
     const softY    = center.y + (facePosY - center.y) * FACE_GAZE_SOFTNESS;
 
-    // Layer 2 — iris gaze direction adds subtle extra offset
-    const irisX = p.gazeX * IRIS_AMPLIFY;
+    // Layer 2 — iris gaze direction adds subtle extra offset.
+    // Negate X for same mirror consistency as face position.
+    const irisX = -p.gazeX * IRIS_AMPLIFY;
     const irisY = p.gazeY * (IRIS_AMPLIFY * IRIS_VERT_SCALE);
 
     // Pass directly to lookAt — companion handles smooth lerp internally
@@ -337,13 +345,14 @@ const Brain = (() => {
    * Neko lerps the cat toward the cursor. We do the same but toward the
    * user's face. LEAN_LERP and LEAN_STRENGTH kept low — should feel like
    * quiet interest, not chasing. Clamped to ±40px (existing MAX_DRIFT).
+   * Mirror X for consistency with _applyFaceGaze.
    */
   function _applyBodyLean() {
     const p = window.perception;
     if (!p?.facePresent) return;
 
     const center   = Companion.getCenter();
-    const facePosX = p.faceX * window.innerWidth;
+    const facePosX = (1 - p.faceX) * window.innerWidth;
     const facePosY = p.faceY * window.innerHeight;
 
     const targetX = (facePosX - center.x) * LEAN_STRENGTH;

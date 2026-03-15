@@ -12,6 +12,11 @@
  *   https://github.com/justadudewhohacks/face-api.js
  *   (NOT installed — implemented via MediaPipe blendshapes)
  *
+ * Signal smoothing via One Euro Filter:
+ *   https://cristal.univ-lille.fr/~casiez/1euro/
+ *   Adaptive low-pass: heavy smoothing when still (no jitter), light when
+ *   moving fast (low latency). Standard in AR/VR face tracking pipelines.
+ *
  * Writes window.perception every 66ms (~15Hz matching camera FPS).
  *
  * window.perception = {
@@ -54,14 +59,50 @@ const Perception = (() => {
   const SMILE_THRESHOLD    = 0.45;
   const SURPRISE_THRESHOLD = 0.50;
 
-  // EMA (Exponential Moving Average) — smooths noisy MediaPipe signals
-  // Higher alpha = more responsive; lower = smoother.
-  // At 15Hz: FACE alpha 0.35 → ~300ms to 88%; GAZE alpha 0.40 → ~250ms to 88%.
-  const EMA_ALPHA_FACE = 0.35;
-  const EMA_ALPHA_GAZE = 0.40;
-  let emaFaceX = 0.5, emaFaceY = 0.5;
-  let emaGazeX = 0,   emaGazeY = 0;
-  let emaInitialized = false;
+  // ── One Euro Filter ─────────────────────────────────────────────────────
+  // Ref: https://cristal.univ-lille.fr/~casiez/1euro/
+  // Adaptively smooths noisy tracking signals: heavy filtering when still
+  // (eliminates jitter), light filtering when moving fast (reduces latency).
+  // Used in face-api.js pipelines, AR face filters, and VR hand tracking.
+  //
+  // minCutoff: minimum cutoff freq (Hz) — lower = smoother when still
+  // beta:      speed coefficient — higher = faster response to movement
+  // dCutoff:   derivative cutoff freq — smooths the speed estimate itself
+  function _createOneEuro(minCutoff, beta, dCutoff) {
+    let xPrev = null, dxPrev = 0, tPrev = null;
+    function _alpha(cutoff, dt) {
+      const tau = 1.0 / (2 * Math.PI * cutoff);
+      return 1.0 / (1.0 + tau / dt);
+    }
+    return {
+      filter(x, t) {
+        if (tPrev === null) { xPrev = x; tPrev = t; dxPrev = 0; return x; }
+        const dt = Math.max(t - tPrev, 1e-6);
+        const dx = (x - xPrev) / dt;
+        const edx = _alpha(dCutoff, dt);
+        const dxHat = edx * dx + (1 - edx) * dxPrev;
+        const cutoff = minCutoff + beta * Math.abs(dxHat);
+        const a = _alpha(cutoff, dt);
+        const xHat = a * x + (1 - a) * xPrev;
+        xPrev = xHat; dxPrev = dxHat; tPrev = t;
+        return xHat;
+      },
+      reset() { xPrev = null; tPrev = null; dxPrev = 0; }
+    };
+  }
+
+  // Face position filters — low minCutoff for jitter-free stillness
+  const filterFaceX = _createOneEuro(1.0, 0.5, 1.0);
+  const filterFaceY = _createOneEuro(1.0, 0.5, 1.0);
+  // Iris gaze filters — slightly more responsive (higher minCutoff)
+  const filterGazeX = _createOneEuro(1.5, 0.7, 1.0);
+  const filterGazeY = _createOneEuro(1.5, 0.7, 1.0);
+
+  // Grace period: don't reset filters on brief face dropout.
+  // Typical MediaPipe dropout is 1–3 frames (~66–200ms). Keeping the filter
+  // state means re-acquisition smoothly transitions from the last position.
+  const FILTER_RESET_GRACE_MS = 3000;
+  let lastFaceSeenTime = 0;
 
   let candidateState = 'NoFace', candidateStart = 0;
   let confirmedState = 'NoFace', stateEntryTime  = Date.now();
@@ -100,7 +141,12 @@ const Perception = (() => {
     nofaceMs += dt;
     sleepyMs  = 0;
     prevNoseX = null; prevNoseY = null;
-    emaInitialized = false;
+    // Only reset filters after prolonged absence — brief dropouts keep
+    // smooth state so re-acquisition doesn't cause a position jump.
+    if (now - lastFaceSeenTime > FILTER_RESET_GRACE_MS) {
+      filterFaceX.reset(); filterFaceY.reset();
+      filterGazeX.reset(); filterGazeY.reset();
+    }
     // Attention decays faster when completely gone — from EyeOnTask logic
     attentionScore = Math.max(0, attentionScore - ATTN_DECAY_NOFACE);
 
@@ -114,6 +160,7 @@ const Perception = (() => {
   }
 
   function _processLandmarks(r, dt, now) {
+    lastFaceSeenTime = now;
     const lm = r.faceLandmarks[0];
     const bs = r.faceBlendshapes?.[0]?.categories ?? [];
     const mx = r.facialTransformationMatrixes?.[0]?.data ?? null;
@@ -158,19 +205,11 @@ const Perception = (() => {
     }
     if (nose) { prevNoseX = nose.x; prevNoseY = nose.y; }
 
-    // EMA smooth face position and iris gaze to remove MediaPipe jitter
-    if (!emaInitialized) {
-      emaFaceX = rawFaceX; emaFaceY = rawFaceY;
-      emaGazeX = gazeX;    emaGazeY = gazeY;
-      emaInitialized = true;
-    } else {
-      emaFaceX += (rawFaceX - emaFaceX) * EMA_ALPHA_FACE;
-      emaFaceY += (rawFaceY - emaFaceY) * EMA_ALPHA_FACE;
-      emaGazeX += (gazeX    - emaGazeX) * EMA_ALPHA_GAZE;
-      emaGazeY += (gazeY    - emaGazeY) * EMA_ALPHA_GAZE;
-    }
-    const faceX = emaFaceX;
-    const faceY = emaFaceY;
+    // One Euro Filter — adaptive smoothing removes jitter when still,
+    // stays responsive during fast head movement (no manual alpha tuning)
+    const tSec = now / 1000;
+    const faceX = filterFaceX.filter(rawFaceX, tSec);
+    const faceY = filterFaceY.filter(rawFaceY, tSec);
 
     // Sleepy accumulator
     eyeOpenness < 0.25 ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
@@ -183,9 +222,13 @@ const Perception = (() => {
     else if (headForward)               attentionScore = Math.min(100, attentionScore + ATTN_GAIN_FOCUSED);
     else                                attentionScore = Math.max(0,   attentionScore - ATTN_DECAY);
 
+    // Filter iris gaze with One Euro too
+    const smoothGazeX = filterGazeX.filter(gazeX, tSec);
+    const smoothGazeY = filterGazeY.filter(gazeY, tSec);
+
     _write({
       facePresent: true, headYaw: yaw, headPitch: pitch,
-      gazeX: emaGazeX, gazeY: emaGazeY, eyeContact, eyeContactScore,
+      gazeX: smoothGazeX, gazeY: smoothGazeY, eyeContact, eyeContactScore,
       eyeOpenness, smileScore, surpriseScore,
       userSmiling:   smileScore    > SMILE_THRESHOLD,
       userSurprised: surpriseScore > SURPRISE_THRESHOLD,
