@@ -49,9 +49,12 @@ const Camera = (() => {
       requestAnimationFrame(_detectionLoop);
       console.log('[Camera] Ready — running at', TARGET_FPS, 'FPS');
     } catch (err) {
-      console.warn('[Camera] Unavailable:', err.message);
+      console.error('[Camera] Full error:', err);
+      console.error('[Camera] Error name:', err.name);
+      console.error('[Camera] Error message:', err.message);
+      console.error('[Camera] navigator.mediaDevices exists:', !!navigator.mediaDevices);
+      console.error('[Camera] getUserMedia exists:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
       window.cameraAvailable = false;
-      // App continues in fallback mode — cursor-based gaze still works until Phase 2
     }
   }
 

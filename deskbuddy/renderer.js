@@ -25,5 +25,8 @@
   // Phase 1 — Camera + Perception (async, non-blocking, non-fatal)
   Camera.init()
     .then(() => Perception.init())
-    .catch(() => Perception.init());  // Perception inits even without camera
+    .catch((err) => {
+      console.error('[Camera] Init failed with error:', err);
+      Perception.init();
+    });
 })();
