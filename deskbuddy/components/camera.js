@@ -6,7 +6,7 @@
  * Runs at 15 FPS. Writes window.faceResults each detection frame.
  * window.cameraAvailable = false means app uses fallback (existing) behavior.
  *
- * Iris landmarks for Chunk 2:
+ * Iris landmarks:
  *   Left iris center  = lm[468]
  *   Right iris center = lm[473]
  */
@@ -16,10 +16,10 @@ const Camera = (() => {
   const FRAME_INTERVAL = Math.round(1000 / FPS);
   const VIDEO_TIMEOUT  = 10000;
 
-  let landmarker  = null;
-  let videoEl     = null;
-  let lastFrameMs = 0;
-  let running     = false;
+  let landmarker     = null;
+  let videoEl        = null;
+  let lastTimestampMs = -1;
+  let running        = false;
 
   window.cameraAvailable = false;
   window.faceResults     = null;
@@ -29,19 +29,23 @@ const Camera = (() => {
     if (!videoEl) { console.warn('[Camera] #camera-feed not found'); return; }
 
     try {
+      console.log('[Camera] Starting webcam…');
       await _startWebcam();
+      console.log('[Camera] Webcam started — initializing MediaPipe…');
       await _initLandmarker();
       window.cameraAvailable = true;
       running = true;
       requestAnimationFrame(_loop);
-      console.log('[Camera] Ready — 15 FPS, iris landmarks enabled');
+      console.log('[Camera] Ready — %d FPS, iris landmarks enabled', FPS);
     } catch (err) {
-      console.warn('[Camera] Unavailable —', err.message);
-      // Non-fatal — app continues with original cursor-based behavior
+      console.warn('[Camera] Unavailable —', err.message || err);
     }
   }
 
   async function _startWebcam() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('navigator.mediaDevices.getUserMedia not available');
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: 'user' }, audio: false
     });
@@ -49,43 +53,57 @@ const Camera = (() => {
     await new Promise((resolve, reject) => {
       videoEl.addEventListener('loadeddata', resolve, { once: true });
       videoEl.addEventListener('error',      reject,  { once: true });
-      setTimeout(() => reject(new Error('Video timeout')), VIDEO_TIMEOUT);
+      setTimeout(() => reject(new Error('Video element did not fire loadeddata within 10 s')), VIDEO_TIMEOUT);
     });
+    console.log('[Camera] Video ready — readyState=%d, %dx%d',
+      videoEl.readyState, videoEl.videoWidth, videoEl.videoHeight);
   }
 
   async function _initLandmarker() {
-    // FaceLandmarker + FilesetResolver come from vision_bundle.cjs on window
     const { FaceLandmarker, FilesetResolver } = window;
-    if (!FaceLandmarker || !FilesetResolver) {
-      throw new Error('MediaPipe not loaded — check vision_bundle.cjs script tag in index.html');
-    }
+    if (!FaceLandmarker) throw new Error('window.FaceLandmarker is undefined — CJS shim failed');
+    if (!FilesetResolver) throw new Error('window.FilesetResolver is undefined — CJS shim failed');
 
-    const vision = await FilesetResolver.forVisionTasks(
-      '../node_modules/@mediapipe/tasks-vision/wasm'
-    );
+    const wasmPath = '../node_modules/@mediapipe/tasks-vision/wasm';
+    console.log('[Camera] Loading WASM fileset from', wasmPath);
+    const vision = await FilesetResolver.forVisionTasks(wasmPath);
+    console.log('[Camera] WASM fileset resolved:', JSON.stringify(vision));
+
+    const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
+      'face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+    console.log('[Camera] Creating FaceLandmarker (model: %s)…', modelUrl);
 
     landmarker = await FaceLandmarker.createFromOptions(vision, {
       baseOptions: {
-        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/' +
-          'face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-        delegate: 'CPU'  // GPU causes silent failures on many systems
+        modelAssetPath: modelUrl,
+        delegate: 'CPU'
       },
-      outputFaceBlendshapes:              true,  // needed: smile, blink, expressions
-      outputFacialTransformationMatrixes: true,  // needed: yaw/pitch/roll head pose
+      outputFaceBlendshapes:              true,
+      outputFacialTransformationMatrixes: true,
       runningMode: 'VIDEO',
       numFaces: 1
     });
+    console.log('[Camera] FaceLandmarker created successfully');
   }
 
   function _loop(timestamp) {
     if (!running) return;
     requestAnimationFrame(_loop);
-    if (timestamp - lastFrameMs < FRAME_INTERVAL) return;
+
+    // Enforce frame interval
+    const ms = Math.round(timestamp);
+    if (ms - lastTimestampMs < FRAME_INTERVAL) return;
     if (!landmarker || !videoEl || videoEl.readyState < 2) return;
+
+    // detectForVideo requires strictly increasing integer timestamps
+    if (ms <= lastTimestampMs) return;
+
     try {
-      window.faceResults = landmarker.detectForVideo(videoEl, timestamp);
-      lastFrameMs = timestamp;
-    } catch (_) {}
+      window.faceResults = landmarker.detectForVideo(videoEl, ms);
+      lastTimestampMs = ms;
+    } catch (err) {
+      console.warn('[Camera] Detection error:', err.message || err);
+    }
   }
 
   return { init };

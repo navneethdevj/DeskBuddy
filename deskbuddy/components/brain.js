@@ -214,10 +214,23 @@ const Brain = (() => {
     }
   }
 
-  /** Set emotion based on focus level unless a special state overrides. */
+  /** Set emotion based on perception signals (face tracking) or focus level (fallback). */
   function applyFocusEmotion() {
     if (currentState === 'followCursor' || currentState === 'curious') return;
 
+    const p = window.perception;
+    if (p && p.facePresent) {
+      // Perception-driven emotion — reacts to user's actual expressions/state
+      if (p.userSmiling)                    { Emotion.setState('happy');      return; }
+      if (p.userSurprised)                  { Emotion.setState('curious');    return; }
+      if (p.userState === 'Sleepy')         { Emotion.setState('sleepy');     return; }
+      if (p.userState === 'LookingAway')    { Emotion.setState('suspicious'); return; }
+      if (p.eyeContact && p.attentionScore > 60) { Emotion.setState('focused'); return; }
+      Emotion.setState('idle');
+      return;
+    }
+
+    // Fallback: focus meter from keyboard/mouse activity
     if (focusLevel > 70) {
       Emotion.setState('focused');
     } else if (focusLevel < 30) {
@@ -336,7 +349,15 @@ const Brain = (() => {
 
   function enterState(state) {
     currentState = state;
-    Status.setText('Status: ' + (STATE_LABELS[state] || state));
+
+    // Build status text including perception info when camera is active
+    var label = STATE_LABELS[state] || state;
+    var p = window.perception;
+    if (window.cameraAvailable && p && p.facePresent) {
+      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
+    } else {
+      Status.setText('Status: ' + label);
+    }
 
     if (stateTimer) {
       clearTimeout(stateTimer);

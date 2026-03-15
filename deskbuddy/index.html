@@ -10,9 +10,10 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
-  <!-- Hidden camera — face detection only, never shown to user -->
+  <!-- Hidden camera — face detection only, never shown to user.
+       Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
   <video id="camera-feed" autoplay playsinline muted
-    style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
+    style="visibility:hidden;position:absolute;width:1px;height:1px;pointer-events:none;">
   </video>
 
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
