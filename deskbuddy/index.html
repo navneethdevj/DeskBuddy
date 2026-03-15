@@ -16,6 +16,15 @@
     style="visibility:hidden;position:absolute;width:1px;height:1px;pointer-events:none;">
   </video>
 
+  <!-- Tear overlay — rises during crying, drains on return -->
+  <div id="tear-overlay"><div id="tear-fill"></div></div>
+  <!-- Whisper text — rare soft messages from DeskBuddy -->
+  <div id="whisper-text"></div>
+  <!-- Focus timer — counts focused time -->
+  <div id="focus-timer">focus 00:00</div>
+  <!-- Attention bar — EyeOnTask concept, barely visible -->
+  <div id="attention-bar"><div id="attention-fill"></div></div>
+
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
        Electron renderer (nodeIntegration:false) does not provide -->
   <script>var exports = {}; var module = { exports: exports };</script>

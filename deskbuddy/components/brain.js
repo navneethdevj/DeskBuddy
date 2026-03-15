@@ -54,6 +54,9 @@ const Brain = (() => {
     sleepy: 'Sleepy'
   };
 
+  window._lastEmotion    = null;
+  window._emotionChanged = null;
+
   let currentState = 'idle';
   let stateTimer = null;
   let animFrameId = null;
@@ -214,30 +217,66 @@ const Brain = (() => {
     }
   }
 
-  /** Set emotion based on perception signals (face tracking) or focus level (fallback). */
+  /**
+   * Set emotion based on perception signals.
+   * Expression reactions (smile, surprise) use face-api.js concept:
+   *   https://github.com/justadudewhohacks/face-api.js
+   * Implemented via MediaPipe blendshapes (face-api NOT installed).
+   */
   function applyFocusEmotion() {
-    if (currentState === 'followCursor' || currentState === 'curious') return;
+    if (currentState === 'curious') return;
 
     const p = window.perception;
-    if (p && p.facePresent) {
-      // Perception-driven emotion — reacts to user's actual expressions/state
-      if (p.userSmiling)                    { Emotion.setState('happy');      return; }
-      if (p.userSurprised)                  { Emotion.setState('curious');    return; }
-      if (p.userState === 'Sleepy')         { Emotion.setState('sleepy');     return; }
-      if (p.userState === 'LookingAway')    { Emotion.setState('suspicious'); return; }
-      if (p.eyeContact && p.attentionScore > 60) { Emotion.setState('focused'); return; }
-      Emotion.setState('idle');
+
+    // No camera available — fall back to original focus meter logic
+    if (!p) {
+      if      (focusLevel > 70) Emotion.setState('focused');
+      else if (focusLevel < 30) Emotion.setState('sleepy');
+      else                      Emotion.setState('idle');
       return;
     }
 
-    // Fallback: focus meter from keyboard/mouse activity
-    if (focusLevel > 70) {
-      Emotion.setState('focused');
-    } else if (focusLevel < 30) {
-      Emotion.setState('sleepy');
-    } else {
-      Emotion.setState('idle');
+    const tms = p.timeInStateMs;
+    let emotion;
+
+    switch (p.userState) {
+      case 'Focused':
+        // face-api concept: react to user expressions
+        // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
+        if (p.userSmiling)              emotion = 'happy';
+        else if (tms >= 15000
+              && p.attentionScore > 50) emotion = 'curious';
+        else                            emotion = 'focused';
+        break;
+
+      case 'LookingAway':
+        if      (tms >= 90000) emotion = 'grumpy';
+        else if (tms >= 45000) emotion = 'pouty';
+        else                   emotion = 'suspicious';
+        break;
+
+      case 'Sleepy':
+        emotion = 'sleepy';
+        break;
+
+      case 'NoFace':
+        if      (tms >= 45000) emotion = 'crying';
+        else if (tms >= 30000) emotion = 'sad';
+        else if (tms >=  5000) emotion = 'scared';
+        else                   emotion = 'idle';
+        break;
+
+      default:
+        emotion = 'idle';
     }
+
+    // Track changes for audio system (Chunk 5 reads this)
+    if (emotion !== window._lastEmotion) {
+      window._emotionChanged = { from: window._lastEmotion, to: emotion };
+      window._lastEmotion    = emotion;
+    }
+
+    Emotion.setState(emotion);
   }
 
   // ===== Gaze Logic (idle / sleepy states) =====

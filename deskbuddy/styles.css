@@ -359,3 +359,175 @@ html, body {
   z-index: 1000;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
 }
+
+/* =====================================================================
+   Phase emotions — all eye shapes stay ROUND, all glows stay PASTEL.
+   Grumpy = hamster, not monster. Overjoyed = maximum joy. Never harsh.
+   ===================================================================== */
+
+/* SCARED — wide eyes, cold pale blue glow */
+.companion.scared .eye {
+  width: 32vmin; height: 40vmin;
+  box-shadow:
+    0 0 2vmin rgba(195,218,255,0.92),
+    0 0 5vmin rgba(195,218,255,0.52),
+    0 0 14vmin rgba(180,210,255,0.18);
+}
+.companion.scared { animation: glowScared 0.9s ease-in-out infinite; }
+@keyframes glowScared {
+  0%,100% { filter: drop-shadow(0 0 6vmin rgba(195,218,255,0.42)) drop-shadow(0 0 16vmin rgba(175,205,255,0.14)); }
+  50%     { filter: drop-shadow(0 0 12vmin rgba(210,228,255,0.65)) drop-shadow(0 0 26vmin rgba(190,215,255,0.22)); }
+}
+
+/* SAD — drooping lids, soft blue */
+.companion.sad .eye {
+  width: 27vmin; height: 20vmin;
+  border-radius: 50% 50% 42% 42% / 50% 50% 56% 56%;
+  box-shadow:
+    0 0 2vmin rgba(100,145,210,0.88),
+    0 0 4vmin rgba(100,145,210,0.32),
+    0 0 10vmin rgba(90,130,200,0.12);
+}
+.companion.sad { animation: glowSad 5.5s ease-in-out infinite; }
+@keyframes glowSad {
+  0%,100% { filter: drop-shadow(0 0 4vmin rgba(100,145,210,0.28)) drop-shadow(0 0 11vmin rgba(85,125,195,0.10)); }
+  50%     { filter: drop-shadow(0 0 7vmin rgba(110,155,220,0.40)) drop-shadow(0 0 16vmin rgba(95,135,210,0.15)); }
+}
+
+/* CRYING — heavier droop, dimmer */
+.companion.crying .eye {
+  width: 25vmin; height: 16vmin;
+  border-radius: 50% 50% 38% 38% / 50% 50% 58% 58%;
+  opacity: 0.78;
+  box-shadow:
+    0 0 2vmin rgba(75,120,195,0.80),
+    0 0 3vmin rgba(75,120,195,0.28);
+}
+.companion.crying { animation: glowCrying 7s ease-in-out infinite; }
+@keyframes glowCrying {
+  0%,100% { filter: drop-shadow(0 0 3vmin rgba(75,120,195,0.24)) drop-shadow(0 0 9vmin rgba(60,105,175,0.08)); }
+  50%     { filter: drop-shadow(0 0 5vmin rgba(85,130,205,0.34)) drop-shadow(0 0 13vmin rgba(70,115,185,0.12)); }
+}
+
+/* POUTY — soft droop, peachy warm */
+.companion.pouty .eye {
+  width: 25vmin; height: 20vmin;
+  border-radius: 50% 50% 46% 46% / 50% 50% 58% 58%;
+  box-shadow:
+    0 0 2vmin rgba(255,188,118,0.88),
+    0 0 4vmin rgba(255,188,118,0.34),
+    0 0 10vmin rgba(255,172,100,0.12);
+}
+.companion.pouty { animation: glowPouty 3.8s ease-in-out infinite; }
+@keyframes glowPouty {
+  0%,100% { filter: drop-shadow(0 0 4vmin rgba(255,188,118,0.30)) drop-shadow(0 0 11vmin rgba(255,168,95,0.10)); }
+  50%     { filter: drop-shadow(0 0 8vmin rgba(255,200,130,0.48)) drop-shadow(0 0 18vmin rgba(255,180,110,0.16)); }
+}
+
+/* GRUMPY — narrowed but ROUND. Think grumpy hamster, never angular. */
+.companion.grumpy .eye {
+  width: 24vmin; height: 13vmin;
+  border-radius: 40% 40% 50% 50% / 45% 45% 55% 55%;
+  box-shadow:
+    0 0 2vmin rgba(255,138,128,0.90),
+    0 0 5vmin rgba(255,138,128,0.40),
+    0 0 12vmin rgba(245,118,108,0.14);
+}
+.companion.grumpy { animation: glowGrumpy 2.4s ease-in-out infinite; }
+@keyframes glowGrumpy {
+  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,138,128,0.36)) drop-shadow(0 0 13vmin rgba(240,115,105,0.12)); }
+  50%     { filter: drop-shadow(0 0 10vmin rgba(255,152,142,0.56)) drop-shadow(0 0 22vmin rgba(245,128,118,0.20)); }
+}
+
+/* OVERJOYED — largest eyes, brightest glow. Maximum cuteness. */
+.companion.overjoyed .eye {
+  width: 36vmin; height: 46vmin;
+  box-shadow:
+    0 0 2vmin rgba(255,240,198,0.98),
+    0 0 8vmin rgba(255,240,198,0.62),
+    0 0 20vmin rgba(255,232,175,0.24),
+    0 0 36vmin rgba(255,225,155,0.09);
+}
+.companion.overjoyed { animation: glowOverjoyed 1.1s ease-in-out infinite; }
+@keyframes glowOverjoyed {
+  0%,100% { filter: drop-shadow(0 0 9vmin rgba(255,240,198,0.58)) drop-shadow(0 0 22vmin rgba(255,230,170,0.20)); }
+  50%     { filter: drop-shadow(0 0 18vmin rgba(255,248,215,0.85)) drop-shadow(0 0 38vmin rgba(255,238,185,0.32)); }
+}
+
+/* SULKING — narrow AND droopy simultaneously. Angry + heartbroken. */
+.companion.sulking .eye {
+  width: 24vmin; height: 14vmin;
+  border-radius: 38% 38% 48% 48% / 44% 44% 56% 56%;
+  box-shadow:
+    0 0 2vmin rgba(205,138,192,0.88),
+    0 0 4vmin rgba(205,138,192,0.36),
+    0 0 11vmin rgba(185,118,172,0.13);
+}
+.companion.sulking { animation: glowSulking 2.1s ease-in-out infinite; }
+@keyframes glowSulking {
+  0%       { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
+  15%      { filter: drop-shadow(0 0 9vmin rgba(215,148,202,0.55)); }
+  25%      { filter: drop-shadow(0 0 5vmin rgba(205,138,192,0.36)); }
+  40%      { filter: drop-shadow(0 0 8vmin rgba(215,148,202,0.48)); }
+  60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
+}
+
+/* Tear overlay */
+#tear-overlay {
+  position: fixed; inset: 0; pointer-events: none;
+  z-index: 50; overflow: hidden; display: none;
+}
+#tear-fill {
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+  background: linear-gradient(to top, rgba(70,148,200,0.28) 0%, rgba(90,165,215,0.16) 55%, transparent 100%);
+  border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px;
+  animation: tearWave 4s ease-in-out infinite;
+}
+@keyframes tearWave {
+  0%   { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
+  25%  { border-top-left-radius: 40% 8px;  border-top-right-radius: 70% 14px; }
+  50%  { border-top-left-radius: 55% 11px; border-top-right-radius: 50% 9px;  }
+  75%  { border-top-left-radius: 70% 14px; border-top-right-radius: 45% 8px;  }
+  100% { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
+}
+
+/* Whisper text */
+#whisper-text {
+  position: fixed; bottom: 58px; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px;
+  color: rgba(255,255,255,0.78); opacity: 0;
+  pointer-events: none; text-align: center; white-space: nowrap;
+  z-index: 1001; transition: opacity 0.7s ease;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.55);
+}
+
+/* Focus timer */
+#focus-timer {
+  position: fixed; bottom: 38px; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px;
+  letter-spacing: 0.5px; color: rgba(255,255,255,0.58);
+  opacity: 0.22; pointer-events: none; z-index: 1000;
+}
+
+/* Attention bar — EyeOnTask concept: continuous engagement score */
+#attention-bar {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 2px;
+  background: rgba(255,255,255,0.08); border-radius: 1px;
+  pointer-events: none; z-index: 1000; overflow: hidden;
+}
+#attention-fill {
+  height: 100%; width: 50%;
+  background: rgba(140,170,255,0.45); border-radius: 1px;
+  transition: width 1s ease;
+}
+
+/* Enhanced eye border glow — tight inner ring makes eyes look more luminous */
+.eye {
+  box-shadow:
+    0 0 2vmin rgba(160,175,255,0.92),
+    0 0 5vmin rgba(140,155,245,0.65),
+    0 0 12vmin rgba(120,135,235,0.35),
+    0 0 24vmin rgba(120,135,235,0.15),
+    0 0 40vmin rgba(120,135,235,0.06) !important;
+}
