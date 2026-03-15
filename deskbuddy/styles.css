@@ -138,143 +138,190 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8vmin;
+  gap: 7vmin;
   width: 100%;
   height: 100%;
   top: 0;
   left: 0;
 }
 
-/* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
-   to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
-   focal point so the whole color field follows the gaze direction. */
+/* Eye white (sclera) — warm soft white */
 .eye {
-  width: 28vmin;
-  height: 33vmin;
-  background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,
-    #8190d9  6%,
-    #8795db 12%,
-    #8d9adc 18%,
-    #949fdd 24%,
-    #9aa4de 30%,
-    #a0aae0 36%,
-    #a6afe1 42%,
-    #acb4e2 48%,
-    #b2b9e3 54%,
-    #b8bee5 60%,
-    #bec3e6 66%,
-    #c4c8e7 72%,
-    #cbcde8 78%,
-    #d1d2ea 84%,
-    #d7d8eb 90%,
-    #ddddec 95%,
-    #e3e2ee 100%
-  );
+  width: 26vmin;
+  height: 31vmin;
+  background: #FAFAF8;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  transition: height 0.4s cubic-bezier(.4, 0, .2, 1),
-              width 0.4s cubic-bezier(.4, 0, .2, 1),
-              border-radius 0.4s cubic-bezier(.4, 0, .2, 1),
-              transform 0.4s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.5s ease,
-              box-shadow 0.4s ease;
-  box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
-              0 0 12vmin rgba(120, 135, 235, 0.15),
-              0 0 22vmin rgba(120, 135, 235, 0.06);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.07),
+    0 0 5vmin rgba(120,135,235,0.32),
+    0 0 14vmin rgba(120,135,235,0.11),
+    0 0 24vmin rgba(120,135,235,0.04);
+  transition:
+    height 0.38s cubic-bezier(.4,0,.2,1),
+    width 0.38s cubic-bezier(.4,0,.2,1),
+    border-radius 0.38s cubic-bezier(.4,0,.2,1),
+    box-shadow 0.4s ease,
+    opacity 0.4s ease;
+  will-change: transform, filter;
 }
 
-/* ===== Expression: Idle (default — relaxed round eyes) ===== */
-/* Default eye shape IS the idle expression — no overrides needed */
-
-/* ===== Expression: Curious (wide-eyed wonder — big adorable eyes) ===== */
-.companion.curious .eye {
-  width: 34vmin;
-  height: 42vmin;
-  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.45),
-              0 0 16vmin rgba(115, 125, 245, 0.16),
-              0 0 26vmin rgba(115, 125, 245, 0.06);
-}
-
-/* ===== Expression: Focused (determined narrow gaze) ===== */
-.companion.focused .eye {
-  width: 25vmin;
-  height: 22vmin;
-  box-shadow: 0 0 4vmin rgba(110, 130, 225, 0.30),
-              0 0 10vmin rgba(110, 130, 225, 0.12),
-              0 0 18vmin rgba(110, 130, 225, 0.04);
-}
-
-/* ===== Expression: Sleepy (cozy thin slits — dimmed) ===== */
-.companion.sleepy .eye {
-  height: 6vmin;
-  border-radius: 40% 40% 50% 50%;
-  opacity: 0.65;
-  box-shadow: 0 0 3vmin rgba(130, 140, 210, 0.18),
-              0 0 7vmin rgba(130, 140, 210, 0.08);
-}
-
-/* ===== Expression: Suspicious (angular side-eye — skewed) ===== */
-.companion.suspicious .eye {
-  width: 25vmin;
-  height: 13vmin;
-  border-radius: 1vmin 1vmin 50% 50%;
-  box-shadow: 0 0 4vmin rgba(115, 120, 240, 0.24),
-              0 0 10vmin rgba(115, 120, 240, 0.10);
-}
-
-.companion.suspicious .eye-left {
-  transform: skewY(6deg);
-}
-
-.companion.suspicious .eye-right {
-  transform: skewY(-6deg);
-}
-
-/* ===== Expression: Happy (^_^ joyful squint — warm) ===== */
-.companion.happy .eye {
-  height: 11vmin;
-  border-radius: 10vmin 10vmin 2vmin 2vmin;
-  box-shadow: 0 0 6vmin rgba(160, 140, 245, 0.40),
-              0 0 14vmin rgba(160, 140, 245, 0.14),
-              0 0 24vmin rgba(160, 140, 245, 0.05);
-}
-
-/* ===== Pupil (moves inside eye to track cursor) ===== */
-.pupil {
+/* Iris — fills 65% of eye, deep sky blue */
+.iris {
   position: absolute;
-  width: 12vmin;
-  height: 12vmin;
-  background: radial-gradient(
-    circle,
-    #5a9ac8  0%,
-    #5686b8 10%,
-    #4f6faa 22%,
-    #51629e 34%,
-    #5c6ba6 46%,
-    #6b79b4 58%,
-    #7584c4 68%,
-    #7b8bd8 80%,
-    rgba(123, 139, 216, 0) 100%
-  );
-  border-radius: 50%;
+  width: 65%;
+  height: 65%;
   top: 50%;
   left: 50%;
-  margin-top: -6vmin;
-  margin-left: -6vmin;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 42% 40%,
+    #A8E4FF 0%,
+    #5BC8F5 20%,
+    #3AAAD4 45%,
+    #2288B8 70%,
+    #186898 100%
+  );
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Pupil — dark oval, centered inside iris, moved by JS */
+.pupil {
+  position: absolute;
+  width: 50%;
+  height: 56%;
+  top: 50%;
+  left: 50%;
+  margin-top: -28%;
+  margin-left: -25%;
+  background: radial-gradient(
+    circle at 38% 35%,
+    #3A3A5A 0%,
+    #181828 50%,
+    #0A0A16 100%
+  );
+  border-radius: 50%;
   pointer-events: none;
   will-change: transform;
 }
 
-/* ===== Blink (cute squish — overrides all expressions) ===== */
-.companion.blink .eyes .eye {
-  height: 1.5vmin;
-  width: 30vmin;
+/* Shine 1 — large glossy oval, upper-left, NEVER moves */
+.shine-large {
+  position: absolute;
+  width: 20%;
+  height: 15%;
+  top: 16%;
+  left: 20%;
+  background: white;
   border-radius: 50%;
-  transition: height 0.1s ease, width 0.1s ease;
+  opacity: 0.92;
+  transform: rotate(-18deg);
+  pointer-events: none;
+  z-index: 10;
 }
+
+/* Shine 2 — small dot, lower-right, NEVER moves */
+.shine-small {
+  position: absolute;
+  width: 8%;
+  height: 8%;
+  bottom: 22%;
+  right: 20%;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.58;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Eyelid — top cover, same color as app background */
+.eyelid-top {
+  position: absolute;
+  top: 0;
+  left: -2%;
+  width: 104%;
+  height: 9%;
+  background: #111111;
+  border-radius: 0 0 50% 50%;
+  pointer-events: none;
+  z-index: 8;
+  transition: height 0.32s cubic-bezier(.4,0,.2,1);
+}
+
+/* ===== Expressions ===== */
+
+/* IDLE — default open eyes, no override needed */
+
+/* CURIOUS — wide open with wonder */
+.companion.curious .eye {
+  width: 30vmin;
+  height: 37vmin;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.07),
+    0 0 7vmin rgba(115,125,245,0.46),
+    0 0 18vmin rgba(115,125,245,0.17),
+    0 0 28vmin rgba(115,125,245,0.06);
+}
+.companion.curious .eyelid-top { height: 3%; }
+
+/* FOCUSED — attentive, slightly narrowed */
+.companion.focused .eye {
+  width: 23vmin;
+  height: 25vmin;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.07),
+    0 0 4vmin rgba(110,130,225,0.28),
+    0 0 10vmin rgba(110,130,225,0.10),
+    0 0 18vmin rgba(110,130,225,0.04);
+}
+.companion.focused .eyelid-top { height: 15%; }
+
+/* SLEEPY — heavy drooping lids, barely open */
+.companion.sleepy .eye {
+  height: 14vmin;
+  opacity: 0.78;
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.06),
+    0 0 3vmin rgba(130,140,210,0.16),
+    0 0 8vmin rgba(130,140,210,0.07);
+}
+.companion.sleepy .eyelid-top { height: 46%; }
+
+/* SUSPICIOUS — asymmetric squint */
+.companion.suspicious .eye {
+  width: 22vmin;
+  height: 17vmin;
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.07),
+    0 0 4vmin rgba(115,120,240,0.22),
+    0 0 10vmin rgba(115,120,240,0.08);
+}
+.companion.suspicious .eyelid-top        { height: 20%; }
+.companion.suspicious .eye-left  .eyelid-top { height: 28%; }
+.companion.suspicious .eye-right .eyelid-top { height: 14%; }
+
+/* HAPPY — joyful arc squint */
+.companion.happy .eye {
+  height: 13vmin;
+  border-radius: 50% 50% 28% 28%;
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.06),
+    0 0 7vmin rgba(160,140,245,0.42),
+    0 0 16vmin rgba(160,140,245,0.15),
+    0 0 26vmin rgba(160,140,245,0.05);
+}
+.companion.happy .eyelid-top { height: 0%; }
+
+/* ===== Blink ===== */
+.companion.blink .eyes .eye {
+  height: 2vmin;
+  border-radius: 50%;
+  transition: height 0.07s ease, border-radius 0.07s ease;
+}
+.companion.blink .eyelid-top { height: 0%; }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {

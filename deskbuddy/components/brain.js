@@ -154,11 +154,9 @@ const Brain = (() => {
     switch (currentState) {
       case 'observe':
         Movement.update();
-        if (window.cameraAvailable && window.perception?.facePresent) {
-          // Face detected — watch the user with soft interpolated gaze
+        if (window.perception?.facePresent) {
           _updateFaceGaze();
         } else {
-          // No camera or no face — gentle ambient scan (reduced range for subtlety)
           var time = now * 0.001;
           var c = Companion.getCenter();
           Companion.lookAt(
@@ -169,6 +167,9 @@ const Brain = (() => {
         break;
       case 'curious':
         Movement.decay();
+        if (window.perception?.facePresent) {
+          _updateFaceGaze();
+        }
         break;
       case 'idle':
         Movement.decay();
@@ -225,19 +226,16 @@ const Brain = (() => {
    * Priority: screen-center glance when typing > follow cursor > idle look.
    */
   function applyGaze(now, mouseActive, keyActive) {
-    // CURSOR TRACKING — mouse gaze disabled (Phase 2).
-    // Kept for reference:
-    // if (keyActive && !wasTyping) { typingGlanceUntil = now + 1000; }
-    // wasTyping = keyActive;
-    // if (now < typingGlanceUntil) { ... }
+    // CURSOR TRACKING — disabled (Phase 2).
     // if (mouseActive) { Companion.lookAt(mouseX, mouseY); return; }
 
-    if (window.cameraAvailable && window.perception?.facePresent) {
+    // Face gaze — use facePresent as the sole guard (not cameraAvailable,
+    // which can be false if GPU delegate failed even though camera stream works)
+    if (window.perception?.facePresent) {
       _updateFaceGaze();
       return;
     }
 
-    // Fallback: gentle idle look pattern when no face detected
     checkIdleLook(now);
   }
 
@@ -369,7 +367,7 @@ const Brain = (() => {
    * When camera is unavailable, original random selection is the fallback.
    */
   function pickNextState() {
-    if (window.cameraAvailable && window.perception) {
+    if (window.perception) {
       const p          = window.perception;
       const userState  = p.userState;
       const timeInMs   = p.timeInStateMs;
