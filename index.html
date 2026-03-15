@@ -509,7 +509,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
 
     var now = performance.now();
     // Ensure monotonically increasing timestamp
-    if (now <= lastDetectTime) now = lastDetectTime + 1;
+    if (now <= lastDetectTime) now = lastDetectTime + 0.1;
     lastDetectTime = now;
 
     var results;

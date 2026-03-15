@@ -35,6 +35,7 @@ const FaceDetection = (() => {
   let videoElement   = null;
   let running        = false;
   let intervalId     = null;
+  let lastDetectTime = 0;  // track last timestamp sent to MediaPipe (must be strictly increasing)
 
   // Detected signals
   let facePresent    = false;
@@ -123,6 +124,7 @@ const FaceDetection = (() => {
         faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
           outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
           runningMode: 'VIDEO',
           numFaces: 1
         });
@@ -132,10 +134,20 @@ const FaceDetection = (() => {
         faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
           outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
           runningMode: 'VIDEO',
           numFaces: 1
         });
         console.log('[FaceDetection] FaceLandmarker created (CPU).');
+      }
+
+      // Wait for video to have actual frame data before starting detection
+      if (videoElement.readyState < 2) {
+        await new Promise(function (resolve) {
+          videoElement.addEventListener('loadeddata', resolve, { once: true });
+          // Safety timeout: don't wait forever
+          setTimeout(resolve, 5000);
+        });
       }
 
       lastFaceTime = Date.now();
@@ -155,7 +167,11 @@ const FaceDetection = (() => {
   function detect() {
     if (!running || !faceLandmarker || !videoElement || videoElement.readyState < 2) return;
 
+    // MediaPipe requires strictly increasing timestamps
     var now = performance.now();
+    if (now <= lastDetectTime) now = lastDetectTime + 0.1;
+    lastDetectTime = now;
+
     var results;
     try {
       results = faceLandmarker.detectForVideo(videoElement, now);
