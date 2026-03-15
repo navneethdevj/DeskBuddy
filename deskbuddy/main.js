@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -31,7 +31,19 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Phase 1 — camera permission granted at app level before window exists
+  // Electron 34 requires BOTH handlers. setPermissionCheckHandler runs
+  // synchronously first; without it getUserMedia is silently blocked.
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => {
+    if (permission === 'media' || permission === 'camera') return true;
+    return null;
+  });
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    callback(permission === 'media' || permission === 'camera');
+  });
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   app.quit();

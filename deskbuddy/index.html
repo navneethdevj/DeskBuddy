@@ -10,6 +10,15 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Phase 1: hidden camera — face detection only, never displayed -->
+  <video id="camera-feed" autoplay playsinline muted
+    style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
+  </video>
+
+  <!-- Phase 1: MediaPipe -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.js"
+    crossorigin="anonymous"></script>
+
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
   <script src="components/spriteAnimator.js"></script>
@@ -17,6 +26,8 @@
   <script src="components/particles.js"></script>
   <script src="ui/status.js"></script>
   <script src="components/brain.js"></script>
+  <script src="components/camera.js"></script>
+  <script src="components/perception.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
