@@ -14,11 +14,7 @@ const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
   const STATE_MIN = 2000;
   const STATE_MAX = 5000;
-  const CURSOR_RADIUS = 500;
   const MAX_DRIFT = 40;
-  const FOLLOW_COOLDOWN_FRAMES = 120; // 2 s at 60 fps
-  const RETREAT_THRESHOLD = 200;
-  const RETREAT_FACTOR = -0.4;
 
   // Face gaze — two layer system (face position + iris direction)
   const FACE_GAZE_SOFTNESS = 0.55;  // how much face position shifts gaze (higher = more pronounced following)
@@ -77,7 +73,6 @@ const Brain = (() => {
   let animFrameId = null;
   let mouseX = -1000;
   let mouseY = -1000;
-  let followCooldown = 0;
 
   // Activity tracking
   let focusLevel = 50;
@@ -87,10 +82,6 @@ const Brain = (() => {
   // Idle look state
   let idleLookActive = false;
   let nextIdleLookTime = 0;
-
-  // Screen awareness: typing glance
-  let wasTyping = false;
-  let typingGlanceUntil = 0;
 
   // Tear overlay state
   let tearHeight   = 0;
@@ -167,8 +158,6 @@ const Brain = (() => {
   function tick() {
     animFrameId = requestAnimationFrame(tick);
 
-    if (followCooldown > 0) followCooldown--;
-
     var now = Date.now();
     updateFocusMeter(now);
 
@@ -177,15 +166,6 @@ const Brain = (() => {
 
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
-
-    // CURSOR TRACKING — disabled. Face camera is now the attention source.
-    // To re-enable: uncomment this block and remove face gaze functions below.
-    // var near = isCursorNear();
-    // if (near && currentState !== 'followCursor' && followCooldown <= 0) {
-    //   enterState('followCursor');
-    //   return;
-    // }
-    var near = false;
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -198,6 +178,7 @@ const Brain = (() => {
           _applyBodyLean();
           lastFaceGazeTime = now;
         } else if (now - lastFaceGazeTime >= FACE_GAZE_HOLD_MS) {
+          // Gentle ambient gaze drift when face not detected
           var time = now * 0.001;
           var c = Companion.getCenter();
           Companion.lookAt(
@@ -225,9 +206,8 @@ const Brain = (() => {
         }
         break;
       case 'followCursor':
-        // CURSOR TRACKING — disabled. Face gaze handles attention.
-        // updateFollowCursor();
-        Companion.resetLook();
+        // followCursor is unused when face camera is active —
+        // transition to a perception-driven state instead
         pickNextState();
         break;
       case 'sleepy':
@@ -242,7 +222,7 @@ const Brain = (() => {
         break;
     }
 
-    // Focus-driven emotion (overridden by followCursor / curious)
+    // Focus-driven emotion
     applyFocusEmotion();
   }
 
@@ -348,12 +328,10 @@ const Brain = (() => {
   // ===== Gaze Logic (idle / sleepy states) =====
 
   /**
-   * Determine where the eyes should look when in idle or sleepy state.
-   * Priority: screen-center glance when typing > follow cursor > idle look.
+   * Determine where the eyes should look when face is not detected.
+   * Falls through to idle random-look behavior.
    */
   function applyGaze(now, mouseActive, keyActive) {
-    // Cursor-based gaze removed — face camera is the attention source.
-    // if (mouseActive) { Companion.lookAt(mouseX, mouseY); return; }
     checkIdleLook(now);
   }
 
@@ -547,36 +525,6 @@ const Brain = (() => {
   }
 
   // ===== Helpers =====
-
-  function isCursorNear() {
-    var c = Companion.getCenter();
-    var dx = mouseX - c.x;
-    var dy = mouseY - c.y;
-    return Math.sqrt(dx * dx + dy * dy) < CURSOR_RADIUS;
-  }
-
-  /** Track cursor with eyes; retreat if cursor is very close. */
-  function updateFollowCursor() {
-    var c = Companion.getCenter();
-    var dx = mouseX - c.x;
-    var dy = mouseY - c.y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-
-    Companion.lookAt(mouseX, mouseY);
-
-    if (dist > 0 && dist < RETREAT_THRESHOLD) {
-      Emotion.setState('suspicious');
-      var pos = Companion.getPosition();
-      var mx = (dx / dist) * RETREAT_FACTOR;
-      var my = (dy / dist) * RETREAT_FACTOR;
-      Companion.setPosition(
-        clamp(pos.x + mx, -MAX_DRIFT, MAX_DRIFT),
-        clamp(pos.y + my, -MAX_DRIFT, MAX_DRIFT)
-      );
-    } else {
-      Emotion.setState('focused');
-    }
-  }
 
   /** Animate gaze looking left → right → up → center. */
   function triggerLookSequence() {

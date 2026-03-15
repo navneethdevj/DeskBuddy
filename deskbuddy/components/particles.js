@@ -56,11 +56,19 @@ const Particles = (() => {
 
     var rate;
     switch (emotion) {
-      case 'focused': rate = 0.015; break;
-      case 'happy':   rate = 0.03;  break;
-      case 'curious': rate = 0.02;  break;
-      case 'sleepy':  rate = 0.008; break;
-      default:        rate = 0.005; break;
+      case 'focused':    rate = 0.015; break;
+      case 'happy':      rate = 0.03;  break;
+      case 'curious':    rate = 0.02;  break;
+      case 'sleepy':     rate = 0.008; break;
+      case 'overjoyed':  rate = 0.04;  break;
+      case 'scared':     rate = 0.018; break;
+      case 'sad':        rate = 0.008; break;
+      case 'crying':     rate = 0.012; break;
+      case 'suspicious': rate = 0.008; break;
+      case 'pouty':      rate = 0.010; break;
+      case 'grumpy':     rate = 0.010; break;
+      case 'sulking':    rate = 0.006; break;
+      default:           rate = 0.005; break;
     }
 
     if (Math.random() < rate) {

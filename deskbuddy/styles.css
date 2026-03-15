@@ -497,6 +497,64 @@ html, body {
   box-shadow: 0 0 4px rgba(115, 125, 245, 0.5);
 }
 
+/* Particles for remaining emotions — colors match each emotion's glow palette */
+
+.particle-scared {
+  width: 2px;
+  height: 2px;
+  background: rgba(195, 218, 255, 0.7);
+  box-shadow: 0 0 5px rgba(195, 218, 255, 0.5);
+}
+
+.particle-sad {
+  width: 3px;
+  height: 3px;
+  background: rgba(100, 145, 210, 0.5);
+  box-shadow: 0 0 3px rgba(100, 145, 210, 0.3);
+}
+
+.particle-crying {
+  width: 3px;
+  height: 3px;
+  background: rgba(75, 120, 195, 0.6);
+  box-shadow: 0 0 3px rgba(75, 120, 195, 0.4);
+}
+
+.particle-suspicious {
+  width: 2px;
+  height: 2px;
+  background: rgba(115, 120, 240, 0.5);
+  box-shadow: 0 0 3px rgba(115, 120, 240, 0.3);
+}
+
+.particle-pouty {
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 188, 118, 0.6);
+  box-shadow: 0 0 4px rgba(255, 188, 118, 0.4);
+}
+
+.particle-grumpy {
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 138, 128, 0.6);
+  box-shadow: 0 0 3px rgba(255, 138, 128, 0.4);
+}
+
+.particle-overjoyed {
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 240, 198, 0.9);
+  box-shadow: 0 0 8px rgba(255, 240, 198, 0.7);
+}
+
+.particle-sulking {
+  width: 2px;
+  height: 2px;
+  background: rgba(205, 138, 192, 0.5);
+  box-shadow: 0 0 3px rgba(205, 138, 192, 0.3);
+}
+
 @keyframes particleFade {
   0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
   20%  { opacity: 1; }

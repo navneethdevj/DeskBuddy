@@ -71,6 +71,21 @@ const Perception = (() => {
   const SMILE_THRESHOLD    = 0.45;
   const SURPRISE_THRESHOLD = 0.50;
 
+  // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===
+  // https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
+  // EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|) where p1-p6 are eye boundary landmarks.
+  // Lower EAR = more closed eye. More reliable than blendshapes alone for blink detection.
+  const EAR_BLINK_THRESHOLD = 0.21;   // below this = blink / closed
+  const EAR_SLEEPY_THRESHOLD = 0.24;  // below this for sustained period = sleepy
+
+  // === Adaptive gaze bias correction — WebGazer calibration concept ===
+  // https://github.com/brownhci/WebGazer
+  // Track mean gaze offset during confirmed "Focused" state and subtract it.
+  // This corrects for individual webcam position / head pose differences.
+  const BIAS_LEARN_RATE   = 0.005;  // slow adaptation to avoid overcorrection
+  const BIAS_MAX          = 0.25;   // maximum correction magnitude
+  let gazeBiasX = 0, gazeBiasY = 0;
+
   // ── One Euro Filter ─────────────────────────────────────────────────────
   // Ref: https://cristal.univ-lille.fr/~casiez/1euro/
   // Adaptively smooths noisy tracking signals: heavy filtering when still
@@ -184,10 +199,22 @@ const Perception = (() => {
       pitch = Math.atan2(-mx[9], Math.sqrt(mx[8]*mx[8] + mx[10]*mx[10])) * (180 / Math.PI);
     }
 
-    // Eye openness from blink blendshapes
+    // Eye openness — fuse blendshape + geometric EAR for robustness
+    // Blendshapes alone can miss partial blinks; EAR catches them geometrically.
     const blinkL      = _bs(bs, 'eyeBlinkLeft');
     const blinkR      = _bs(bs, 'eyeBlinkRight');
-    const eyeOpenness = 1 - (blinkL + blinkR) / 2;
+    const bsOpenness  = 1 - (blinkL + blinkR) / 2;
+
+    // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===
+    // Geometric measure: more reliable than blendshapes for partial blinks
+    const earL = _computeEAR(lm, [33, 160, 158, 133, 153, 144]);   // left eye
+    const earR = _computeEAR(lm, [362, 385, 387, 263, 373, 380]);  // right eye
+    const earAvg = (earL + earR) / 2;
+    const earOpenness = earAvg > EAR_SLEEPY_THRESHOLD ? 1.0
+                      : earAvg > EAR_BLINK_THRESHOLD  ? (earAvg - EAR_BLINK_THRESHOLD) / (EAR_SLEEPY_THRESHOLD - EAR_BLINK_THRESHOLD)
+                      : 0.0;
+    // Fuse: take the minimum (most conservative = catches both blendshape and geometric blinks)
+    const eyeOpenness = Math.min(bsOpenness, earOpenness);
 
     // ── IRIS GAZE (multi-repo enhanced) ─────────────────────────────────────
     // Eyes-Position-Estimator: all 5 iris landmarks for robust center
@@ -221,8 +248,10 @@ const Perception = (() => {
     const faceX = filterFaceX.filter(rawFaceX, tSec);
     const faceY = filterFaceY.filter(rawFaceY, tSec);
 
-    // Sleepy accumulator
-    eyeOpenness < 0.25 ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
+    // Sleepy accumulator — uses fused openness (blendshape + EAR)
+    // EAR-based threshold catches drooping eyelids that blendshapes sometimes miss
+    const sleepyThreshold = earAvg < EAR_SLEEPY_THRESHOLD ? 0.35 : 0.25;
+    eyeOpenness < sleepyThreshold ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
 
     // ── ATTENTION SCORE (EyeOnTask logic) ────────────────────────────────────
     // Key insight from EyeOnTask: true attention requires BOTH head forward AND eye contact.
@@ -236,9 +265,22 @@ const Perception = (() => {
     const smoothGazeX = filterGazeX.filter(gazeX, tSec);
     const smoothGazeY = filterGazeY.filter(gazeY, tSec);
 
+    // === Adaptive gaze bias correction (WebGazer calibration concept) ===
+    // During confirmed Focused state, the user is likely looking at the screen.
+    // Track the mean gaze offset and subtract it to correct for individual
+    // webcam position / head pose differences over time.
+    if (confirmedState === 'Focused' && headForward && eyeOpenness > 0.5) {
+      gazeBiasX += (smoothGazeX - gazeBiasX) * BIAS_LEARN_RATE;
+      gazeBiasY += (smoothGazeY - gazeBiasY) * BIAS_LEARN_RATE;
+      gazeBiasX = Math.max(-BIAS_MAX, Math.min(BIAS_MAX, gazeBiasX));
+      gazeBiasY = Math.max(-BIAS_MAX, Math.min(BIAS_MAX, gazeBiasY));
+    }
+    const correctedGazeX = smoothGazeX - gazeBiasX;
+    const correctedGazeY = smoothGazeY - gazeBiasY;
+
     _write({
       facePresent: true, headYaw: yaw, headPitch: pitch,
-      gazeX: smoothGazeX, gazeY: smoothGazeY, eyeContact, eyeContactScore,
+      gazeX: correctedGazeX, gazeY: correctedGazeY, eyeContact, eyeContactScore,
       eyeOpenness, smileScore, surpriseScore,
       userSmiling:   smileScore    > SMILE_THRESHOLD,
       userSurprised: surpriseScore > SURPRISE_THRESHOLD,
@@ -253,6 +295,24 @@ const Perception = (() => {
     _transition(candidate, now);
   }
 
+  // ── EAR (Eye Aspect Ratio) ────────────────────────────────────────────
+  // Source: https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
+  // EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
+  // where indices = [p1, p2, p3, p4, p5, p6] (outer, upper-outer, upper-inner, inner, lower-inner, lower-outer)
+  // Lower EAR = more closed eye. Geometric measure — robust to lighting changes.
+  function _computeEAR(lm, indices) {
+    const p1 = lm[indices[0]], p2 = lm[indices[1]], p3 = lm[indices[2]];
+    const p4 = lm[indices[3]], p5 = lm[indices[4]], p6 = lm[indices[5]];
+    if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6) return 0.3; // default open
+
+    const dist = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    const vertical1 = dist(p2, p6);
+    const vertical2 = dist(p3, p5);
+    const horizontal = dist(p1, p4);
+    if (horizontal < 1e-6) return 0.3;
+    return (vertical1 + vertical2) / (2 * horizontal);
+  }
+
   // ── MULTI-LANDMARK IRIS CENTER ─────────────────────────────────────────
   // Source: https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
   // Average all landmarks in a set for robust center estimation.
@@ -265,6 +325,17 @@ const Perception = (() => {
     }
     if (count === 0) return null;
     return { x: x / count, y: y / count };
+  }
+
+  // Average only the Y coordinate of multiple landmarks — used for vertical
+  // eye boundary estimation with multiple eyelid points for stability.
+  function _avgY(lm, indices) {
+    let y = 0, count = 0;
+    for (let i = 0; i < indices.length; i++) {
+      const pt = lm[indices[i]];
+      if (pt) { y += pt.y; count++; }
+    }
+    return count > 0 ? y / count : 0.5;
   }
 
   // ── IRIS GAZE FORMULA (enhanced) ───────────────────────────────────────
@@ -308,17 +379,21 @@ const Perception = (() => {
     const wRight  = 1 - wLeft;
     let rawGazeX  = lGazeX * wLeft + rGazeX * wRight;
 
-    // --- Vertical gaze (BOTH eyes averaged — more accurate than single eye) ---
-    const lTop  = lm[159]?.y ?? lIris.y;
-    const lBot  = lm[145]?.y ?? lIris.y;
-    const lEyeH = Math.abs(lBot - lTop) || 0.001;
-    const lMidY = (lTop + lBot) / 2;
+    // --- Vertical gaze (BOTH eyes, multi-landmark boundaries) ---
+    // Enhanced: use multiple upper and lower eyelid landmarks for more stable
+    // boundary estimation (Eyes-Position-Estimator uses multiple points per lid)
+    // Left eye: upper lids 159,160,161 ; lower lids 145,144,153
+    const lTopY = _avgY(lm, [159, 160, 161]);
+    const lBotY = _avgY(lm, [145, 144, 153]);
+    const lEyeH = Math.abs(lBotY - lTopY) || 0.001;
+    const lMidY = (lTopY + lBotY) / 2;
     const lGazeY = (lIris.y - lMidY) / lEyeH;
 
-    const rTop  = lm[386]?.y ?? rIris.y;
-    const rBot  = lm[374]?.y ?? rIris.y;
-    const rEyeH = Math.abs(rBot - rTop) || 0.001;
-    const rMidY = (rTop + rBot) / 2;
+    // Right eye: upper lids 386,385,384 ; lower lids 374,373,380
+    const rTopY = _avgY(lm, [386, 385, 384]);
+    const rBotY = _avgY(lm, [374, 373, 380]);
+    const rEyeH = Math.abs(rBotY - rTopY) || 0.001;
+    const rMidY = (rTopY + rBotY) / 2;
     const rGazeY = (rIris.y - rMidY) / rEyeH;
 
     let rawGazeY = lGazeY * wLeft + rGazeY * wRight;
