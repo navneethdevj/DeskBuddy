@@ -45,6 +45,14 @@ const Brain = (() => {
   const IDLE_LOOK_MIN_DURATION = 1000;
   const IDLE_LOOK_MAX_DURATION = 2000;
 
+  // Emotion timing thresholds (ms) — from VERIFY spec
+  const LOOKING_AWAY_SUSPICIOUS_MS = 10000;   // 10s → suspicious
+  const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
+  const LOOKING_AWAY_GRUMPY_MS     = 90000;   // 90s → grumpy
+  const NOFACE_SCARED_MS           =  6000;   //  6s → scared
+  const NOFACE_SAD_MS              = 35000;   // 35s → sad
+  const NOFACE_CRYING_MS           = 45000;   // 45s → crying
+
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -258,10 +266,10 @@ const Brain = (() => {
         break;
 
       case 'LookingAway':
-        if      (tms >= 90000) emotion = 'grumpy';
-        else if (tms >= 50000) emotion = 'pouty';
-        else if (tms >= 10000) emotion = 'suspicious';
-        else                   emotion = 'idle';
+        if      (tms >= LOOKING_AWAY_GRUMPY_MS)     emotion = 'grumpy';
+        else if (tms >= LOOKING_AWAY_POUTY_MS)       emotion = 'pouty';
+        else if (tms >= LOOKING_AWAY_SUSPICIOUS_MS)  emotion = 'suspicious';
+        else                                         emotion = 'idle';
         break;
 
       case 'Sleepy':
@@ -269,10 +277,10 @@ const Brain = (() => {
         break;
 
       case 'NoFace':
-        if      (tms >= 45000) emotion = 'crying';
-        else if (tms >= 35000) emotion = 'sad';
-        else if (tms >=  6000) emotion = 'scared';
-        else                   emotion = 'idle';
+        if      (tms >= NOFACE_CRYING_MS) emotion = 'crying';
+        else if (tms >= NOFACE_SAD_MS)    emotion = 'sad';
+        else if (tms >= NOFACE_SCARED_MS) emotion = 'scared';
+        else                              emotion = 'idle';
         break;
 
       default:
