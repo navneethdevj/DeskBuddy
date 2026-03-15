@@ -520,14 +520,14 @@ const Brain = (() => {
     if (sulkCheckInterval) clearInterval(sulkCheckInterval);
     currentState = 'idle';
     _stopTears();
-    Emotion.setState('overjoyed');
+    Emotion.transitionTo('overjoyed', true);
     window._emotionChanged = { from: lastEmotionForSound, to: 'overjoyed' };
     lastEmotionForSound = 'overjoyed';
 
     overjoyedTimer = setTimeout(() => {
       overjoyedTimer = null;
       if (window.perception?.facePresent) {
-        Emotion.setState('sulking');
+        Emotion.transitionTo('sulking', true);
         window._emotionChanged = { from: 'overjoyed', to: 'sulking' };
         lastEmotionForSound = 'sulking';
         _startSulkResolution();

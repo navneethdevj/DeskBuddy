@@ -391,12 +391,6 @@ const Companion = (() => {
       eyebrowElements.left.style.opacity = newOpacity.toFixed(3);
       eyebrowElements.right.style.opacity = newOpacity.toFixed(3);
     }
-
-    // Update pupil lerp speed based on config
-    if (config.pupilLerpSpeed) {
-      // Allow the pupil lerp to vary by emotion
-      // Note: PUPIL_LERP is const, so we cannot reassign; instead we use a separate speed variable
-    }
   }
 
   /**
