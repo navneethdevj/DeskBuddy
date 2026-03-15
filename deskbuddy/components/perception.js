@@ -60,7 +60,12 @@ const Perception = (() => {
   // ── Public API ────────────────────────────────────────────────────────────
 
   function init() {
+    console.log('[Perception] init() called — starting evaluation loop');
     setInterval(_evaluate, EVAL_INTERVAL_MS);
+    // Log perception state every 5 seconds for diagnosis
+    setInterval(() => {
+      console.log('[Perception] state:', JSON.stringify(window.perception));
+    }, 5000);
   }
 
   // ── Private ───────────────────────────────────────────────────────────────

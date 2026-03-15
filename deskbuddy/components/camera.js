@@ -110,6 +110,8 @@ const Camera = (() => {
     });
   }
 
+  let _detectionCount = 0;
+
   function _detectionLoop(timestamp) {
     if (!running) return;
     requestAnimationFrame(_detectionLoop);
@@ -118,7 +120,15 @@ const Camera = (() => {
     try {
       window.faceResults = faceLandmarker.detectForVideo(videoEl, timestamp);
       lastDetectionMs = timestamp;
-    } catch (_) {}
+      _detectionCount++;
+      // Log first detection, then every 60 frames (~5s)
+      if (_detectionCount === 1 || _detectionCount % 60 === 0) {
+        const faces = window.faceResults?.faceLandmarks?.length ?? 0;
+        console.log('[Camera] Detection #' + _detectionCount + ' — faces found:', faces);
+      }
+    } catch (err) {
+      console.error('[Camera] Detection error:', err.message);
+    }
   }
 
   function isAvailable() { return window.cameraAvailable; }
