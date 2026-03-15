@@ -21,4 +21,5 @@
 
   // Start the creature brain (owns the main loop)
   Brain.start();
+  Camera.init().catch(() => {});
 })();

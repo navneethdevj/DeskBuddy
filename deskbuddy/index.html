@@ -10,6 +10,14 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Hidden camera — face detection only, never shown to user -->
+  <video id="camera-feed" autoplay playsinline muted
+    style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
+  </video>
+
+  <!-- MediaPipe local — CDN blocked in Electron due to MIME checking -->
+  <script src="../node_modules/@mediapipe/tasks-vision/vision_bundle.cjs"></script>
+
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
   <script src="components/spriteAnimator.js"></script>
@@ -17,6 +25,7 @@
   <script src="components/particles.js"></script>
   <script src="ui/status.js"></script>
   <script src="components/brain.js"></script>
+  <script src="components/camera.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
