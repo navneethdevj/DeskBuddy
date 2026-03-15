@@ -67,6 +67,18 @@ const Brain = (() => {
   let wasTyping = false;
   let typingGlanceUntil = 0;
 
+  // Phase 3: emotion tracking for sounds
+  let lastEmotionForSound = null;
+
+  // Phase 3: tear overlay state
+  let tearHeight   = 0;
+  let tearInterval = null;
+  let tearDraining = false;
+
+  // Phase 3: overjoyed/sulking sequence timers
+  let overjoyedTimer    = null;
+  let sulkCheckInterval = null;
+
   let gazeCurrentX = 0;
   let gazeCurrentY = 0;
   let gazeTargetX  = 0;
@@ -189,17 +201,56 @@ const Brain = (() => {
     }
   }
 
-  /** Set emotion based on focus level unless a special state overrides. */
+  /** Set emotion based on perception signals (camera) or focus meter (fallback). */
   function applyFocusEmotion() {
     if (currentState === 'followCursor' || currentState === 'curious') return;
 
-    if (focusLevel > 70) {
-      Emotion.setState('focused');
-    } else if (focusLevel < 30) {
-      Emotion.setState('sleepy');
+    let emotion;
+
+    if (window.perception) {
+      const p   = window.perception;
+      const tms = p.timeInStateMs;
+      switch (p.userState) {
+        case 'Focused':
+          emotion = tms >= 15000 ? 'curious' : 'focused';
+          break;
+        case 'LookingAway':
+          if      (tms >= 90000) emotion = 'grumpy';
+          else if (tms >= 45000) emotion = 'pouty';
+          else                   emotion = 'suspicious';
+          break;
+        case 'Sleepy':
+          emotion = 'sleepy';
+          break;
+        case 'NoFace':
+          if      (tms >= 45000) emotion = 'crying';
+          else if (tms >= 30000) emotion = 'sad';
+          else if (tms >=  5000) emotion = 'scared';
+          else                   emotion = 'idle';
+          break;
+        default:
+          emotion = 'idle';
+      }
     } else {
-      Emotion.setState('idle');
+      // Fallback: original focus meter
+      if      (focusLevel > 70) emotion = 'focused';
+      else if (focusLevel < 30) emotion = 'sleepy';
+      else                      emotion = 'idle';
     }
+
+    // Trigger sound on emotion change
+    if (emotion !== lastEmotionForSound) {
+      window._emotionChanged = { from: lastEmotionForSound, to: emotion };
+      lastEmotionForSound = emotion;
+      // Manage tears
+      if (emotion === 'crying') {
+        _startTears();
+      } else if (tearInterval || tearHeight > 0) {
+        if (!tearDraining) _stopTears();
+      }
+    }
+
+    Emotion.setState(emotion);
   }
 
   // ===== Gaze Logic (idle / sleepy states) =====
@@ -265,6 +316,11 @@ const Brain = (() => {
   // ===== State Management =====
 
   function enterState(state) {
+    // Phase 3: detect user returning after crying/sad/scared
+    const wasAbsent  = currentState === 'scared' || currentState === 'sad' || currentState === 'crying';
+    const returning  = (state === 'observe' || state === 'idle') && window.perception?.facePresent;
+    if (wasAbsent && returning) { _triggerOverjoyed(); return; }
+
     currentState = state;
     Status.setText('Status: ' + (STATE_LABELS[state] || state));
 
@@ -401,5 +457,78 @@ const Brain = (() => {
     return Math.max(min, Math.min(max, value));
   }
 
-  return { start: start, stop: stop, getState: getState, getFocusLevel: getFocusLevel };
+  // ── Phase 3: Tear overlay ──────────────────────────────────────────
+  function _startTears() {
+    const overlay = document.getElementById('tear-overlay');
+    const fill    = document.getElementById('tear-fill');
+    if (!overlay || !fill) return;
+    overlay.style.display = 'block';
+    if (typeof Audio !== 'undefined') Audio.startCryingAmbient?.();
+    if (tearInterval) return;
+    tearInterval = setInterval(() => {
+      if (tearHeight < 65) { tearHeight = Math.min(65, tearHeight + 0.40); fill.style.height = tearHeight + '%'; }
+    }, 1000);
+  }
+
+  function _stopTears() {
+    if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
+    const fill = document.getElementById('tear-fill');
+    const overlay = document.getElementById('tear-overlay');
+    if (!fill || !overlay) return;
+    if (typeof Audio !== 'undefined') Audio.stopCryingAmbient?.();
+    tearDraining = true;
+    const drain = setInterval(() => {
+      tearHeight = Math.max(0, tearHeight - 2.5);
+      fill.style.height = tearHeight + '%';
+      if (tearHeight <= 0) { clearInterval(drain); overlay.style.display = 'none'; tearDraining = false; }
+    }, 80);
+  }
+
+  // ── Phase 3: Overjoyed → Sulking → Forgiven sequence ──────────────
+  function _triggerOverjoyed() {
+    if (overjoyedTimer) clearTimeout(overjoyedTimer);
+    if (sulkCheckInterval) clearInterval(sulkCheckInterval);
+    currentState = 'idle';
+    _stopTears();
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: lastEmotionForSound, to: 'overjoyed' };
+    lastEmotionForSound = 'overjoyed';
+
+    overjoyedTimer = setTimeout(() => {
+      overjoyedTimer = null;
+      if (window.perception?.facePresent) {
+        Emotion.setState('sulking');
+        window._emotionChanged = { from: 'overjoyed', to: 'sulking' };
+        lastEmotionForSound = 'sulking';
+        _startSulkResolution();
+      } else {
+        enterState('idle');
+      }
+    }, 5000);
+  }
+
+  function _startSulkResolution() {
+    if (sulkCheckInterval) clearInterval(sulkCheckInterval);
+    let focusedMs = 0;
+    sulkCheckInterval = setInterval(() => {
+      const p = window.perception;
+      if (!p) return;
+      if (p.userState === 'Focused') {
+        focusedMs += 500;
+        if (focusedMs >= 10000) {
+          clearInterval(sulkCheckInterval); sulkCheckInterval = null;
+          window._emotionChanged = { from: 'sulking', to: 'forgiven' };
+          lastEmotionForSound = null;
+          enterState('observe');
+        }
+      } else {
+        focusedMs = Math.max(0, focusedMs - 250);
+      }
+    }, 500);
+  }
+
+  return {
+    start, stop, getState, getFocusLevel,
+    startTears: _startTears, stopTears: _stopTears
+  };
 })();

@@ -10,6 +10,13 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Phase 3: Tear overlay -->
+  <div id="tear-overlay"><div id="tear-fill"></div></div>
+  <!-- Phase 3: Whisper text -->
+  <div id="whisper-text"></div>
+  <!-- Phase 3: Focus timer -->
+  <div id="focus-timer">focus 00:00</div>
+
   <!-- Phase 1: hidden camera — face detection only, never displayed -->
   <video id="camera-feed" autoplay playsinline muted
     style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
@@ -27,6 +34,7 @@
   <script src="components/brain.js"></script>
   <script src="components/camera.js"></script>
   <script src="components/perception.js"></script>
+  <script src="components/audio.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

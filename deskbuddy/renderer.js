@@ -22,6 +22,8 @@
   // Start the creature brain (owns the main loop)
   Brain.start();
 
+  Audio.init();
+
   // Phase 1 — camera + perception (async, non-blocking, non-fatal)
   Camera.init()
     .then(() => Perception.init())
