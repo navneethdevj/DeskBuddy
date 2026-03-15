@@ -54,11 +54,11 @@ const Camera = (() => {
   async function _initMediaPipe() {
     const { FaceLandmarker, FilesetResolver } = window;
     if (!FaceLandmarker || !FilesetResolver) {
-      throw new Error('MediaPipe CDN not loaded — check script tag in index.html');
+      throw new Error('MediaPipe not loaded — check script tag in index.html');
     }
 
     const vision = await FilesetResolver.forVisionTasks(
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+      '../node_modules/@mediapipe/tasks-vision/wasm'
     );
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {

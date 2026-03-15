@@ -6,9 +6,17 @@
   "scripts": {
     "start": "electron deskbuddy/main.js"
   },
-  "keywords": ["electron", "desktop-pet", "companion", "animation"],
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "companion",
+    "animation"
+  ],
   "license": "MIT",
   "devDependencies": {
     "electron": "^34.2.0"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.3"
   }
 }

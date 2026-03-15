@@ -15,9 +15,8 @@
     style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
   </video>
 
-  <!-- Phase 1: MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.js"
-    crossorigin="anonymous"></script>
+  <!-- Phase 1: MediaPipe (local install — CDN fails in Electron due to MIME) -->
+  <script src="../node_modules/@mediapipe/tasks-vision/vision_bundle.mjs"></script>
 
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
