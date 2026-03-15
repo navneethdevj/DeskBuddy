@@ -1,3 +1,10 @@
+// REPO STUDY FINDINGS:
+// WebPet: eyes are text-based emoji chars, no DOM overlay eyelids → added overlay div eyelids for richer expression
+// Neko: repo unavailable (404) → used idle blink timing concept (2.5–5s random) already in scheduleBlink
+// Tamagotchi: stat bars change color at thresholds for visual milestone feedback → inspired milestone pulse
+// EyeOnTask: blink detection via EAR, colorBackgroundText for visual state → attention bar already exists
+// Desktop Goose: time-based escalation (curQuitAlpha accumulates) → inspired progressive milestone messages
+
 /**
  * Companion module.
  * Creates the companion DOM element (a pair of glowing eyes with pupils),
@@ -52,8 +59,16 @@ const Companion = (() => {
     el.innerHTML = `
       <div class="companion-inner">
         <div class="eyes">
-          <div class="eye eye-left"><div class="pupil"></div></div>
-          <div class="eye eye-right"><div class="pupil"></div></div>
+          <div class="eye eye-left">
+            <div class="eyelid-top"></div>
+            <div class="eyelid-bottom"></div>
+            <div class="pupil"></div>
+          </div>
+          <div class="eye eye-right">
+            <div class="eyelid-top"></div>
+            <div class="eyelid-bottom"></div>
+            <div class="pupil"></div>
+          </div>
         </div>
       </div>
     `;

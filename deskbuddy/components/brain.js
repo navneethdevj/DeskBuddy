@@ -1,3 +1,10 @@
+// REPO STUDY FINDINGS:
+// Tamagotchi: achievements via bar color thresholds + showNotification() → focus milestone whispers
+// Desktop Goose: time-based escalation (curQuitAlpha accumulates over held ESC) → progressive milestone msgs
+// EyeOnTask: blink counter + colorBackgroundText for sustained attention feedback → milestone pulse on timer
+// WebPet: showNotification() with CSS slide-up animation → used existing showWhisper() queue system
+// Neko: repo unavailable → used concept of idle timer-driven behaviors for milestone scheduling
+
 /**
  * Creature Brain — attention-based behavior state machine with focus meter.
  * Cycles through states (observe, curious, idle, sleepy) on a timer and
@@ -96,6 +103,13 @@ const Brain = (() => {
   let _focusSecs  = 0;
   let _nofaceSecs = 0;
   let _timerInt   = null;
+
+  // Focus milestones — fired once each per session
+  const _MILESTONES = [
+    { secs: 1500, msg: '25 min ˆωˆ tiny stretch?',          fired: false },
+    { secs: 2700, msg: '45 min!! take a breather? ˆωˆ',     fired: false },
+    { secs: 3600, msg: 'one whole hour ˆωˆ please rest ♡',  fired: false },
+  ];
 
   // Whisper queue
   let _whisperQueue = [];
@@ -667,11 +681,35 @@ const Brain = (() => {
         _nofaceSecs = 0;
       } else if (state === 'NoFace') {
         _nofaceSecs++;
-        if (_nofaceSecs >= 60) { _focusSecs = 0; _nofaceSecs = 0; }
+        if (_nofaceSecs >= 60) {
+          _focusSecs = 0;
+          _nofaceSecs = 0;
+          // Reset milestones so they can fire again next session
+          _MILESTONES.forEach(m => { m.fired = false; });
+        }
       } else {
         _nofaceSecs = 0;
         // Timer pauses but does not reset for LookingAway/Sleepy
       }
+
+      // Check focus milestones
+      _MILESTONES.forEach(m => {
+        if (!m.fired && _focusSecs >= m.secs && state === 'Focused') {
+          m.fired = true;
+          showWhisper(m.msg, 6000);
+          // Brief visual pulse on the timer element
+          const tel = document.getElementById('focus-timer');
+          if (tel) {
+            tel.classList.add('milestone');
+            setTimeout(() => tel.classList.remove('milestone'), 2500);
+          }
+          // Emit sound signal for audio.js
+          window._emotionChanged = { from: window._lastEmotion, to: '__milestone' };
+          setTimeout(() => {
+            if (window._emotionChanged?.to === '__milestone') window._emotionChanged = null;
+          }, 300);
+        }
+      });
 
       // Update focus timer display
       const timerEl = document.getElementById('focus-timer');

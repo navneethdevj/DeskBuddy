@@ -1,3 +1,10 @@
+// REPO STUDY FINDINGS:
+// Tamagotchi: visual celebrations for milestones (bar color changes) → milestone sound trigger
+// Desktop Goose: escalation reactions over time → progressive milestone audio feedback
+// WebPet: no audio system → all audio is original formant synthesis
+// EyeOnTask: no audio feedback → milestone coo adds auditory reward for sustained focus
+// Neko: repo unavailable → used concept of idle state audio cues
+
 /**
  * Audio — Cute non-verbal creature voice using Web Audio API formant synthesis.
  *
@@ -92,6 +99,10 @@ const Audio = (() => {
         break;
       case 'forgiven':
         _reliefSigh();
+        break;
+      case '__milestone':
+        // Soft celebratory coo for focus milestone
+        if (window.perception?.facePresent) _contentCoo();
         break;
     }
   }
