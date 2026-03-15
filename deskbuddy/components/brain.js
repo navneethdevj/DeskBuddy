@@ -84,6 +84,11 @@ const Brain = (() => {
   // Neko-style lean state — body offset toward face
   let leanCurrentX = 0, leanCurrentY = 0;
 
+  // Face dropout grace — hold last gaze briefly when face detection drops
+  // 300ms covers ~5 frames at 15fps (typical MediaPipe dropout duration)
+  let lastFaceGazeTime = 0;
+  const FACE_GAZE_HOLD_MS = 300;
+
   // ===== Activity Helpers =====
 
   function isMouseActive(now) {
@@ -157,7 +162,8 @@ const Brain = (() => {
         if (window.perception?.facePresent) {
           _applyFaceGaze();
           _applyBodyLean();
-        } else {
+          lastFaceGazeTime = now;
+        } else if (now - lastFaceGazeTime >= FACE_GAZE_HOLD_MS) {
           var time = now * 0.001;
           var c = Companion.getCenter();
           Companion.lookAt(
@@ -171,6 +177,7 @@ const Brain = (() => {
         if (window.perception?.facePresent) {
           _applyFaceGaze();
           _applyBodyLean();
+          lastFaceGazeTime = now;
         }
         break;
       case 'idle':
@@ -178,7 +185,8 @@ const Brain = (() => {
         if (window.perception?.facePresent) {
           _applyFaceGaze();
           _applyBodyLean();
-        } else {
+          lastFaceGazeTime = now;
+        } else if (now - lastFaceGazeTime >= FACE_GAZE_HOLD_MS) {
           applyGaze(now, mouseActive, keyActive);
         }
         break;
@@ -193,7 +201,8 @@ const Brain = (() => {
         if (window.perception?.facePresent) {
           _applyFaceGaze(0.03);  // slower lerp when sleepy
           _applyBodyLean();
-        } else {
+          lastFaceGazeTime = now;
+        } else if (now - lastFaceGazeTime >= FACE_GAZE_HOLD_MS) {
           applyGaze(now, mouseActive, keyActive);
         }
         break;
@@ -417,7 +426,7 @@ const Brain = (() => {
         break;
       case 'idle':
         Emotion.setState('idle');
-        Companion.resetLook();
+        if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
         scheduleHappyFlash();
         break;
@@ -427,7 +436,7 @@ const Brain = (() => {
         break;
       case 'sleepy':
         Emotion.setState('sleepy');
-        Companion.resetLook();
+        if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
         break;
     }

@@ -19,6 +19,12 @@ const Companion = (() => {
   const GAZE_MAX_X = 15; // percent shift for gradient center
   const GAZE_MAX_Y = 10;
 
+  // Gradient gaze smoothing — prevents instant snap of --gaze-x/--gaze-y
+  // 0.12 at 60fps gives ~8 frame settle time; higher = snappier, lower = floatier
+  const GAZE_GRADIENT_LERP = 0.12;
+  let gazeGradientCurrentX = 0, gazeGradientCurrentY = 0;
+  let gazeGradientTargetX  = 0, gazeGradientTargetY  = 0;
+
   // Pupil tracking
   const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
   const PUPIL_LERP = 0.15;
@@ -136,11 +142,9 @@ const Companion = (() => {
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0) return;
 
-    // Gradient gaze shift
-    const gx = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
-    const gy = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
-    el.style.setProperty('--gaze-x', gx + '%');
-    el.style.setProperty('--gaze-y', gy + '%');
+    // Gradient gaze target (smoothed in updatePupils)
+    gazeGradientTargetX = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
+    gazeGradientTargetY = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
 
     // Pupil target (scaled by distance, clamped to max radius)
     const maxPx = pupilMaxPx();
@@ -150,21 +154,30 @@ const Companion = (() => {
   }
 
   /**
-   * Reset gaze and pupil to center.
+   * Reset gaze and pupil to center smoothly via targets.
    */
   function resetLook() {
     if (!el) return;
-    el.style.setProperty('--gaze-x', '0%');
-    el.style.setProperty('--gaze-y', '0%');
+    gazeGradientTargetX = 0;
+    gazeGradientTargetY = 0;
     pupilTargetX = 0;
     pupilTargetY = 0;
   }
 
   /**
-   * Smoothly interpolate pupils toward their target each frame.
+   * Smoothly interpolate gradient gaze and pupils toward their targets each frame.
    * Called from the main rAF loop.
    */
   function updatePupils() {
+    // Smooth gradient gaze interpolation (prevents snap/teleport)
+    gazeGradientCurrentX += (gazeGradientTargetX - gazeGradientCurrentX) * GAZE_GRADIENT_LERP;
+    gazeGradientCurrentY += (gazeGradientTargetY - gazeGradientCurrentY) * GAZE_GRADIENT_LERP;
+    if (el) {
+      el.style.setProperty('--gaze-x', gazeGradientCurrentX + '%');
+      el.style.setProperty('--gaze-y', gazeGradientCurrentY + '%');
+    }
+
+    // Smooth pupil interpolation
     pupilCurrentX += (pupilTargetX - pupilCurrentX) * PUPIL_LERP;
     pupilCurrentY += (pupilTargetY - pupilCurrentY) * PUPIL_LERP;
 
