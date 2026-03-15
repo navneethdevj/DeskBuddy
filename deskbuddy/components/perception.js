@@ -75,8 +75,10 @@ const Perception = (() => {
   // https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
   // EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|) where p1-p6 are eye boundary landmarks.
   // Lower EAR = more closed eye. More reliable than blendshapes alone for blink detection.
+  // Typical EAR range: ~0.15 (fully closed) to ~0.35 (wide open)
   const EAR_BLINK_THRESHOLD = 0.21;   // below this = blink / closed
   const EAR_SLEEPY_THRESHOLD = 0.24;  // below this for sustained period = sleepy
+  const EAR_DEFAULT_OPEN = 0.30;      // fallback when landmarks are missing
 
   // === Adaptive gaze bias correction — WebGazer calibration concept ===
   // https://github.com/brownhci/WebGazer
@@ -303,7 +305,7 @@ const Perception = (() => {
   function _computeEAR(lm, indices) {
     const p1 = lm[indices[0]], p2 = lm[indices[1]], p3 = lm[indices[2]];
     const p4 = lm[indices[3]], p5 = lm[indices[4]], p6 = lm[indices[5]];
-    if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6) return 0.3; // default open
+    if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6) return EAR_DEFAULT_OPEN;
 
     const dist = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
     const vertical1 = dist(p2, p6);
