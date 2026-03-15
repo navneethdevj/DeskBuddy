@@ -260,7 +260,8 @@ const Perception = (() => {
   function _avgLandmarks(lm, indices) {
     let x = 0, y = 0, count = 0;
     for (let i = 0; i < indices.length; i++) {
-      if (lm[indices[i]]) { x += lm[indices[i]].x; y += lm[indices[i]].y; count++; }
+      const pt = lm[indices[i]];
+      if (pt) { x += pt.x; y += pt.y; count++; }
     }
     if (count === 0) return null;
     return { x: x / count, y: y / count };
