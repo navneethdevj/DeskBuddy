@@ -1,9 +1,9 @@
 /* REPO STUDY FINDINGS:
-   WebPet: eyes are text chars with CSS transitions (0.5s ease), colorChange/float keyframes → overlay div eyelids
+   WebPet: eyes are text-based (#eye-left/#eye-right) with CSS transitions, showNotification() slide-up → overlay div eyelids
+   Web Shimeji: repo unavailable → concept of layered expression DOM elements (lid over eye) applied
    Tamagotchi: bar color thresholds (green>orange>red) for milestone feedback → milestone pulse class
-   EyeOnTask: colorBackgroundText overlays for attention state → timer brightness pulse
-   Desktop Goose: time-based alpha accumulation with visual progress → milestone escalation pattern
-   Neko: repo unavailable → used concept of idle behavior CSS animations */
+   EyeOnTask: cv2.putText overlays for attention state → timer brightness pulse
+   Desktop Goose: time-based alpha accumulation with visual progress → milestone escalation pattern */
 
 /* ===== Base Reset ===== */
 *, *::before, *::after {
@@ -755,12 +755,14 @@ html, body {
     0 0 40vmin rgba(120,135,235,0.06) !important;
 }
 
-/* =====================================================================
-   Eyelids — separate DOM overlay divs give genuine lid movement.
-   Background matches app (#111111). Transition 0.30s feels physical.
-   Concept from WebPet: overlay divs vs border-radius give far more
-   expression range — drooping, squinting, wide-open all look distinct.
-   ===================================================================== */
+/* ==========================================================================
+   EYELIDS — DOM overlay divs for genuine lid movement.
+   Background #111111 matches app bg so lids look physical.
+   Transition 0.30s cubic feels organic — fast enough to react,
+   slow enough to feel weighted.
+   Concept from WebPet/Web Shimeji: separate lid elements give far more
+   expression range than border-radius alone.
+   ========================================================================== */
 
 .eyelid-top {
   position: absolute;
@@ -770,7 +772,7 @@ html, body {
   border-radius: 0 0 50% 50%;
   z-index: 5;
   pointer-events: none;
-  transition: height 0.30s cubic-bezier(.4,0,.2,1);
+  transition: height 0.30s cubic-bezier(.4, 0, .2, 1);
 }
 
 .eyelid-bottom {
@@ -781,59 +783,73 @@ html, body {
   border-radius: 50% 50% 0 0;
   z-index: 5;
   pointer-events: none;
-  transition: height 0.30s cubic-bezier(.4,0,.2,1);
+  transition: height 0.30s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* Emotion-specific lid positions */
+/* Per-emotion lid heights */
 .companion.focused   .eyelid-top              { height: 18%; }
+
 .companion.sleepy    .eyelid-top              { height: 52%; }
 .companion.sleepy    .eyelid-bottom           { height: 8%;  }
+
 .companion.sad       .eyelid-top              { height: 36%; }
+
 .companion.crying    .eyelid-top              { height: 44%; }
 .companion.crying    .eyelid-bottom           { height: 6%;  }
+
+/* Suspicious: asymmetric — one lid lower than the other */
 .companion.suspicious .eyelid-top             { height: 24%; }
 .companion.suspicious .eye-left  .eyelid-top  { height: 32%; }
 .companion.suspicious .eye-right .eyelid-top  { height: 16%; }
+
 .companion.grumpy    .eyelid-top              { height: 38%; }
+
 .companion.pouty     .eyelid-top              { height: 28%; }
+
 .companion.sulking   .eyelid-top              { height: 30%; }
 .companion.sulking   .eyelid-bottom           { height: 10%; }
-.companion.curious   .eyelid-top              { height: 3%;  }
+
+/* Wide open states */
+.companion.curious   .eyelid-top              { height: 2%;  }
 .companion.scared    .eyelid-top              { height: 0%;  }
 .companion.overjoyed .eyelid-top              { height: 0%;  }
+
+/* Happy squint — bottom rises slightly */
 .companion.happy     .eyelid-bottom           { height: 8%;  }
 
-/* Blink overrides — both lids close fully and fast */
-.companion.blink .eyelid-top    {
-  height: 50% !important;
-  transition: height 0.07s ease;
-}
-.companion.blink .eyelid-bottom {
-  height: 50% !important;
-  transition: height 0.07s ease;
-}
+/* Blink fully closes both lids — fast override */
+.companion.blink .eyelid-top    { height: 50% !important; transition: height 0.07s ease; }
+.companion.blink .eyelid-bottom { height: 50% !important; transition: height 0.07s ease; }
 
-/* Teardrop elements — spawned by brain.js during sad/crying */
+/* ==========================================================================
+   TEARDROPS — individual drops injected by brain.js during sad/crying
+   ========================================================================== */
+
 .teardrop {
   position: fixed;
   width: 5px;
   height: 8px;
   background: radial-gradient(ellipse at 50% 30%,
-    rgba(180,220,255,0.95),
-    rgba(120,180,240,0.70));
+    rgba(180, 220, 255, 0.95),
+    rgba(120, 180, 240, 0.70));
   border-radius: 50% 50% 60% 60%;
   pointer-events: none;
   z-index: 100;
 }
+
 @keyframes tearFall {
   0%   { opacity: 0.9; transform: translateY(0) scaleX(1); }
-  85%  { opacity: 0.7; transform: translateY(var(--fall-dist,120px)) scaleX(0.9); }
-  100% { opacity: 0;   transform: translateY(calc(var(--fall-dist,120px) + 20px)) scaleX(0.7); }
+  80%  { opacity: 0.7; transform: translateY(var(--fall-dist, 120px)) scaleX(0.85); }
+  100% { opacity: 0;   transform: translateY(calc(var(--fall-dist, 120px) + 18px)) scaleX(0.7); }
 }
 
-/* Focus timer milestone pulse — briefly brightens when milestone hits */
+/* ==========================================================================
+   FOCUS TIMER MILESTONE — brief brightness pulse when milestone fires
+   ========================================================================== */
+
 #focus-timer.milestone {
-  opacity: 0.85 !important;
-  color: rgba(255,255,255,0.92) !important;
-  transition: opacity 0.2s ease, color 0.2s ease;
+  opacity: 0.90 !important;
+  color: rgba(200, 220, 255, 0.95) !important;
+  text-shadow: 0 0 8px rgba(140, 170, 255, 0.6);
+  transition: opacity 0.15s ease, color 0.15s ease, text-shadow 0.15s ease;
 }

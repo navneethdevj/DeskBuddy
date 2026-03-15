@@ -1,9 +1,9 @@
 // REPO STUDY FINDINGS:
-// WebPet: eyes are text-based emoji chars, no DOM overlay eyelids → added overlay div eyelids for richer expression
-// Neko: repo unavailable (404) → used idle blink timing concept (2.5–5s random) already in scheduleBlink
-// Tamagotchi: stat bars change color at thresholds for visual milestone feedback → inspired milestone pulse
-// EyeOnTask: blink detection via EAR, colorBackgroundText for visual state → attention bar already exists
-// Desktop Goose: time-based escalation (curQuitAlpha accumulates) → inspired progressive milestone messages
+// WebPet: eyes are text-based emoji chars (#eye-left/#eye-right), expression via innerHTML swap → separate DOM eyelid overlays give far more expression range
+// Web Shimeji: repo unavailable (404) → concept of CSS-layered expression elements (lid on top of eye) applied via z-index 5 eyelid divs
+// Tamagotchi: stat bars change color at thresholds + showNotification() for alerts → inspired milestone pulse + whisper celebration
+// EyeOnTask: blink detection via EAR, cv2.putText for visual state feedback → attention bar already exists, milestone adds text reward
+// Desktop Goose: time-based escalation (curQuitAlpha accumulates over held ESC) → inspired progressive milestone messages
 
 /**
  * Companion module.
