@@ -20,6 +20,19 @@ const Brain = (() => {
   const RETREAT_THRESHOLD = 200;
   const RETREAT_FACTOR = -0.4;
 
+  // ── Phase 2: Face attention config ────────────────────────────────────────
+  // How much of the face offset translates to gaze shift.
+  // 0.0 = eyes always center, 1.0 = eyes reach full face position.
+  // Keep this LOW — the movement should feel like a living glance, not tracking.
+  const FACE_GAZE_SOFTNESS = 0.25;
+
+  // How many seconds of user stillness before curiosity scan activates.
+  const CURIOSITY_TRIGGER_MS = 15000;
+
+  // Lerp speed for face-driven gaze (lower = smoother/slower)
+  const FACE_GAZE_LERP = 0.06;
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Focus meter tuning
   const FOCUS_INCREASE_MOUSE = 0.4;
   const FOCUS_INCREASE_KEY = 0.8;
@@ -62,6 +75,15 @@ const Brain = (() => {
   // Screen awareness: typing glance
   let wasTyping = false;
   let typingGlanceUntil = 0;
+
+  // Phase 2: Face gaze interpolation (smooth eye movement toward face)
+  let gazeCurrentX = 0;   // interpolated gaze X in screen pixels (offset from center)
+  let gazeCurrentY = 0;   // interpolated gaze Y in screen pixels (offset from center)
+  let gazeTargetX  = 0;
+  let gazeTargetY  = 0;
+
+  // Phase 2: Emotion/state tracking for sound triggers (used in Phase 3+)
+  let lastPerceptionState = null;
 
   // ===== Activity Helpers =====
 
@@ -118,11 +140,13 @@ const Brain = (() => {
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
 
-    var near = isCursorNear();
-    if (near && currentState !== 'followCursor' && followCooldown <= 0) {
-      enterState('followCursor');
-      return;
-    }
+    // CURSOR TRACKING — disabled (Phase 2). Camera gaze is now the attention source.
+    // Preserved for potential re-enable. To restore: uncomment and remove face gaze.
+    // var near = isCursorNear();
+    // if (near && currentState !== 'followCursor' && followCooldown <= 0) {
+    //   enterState('followCursor');
+    //   return;
+    // }
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -130,13 +154,18 @@ const Brain = (() => {
     switch (currentState) {
       case 'observe':
         Movement.update();
-        // Eyes slowly scan the environment
-        var time = now * 0.001;
-        var c = Companion.getCenter();
-        Companion.lookAt(
-          c.x + Math.sin(time * 0.8) * 300,
-          c.y + Math.sin(time * 0.5) * 100
-        );
+        if (window.cameraAvailable && window.perception?.facePresent) {
+          // Face detected — watch the user with soft interpolated gaze
+          _updateFaceGaze();
+        } else {
+          // No camera or no face — gentle ambient scan (reduced range for subtlety)
+          var time = now * 0.001;
+          var c = Companion.getCenter();
+          Companion.lookAt(
+            c.x + Math.sin(time * 0.8) * 120,
+            c.y + Math.sin(time * 0.5) * 60
+          );
+        }
         break;
       case 'curious':
         Movement.decay();
@@ -146,12 +175,11 @@ const Brain = (() => {
         applyGaze(now, mouseActive, keyActive);
         break;
       case 'followCursor':
-        updateFollowCursor();
-        if (!near) {
-          followCooldown = FOLLOW_COOLDOWN_FRAMES;
-          Companion.resetLook();
-          pickNextState();
-        }
+        // CURSOR TRACKING — disabled (Phase 2). State no longer entered.
+        // Preserved for re-enable. Immediately exit to idle if somehow reached.
+        // updateFollowCursor();
+        Companion.resetLook();
+        pickNextState();
         break;
       case 'sleepy':
         Movement.decay();
@@ -197,24 +225,58 @@ const Brain = (() => {
    * Priority: screen-center glance when typing > follow cursor > idle look.
    */
   function applyGaze(now, mouseActive, keyActive) {
-    // Screen awareness: brief glance at screen center when typing starts
-    if (keyActive && !wasTyping) {
-      typingGlanceUntil = now + 1000;
-    }
-    wasTyping = keyActive;
+    // CURSOR TRACKING — mouse gaze disabled (Phase 2).
+    // Kept for reference:
+    // if (keyActive && !wasTyping) { typingGlanceUntil = now + 1000; }
+    // wasTyping = keyActive;
+    // if (now < typingGlanceUntil) { ... }
+    // if (mouseActive) { Companion.lookAt(mouseX, mouseY); return; }
 
-    if (now < typingGlanceUntil) {
-      Companion.lookAt(window.innerWidth / 2, window.innerHeight / 2);
+    if (window.cameraAvailable && window.perception?.facePresent) {
+      _updateFaceGaze();
       return;
     }
 
-    if (mouseActive) {
-      Companion.lookAt(mouseX, mouseY);
-      return;
-    }
-
-    // Idle look behavior
+    // Fallback: gentle idle look pattern when no face detected
     checkIdleLook(now);
+  }
+
+  /**
+   * Smoothly interpolate the gaze toward the detected face position.
+   *
+   * Converts the 0–1 normalized face position from Perception into
+   * screen coordinates, then shifts those toward screen center by
+   * FACE_GAZE_SOFTNESS. This means:
+   *   - Face dead-center (0.5, 0.5) → eyes look at center
+   *   - Face at edge → eyes drift slightly that way, never fully there
+   *
+   * Uses per-frame lerp for organic, never-snapping movement.
+   * The actual DOM update happens via Companion.lookAt() which internally
+   * lerps the pupil position (PUPIL_LERP = 0.15 in companion.js).
+   * Result: two layers of smoothing = very organic eye movement.
+   */
+  function _updateFaceGaze() {
+    const p = window.perception;
+    if (!p || !p.facePresent) return;
+
+    const center = Companion.getCenter();
+
+    // Map normalized face position to screen coords
+    const rawX = p.faceX * window.innerWidth;
+    const rawY = p.faceY * window.innerHeight;
+
+    // Soften: interpolate between screen center and raw face position
+    // FACE_GAZE_SOFTNESS=0.25 → eyes move 25% of the way toward face
+    const softX = center.x + (rawX - center.x) * FACE_GAZE_SOFTNESS;
+    const softY = center.y + (rawY - center.y) * FACE_GAZE_SOFTNESS;
+
+    // Lerp the gaze target for extra smoothness
+    gazeTargetX = softX;
+    gazeTargetY = softY;
+    gazeCurrentX += (gazeTargetX - gazeCurrentX) * FACE_GAZE_LERP;
+    gazeCurrentY += (gazeTargetY - gazeCurrentY) * FACE_GAZE_LERP;
+
+    Companion.lookAt(gazeCurrentX, gazeCurrentY);
   }
 
   // ===== Idle Look =====
@@ -279,6 +341,7 @@ const Brain = (() => {
         scheduleHappyFlash();
         break;
       case 'followCursor':
+        // CURSOR TRACKING — disabled (Phase 2). Left for reference.
         Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
@@ -300,7 +363,40 @@ const Brain = (() => {
     stateTimer = setTimeout(function () { pickNextState(); }, duration);
   }
 
+  /**
+   * Choose the next brain state.
+   * When camera is available, perception signals guide state selection.
+   * When camera is unavailable, original random selection is the fallback.
+   */
   function pickNextState() {
+    if (window.cameraAvailable && window.perception) {
+      const p          = window.perception;
+      const userState  = p.userState;
+      const timeInMs   = p.timeInStateMs;
+
+      if (userState === 'NoFace') {
+        enterState('idle');
+        return;
+      }
+      if (userState === 'Sleepy') {
+        enterState('sleepy');
+        return;
+      }
+      if (userState === 'LookingAway') {
+        enterState('observe');  // keep watching even when user looks away
+        return;
+      }
+      if (userState === 'Focused' && timeInMs >= CURIOSITY_TRIGGER_MS) {
+        enterState('curious');  // user is still and focused — get curious
+        return;
+      }
+      if (userState === 'Focused') {
+        enterState('observe');  // watching the user work
+        return;
+      }
+    }
+
+    // Fallback: random (original behavior, also used when camera unavailable)
     var next = STATES[Math.floor(Math.random() * STATES.length)];
     enterState(next);
   }
@@ -381,5 +477,11 @@ const Brain = (() => {
     return Math.max(min, Math.min(max, value));
   }
 
-  return { start: start, stop: stop, getState: getState, getFocusLevel: getFocusLevel };
+  return {
+    start:         start,
+    stop:          stop,
+    getState:      getState,
+    getFocusLevel: getFocusLevel
+    // Phase 4 will add: startFocusTimer, showWhisper, startTears, stopTears
+  };
 })();
