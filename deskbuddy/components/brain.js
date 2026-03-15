@@ -53,6 +53,11 @@ const Brain = (() => {
   const NOFACE_SAD_MS              = 35000;   // 35s → sad
   const NOFACE_CRYING_MS           = 45000;   // 45s → crying
 
+  // Tear overlay tuning
+  const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
+  const TEAR_RISE_RATE  = 0.40;   // % per second during crying
+  const TEAR_DRAIN_RATE = 2.5;    // % per drain tick when stopping
+
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -84,6 +89,24 @@ const Brain = (() => {
   let wasTyping = false;
   let typingGlanceUntil = 0;
 
+  // Tear overlay state
+  let tearHeight   = 0;
+  let tearInterval = null;
+  let tearDraining = false;
+
+  // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
+  let overjoyedTimer    = null;
+  let sulkCheckInterval = null;
+
+  // Focus timer
+  let _focusSecs  = 0;
+  let _nofaceSecs = 0;
+  let _timerInt   = null;
+
+  // Whisper queue
+  let _whisperQueue = [];
+  let _whisperBusy  = false;
+
   // Face gaze interpolation removed — smoothing handled by
   // One Euro Filter in perception.js + lerp in companion.js (no double-lerp needed)
 
@@ -114,6 +137,7 @@ const Brain = (() => {
     Movement.init();
     enterState('idle');
     tick();
+    _startFocusTimer();
   }
 
   function stop() {
@@ -287,10 +311,16 @@ const Brain = (() => {
         emotion = 'idle';
     }
 
-    // Track changes for audio system (Chunk 5 reads this)
+    // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+      // Start tears on crying, stop on any other emotion
+      if (emotion === 'crying') {
+        _startTears();
+      } else if (tearInterval || tearHeight > 0) {
+        if (!tearDraining) _stopTears();
+      }
     }
 
     Emotion.setState(emotion);
@@ -410,6 +440,15 @@ const Brain = (() => {
   // ===== State Management =====
 
   function enterState(state) {
+    // Return-from-absence detection (Tamagotchi/WebPet concept)
+    // When user returns after DeskBuddy was scared/sad/crying → overjoyed sequence
+    const wasAbsent = window._lastEmotion === 'scared'
+                   || window._lastEmotion === 'sad'
+                   || window._lastEmotion === 'crying';
+    const returning = (state === 'observe' || state === 'idle')
+                   && window.perception?.facePresent;
+    if (wasAbsent && returning) { _triggerOverjoyed(); return; }
+
     currentState = state;
 
     // Build status text including perception info when camera is active
@@ -564,5 +603,145 @@ const Brain = (() => {
     return Math.max(min, Math.min(max, value));
   }
 
-  return { start: start, stop: stop, getState: getState, getFocusLevel: getFocusLevel };
+  // ── TEAR OVERLAY ──────────────────────────────────────────────────────────
+  // Water rises during crying, drains fast when user returns
+  function _startTears() {
+    const overlay = document.getElementById('tear-overlay');
+    const fill    = document.getElementById('tear-fill');
+    if (!overlay || !fill) return;
+    overlay.style.display = 'block';
+    if (tearInterval) return;
+    tearInterval = setInterval(() => {
+      if (tearHeight < MAX_TEAR_HEIGHT) {
+        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE);
+        fill.style.height = tearHeight + '%';
+      }
+    }, 1000);
+  }
+
+  function _stopTears() {
+    if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
+    const fill    = document.getElementById('tear-fill');
+    const overlay = document.getElementById('tear-overlay');
+    if (!fill || !overlay) return;
+    tearDraining = true;
+    const drain = setInterval(() => {
+      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE);
+      fill.style.height = tearHeight + '%';
+      if (tearHeight <= 0) {
+        clearInterval(drain);
+        overlay.style.display = 'none';
+        tearDraining = false;
+      }
+    }, 80);
+  }
+
+  // ── OVERJOYED → SULKING → FORGIVEN sequence ───────────────────────────────
+  // Adapted from Tamagotchi/WebPet return-from-neglect emotional arc:
+  //   https://github.com/tugcecerit/Tamagotchi-Game
+  //   https://github.com/RobThePCGuy/WebPet
+  //
+  // Arc: return → relief (overjoyed 5s) → lingering upset (sulking) → forgiven
+  // "Reluctant forgiveness" — requires sustained focused attention to resolve
+  function _triggerOverjoyed() {
+    if (overjoyedTimer)    clearTimeout(overjoyedTimer);
+    if (sulkCheckInterval) clearInterval(sulkCheckInterval);
+
+    currentState = 'idle';
+    _stopTears();
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+
+    // After 5s of joy → lingering upset (sulking)
+    overjoyedTimer = setTimeout(() => {
+      overjoyedTimer = null;
+      if (window.perception?.facePresent) {
+        Emotion.setState('sulking');
+        window._emotionChanged = { from: 'overjoyed', to: 'sulking' };
+        window._lastEmotion    = 'sulking';
+        _startSulkResolution();
+      } else {
+        enterState('idle');
+      }
+    }, 5000);
+  }
+
+  function _startSulkResolution() {
+    if (sulkCheckInterval) clearInterval(sulkCheckInterval);
+    let focusedMs = 0;
+
+    // User must stay focused for 10 continuous seconds — "earning" forgiveness
+    sulkCheckInterval = setInterval(() => {
+      const p = window.perception;
+      if (!p) return;
+      if (p.userState === 'Focused') {
+        focusedMs += 500;
+        if (focusedMs >= 10000) {
+          clearInterval(sulkCheckInterval); sulkCheckInterval = null;
+          window._emotionChanged = { from: 'sulking', to: 'forgiven' };
+          window._lastEmotion    = null;
+          enterState('observe');
+        }
+      } else {
+        focusedMs = Math.max(0, focusedMs - 250);
+      }
+    }, 500);
+  }
+
+  // ── FOCUS TIMER ───────────────────────────────────────────────────────────
+  function _startFocusTimer() {
+    if (_timerInt) return;
+    _timerInt = setInterval(() => {
+      const state = window.perception?.userState || 'NoFace';
+
+      if (state === 'Focused') {
+        _focusSecs++;
+        _nofaceSecs = 0;
+      } else if (state === 'NoFace') {
+        _nofaceSecs++;
+        if (_nofaceSecs >= 60) { _focusSecs = 0; _nofaceSecs = 0; }
+      } else {
+        _nofaceSecs = 0;
+        // Timer pauses but does not reset for LookingAway/Sleepy
+      }
+
+      // Update focus timer display
+      const timerEl = document.getElementById('focus-timer');
+      if (timerEl) {
+        const m = String(Math.floor(_focusSecs / 60)).padStart(2, '0');
+        const s = String(_focusSecs % 60).padStart(2, '0');
+        timerEl.textContent = `focus ${m}:${s}`;
+      }
+
+      // Update attention bar from perception
+      const fillEl = document.getElementById('attention-fill');
+      if (fillEl && window.perception) {
+        fillEl.style.width = window.perception.attentionScore + '%';
+      }
+    }, 1000);
+  }
+
+  // ── WHISPER TEXT ──────────────────────────────────────────────────────────
+  // Queue-based — messages don't overlap
+  function showWhisper(text, durationMs) {
+    _whisperQueue.push({ text, durationMs: durationMs || 5000 });
+    if (!_whisperBusy) _nextWhisper();
+  }
+
+  function _nextWhisper() {
+    if (_whisperQueue.length === 0) { _whisperBusy = false; return; }
+    _whisperBusy = true;
+    const { text, durationMs } = _whisperQueue.shift();
+    const el = document.getElementById('whisper-text');
+    if (!el) { _nextWhisper(); return; }
+    el.textContent   = text;
+    el.style.opacity = '0.65';
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(_nextWhisper, 900);
+    }, durationMs);
+  }
+
+  return { start, stop, getState, getFocusLevel, showWhisper };
 })();
