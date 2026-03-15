@@ -4,6 +4,18 @@
  * Iris gaze math from:
  *   https://github.com/arnaudlvq/Eye-Contact-RealTime-Detection
  *   https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
+ *     — multi-landmark iris center (all 5 per eye for robustness)
+ *     — iris-to-eye-corner ratio for horizontal + vertical gaze
+ *
+ * Head-pose compensated gaze from:
+ *   https://github.com/tensorsense/LaserGaze
+ *     — 3D gaze vector concept: subtract head rotation component from
+ *       raw iris offset to isolate actual gaze direction
+ *
+ * Eye visibility weighting from:
+ *   https://github.com/brownhci/WebGazer
+ *     — when head turns, weight the camera-facing eye higher for
+ *       more reliable gaze estimation at angles
  *
  * Attention scoring from:
  *   https://github.com/adithya-s-k/EyeOnTask
@@ -22,7 +34,7 @@
  * window.perception = {
  *   facePresent,
  *   headYaw, headPitch,
- *   gazeX, gazeY,         — -1 to +1 iris offset (Eye Contact Detection math)
+ *   gazeX, gazeY,         — -1 to +1 iris offset (head-pose compensated)
  *   eyeContact,           — true when iris centered in eye socket
  *   eyeContactScore,      — 0-1 confidence
  *   eyeOpenness,          — 0=closed 1=open
@@ -177,13 +189,11 @@ const Perception = (() => {
     const blinkR      = _bs(bs, 'eyeBlinkRight');
     const eyeOpenness = 1 - (blinkL + blinkR) / 2;
 
-    // ── IRIS GAZE (Eye Contact Detection + Eyes Position Estimator) ──────────
-    // landmark indices confirmed from MediaPipe face mesh map:
-    //   Left eye:  outer=33, inner=133, iris center=468, upper lid=159, lower lid=145
-    //   Right eye: outer=362, inner=263, iris center=473, upper lid=386, lower lid=374
-    // Formula from repos: offset = (iris_center - eye_center) / eye_width
-    // Amplify x4 because raw offset is tiny (~0.0 to 0.25 range)
-    const { gazeX, gazeY, eyeContactScore } = _computeIrisGaze(lm);
+    // ── IRIS GAZE (multi-repo enhanced) ─────────────────────────────────────
+    // Eyes-Position-Estimator: all 5 iris landmarks for robust center
+    // WebGazer: yaw-based eye weighting (camera-facing eye more reliable)
+    // LaserGaze: head-pose compensation (separate gaze from head rotation)
+    const { gazeX, gazeY, eyeContactScore } = _computeIrisGaze(lm, yaw, pitch);
     const eyeContact = eyeContactScore > (1 - EYE_CONTACT_THRESHOLD);
 
     // ── EXPRESSIONS (face-api.js concept via MediaPipe blendshapes) ─────────
@@ -243,40 +253,89 @@ const Perception = (() => {
     _transition(candidate, now);
   }
 
-  // ── IRIS GAZE FORMULA ─────────────────────────────────────────────────────
-  // Source: https://github.com/arnaudlvq/Eye-Contact-RealTime-Detection
+  // ── MULTI-LANDMARK IRIS CENTER ─────────────────────────────────────────
   // Source: https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
+  // Average all landmarks in a set for robust center estimation.
+  // Using 5 iris points instead of 1 eliminates single-frame jitter.
+  function _avgLandmarks(lm, indices) {
+    let x = 0, y = 0, count = 0;
+    for (let i = 0; i < indices.length; i++) {
+      if (lm[indices[i]]) { x += lm[indices[i]].x; y += lm[indices[i]].y; count++; }
+    }
+    if (count === 0) return null;
+    return { x: x / count, y: y / count };
+  }
+
+  // ── IRIS GAZE FORMULA (enhanced) ───────────────────────────────────────
+  // Sources:
+  //   Eyes-Position-Estimator — all 5 iris landmarks per eye for robust center
+  //     https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
+  //   WebGazer — yaw-based eye weighting (camera-facing eye is more reliable)
+  //     https://github.com/brownhci/WebGazer
+  //   LaserGaze — head-pose compensation (subtract rotation from raw iris offset)
+  //     https://github.com/tensorsense/LaserGaze
   //
-  // Core formula: gazeX = (iris_x - eye_center_x) / eye_width * amplify
-  // Eye contact score = 1.0 when iris perfectly centered, 0.0 at extreme edge
-  function _computeIrisGaze(lm) {
-    // Landmark indices from MediaPipe face mesh
-    const leftOuter  = lm[33],  leftInner  = lm[133], leftIris  = lm[468];
-    const rightOuter = lm[362], rightInner = lm[263],  rightIris = lm[473];
+  // Core formula: gazeX = (iris_center - eye_center) / eye_width * amplify
+  // Enhanced with: multi-landmark iris, both-eye vertical, yaw weighting,
+  //                head-pose compensation
+  function _computeIrisGaze(lm, headYaw, headPitch) {
+    // === Multi-landmark iris center (Eyes-Position-Estimator approach) ===
+    // Left iris: 468=center, 469=right, 470=top, 471=left, 472=bottom
+    // Right iris: 473=center, 474=right, 475=top, 476=left, 477=bottom
+    const lIris = _avgLandmarks(lm, [468, 469, 470, 471, 472]);
+    const rIris = _avgLandmarks(lm, [473, 474, 475, 476, 477]);
+    if (!lIris || !rIris) return { gazeX: 0, gazeY: 0, eyeContactScore: 0.5 };
 
-    if (!leftIris || !rightIris) return { gazeX: 0, gazeY: 0, eyeContactScore: 0.5 };
+    // Eye corner landmarks
+    const leftOuter  = lm[33],  leftInner  = lm[133];
+    const rightOuter = lm[362], rightInner = lm[263];
 
-    // Left eye horizontal offset
+    // --- Horizontal gaze (both eyes) ---
     const lEyeW  = Math.abs(leftInner.x  - leftOuter.x)  || 0.001;
     const lCtrX  = (leftOuter.x  + leftInner.x)  / 2;
-    const lGazeX = (leftIris.x  - lCtrX)  / lEyeW;
+    const lGazeX = (lIris.x - lCtrX) / lEyeW;
 
-    // Right eye horizontal offset
     const rEyeW  = Math.abs(rightInner.x - rightOuter.x) || 0.001;
     const rCtrX  = (rightOuter.x + rightInner.x) / 2;
-    const rGazeX = (rightIris.x - rCtrX)  / rEyeW;
+    const rGazeX = (rIris.x - rCtrX) / rEyeW;
 
-    // Average both eyes, amplify x4 (raw values are tiny ~0.0-0.25)
-    const gazeX = Math.max(-1, Math.min(1, ((lGazeX + rGazeX) / 2) * 4));
+    // === Yaw-based eye weighting (WebGazer concept) ===
+    // When head turns, the eye facing the camera gives more reliable data.
+    // Positive yaw = head turned right → left eye faces camera more.
+    const yawBias = Math.max(-1, Math.min(1, (headYaw || 0) / 30));
+    const wLeft   = 0.5 + yawBias * 0.3;
+    const wRight  = 1 - wLeft;
+    let rawGazeX  = lGazeX * wLeft + rGazeX * wRight;
 
-    // Vertical offset using upper/lower lid landmarks (159=upper, 145=lower)
-    const lTop  = lm[159]?.y ?? leftIris.y;
-    const lBot  = lm[145]?.y ?? leftIris.y;
+    // --- Vertical gaze (BOTH eyes averaged — more accurate than single eye) ---
+    const lTop  = lm[159]?.y ?? lIris.y;
+    const lBot  = lm[145]?.y ?? lIris.y;
     const lEyeH = Math.abs(lBot - lTop) || 0.001;
     const lMidY = (lTop + lBot) / 2;
-    const gazeY = Math.max(-1, Math.min(1, ((leftIris.y - lMidY) / lEyeH) * 4));
+    const lGazeY = (lIris.y - lMidY) / lEyeH;
 
-    // Eye contact: 1.0 = iris centered, 0.0 = looking at edge
+    const rTop  = lm[386]?.y ?? rIris.y;
+    const rBot  = lm[374]?.y ?? rIris.y;
+    const rEyeH = Math.abs(rBot - rTop) || 0.001;
+    const rMidY = (rTop + rBot) / 2;
+    const rGazeY = (rIris.y - rMidY) / rEyeH;
+
+    let rawGazeY = lGazeY * wLeft + rGazeY * wRight;
+
+    // === Head pose compensation (LaserGaze concept) ===
+    // When head rotates, iris appears shifted even if actual gaze hasn't changed.
+    // Subtract a fraction of head rotation from iris offset to isolate true
+    // gaze direction. Compensation factors tuned to MediaPipe's coordinate scale.
+    const HEAD_COMP_X = 0.012;
+    const HEAD_COMP_Y = 0.008;
+    rawGazeX -= (headYaw   || 0) * HEAD_COMP_X;
+    rawGazeY -= (headPitch || 0) * HEAD_COMP_Y;
+
+    // Amplify x4 and clamp (raw offset range is tiny ~0.0-0.25)
+    const gazeX = Math.max(-1, Math.min(1, rawGazeX * 4));
+    const gazeY = Math.max(-1, Math.min(1, rawGazeY * 4));
+
+    // Eye contact: 1.0 = iris centered, 0.0 = extreme edge
     const eyeContactScore = Math.max(0, 1 - Math.sqrt(gazeX*gazeX + gazeY*gazeY));
     return { gazeX, gazeY, eyeContactScore };
   }
