@@ -15,8 +15,15 @@
     style="display:none;position:absolute;width:1px;height:1px;pointer-events:none;">
   </video>
 
-  <!-- MediaPipe local — CDN blocked in Electron due to MIME checking -->
+  <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
+       Electron renderer (nodeIntegration:false) does not provide -->
+  <script>var exports = {}; var module = { exports: exports };</script>
   <script src="../node_modules/@mediapipe/tasks-vision/vision_bundle.cjs"></script>
+  <script>
+    // Copy MediaPipe classes from CJS exports to window for camera.js
+    window.FaceLandmarker  = exports.FaceLandmarker;
+    window.FilesetResolver = exports.FilesetResolver;
+  </script>
 
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
