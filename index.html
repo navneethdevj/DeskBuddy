@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeskBuddy</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+
+  /* ── Emotion display (top-right) ── */
+  #emotion-display {
+    position: fixed; top: 14px; right: 16px;
+    font-family: monospace; font-size: 11px;
+    color: rgba(255,255,255,0.85); opacity: 0.45;
+    pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: opacity 0.4s ease;
+    z-index: 10000;
+  }
+
+  /* ── User state display (bottom-center) ── */
+  #user-state {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-family: monospace; font-size: 11px;
+    color: rgba(255,255,255,0.80); opacity: 0.35;
+    pointer-events: none; text-align: center;
+    z-index: 10000;
+  }
+
+  /* ── Focus timer (below user state) ── */
+  #focus-timer {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-family: monospace; font-size: 10px;
+    color: rgba(255,255,255,0.70); opacity: 0.20;
+    pointer-events: none; text-align: center; letter-spacing: 0.5px;
+    z-index: 10000;
+  }
+
+  /* ── Body container ── */
+  #deskbuddy {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  #buddy-body {
+    position: relative;
+    width: 130px; height: 105px;
+    border-radius: 50% 50% 48% 48% / 45% 45% 55% 55%;
+    background: radial-gradient(ellipse at 50% 45%, #FFFBF6 0%, #FFF8F2 50%, #F5EDE5 100%);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.09), 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  /* ── Ear nubs ── */
+  .ear {
+    position: absolute;
+    width: 18px; height: 14px;
+    border-radius: 50% 50% 40% 40% / 60% 60% 40% 40%;
+    background: radial-gradient(ellipse at 50% 60%, #FFFBF6 0%, #FFF8F2 50%, #F5EDE5 100%);
+    top: -8px;
+  }
+  .ear-left { left: 22px; transform: rotate(-12deg); }
+  .ear-right { right: 22px; transform: rotate(12deg); }
+
+  /* ── Cheek blushes ── */
+  .cheek {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,130,130,0.13) 0%, rgba(255,130,130,0) 70%);
+    bottom: 18px;
+    pointer-events: none;
+  }
+  .cheek-left { left: 14px; }
+  .cheek-right { right: 14px; }
+
+  /* ── Eyes container ── */
+  #eyes-container {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ── Eye ── */
+  .eye {
+    position: relative;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: #FAFAF8;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  /* ── Iris ── */
+  .iris {
+    position: absolute;
+    width: 27px; height: 27px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 40%, #7DD6FA 0%, #5BC8F5 50%, #49B0E0 100%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Pupil ── */
+  .pupil {
+    position: absolute;
+    width: 12px; height: 14px;
+    border-radius: 50%;
+    background: #181828;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Shine highlights (fixed, do NOT move with pupil) ── */
+  .shine-large {
+    position: absolute;
+    width: 7px; height: 6px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    opacity: 0.92;
+    top: 8px; left: 9px;
+    transform: rotate(-15deg);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .shine-small {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    opacity: 0.60;
+    bottom: 10px; right: 9px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* ── Eyelid ── */
+  .eyelid {
+    position: absolute;
+    top: 0; left: -1px;
+    width: calc(100% + 2px);
+    height: 100%;
+    background: #FFF8F2;
+    border-radius: 0 0 50% 50% / 0 0 30% 30%;
+    transform-origin: top center;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* ── Eyelashes ── */
+  .eyelashes {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 11;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hidden camera video -->
+<video id="cameraVideo" autoplay playsinline muted style="display:none"></video>
+
+<!-- UI text elements -->
+<div id="emotion-display">DeskBuddy: happy ˘ω˘</div>
+<div id="user-state">you: focused</div>
+<div id="focus-timer">focus 00:00</div>
+
+<!-- DeskBuddy -->
+<div id="deskbuddy">
+  <div id="buddy-body">
+    <!-- Ears -->
+    <div class="ear ear-left"></div>
+    <div class="ear ear-right"></div>
+
+    <!-- Cheeks -->
+    <div class="cheek cheek-left"></div>
+    <div class="cheek cheek-right"></div>
+
+    <!-- Eyes -->
+    <div id="eyes-container">
+      <!-- Left eye -->
+      <div class="eye" id="eye-left">
+        <div class="iris" id="iris-left">
+          <div class="pupil" id="pupil-left"></div>
+        </div>
+        <div class="shine-large"></div>
+        <div class="shine-small"></div>
+        <div class="eyelid" id="eyelid-left"></div>
+        <canvas class="eyelashes" id="lashes-left" width="42" height="42"></canvas>
+      </div>
+      <!-- Right eye -->
+      <div class="eye" id="eye-right">
+        <div class="iris" id="iris-right">
+          <div class="pupil" id="pupil-right"></div>
+        </div>
+        <div class="shine-large"></div>
+        <div class="shine-small"></div>
+        <div class="eyelid" id="eyelid-right"></div>
+        <canvas class="eyelashes" id="lashes-right" width="42" height="42"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MediaPipe CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs" type="module"></script>
+
+<script type="module">
+(function() {
+  'use strict';
+
+  // ── DOM References ──
+  const deskbuddy = document.getElementById('deskbuddy');
+  const buddyBody = document.getElementById('buddy-body');
+  const emotionDisplay = document.getElementById('emotion-display');
+  const userStateDisplay = document.getElementById('user-state');
+  const focusTimerDisplay = document.getElementById('focus-timer');
+  const videoElement = document.getElementById('cameraVideo');
+
+  const eyeLeft = document.getElementById('eye-left');
+  const eyeRight = document.getElementById('eye-right');
+  const irisLeft = document.getElementById('iris-left');
+  const irisRight = document.getElementById('iris-right');
+  const pupilLeft = document.getElementById('pupil-left');
+  const pupilRight = document.getElementById('pupil-right');
+  const eyelidLeft = document.getElementById('eyelid-left');
+  const eyelidRight = document.getElementById('eyelid-right');
+
+  // ── Constants ──
+  const EYE_RADIUS = 21;        // half of 42px eye
+  const IRIS_RADIUS = 13.5;     // half of 27px iris
+  const PUPIL_MAX_TRAVEL = IRIS_RADIUS * 0.30;  // 30% of iris radius
+  const DETECTION_INTERVAL = 80; // ~12.5 FPS
+
+  // ── State ──
+  let cameraAvailable = false;
+  let lastLandmarks = null;
+  let lastBlendshapes = null;
+  let lastDetectionTimestamp = 0;
+  let faceLandmarker = null;
+
+  // Blink state
+  let lidCoverPercent = 0.08;   // current lid coverage (0.0 = open, 1.0 = closed)
+  let lidTarget = 0.08;         // target lid coverage
+  let blinkPhase = 'idle';      // idle | descending | holding | rising
+  let nextBlinkTime = 0;
+  let blinkHoldEnd = 0;
+
+  // ── Helper: show emotion text ──
+  function showEmotionText(text) {
+    emotionDisplay.textContent = text;
+    emotionDisplay.style.opacity = '0.65';
+    setTimeout(() => { emotionDisplay.style.opacity = '0.45'; }, 1500);
+  }
+
+  // ── Draw eyelashes on canvas ──
+  function drawEyelashes(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 42, 42);
+    ctx.strokeStyle = '#EEE0D5';
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+
+    const lashData = [
+      { x: 10, angle: -0.5 },
+      { x: 16, angle: -0.25 },
+      { x: 22, angle: 0.0 },
+      { x: 28, angle: 0.2 },
+    ];
+
+    for (const lash of lashData) {
+      const startY = 4;
+      const endX = lash.x + Math.sin(lash.angle) * 4;
+      const endY = startY - 4.5;
+      ctx.beginPath();
+      ctx.moveTo(lash.x, startY);
+      ctx.quadraticCurveTo(lash.x + Math.sin(lash.angle) * 2, startY - 2, endX, endY);
+      ctx.stroke();
+    }
+  }
+
+  drawEyelashes('lashes-left');
+  drawEyelashes('lashes-right');
+
+  // ── Update eyelid position ──
+  function updateEyelids() {
+    const coverPx = lidCoverPercent * 42;
+    eyelidLeft.style.height = coverPx + 'px';
+    eyelidRight.style.height = coverPx + 'px';
+
+    // Move eyelashes with lid
+    const lashLeft = document.getElementById('lashes-left');
+    const lashRight = document.getElementById('lashes-right');
+    lashLeft.style.transform = `translateY(${coverPx - 3.36}px)`;
+    lashRight.style.transform = `translateY(${coverPx - 3.36}px)`;
+  }
+
+  // ── Schedule next blink ──
+  function scheduleNextBlink() {
+    nextBlinkTime = performance.now() + 3000 + Math.random() * 2000;
+  }
+  scheduleNextBlink();
+
+  // ── Blink logic (called each frame) ──
+  function updateBlink(now) {
+    switch (blinkPhase) {
+      case 'idle':
+        if (now >= nextBlinkTime) {
+          blinkPhase = 'descending';
+          lidTarget = 1.0;
+        }
+        break;
+      case 'descending':
+        lidCoverPercent += (lidTarget - lidCoverPercent) * 0.25;
+        if (lidCoverPercent > 0.97) {
+          lidCoverPercent = 1.0;
+          blinkPhase = 'holding';
+          blinkHoldEnd = now + 50;
+        }
+        break;
+      case 'holding':
+        if (now >= blinkHoldEnd) {
+          blinkPhase = 'rising';
+          lidTarget = 0.08;
+        }
+        break;
+      case 'rising':
+        lidCoverPercent += (lidTarget - lidCoverPercent) * 0.18;
+        if (lidCoverPercent < 0.085) {
+          lidCoverPercent = 0.08;
+          blinkPhase = 'idle';
+          scheduleNextBlink();
+        }
+        break;
+    }
+  }
+
+  // ── Pupil position (micro-drift only for now) ──
+  function updatePupils(t) {
+    const microDriftX = Math.sin(t * 0.002) * 0.05;
+    const microDriftY = Math.sin(t * 0.0027) * 0.04;
+
+    // Clamp to max travel
+    const clampedX = Math.max(-PUPIL_MAX_TRAVEL, Math.min(PUPIL_MAX_TRAVEL, microDriftX * IRIS_RADIUS));
+    const clampedY = Math.max(-PUPIL_MAX_TRAVEL, Math.min(PUPIL_MAX_TRAVEL, microDriftY * IRIS_RADIUS));
+
+    pupilLeft.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+    pupilRight.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+  }
+
+  // ── CURSOR TRACKING — disabled. Camera is now the sole perceptual input.
+  // To re-enable: uncomment this block and disable the attention brain gaze output.
+  //
+  // let mouseX = window.innerWidth / 2;
+  // let mouseY = window.innerHeight / 2;
+  //
+  // document.addEventListener('mousemove', (e) => {
+  //   mouseX = e.clientX;
+  //   mouseY = e.clientY;
+  // });
+  //
+  // function updatePupilsFromCursor(t) {
+  //   const bodyRect = buddyBody.getBoundingClientRect();
+  //   const bodyCenterX = bodyRect.left + bodyRect.width / 2;
+  //   const bodyCenterY = bodyRect.top + bodyRect.height / 2;
+  //   const dx = mouseX - bodyCenterX;
+  //   const dy = mouseY - bodyCenterY;
+  //   const dist = Math.sqrt(dx * dx + dy * dy);
+  //   const maxDist = 400;
+  //   const factor = Math.min(dist / maxDist, 1.0);
+  //   const microDriftX = Math.sin(t * 0.002) * 0.05;
+  //   const microDriftY = Math.sin(t * 0.0027) * 0.04;
+  //   const pupilX = (dx / (dist || 1)) * factor * PUPIL_MAX_TRAVEL + microDriftX * IRIS_RADIUS;
+  //   const pupilY = (dy / (dist || 1)) * factor * PUPIL_MAX_TRAVEL + microDriftY * IRIS_RADIUS;
+  //   const clampedX = Math.max(-PUPIL_MAX_TRAVEL, Math.min(PUPIL_MAX_TRAVEL, pupilX));
+  //   const clampedY = Math.max(-PUPIL_MAX_TRAVEL, Math.min(PUPIL_MAX_TRAVEL, pupilY));
+  //   pupilLeft.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+  //   pupilRight.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+  // }
+
+  // ── Main animation loop ──
+  function animate() {
+    const t = performance.now();
+
+    // Floating motion
+    const floatY = Math.sin(t * 0.0008) * 4.5 + Math.sin(t * 0.00131) * 2.0 + Math.sin(t * 0.00197) * 1.0;
+    const floatX = Math.sin(t * 0.00061) * 2.5 + Math.sin(t * 0.00109) * 1.5 + Math.sin(t * 0.00173) * 0.8;
+    deskbuddy.style.transform = `translate(${floatX}px, ${floatY}px)`;
+
+    // Blinking
+    updateBlink(t);
+    updateEyelids();
+
+    // Pupil micro-drift
+    updatePupils(t);
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+
+  // ── Camera + MediaPipe ──
+  async function initCamera() {
+    // Step 1: Request camera access
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      cameraAvailable = true;
+      videoElement.srcObject = stream;
+    } catch (err) {
+      cameraAvailable = false;
+      showEmotionText('( ˘ω˘ ) no camera~');
+      setTimeout(() => showEmotionText('DeskBuddy: happy ˘ω˘'), 3000);
+      return;
+    }
+
+    // Step 2: Wait for video to be ready
+    await new Promise((resolve) => {
+      if (videoElement.readyState >= 2) {
+        resolve();
+      } else {
+        videoElement.addEventListener('loadeddata', resolve, { once: true });
+      }
+    });
+
+    // Step 3: Initialize MediaPipe FaceLandmarker
+    try {
+      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+      const { FaceLandmarker, FilesetResolver } = vision;
+
+      const filesetResolver = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+          delegate: 'GPU'
+        },
+        outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true,
+        runningMode: 'VIDEO',
+        numFaces: 1
+      });
+
+      // Start detection loop
+      startDetectionLoop();
+    } catch (err) {
+      // GPU delegate may fail; try CPU fallback
+      try {
+        const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+        const { FaceLandmarker, FilesetResolver } = vision;
+
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        );
+
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: 'CPU'
+          },
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
+          runningMode: 'VIDEO',
+          numFaces: 1
+        });
+
+        startDetectionLoop();
+      } catch (fallbackErr) {
+        console.warn('MediaPipe FaceLandmarker failed to initialize:', fallbackErr);
+      }
+    }
+  }
+
+  // ── Detection loop (timestamp-gated at ~12.5 FPS) ──
+  let lastDetectTime = 0;
+
+  function startDetectionLoop() {
+    function detect() {
+      try {
+        const now = performance.now();
+        if (now - lastDetectTime >= DETECTION_INTERVAL && videoElement.readyState >= 2) {
+          let timestamp = now;
+          // Ensure strictly increasing timestamps
+          if (timestamp <= lastDetectTime) {
+            timestamp = lastDetectTime + 0.1;
+          }
+
+          const results = faceLandmarker.detectForVideo(videoElement, timestamp);
+          lastDetectTime = timestamp;
+
+          if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
+            lastLandmarks = results.faceLandmarks[0];
+            lastBlendshapes = results.faceBlendshapes ? results.faceBlendshapes[0] : null;
+            lastDetectionTimestamp = now;
+          }
+        }
+      } catch (e) {
+        // Silently skip failed frames
+      }
+      requestAnimationFrame(detect);
+    }
+    requestAnimationFrame(detect);
+  }
+
+  // ── Initialize ──
+  initCamera();
+
+})();
+</script>
+</body>
+</html>
