@@ -303,27 +303,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
   var gazeCurrX   = 0;
   var gazeCurrY   = 0;
 
-  // Focus timer
-  var focusTimerSeconds = 0;
-  var focusTimerRunning = false;
-  var lastFocusTickTime = 0;
-
   // ===== Helper: show emotion text =====
   function showEmotionText(text) {
     emotionEl.textContent = text;
-  }
-
-  // ===== Helper: update user state text =====
-  function showUserState(text) {
-    userStateEl.textContent = text;
-  }
-
-  // ===== Helper: update focus timer text =====
-  function updateFocusTimerDisplay() {
-    var mins = Math.floor(focusTimerSeconds / 60);
-    var secs = Math.floor(focusTimerSeconds % 60);
-    focusTimerEl.textContent = 'focus ' +
-      String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
   }
 
   // ===== Floating Motion =====
@@ -500,9 +482,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
   // ===== Face Detection Loop =====
 
   var lastDetectTime = 0;
-  var facePresent = false;
-  var lastFaceSeenTime = 0;
-  var userState = 'NoFace';
 
   function detectFace() {
     if (!faceLandmarker || !videoElement || videoElement.readyState < 2) return;
@@ -512,106 +491,23 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
     if (now <= lastDetectTime) now = lastDetectTime + 1;
     lastDetectTime = now;
 
-    var results;
     try {
-      results = faceLandmarker.detectForVideo(videoElement, now);
+      var results = faceLandmarker.detectForVideo(videoElement, now);
+
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        lastLandmarks = results.faceLandmarks[0];
+
+        if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+          lastBlendshapes = {};
+          results.faceBlendshapes[0].categories.forEach(function (s) {
+            lastBlendshapes[s.categoryName] = s.score;
+          });
+        }
+
+        lastDetectionTimestamp = Date.now();
+      }
     } catch (e) {
       // Skip frame silently
-      return;
-    }
-
-    var ts = Date.now();
-
-    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-      facePresent = true;
-      lastFaceSeenTime = ts;
-      lastLandmarks = results.faceLandmarks[0];
-
-      // Store blendshapes
-      if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
-        lastBlendshapes = {};
-        results.faceBlendshapes[0].categories.forEach(function (s) {
-          lastBlendshapes[s.categoryName] = s.score;
-        });
-      }
-
-      lastDetectionTimestamp = ts;
-
-      // Derive gaze from head direction
-      var noseTip   = lastLandmarks[4];
-      var leftFace  = lastLandmarks[234];
-      var rightFace = lastLandmarks[454];
-      var topFace   = lastLandmarks[10];
-      var bottomFace = lastLandmarks[152];
-
-      if (noseTip && leftFace && rightFace && topFace && bottomFace) {
-        var faceCenterX = (leftFace.x + rightFace.x) / 2;
-        var halfWidth   = Math.abs(rightFace.x - leftFace.x) / 2 || 0.001;
-        var headX = (noseTip.x - faceCenterX) / halfWidth;
-
-        var faceCenterY = (topFace.y + bottomFace.y) / 2;
-        var halfHeight  = Math.abs(bottomFace.y - topFace.y) / 2 || 0.001;
-        var headY = (noseTip.y - faceCenterY) / halfHeight;
-
-        // Head direction affects pupil gaze (inverted X because camera mirrors)
-        gazeTargetX = Math.max(-1, Math.min(1, -headX * 1.5));
-        gazeTargetY = Math.max(-1, Math.min(1, headY * 1.2));
-
-        // Determine user state from head deviation
-        var headDev = Math.abs(headX) + Math.abs(headY);
-        if (headDev > 0.55) {
-          userState = 'Distracted';
-        } else {
-          userState = 'Focused';
-        }
-      }
-
-      // Check eye openness
-      if (lastBlendshapes) {
-        var blinkL = lastBlendshapes['eyeBlinkLeft'] || 0;
-        var blinkR = lastBlendshapes['eyeBlinkRight'] || 0;
-        var eyeOpen = 1 - (blinkL + blinkR) / 2;
-        if (eyeOpen < 0.45) {
-          userState = 'Sleepy';
-        }
-      }
-
-      // Update UI
-      showUserState('you: ' + userState.toLowerCase());
-      if (userState === 'Focused') {
-        showEmotionText('DeskBuddy: happy ˘ω˘');
-        if (!focusTimerRunning) {
-          focusTimerRunning = true;
-          lastFocusTickTime = ts;
-        }
-      } else if (userState === 'Distracted') {
-        showEmotionText('DeskBuddy: curious ˘ω˘?');
-        focusTimerRunning = false;
-      } else if (userState === 'Sleepy') {
-        showEmotionText('DeskBuddy: sleepy ˘ω˘ ~');
-        focusTimerRunning = false;
-      }
-
-    } else {
-      // No face detected
-      facePresent = false;
-      if (ts - lastFaceSeenTime > 3000) {
-        userState = 'NoFace';
-        showUserState('you: away');
-        showEmotionText('DeskBuddy: looking for you ˘ω˘');
-        focusTimerRunning = false;
-        // Reset gaze toward center
-        gazeTargetX *= 0.95;
-        gazeTargetY *= 0.95;
-      }
-    }
-
-    // Accumulate focus time
-    if (focusTimerRunning) {
-      var elapsed = (ts - lastFocusTickTime) / 1000;
-      focusTimerSeconds += elapsed;
-      lastFocusTickTime = ts;
-      updateFocusTimerDisplay();
     }
   }
 
