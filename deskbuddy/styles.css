@@ -477,6 +477,38 @@ html, body {
   60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)) drop-shadow(0 0 11vmin rgba(180,115,168,0.12)); }
 }
 
+/* FORGIVEN — 8s fade from sad colors to happy colors */
+.companion.forgiven .eye {
+  width: 28vmin;
+  height: 33vmin;
+  box-shadow: 0 0 5vmin rgba(255,228,192,0.44), 0 0 14vmin rgba(255,218,168,0.16);
+}
+.companion.forgiven { animation: glowForgiven 8s ease-in-out forwards; }
+@keyframes glowForgiven {
+  0%   { filter: drop-shadow(0 0 4vmin rgba(168,200,232,0.30)) drop-shadow(0 0 11vmin rgba(136,176,212,0.12)); }
+  25%  { filter: drop-shadow(0 0 6vmin rgba(192,210,235,0.38)) drop-shadow(0 0 14vmin rgba(172,196,228,0.16)); }
+  50%  { filter: drop-shadow(0 0 8vmin rgba(220,222,235,0.46)) drop-shadow(0 0 18vmin rgba(208,216,238,0.20)); }
+  75%  { filter: drop-shadow(0 0 10vmin rgba(240,232,220,0.52)) drop-shadow(0 0 22vmin rgba(235,225,208,0.22)); }
+  100% { filter: drop-shadow(0 0 12vmin rgba(255,228,192,0.58)) drop-shadow(0 0 26vmin rgba(255,218,168,0.24)); }
+}
+
+/* ===== Sparkle particles (Phase 3) ===== */
+.particle-sparkle {
+  width: auto;
+  height: auto;
+  background: none;
+  border-radius: 0;
+  pointer-events: none;
+  font-size: 4px;
+  text-shadow: 0 0 4px currentColor;
+}
+
+@keyframes particleFadeSparkle {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  15%  { opacity: 1; transform: translate(calc(var(--drift-x, 10px) * 0.15), calc(var(--drift-y, -20px) * 0.15)) scale(1.2); }
+  100% { opacity: 0; transform: translate(var(--drift-x, 10px), var(--drift-y, -20px)) scale(0); }
+}
+
 /* Tear overlay — HTML added in Phase 3, CSS ready here */
 #tear-overlay {
   position: fixed; inset: 0;

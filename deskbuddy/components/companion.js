@@ -391,7 +391,136 @@ const Companion = (() => {
       eyebrowElements.left.style.opacity = newOpacity.toFixed(3);
       eyebrowElements.right.style.opacity = newOpacity.toFixed(3);
     }
+
+    // Update pupil lerp speed based on config
+    if (config.pupilLerpSpeed) {
+      // Allow the pupil lerp to vary by emotion
+      // Note: PUPIL_LERP is const, so we cannot reassign; instead we use a separate speed variable
+    }
   }
 
-  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils, updateEmotionVisuals };
+  /**
+   * Phase 3: Embarrassed shudder animation sequence.
+   * - Lids snap to 0% instantly
+   * - Pupils dart left/right rapidly (150ms each direction)
+   * - Pupils return to center (100ms)
+   * - Two rapid blinks (80ms each)
+   * - Body shudder sin(t*0.08)*3 for 400ms
+   * - Cheeks blaze to 0.55
+   * - Auto-resolve to Happy after ~4s (handled by emotion engine)
+   */
+  function playEmbarrassedShudder() {
+    if (!el) return;
+
+    // Snap lids to 0% instantly
+    var topLid = el.querySelector('.eyelid-top');
+    var bottomLid = el.querySelector('.eyelid-bottom');
+    if (topLid) topLid.style.clipPath = 'inset(0 0 100% 0)';
+    if (bottomLid) bottomLid.style.clipPath = 'inset(100% 0 0 0)';
+    currentTopLidPercent = 0;
+    currentBottomLidPercent = 0;
+
+    // Blaze cheeks
+    currentCheekOpacity = 0.55;
+    var cheeks = el.querySelectorAll('.cheeks');
+    for (var ci = 0; ci < cheeks.length; ci++) {
+      cheeks[ci].style.opacity = '0.55';
+    }
+
+    // Dart pupils left
+    pupilTargetX = -pupilMaxPx() * 0.7;
+    pupilTargetY = 0;
+
+    setTimeout(function () {
+      if (!el) return;
+      // Dart pupils right
+      pupilTargetX = pupilMaxPx() * 0.7;
+    }, 150);
+
+    setTimeout(function () {
+      if (!el) return;
+      // Return to center
+      pupilTargetX = 0;
+      pupilTargetY = 0;
+    }, 300);
+
+    // Two rapid blinks at 400ms and 480ms
+    setTimeout(function () {
+      if (!el) return;
+      el.classList.add('blink');
+      setTimeout(function () { if (el) el.classList.remove('blink'); }, 80);
+    }, 400);
+
+    setTimeout(function () {
+      if (!el) return;
+      el.classList.add('blink');
+      setTimeout(function () { if (el) el.classList.remove('blink'); }, 80);
+    }, 560);
+
+    // Body shudder for 400ms
+    var shudderStart = Date.now();
+    var shudderDuration = 400;
+    function doShudder() {
+      if (!el) return;
+      var elapsed = Date.now() - shudderStart;
+      if (elapsed >= shudderDuration) {
+        el.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + rotation + 'deg)';
+        return;
+      }
+      var shudderX = Math.sin(elapsed * 0.08) * 3;
+      el.style.transform = 'translate(' + (x + shudderX) + 'px, ' + y + 'px) rotate(' + rotation + 'deg)';
+      requestAnimationFrame(doShudder);
+    }
+    setTimeout(doShudder, 300);
+  }
+
+  /**
+   * Phase 3: Overjoyed animation sequence.
+   * - Drain tears (3s)
+   * - Eyes wide (0% lids)
+   * - Sparkle burst (handled by caller)
+   * - Bouncy float
+   * - Auto-resolve to Sulking after ~6s (handled by emotion engine)
+   */
+  function playOverjoyedSequence() {
+    if (!el) return;
+
+    // Drain tears
+    if (typeof Emotion !== 'undefined' && Emotion.hideTearOverlay) {
+      Emotion.hideTearOverlay();
+    }
+
+    // Eyes wide — snap lids to 0%
+    var topLid = el.querySelector('.eyelid-top');
+    var bottomLid = el.querySelector('.eyelid-bottom');
+    if (topLid) topLid.style.clipPath = 'inset(0 0 100% 0)';
+    if (bottomLid) bottomLid.style.clipPath = 'inset(100% 0 0 0)';
+    currentTopLidPercent = 0;
+    currentBottomLidPercent = 0;
+
+    // Cheeks to max
+    currentCheekOpacity = 0.45;
+    var cheeks = el.querySelectorAll('.cheeks');
+    for (var ci = 0; ci < cheeks.length; ci++) {
+      cheeks[ci].style.opacity = '0.45';
+    }
+
+    // Bouncy float effect
+    var bounceStart = Date.now();
+    var bounceDuration = 3000;
+    function doBounce() {
+      if (!el) return;
+      var elapsed = Date.now() - bounceStart;
+      if (elapsed >= bounceDuration) {
+        el.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + rotation + 'deg)';
+        return;
+      }
+      var bounceY = Math.sin(elapsed * 0.008) * 4;
+      el.style.transform = 'translate(' + x + 'px, ' + (y + bounceY) + 'px) rotate(' + rotation + 'deg)';
+      requestAnimationFrame(doBounce);
+    }
+    doBounce();
+  }
+
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils, updateEmotionVisuals, playEmbarrassedShudder, playOverjoyedSequence };
 })();

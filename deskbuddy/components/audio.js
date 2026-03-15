@@ -77,6 +77,25 @@ const Audio = (() => {
 
   // ===== SOUND RECIPES (all return duration in seconds) =====
 
+  /**
+   * Create white noise buffer (utility for sound recipes).
+   */
+  function createNoise(ctx, duration, gain) {
+    try {
+      var bufferSize = Math.ceil(ctx.sampleRate * duration);
+      var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (gain || 0.1);
+      }
+      var source = ctx.createBufferSource();
+      source.buffer = buffer;
+      return source;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function happyChirp(ctx, volume) {
     try {
       var now = ctx.currentTime;
@@ -504,3 +523,10 @@ const Audio = (() => {
     ensureAudioContext: ensureAudioContext
   };
 })();
+
+// Auto-initialize audio on DOMContentLoaded or immediately if document ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { Audio.init(); });
+} else {
+  Audio.init();
+}
