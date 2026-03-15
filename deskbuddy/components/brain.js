@@ -45,6 +45,9 @@ const Brain = (() => {
   const IDLE_LOOK_MIN_DURATION = 1000;
   const IDLE_LOOK_MAX_DURATION = 2000;
 
+  // Curious trigger: sustained focused attention for this long → curious state
+  const CURIOUS_ATTENTION_MS = 20000;   // 20s focused + high attention → curious
+
   // Emotion timing thresholds (ms) — from VERIFY spec
   const LOOKING_AWAY_SUSPICIOUS_MS = 15000;   // 15s → suspicious
   const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
@@ -286,9 +289,11 @@ const Brain = (() => {
         // face-api concept: react to user expressions
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
+        // Both surprise (instant) and sustained attention (20s) trigger curious —
+        // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
         if (p.userSmiling)              emotion = 'happy';
         else if (p.userSurprised)       emotion = 'curious';
-        else if (tms >= 20000
+        else if (tms >= CURIOUS_ATTENTION_MS
               && p.attentionScore > 50) emotion = 'curious';
         else                            emotion = 'focused';
         break;
@@ -531,7 +536,7 @@ const Brain = (() => {
       if (p.userState === 'NoFace')  { enterState('idle');    return; }
       if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
       if (p.userState === 'Focused'
-       && p.timeInStateMs >= 20000
+       && p.timeInStateMs >= CURIOUS_ATTENTION_MS
        && p.attentionScore > 50)     { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }
