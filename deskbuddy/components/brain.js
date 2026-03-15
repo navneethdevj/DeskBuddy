@@ -20,6 +20,16 @@ const Brain = (() => {
   const RETREAT_THRESHOLD = 200;
   const RETREAT_FACTOR = -0.4;
 
+  // Face gaze — two layer system (face position + iris direction)
+  const FACE_GAZE_SOFTNESS = 0.30;  // how much face position shifts gaze
+  const FACE_GAZE_LERP     = 0.07;  // smoothing (lower = slower/smoother)
+  const IRIS_AMPLIFY       = 80;    // scale iris gazeX/Y to screen pixels
+
+  // Neko-style body lean (https://github.com/mirandadam/neko)
+  // Adapted from Neko's lerp-toward-cursor — we use face position instead
+  const LEAN_STRENGTH = 0.18;  // how much body drifts toward face (keep low)
+  const LEAN_LERP     = 0.04;  // momentum — Neko uses similar low values
+
   // Focus meter tuning
   const FOCUS_INCREASE_MOUSE = 0.4;
   const FOCUS_INCREASE_KEY = 0.8;
@@ -62,6 +72,13 @@ const Brain = (() => {
   // Screen awareness: typing glance
   let wasTyping = false;
   let typingGlanceUntil = 0;
+
+  // Face gaze interpolation state
+  let gazeCurrentX = 0, gazeCurrentY = 0;
+  let gazeTargetX  = 0, gazeTargetY  = 0;
+
+  // Neko-style lean state — body offset toward face
+  let leanCurrentX = 0, leanCurrentY = 0;
 
   // ===== Activity Helpers =====
 
@@ -118,11 +135,14 @@ const Brain = (() => {
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
 
-    var near = isCursorNear();
-    if (near && currentState !== 'followCursor' && followCooldown <= 0) {
-      enterState('followCursor');
-      return;
-    }
+    // CURSOR TRACKING — disabled. Face camera is now the attention source.
+    // To re-enable: uncomment this block and remove face gaze functions below.
+    // var near = isCursorNear();
+    // if (near && currentState !== 'followCursor' && followCooldown <= 0) {
+    //   enterState('followCursor');
+    //   return;
+    // }
+    var near = false;
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -130,32 +150,48 @@ const Brain = (() => {
     switch (currentState) {
       case 'observe':
         Movement.update();
-        // Eyes slowly scan the environment
-        var time = now * 0.001;
-        var c = Companion.getCenter();
-        Companion.lookAt(
-          c.x + Math.sin(time * 0.8) * 300,
-          c.y + Math.sin(time * 0.5) * 100
-        );
+        if (window.perception?.facePresent) {
+          _applyFaceGaze();
+          _applyBodyLean();
+        } else {
+          var time = now * 0.001;
+          var c = Companion.getCenter();
+          Companion.lookAt(
+            c.x + Math.sin(time * 0.8) * 120,
+            c.y + Math.sin(time * 0.5) * 60
+          );
+        }
         break;
       case 'curious':
         Movement.decay();
+        if (window.perception?.facePresent) {
+          _applyFaceGaze();
+          _applyBodyLean();
+        }
         break;
       case 'idle':
         Movement.decay();
-        applyGaze(now, mouseActive, keyActive);
+        if (window.perception?.facePresent) {
+          _applyFaceGaze();
+          _applyBodyLean();
+        } else {
+          applyGaze(now, mouseActive, keyActive);
+        }
         break;
       case 'followCursor':
-        updateFollowCursor();
-        if (!near) {
-          followCooldown = FOLLOW_COOLDOWN_FRAMES;
-          Companion.resetLook();
-          pickNextState();
-        }
+        // CURSOR TRACKING — disabled. Face gaze handles attention.
+        // updateFollowCursor();
+        Companion.resetLook();
+        pickNextState();
         break;
       case 'sleepy':
         Movement.decay();
-        applyGaze(now, mouseActive, keyActive);
+        if (window.perception?.facePresent) {
+          _applyFaceGaze(0.03);  // slower lerp when sleepy
+          _applyBodyLean();
+        } else {
+          applyGaze(now, mouseActive, keyActive);
+        }
         break;
     }
 
@@ -197,24 +233,70 @@ const Brain = (() => {
    * Priority: screen-center glance when typing > follow cursor > idle look.
    */
   function applyGaze(now, mouseActive, keyActive) {
-    // Screen awareness: brief glance at screen center when typing starts
-    if (keyActive && !wasTyping) {
-      typingGlanceUntil = now + 1000;
-    }
-    wasTyping = keyActive;
-
-    if (now < typingGlanceUntil) {
-      Companion.lookAt(window.innerWidth / 2, window.innerHeight / 2);
-      return;
-    }
-
-    if (mouseActive) {
-      Companion.lookAt(mouseX, mouseY);
-      return;
-    }
-
-    // Idle look behavior
+    // Cursor-based gaze removed — face camera is the attention source.
+    // if (mouseActive) { Companion.lookAt(mouseX, mouseY); return; }
     checkIdleLook(now);
+  }
+
+  /**
+   * Two-layer face gaze.
+   * Layer 1: face position on screen (where IS the user's face)
+   * Layer 2: iris offset from perception.gazeX/Y (where eyes are POINTING)
+   *
+   * Reference: https://github.com/arnaudlvq/Eye-Contact-RealTime-Detection
+   * Combined face position + iris direction = more natural gaze than either alone.
+   */
+  function _applyFaceGaze(lerpOverride) {
+    const p = window.perception;
+    if (!p?.facePresent) return;
+
+    const lerp   = lerpOverride || FACE_GAZE_LERP;
+    const center = Companion.getCenter();
+
+    // Layer 1 — face position
+    const facePosX = p.faceX * window.innerWidth;
+    const facePosY = p.faceY * window.innerHeight;
+    const softX    = center.x + (facePosX - center.x) * FACE_GAZE_SOFTNESS;
+    const softY    = center.y + (facePosY - center.y) * FACE_GAZE_SOFTNESS;
+
+    // Layer 2 — iris gaze direction adds subtle extra offset
+    const irisX = p.gazeX * IRIS_AMPLIFY;
+    const irisY = p.gazeY * (IRIS_AMPLIFY * 0.6);
+
+    gazeTargetX  = softX + irisX;
+    gazeTargetY  = softY + irisY;
+    gazeCurrentX += (gazeTargetX - gazeCurrentX) * lerp;
+    gazeCurrentY += (gazeTargetY - gazeCurrentY) * lerp;
+
+    Companion.lookAt(gazeCurrentX, gazeCurrentY);
+  }
+
+  /**
+   * Neko-style body lean — body drifts toward face position with momentum.
+   * Reference: https://github.com/mirandadam/neko
+   *
+   * Neko lerps the cat toward the cursor. We do the same but toward the
+   * user's face. LEAN_LERP and LEAN_STRENGTH kept low — should feel like
+   * quiet interest, not chasing. Clamped to ±40px (existing MAX_DRIFT).
+   */
+  function _applyBodyLean() {
+    const p = window.perception;
+    if (!p?.facePresent) return;
+
+    const center   = Companion.getCenter();
+    const facePosX = p.faceX * window.innerWidth;
+    const facePosY = p.faceY * window.innerHeight;
+
+    const targetX = (facePosX - center.x) * LEAN_STRENGTH;
+    const targetY = (facePosY - center.y) * LEAN_STRENGTH;
+
+    leanCurrentX += (targetX - leanCurrentX) * LEAN_LERP;
+    leanCurrentY += (targetY - leanCurrentY) * LEAN_LERP;
+
+    Companion.setPosition(
+      Math.max(-MAX_DRIFT, Math.min(MAX_DRIFT, leanCurrentX)),
+      Math.max(-MAX_DRIFT, Math.min(MAX_DRIFT, leanCurrentY))
+    );
   }
 
   // ===== Idle Look =====
@@ -300,7 +382,24 @@ const Brain = (() => {
     stateTimer = setTimeout(function () { pickNextState(); }, duration);
   }
 
+  /**
+   * Context-aware state selection.
+   * Adapted from Web Shimeji behavior tree concept:
+   * https://github.com/karin0/web-shimeji
+   * States chosen based on what user is doing, not purely random.
+   */
   function pickNextState() {
+    const p = window.perception;
+    if (p) {
+      if (p.userState === 'NoFace')  { enterState('idle');    return; }
+      if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
+      if (p.userState === 'Focused'
+       && p.timeInStateMs >= 15000
+       && p.attentionScore > 50)     { enterState('curious'); return; }
+      if (p.userState === 'Focused'
+       || p.userState === 'LookingAway') { enterState('observe'); return; }
+    }
+    // Fallback: random (original behavior, used when camera unavailable)
     var next = STATES[Math.floor(Math.random() * STATES.length)];
     enterState(next);
   }
