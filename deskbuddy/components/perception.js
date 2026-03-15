@@ -54,6 +54,15 @@ const Perception = (() => {
   const SMILE_THRESHOLD    = 0.45;
   const SURPRISE_THRESHOLD = 0.50;
 
+  // EMA (Exponential Moving Average) — smooths noisy MediaPipe signals
+  // Higher alpha = more responsive; lower = smoother.
+  // At 15Hz eval rate, alpha 0.35 gives ~300ms convergence to 88%.
+  const EMA_ALPHA_FACE = 0.35;
+  const EMA_ALPHA_GAZE = 0.40;
+  let emaFaceX = 0.5, emaFaceY = 0.5;
+  let emaGazeX = 0,   emaGazeY = 0;
+  let emaInitialized = false;
+
   let candidateState = 'NoFace', candidateStart = 0;
   let confirmedState = 'NoFace', stateEntryTime  = Date.now();
   let sleepyMs = 0, nofaceMs = 0, lastEvalTime = Date.now();
@@ -91,6 +100,7 @@ const Perception = (() => {
     nofaceMs += dt;
     sleepyMs  = 0;
     prevNoseX = null; prevNoseY = null;
+    emaInitialized = false;
     // Attention decays faster when completely gone — from EyeOnTask logic
     attentionScore = Math.max(0, attentionScore - ATTN_DECAY_NOFACE);
 
@@ -136,10 +146,10 @@ const Perception = (() => {
 
     // Face center from nose tip (landmark 4)
     const nose = lm[4];
-    const faceX = nose?.x ?? 0.5;
-    const faceY = nose?.y ?? 0.5;
+    const rawFaceX = nose?.x ?? 0.5;
+    const rawFaceY = nose?.y ?? 0.5;
 
-    // Head movement delta (px)
+    // Head movement delta (px) — uses RAW (un-smoothed) nose for responsiveness
     let headMovement = 0;
     if (prevNoseX !== null && nose) {
       const dx = (nose.x - prevNoseX) * window.innerWidth;
@@ -147,6 +157,20 @@ const Perception = (() => {
       headMovement = Math.sqrt(dx*dx + dy*dy);
     }
     if (nose) { prevNoseX = nose.x; prevNoseY = nose.y; }
+
+    // EMA smooth face position and iris gaze to remove MediaPipe jitter
+    if (!emaInitialized) {
+      emaFaceX = rawFaceX; emaFaceY = rawFaceY;
+      emaGazeX = gazeX;    emaGazeY = gazeY;
+      emaInitialized = true;
+    } else {
+      emaFaceX += (rawFaceX - emaFaceX) * EMA_ALPHA_FACE;
+      emaFaceY += (rawFaceY - emaFaceY) * EMA_ALPHA_FACE;
+      emaGazeX += (gazeX    - emaGazeX) * EMA_ALPHA_GAZE;
+      emaGazeY += (gazeY    - emaGazeY) * EMA_ALPHA_GAZE;
+    }
+    const faceX = emaFaceX;
+    const faceY = emaFaceY;
 
     // Sleepy accumulator
     eyeOpenness < 0.25 ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
@@ -161,7 +185,7 @@ const Perception = (() => {
 
     _write({
       facePresent: true, headYaw: yaw, headPitch: pitch,
-      gazeX, gazeY, eyeContact, eyeContactScore,
+      gazeX: emaGazeX, gazeY: emaGazeY, eyeContact, eyeContactScore,
       eyeOpenness, smileScore, surpriseScore,
       userSmiling:   smileScore    > SMILE_THRESHOLD,
       userSurprised: surpriseScore > SURPRISE_THRESHOLD,

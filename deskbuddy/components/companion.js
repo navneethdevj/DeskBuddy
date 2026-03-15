@@ -20,8 +20,11 @@ const Companion = (() => {
   const GAZE_MAX_Y = 10;
 
   // Gradient gaze smoothing — prevents instant snap of --gaze-x/--gaze-y
-  // 0.12 at 60fps gives ~8 frame settle time; higher = snappier, lower = floatier
-  const GAZE_GRADIENT_LERP = 0.12;
+  // 0.18 at 60fps gives ~5 frame settle time; higher = snappier, lower = floatier
+  const GAZE_GRADIENT_LERP = 0.18;
+  // Reference distance for proportional gradient shift (pixels from companion center)
+  // At this distance gaze gradient reaches its maximum; closer = proportionally less.
+  const GAZE_REFERENCE_DIST = 300;
   let gazeGradientCurrentX = 0, gazeGradientCurrentY = 0;
   let gazeGradientTargetX  = 0, gazeGradientTargetY  = 0;
 
@@ -142,9 +145,10 @@ const Companion = (() => {
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0) return;
 
-    // Gradient gaze target (smoothed in updatePupils)
-    gazeGradientTargetX = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / dist) * GAZE_MAX_X));
-    gazeGradientTargetY = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / dist) * GAZE_MAX_Y));
+    // Gradient gaze target — proportional to offset magnitude (not pure direction).
+    // Small face movements produce small gradient shifts; large movements saturate.
+    gazeGradientTargetX = Math.max(-GAZE_MAX_X, Math.min(GAZE_MAX_X, (dx / GAZE_REFERENCE_DIST) * GAZE_MAX_X));
+    gazeGradientTargetY = Math.max(-GAZE_MAX_Y, Math.min(GAZE_MAX_Y, (dy / GAZE_REFERENCE_DIST) * GAZE_MAX_Y));
 
     // Pupil target (scaled by distance, clamped to max radius)
     const maxPx = pupilMaxPx();
