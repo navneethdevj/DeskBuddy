@@ -221,7 +221,7 @@ const FaceDetection = (() => {
         var matrix = results.facialTransformationMatrixes[0];
         if (matrix && matrix.data) {
           var m = matrix.data;
-          // Extract rotation angles from 4x4 column-major matrix
+          // 4x4 column-major: Yaw = atan2(m[8], m[10]), Pitch = asin(-m[9])
           headYaw   = Math.atan2(m[8], m[10]) * (180 / Math.PI);
           headPitch = Math.asin(-Math.max(-1, Math.min(1, m[9]))) * (180 / Math.PI);
         }

@@ -588,9 +588,13 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #111; }
         // matrix.data is a Float32Array with 16 elements (4x4 column-major)
         if (matrix && matrix.data) {
           var m = matrix.data;
-          // Extract rotation angles from 4x4 column-major matrix
-          // Yaw = rotation around Y axis (left/right head turn)
-          // Pitch = rotation around X axis (up/down head tilt)
+          // 4x4 column-major matrix layout:
+          //   m[0] m[4] m[8]  m[12]     (row 0)
+          //   m[1] m[5] m[9]  m[13]     (row 1)
+          //   m[2] m[6] m[10] m[14]     (row 2)
+          //   m[3] m[7] m[11] m[15]     (row 3)
+          // Yaw (Y-axis rotation): atan2(m[8], m[10]) = atan2(R[0][2], R[2][2])
+          // Pitch (X-axis rotation): asin(-m[9]) = asin(-R[1][2])
           headYaw   = Math.atan2(m[8], m[10]) * (180 / Math.PI);
           headPitch = Math.asin(-clamp(m[9], -1, 1)) * (180 / Math.PI);
         }
