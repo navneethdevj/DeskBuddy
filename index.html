@@ -207,9 +207,6 @@
   </div>
 </div>
 
-<!-- MediaPipe CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs" type="module"></script>
-
 <script type="module">
 (function() {
   'use strict';
@@ -437,7 +434,7 @@
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
       );
 
-      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      const modelOptions = {
         baseOptions: {
           modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
           delegate: 'GPU'
@@ -446,54 +443,38 @@
         outputFacialTransformationMatrixes: true,
         runningMode: 'VIDEO',
         numFaces: 1
-      });
+      };
 
-      // Start detection loop
+      try {
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, modelOptions);
+      } catch (gpuErr) {
+        // GPU delegate may fail; try CPU fallback
+        modelOptions.baseOptions.delegate = 'CPU';
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, modelOptions);
+      }
+
       startDetectionLoop();
     } catch (err) {
-      // GPU delegate may fail; try CPU fallback
-      try {
-        const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
-        const { FaceLandmarker, FilesetResolver } = vision;
-
-        const filesetResolver = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-        );
-
-        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-            delegate: 'CPU'
-          },
-          outputFaceBlendshapes: true,
-          outputFacialTransformationMatrixes: true,
-          runningMode: 'VIDEO',
-          numFaces: 1
-        });
-
-        startDetectionLoop();
-      } catch (fallbackErr) {
-        console.warn('MediaPipe FaceLandmarker failed to initialize:', fallbackErr);
-      }
+      console.warn('MediaPipe FaceLandmarker failed to initialize:', err);
     }
   }
 
   // ── Detection loop (timestamp-gated at ~12.5 FPS) ──
-  let lastDetectTime = 0;
+  let lastDetectionAttemptTime = 0;
 
   function startDetectionLoop() {
     function detect() {
       try {
         const now = performance.now();
-        if (now - lastDetectTime >= DETECTION_INTERVAL && videoElement.readyState >= 2) {
+        if (now - lastDetectionAttemptTime >= DETECTION_INTERVAL && videoElement.readyState >= 2) {
           let timestamp = now;
-          // Ensure strictly increasing timestamps
-          if (timestamp <= lastDetectTime) {
-            timestamp = lastDetectTime + 0.1;
+          // Ensure strictly increasing timestamps for MediaPipe
+          if (timestamp <= lastDetectionAttemptTime) {
+            timestamp = lastDetectionAttemptTime + 1;
           }
 
           const results = faceLandmarker.detectForVideo(videoElement, timestamp);
-          lastDetectTime = timestamp;
+          lastDetectionAttemptTime = timestamp;
 
           if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
             lastLandmarks = results.faceLandmarks[0];
