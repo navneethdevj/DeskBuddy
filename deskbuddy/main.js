@@ -1,6 +1,27 @@
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
+// Phase 1 — Grant camera permission at app level, before any window exists.
+// Using session.defaultSession here is more reliable than setting handlers
+// on mainWindow.webContents.session inside createWindow(), which can fire
+// too late in Electron 34.
+app.whenReady().then(() => {
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === 'media' || permission === 'camera') return true;
+    return null; // defer other permissions to default handling
+  });
+
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media' || permission === 'camera') {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
+
+  createWindow();
+});
+
 let mainWindow;
 
 function createWindow() {
@@ -24,23 +45,6 @@ function createWindow() {
     }
   });
 
-  // Phase 1 — Camera permissions (Electron 34 requires BOTH handlers)
-  //
-  // setPermissionCheckHandler runs first, synchronously — pre-approves the permission.
-  // Without this, Electron 34 blocks getUserMedia before the request handler fires.
-  mainWindow.webContents.session.setPermissionCheckHandler(
-    (webContents, permission) => {
-      if (permission === 'media' || permission === 'camera') return true;
-      return false;
-    }
-  );
-
-  mainWindow.webContents.session.setPermissionRequestHandler(
-    (webContents, permission, callback) => {
-      callback(permission === 'media' || permission === 'camera');
-    }
-  );
-
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
@@ -48,8 +52,6 @@ function createWindow() {
     mainWindow = null;
   });
 }
-
-app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   app.quit();

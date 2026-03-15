@@ -1,74 +1,94 @@
 /**
  * Camera — webcam access and MediaPipe FaceLandmarker.
- *
- * Responsibilities:
- *   1. Request camera permission and attach stream to #camera-feed video element.
- *   2. Initialize MediaPipe FaceLandmarker with VIDEO mode.
- *   3. Run detection at a controlled 12 FPS (never more — performance budget).
- *   4. Write raw results to window.faceResults every detection frame.
- *
- * This module is entirely invisible. It never renders anything.
- * All errors are caught and logged — camera failure is non-fatal.
- * window.cameraAvailable (boolean) signals to other modules whether camera works.
+ * Phase 1: Provides window.faceResults and window.cameraAvailable.
  */
 const Camera = (() => {
 
-  // ── Config ────────────────────────────────────────────────────────────────
   const TARGET_FPS        = 12;
-  const FRAME_INTERVAL_MS = Math.round(1000 / TARGET_FPS);  // ~83ms
-  const INIT_TIMEOUT_MS   = 10000;  // 10s max wait for video ready
+  const FRAME_INTERVAL_MS = Math.round(1000 / TARGET_FPS);
+  const INIT_TIMEOUT_MS   = 10000;
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  let faceLandmarker   = null;
-  let videoEl          = null;
-  let lastDetectionMs  = 0;
-  let running          = false;
+  let faceLandmarker  = null;
+  let videoEl         = null;
+  let lastDetectionMs = 0;
+  let running         = false;
 
-  // ── Public globals written by this module ─────────────────────────────────
   window.cameraAvailable = false;
   window.faceResults     = null;
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  /**
-   * Main entry point. Called from renderer.js after Brain.start().
-   * Async — does not block the main animation loop.
-   */
   async function init() {
+    console.log('[Camera] init() called');
+
     videoEl = document.getElementById('camera-feed');
     if (!videoEl) {
-      console.warn('[Camera] #camera-feed element missing from HTML');
+      console.error('[Camera] FAIL — #camera-feed element not found in HTML');
+      return;
+    }
+    console.log('[Camera] video element found');
+
+    // Step 1: Check navigator.mediaDevices
+    console.log('[Camera] navigator.mediaDevices:', navigator.mediaDevices);
+    console.log('[Camera] getUserMedia:', navigator.mediaDevices?.getUserMedia);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error('[Camera] FAIL — navigator.mediaDevices.getUserMedia not available');
+      console.error('[Camera] This usually means Electron camera permission was denied before the request');
+      window.cameraAvailable = false;
       return;
     }
 
     try {
+      // Step 2: Request camera
+      console.log('[Camera] Requesting camera via getUserMedia...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' },
+        audio: false
+      });
+      console.log('[Camera] Camera stream obtained:', stream);
+
+      videoEl.srcObject = stream;
+      console.log('[Camera] Stream attached to video element');
+
+      // Step 3: Wait for video
+      await new Promise((resolve, reject) => {
+        videoEl.addEventListener('loadeddata', () => {
+          console.log('[Camera] Video ready — readyState:', videoEl.readyState);
+          resolve();
+        }, { once: true });
+        videoEl.addEventListener('error', (e) => {
+          console.error('[Camera] Video error:', e);
+          reject(e);
+        }, { once: true });
+        setTimeout(() => reject(new Error('Video ready timeout after 10s')), INIT_TIMEOUT_MS);
+      });
+
+      // Step 4: Load MediaPipe
+      console.log('[Camera] Loading MediaPipe FaceLandmarker...');
+      console.log('[Camera] FaceLandmarker on window:', typeof window.FaceLandmarker);
+      console.log('[Camera] FilesetResolver on window:', typeof window.FilesetResolver);
+
       await _initMediaPipe();
-      await _initWebcam();
+      console.log('[Camera] MediaPipe ready');
+
       window.cameraAvailable = true;
       running = true;
       requestAnimationFrame(_detectionLoop);
-      console.log('[Camera] Ready — running at', TARGET_FPS, 'FPS');
+      console.log('[Camera] READY — running at', TARGET_FPS, 'FPS');
+
     } catch (err) {
-      console.error('[Camera] Full error:', err);
+      console.error('[Camera] FAILED at some step above');
       console.error('[Camera] Error name:', err.name);
       console.error('[Camera] Error message:', err.message);
-      console.error('[Camera] navigator.mediaDevices exists:', !!navigator.mediaDevices);
-      console.error('[Camera] getUserMedia exists:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+      console.error('[Camera] Full error:', err);
       window.cameraAvailable = false;
     }
   }
-
-  function isAvailable() {
-    return window.cameraAvailable;
-  }
-
-  // ── Private ───────────────────────────────────────────────────────────────
 
   async function _initMediaPipe() {
     const { FaceLandmarker, FilesetResolver } = window;
 
     if (typeof FaceLandmarker === 'undefined' || typeof FilesetResolver === 'undefined') {
-      throw new Error('MediaPipe not loaded — check CDN script tag in index.html');
+      throw new Error('MediaPipe CDN script not loaded — FaceLandmarker or FilesetResolver undefined');
     }
 
     const vision = await FilesetResolver.forVisionTasks(
@@ -83,45 +103,25 @@ const Camera = (() => {
         ].join(''),
         delegate: 'GPU'
       },
-      outputFaceBlendshapes:             true,
+      outputFaceBlendshapes:              true,
       outputFacialTransformationMatrixes: true,
       runningMode: 'VIDEO',
       numFaces: 1
     });
   }
 
-  async function _initWebcam() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'user' },
-      audio: false
-    });
-
-    videoEl.srcObject = stream;
-
-    await new Promise((resolve, reject) => {
-      videoEl.addEventListener('loadeddata', resolve, { once: true });
-      videoEl.addEventListener('error',      reject,  { once: true });
-      setTimeout(() => reject(new Error('Video ready timeout')), INIT_TIMEOUT_MS);
-    });
-  }
-
   function _detectionLoop(timestamp) {
     if (!running) return;
     requestAnimationFrame(_detectionLoop);
-
-    // Rate-gate to TARGET_FPS
     if (timestamp - lastDetectionMs < FRAME_INTERVAL_MS) return;
-
-    // Guard: video must be streaming
     if (!faceLandmarker || !videoEl || videoEl.readyState < 2) return;
-
     try {
       window.faceResults = faceLandmarker.detectForVideo(videoEl, timestamp);
       lastDetectionMs = timestamp;
-    } catch (_) {
-      // Detection errors are non-fatal — next frame will retry
-    }
+    } catch (_) {}
   }
+
+  function isAvailable() { return window.cameraAvailable; }
 
   return { init, isAvailable };
 
