@@ -1,15 +1,16 @@
 /**
- * Audio — Web Audio API creature sounds. No files. No libraries.
+ * Audio — Cute non-verbal creature voice using Web Audio API formant synthesis.
  *
- * Two sound triggers:
+ * Sound triggers:
  *  1. Emotion transitions — window._emotionChanged set by brain.js
  *  2. User expression reactions — perception.userSmiling / userSurprised
- *     Concept: https://github.com/justadudewhohacks/face-api.js
- *     face-api fires on expression detection — we do the same via blendshapes.
+ *  3. Face presence changes — user leaving / returning
  *
- * CRITICAL: Sounds only play when window.perception.facePresent === true.
- * If face is not detected — complete silence. No random sounds ever.
- * Max gain: 0.12 on any oscillator.
+ * Voice design: Two-formant synthesis (F1 body + F2 character) with vibrato,
+ * tremolo, and noise bursts for breathy quality. Sounds like a tiny adorable
+ * creature making non-verbal vocalizations — giggles, coos, whimpers, yawns.
+ *
+ * Max gain: 0.12 on any node.
  */
 const Audio = (() => {
 
@@ -19,6 +20,7 @@ const Audio = (() => {
   let cooldowns     = {};
   let lastSmiling   = false;
   let lastSurprised = false;
+  let lastFacePresent = undefined; // track face leave/return
 
   const COOLDOWN_MS = 800;
 
@@ -27,81 +29,72 @@ const Audio = (() => {
       if (ready) return;
       try {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
-        // Resume suspended AudioContext (required by Chromium autoplay policy)
         if (ctx.state === 'suspended') ctx.resume();
         ready = true;
-        setInterval(_pollEmotion,      150);  // check emotion changes
-        setInterval(_pollExpressions,  400);  // check user face expressions
+        setInterval(_pollEmotion,       150);
+        setInterval(_pollExpressions,   400);
+        setInterval(_pollFacePresence,  300);
       } catch(e) { console.warn('[Audio] Init failed:', e); }
     };
     document.addEventListener('keydown',   start, { once: true });
     document.addEventListener('mousedown', start, { once: true });
     document.addEventListener('click',     start, { once: true });
-    // Electron may allow autoplay without gesture — try after short delay
     setTimeout(start, 500);
   }
 
-  // Poll emotion transitions written by brain.js
-  function _pollEmotion() {
-    // STRICT: no sounds without face
-    if (!window.perception?.facePresent) return;
+  // ── Polling ────────────────────────────────────────────────────────────────
 
+  function _pollEmotion() {
     const c = window._emotionChanged;
     if (!c || c === lastChange) return;
     lastChange = c;
     _playForTransition(c.from, c.to);
   }
 
-  // React to user facial expressions — face-api.js concept
-  // face-api detects happy/surprised via neural net
-  // We detect the same via MediaPipe mouthSmile + jawOpen blendshapes
   function _pollExpressions() {
-    // STRICT: no sounds without face
     if (!window.perception?.facePresent) return;
-
     const p = window.perception;
-
-    if (p.userSmiling && !lastSmiling) {
-      // User just smiled — DeskBuddy chirps back happily
-      // face-api equivalent: expression "happy" confidence crossed threshold
-      _happyChirp(0.8);
-    }
-
-    if (p.userSurprised && !lastSurprised) {
-      // User looks surprised — DeskBuddy does a cute surprised squeak
-      // face-api equivalent: expression "surprised" confidence crossed threshold
-      _surpriseSqueak(0.6);
-    }
-
+    if (p.userSmiling && !lastSmiling)     _giggle();
+    if (p.userSurprised && !lastSurprised) _surpriseGasp();
     lastSmiling   = p.userSmiling;
     lastSurprised = p.userSurprised;
   }
 
+  function _pollFacePresence() {
+    if (!ready) return;
+    const present = !!window.perception?.facePresent;
+    if (lastFacePresent === undefined) { lastFacePresent = present; return; }
+    if (present && !lastFacePresent)   _welcomeBack();
+    if (!present && lastFacePresent)   _userLeft();
+    lastFacePresent = present;
+  }
+
   function _playForTransition(from, to) {
     switch(to) {
-      case 'curious':    _curiousTrill();      break;
-      case 'suspicious': _suspiciousHum();     break;
-      case 'pouty':      _poutyWhine();        break;
-      case 'grumpy':     _grumpyGrumble();     break;
+      case 'curious':    _curiousOoh();        break;
+      case 'suspicious': _suspiciousHmm();     break;
+      case 'pouty':      _poutyMweh();         break;
+      case 'grumpy':     _grumpyHmph();        break;
       case 'scared':     _scaredEep();         break;
-      case 'sad':        _sadWhimper();        break;
-      case 'sleepy':     _sleepyMurmur();      break;
-      case 'overjoyed':  _overjoyedFanfare();  break;
+      case 'sad':        _sadAww();            break;
+      case 'crying':     _cryingSob();         break;
+      case 'sleepy':     _sleepyYawn();        break;
+      case 'overjoyed':  _overjoyedSqueal();   break;
+      case 'sulking':    _sulkingSigh();       break;
       case 'happy':      _contentCoo();        break;
-      case 'focused':
+      case 'focused':    _focusedHum();        break;
       case 'idle':
-        // Returning after scary absence → happy relief chirp
         if (from === 'scared' || from === 'sad' || from === 'crying') {
-          _reliefChirp();
+          _welcomeBack();
         }
         break;
     }
   }
 
-  // Guard: cooldown prevents same sound from playing repeatedly
+  // ── Guard ──────────────────────────────────────────────────────────────────
+
   function _ok(type) {
     if (!ready || !ctx) return false;
-    // Resume if context got suspended (tab switch, etc.)
     if (ctx.state === 'suspended') { ctx.resume(); return false; }
     const now = Date.now();
     if (cooldowns[type] && now - cooldowns[type] < COOLDOWN_MS) return false;
@@ -109,258 +102,338 @@ const Audio = (() => {
     return true;
   }
 
-  // ── CUTE SOUND RECIPES ────────────────────────────────────────────────────
-  // Designed to sound like a tiny adorable creature. Higher pitches, warmer
-  // triangle waves, musical intervals, gentle vibrato. All gain ≤ 0.12.
-  // Every ramp is anchored with setValueAtTime for correct scheduling.
+  // ── Voice helpers ──────────────────────────────────────────────────────────
+  // Formant pair: two sine oscillators (F1=body, F2=brightness) through a
+  // master gain create a vowel-like timbre.  Adding vibrato (freq LFO) and
+  // tremolo (gain LFO) makes it feel like a living voice.
 
-  // Cute ascending "twee-dee!" chirp — smile reaction & happy moments
-  function _happyChirp(vol) {
-    if (!_ok('happy')) return;
-    vol = Math.min((vol || 1) * 0.12, 0.12);
-    try {
-      const t = ctx.currentTime;
-      // Two-note ascending chirp with musical third interval
-      [[1047, 1319, 0, vol], [1319, 1568, 0.09, vol * 0.9]].forEach(([f1, f2, d, g]) => {
-        const o = new OscillatorNode(ctx, { type: 'triangle', frequency: f1 });
-        o.frequency.setValueAtTime(f1, t + d);
-        o.frequency.linearRampToValueAtTime(f2, t + d + 0.10);
-        const gn = new GainNode(ctx, { gain: 0 });
-        gn.gain.setValueAtTime(0, t + d);
-        gn.gain.linearRampToValueAtTime(g, t + d + 0.008);
-        gn.gain.setValueAtTime(g, t + d + 0.06);
-        gn.gain.linearRampToValueAtTime(0, t + d + 0.11);
-        o.connect(gn).connect(ctx.destination);
-        o.start(t + d); o.stop(t + d + 0.13);
-      });
-    } catch(_) {}
+  function _formant(f1, f2, time, dur, vol, opts) {
+    const o = opts || {};
+    const vib = o.vibRate || 0;
+    const vibD = o.vibDepth || 0;
+    const trem = o.tremRate || 0;
+    const tremD = o.tremDepth || 0;
+    const slide = o.slideTo;
+    const wave = o.wave || 'sine';
+    const f2ratio = o.f2vol || 0.35;
+    const attack = o.attack || 0.015;
+    const release = o.release || (dur * 0.35);
+    const sustainEnd = time + dur - release;
+
+    // F1 — warm body
+    const osc1 = new OscillatorNode(ctx, { type: wave, frequency: f1 });
+    osc1.frequency.setValueAtTime(f1, time);
+    if (slide) osc1.frequency.linearRampToValueAtTime(slide[0], time + dur * 0.9);
+
+    // F2 — brightness / character
+    const osc2 = new OscillatorNode(ctx, { type: 'sine', frequency: f2 });
+    osc2.frequency.setValueAtTime(f2, time);
+    if (slide) osc2.frequency.linearRampToValueAtTime(slide[1], time + dur * 0.9);
+
+    // Mix F1 and F2
+    const g1 = new GainNode(ctx, { gain: 0 });
+    const g2 = new GainNode(ctx, { gain: 0 });
+    osc1.connect(g1);
+    osc2.connect(g2);
+
+    // Envelope for each formant
+    g1.gain.setValueAtTime(0, time);
+    g1.gain.linearRampToValueAtTime(vol * (1 - f2ratio), time + attack);
+    g1.gain.setValueAtTime(vol * (1 - f2ratio), sustainEnd);
+    g1.gain.linearRampToValueAtTime(0, time + dur);
+
+    g2.gain.setValueAtTime(0, time);
+    g2.gain.linearRampToValueAtTime(vol * f2ratio, time + attack);
+    g2.gain.setValueAtTime(vol * f2ratio, sustainEnd);
+    g2.gain.linearRampToValueAtTime(0, time + dur);
+
+    const master = new GainNode(ctx, { gain: 1 });
+    g1.connect(master);
+    g2.connect(master);
+
+    // Vibrato — gentle frequency wobble like a real voice
+    if (vib > 0) {
+      const lfo = new OscillatorNode(ctx, { type: 'sine', frequency: vib });
+      const lg = new GainNode(ctx, { gain: vibD });
+      lfo.connect(lg);
+      lg.connect(osc1.frequency);
+      lg.connect(osc2.frequency);
+      lfo.start(time); lfo.stop(time + dur + 0.02);
+    }
+
+    // Tremolo — amplitude flutter for liveliness
+    if (trem > 0) {
+      const tLfo = new OscillatorNode(ctx, { type: 'sine', frequency: trem });
+      const tg = new GainNode(ctx, { gain: tremD });
+      tLfo.connect(tg);
+      tg.connect(master.gain);
+      tLfo.start(time); tLfo.stop(time + dur + 0.02);
+    }
+
+    master.connect(ctx.destination);
+    osc1.start(time); osc1.stop(time + dur + 0.02);
+    osc2.start(time); osc2.stop(time + dur + 0.02);
+    return master;
   }
 
-  // Gentle "ooh?" trill — curious creature peeking with vibrato
-  function _curiousTrill() {
+  // Breathy noise burst for aspiration / breath sounds
+  function _breath(time, dur, vol) {
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Bandpass to shape noise into breathy "shhh"
+    const bp = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 2500, Q: 0.7 });
+    const g = new GainNode(ctx, { gain: 0 });
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(vol, time + 0.02);
+    g.gain.setValueAtTime(vol, time + dur * 0.5);
+    g.gain.linearRampToValueAtTime(0, time + dur);
+
+    src.connect(bp).connect(g).connect(ctx.destination);
+    src.start(time); src.stop(time + dur + 0.01);
+  }
+
+  // ── CUTE NON-VERBAL VOICE SOUNDS ──────────────────────────────────────────
+
+  // Giggle "hehe!" — bubbly two-syllable laugh when user smiles
+  function _giggle() {
+    if (!_ok('giggle')) return;
+    try {
+      const t = ctx.currentTime;
+      // Two-syllable giggle: "he-he" with ascending pitch
+      _formant(680, 1800, t,       0.10, 0.10, { wave: 'triangle', attack: 0.005, release: 0.04, tremRate: 28, tremDepth: 0.03 });
+      _formant(780, 2000, t + 0.12, 0.12, 0.11, { wave: 'triangle', attack: 0.005, release: 0.05, tremRate: 30, tremDepth: 0.03 });
+      _breath(t, 0.06, 0.02);
+    } catch(e) {}
+  }
+
+  // Content "coo~" — warm descending hum when becoming happy
+  function _contentCoo() {
+    if (!_ok('coo')) return;
+    try {
+      const t = ctx.currentTime;
+      _formant(520, 1200, t, 0.28, 0.09, {
+        wave: 'triangle', vibRate: 5.5, vibDepth: 12,
+        slideTo: [480, 1100], attack: 0.02, release: 0.12
+      });
+      _breath(t + 0.01, 0.08, 0.015);
+    } catch(e) {}
+  }
+
+  // Curious "ooh?" — rising intonation, wide-eyed wonder
+  function _curiousOoh() {
     if (!_ok('curious')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'triangle', frequency: 880 });
-      o.frequency.setValueAtTime(880, t);
-      o.frequency.linearRampToValueAtTime(1100, t + 0.25);
-      // Gentle vibrato for warmth
-      const lfo = new OscillatorNode(ctx, { type: 'sine', frequency: 12 });
-      const lg = new GainNode(ctx, { gain: 30 });
-      lfo.connect(lg).connect(o.frequency);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.09, t + 0.02);
-      g.gain.setValueAtTime(0.09, t + 0.18);
-      g.gain.linearRampToValueAtTime(0, t + 0.28);
-      o.connect(g).connect(ctx.destination);
-      lfo.start(t); o.start(t); lfo.stop(t + 0.30); o.stop(t + 0.30);
-    } catch(_) {}
+      _formant(380, 950, t, 0.30, 0.09, {
+        wave: 'sine', vibRate: 6, vibDepth: 10,
+        slideTo: [520, 1300], attack: 0.02, release: 0.10
+      });
+    } catch(e) {}
   }
 
-  // Soft falling "mmm..." — sleepy creature drifting off
-  function _sleepyMurmur() {
-    if (!_ok('sleepy')) return;
+  // Sleepy yawn "ahhhhh~" — long descending exhale with breath
+  function _sleepyYawn() {
+    if (!_ok('yawn')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'sine', frequency: 330 });
-      o.frequency.setValueAtTime(330, t);
-      o.frequency.linearRampToValueAtTime(220, t + 0.60);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.07, t + 0.08);
-      g.gain.setValueAtTime(0.07, t + 0.30);
-      g.gain.linearRampToValueAtTime(0, t + 0.65);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.68);
-    } catch(_) {}
+      // Slow descending "aah" — open vowel formants
+      _formant(600, 1400, t, 0.70, 0.08, {
+        wave: 'sine', vibRate: 3, vibDepth: 15,
+        slideTo: [300, 800], attack: 0.06, release: 0.30
+      });
+      // Breathy exhale layered on top
+      _breath(t + 0.05, 0.55, 0.025);
+    } catch(e) {}
   }
 
-  // Low questioning "hmm..." — suspicious squint
-  function _suspiciousHum() {
+  // Suspicious "hmm?" — low nasal questioning sound
+  function _suspiciousHmm() {
     if (!_ok('suspicious')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'sine', frequency: 280 });
-      o.frequency.setValueAtTime(280, t);
-      o.frequency.linearRampToValueAtTime(260, t + 0.15);
-      o.frequency.setValueAtTime(260, t + 0.15);
-      o.frequency.linearRampToValueAtTime(290, t + 0.35);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.08, t + 0.03);
-      g.gain.setValueAtTime(0.08, t + 0.30);
-      g.gain.linearRampToValueAtTime(0, t + 0.40);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.42);
-    } catch(_) {}
+      // Nasally "hmm" — close-mouth formants with upward ending
+      _formant(250, 700, t, 0.35, 0.08, {
+        wave: 'triangle', vibRate: 4, vibDepth: 8,
+        slideTo: [280, 780], attack: 0.03, release: 0.10
+      });
+    } catch(e) {}
   }
 
-  // Cute descending "mweh..." — pouty whine
-  function _poutyWhine() {
+  // Pouty "mweh~" — descending whine, lip-trembly
+  function _poutyMweh() {
     if (!_ok('pouty')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'triangle', frequency: 660 });
-      o.frequency.setValueAtTime(660, t);
-      o.frequency.linearRampToValueAtTime(440, t + 0.25);
-      o.frequency.setValueAtTime(440, t + 0.25);
-      o.frequency.linearRampToValueAtTime(380, t + 0.35);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.09, t + 0.01);
-      g.gain.setValueAtTime(0.09, t + 0.20);
-      g.gain.linearRampToValueAtTime(0, t + 0.36);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.38);
-    } catch(_) {}
+      _formant(550, 1400, t, 0.35, 0.09, {
+        wave: 'triangle', vibRate: 7, vibDepth: 20,
+        slideTo: [350, 900], attack: 0.01, release: 0.15,
+        tremRate: 8, tremDepth: 0.02
+      });
+    } catch(e) {}
   }
 
-  // Double low "hmph hmph" — grumpy grumble
-  function _grumpyGrumble() {
+  // Grumpy "hmph!" — short nasal puff with low pitch
+  function _grumpyHmph() {
     if (!_ok('grumpy')) return;
     try {
       const t = ctx.currentTime;
-      [0, 0.20].forEach((off, i) => {
-        const freq = 200 - i * 15;
-        const o = new OscillatorNode(ctx, { type: 'triangle', frequency: freq });
-        o.frequency.setValueAtTime(freq, t + off);
-        o.frequency.linearRampToValueAtTime(freq - 30, t + off + 0.12);
-        const g = new GainNode(ctx, { gain: 0 });
-        g.gain.setValueAtTime(0, t + off);
-        g.gain.linearRampToValueAtTime(0.10, t + off + 0.01);
-        g.gain.setValueAtTime(0.10, t + off + 0.06);
-        g.gain.linearRampToValueAtTime(0, t + off + 0.14);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + off); o.stop(t + off + 0.16);
+      // Two short "hmph" bursts
+      _formant(200, 550, t, 0.12, 0.10, {
+        wave: 'triangle', attack: 0.005, release: 0.05,
+        slideTo: [170, 480]
       });
-    } catch(_) {}
+      _breath(t, 0.08, 0.03);
+      _formant(180, 500, t + 0.18, 0.10, 0.09, {
+        wave: 'triangle', attack: 0.005, release: 0.04,
+        slideTo: [160, 440]
+      });
+      _breath(t + 0.18, 0.06, 0.025);
+    } catch(e) {}
   }
 
-  // Tiny "eep!" — scared creature startled
+  // Scared "eep!" — sharp high squeak with gasp
   function _scaredEep() {
     if (!_ok('scared')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'sine', frequency: 800 });
-      o.frequency.setValueAtTime(800, t);
-      o.frequency.exponentialRampToValueAtTime(1600, t + 0.06);
-      o.frequency.setValueAtTime(1600, t + 0.06);
-      o.frequency.exponentialRampToValueAtTime(1200, t + 0.12);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.10, t + 0.005);
-      g.gain.setValueAtTime(0.10, t + 0.04);
-      g.gain.linearRampToValueAtTime(0, t + 0.12);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.14);
-    } catch(_) {}
+      _formant(800, 2200, t, 0.12, 0.10, {
+        wave: 'sine', attack: 0.003, release: 0.05,
+        slideTo: [1200, 2800]
+      });
+      _breath(t, 0.05, 0.03);
+    } catch(e) {}
   }
 
-  // Cute surprised squeak — when user raises eyebrows
-  function _surpriseSqueak(vol) {
-    if (!_ok('surprise')) return;
-    vol = Math.min((vol || 1) * 0.10, 0.12);
-    try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'triangle', frequency: 900 });
-      o.frequency.setValueAtTime(900, t);
-      o.frequency.exponentialRampToValueAtTime(1400, t + 0.08);
-      o.frequency.setValueAtTime(1400, t + 0.08);
-      o.frequency.linearRampToValueAtTime(1100, t + 0.15);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(vol, t + 0.005);
-      g.gain.setValueAtTime(vol, t + 0.06);
-      g.gain.linearRampToValueAtTime(0, t + 0.15);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.17);
-    } catch(_) {}
-  }
-
-  // Sad descending whimper "oooh..." with emotional wobble
-  function _sadWhimper() {
+  // Sad "aww..." — slow descending whimper with emotional vibrato
+  function _sadAww() {
     if (!_ok('sad')) return;
     try {
       const t = ctx.currentTime;
-      // Two overlapping tones for richer, sadder sound
-      [[550, 380, 0, 0.07], [440, 310, 0.05, 0.06]].forEach(([f1, f2, d, vol]) => {
-        const o = new OscillatorNode(ctx, { type: 'sine', frequency: f1 });
-        o.frequency.setValueAtTime(f1, t + d);
-        o.frequency.linearRampToValueAtTime(f2, t + d + 0.45);
-        // Gentle vibrato for emotional wobble
-        const lfo = new OscillatorNode(ctx, { type: 'sine', frequency: 5 });
-        const lg = new GainNode(ctx, { gain: 15 });
-        lfo.connect(lg).connect(o.frequency);
-        const g = new GainNode(ctx, { gain: 0 });
-        g.gain.setValueAtTime(0, t + d);
-        g.gain.linearRampToValueAtTime(vol, t + d + 0.03);
-        g.gain.setValueAtTime(vol, t + d + 0.25);
-        g.gain.linearRampToValueAtTime(0, t + d + 0.50);
-        o.connect(g).connect(ctx.destination);
-        lfo.start(t + d); o.start(t + d);
-        lfo.stop(t + d + 0.52); o.stop(t + d + 0.52);
+      _formant(500, 1200, t, 0.50, 0.08, {
+        wave: 'sine', vibRate: 5, vibDepth: 18,
+        slideTo: [340, 850], attack: 0.03, release: 0.20,
+        tremRate: 4, tremDepth: 0.015
       });
-    } catch(_) {}
+      // Quieter second tone for richness
+      _formant(420, 1000, t + 0.05, 0.40, 0.05, {
+        wave: 'sine', vibRate: 5.5, vibDepth: 14,
+        slideTo: [300, 750], attack: 0.03, release: 0.18
+      });
+    } catch(e) {}
   }
 
-  // Triumphant ascending triple chirp "dee-dee-DEE!" — overjoyed
-  function _overjoyedFanfare() {
+  // Crying "huh-huh..." — rhythmic sobbing with breath
+  function _cryingSob() {
+    if (!_ok('crying')) return;
+    try {
+      const t = ctx.currentTime;
+      // Three sob pulses with descending pitch
+      [0, 0.22, 0.44].forEach((off, i) => {
+        const pitch = 480 - i * 40;
+        _formant(pitch, pitch * 2.2, t + off, 0.16, 0.07 - i * 0.01, {
+          wave: 'sine', vibRate: 6, vibDepth: 16,
+          slideTo: [pitch - 50, (pitch - 50) * 2.2],
+          attack: 0.008, release: 0.08
+        });
+        _breath(t + off, 0.06, 0.02);
+      });
+    } catch(e) {}
+  }
+
+  // Overjoyed "eee~!" — excited ascending squeal with tremolo
+  function _overjoyedSqueal() {
     if (!_ok('overjoyed')) return;
     try {
       const t = ctx.currentTime;
-      [[1047, 1175, 0.10, 0], [1319, 1397, 0.11, 0.10], [1568, 1760, 0.12, 0.20]].forEach(([f1, f2, g, d]) => {
-        const o = new OscillatorNode(ctx, { type: 'triangle', frequency: f1 });
-        o.frequency.setValueAtTime(f1, t + d);
-        o.frequency.linearRampToValueAtTime(f2, t + d + 0.09);
-        const gn = new GainNode(ctx, { gain: 0 });
-        gn.gain.setValueAtTime(0, t + d);
-        gn.gain.linearRampToValueAtTime(g, t + d + 0.008);
-        gn.gain.setValueAtTime(g, t + d + 0.05);
-        gn.gain.linearRampToValueAtTime(0, t + d + 0.095);
-        o.connect(gn).connect(ctx.destination);
-        o.start(t + d); o.stop(t + d + 0.12);
+      // Rapid ascending three-note squeal
+      [[600, 1600, 0], [750, 1900, 0.09], [900, 2300, 0.18]].forEach(([f1, f2, off]) => {
+        _formant(f1, f2, t + off, 0.10, 0.11, {
+          wave: 'triangle', attack: 0.005, release: 0.04,
+          tremRate: 22, tremDepth: 0.02
+        });
       });
-    } catch(_) {}
+      _breath(t + 0.02, 0.05, 0.015);
+    } catch(e) {}
   }
 
-  // Gentle warm "coo" — content/happy state transition
-  function _contentCoo() {
-    if (!_ok('content')) return;
+  // Sulking sigh "haahh..." — heavy breath-out with sad undertone
+  function _sulkingSigh() {
+    if (!_ok('sulking')) return;
     try {
       const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type: 'triangle', frequency: 660 });
-      o.frequency.setValueAtTime(660, t);
-      o.frequency.linearRampToValueAtTime(720, t + 0.08);
-      o.frequency.setValueAtTime(720, t + 0.08);
-      o.frequency.linearRampToValueAtTime(680, t + 0.18);
-      const g = new GainNode(ctx, { gain: 0 });
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.08, t + 0.015);
-      g.gain.setValueAtTime(0.08, t + 0.12);
-      g.gain.linearRampToValueAtTime(0, t + 0.20);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.22);
-    } catch(_) {}
+      _formant(350, 900, t, 0.45, 0.07, {
+        wave: 'sine', vibRate: 3.5, vibDepth: 10,
+        slideTo: [250, 650], attack: 0.04, release: 0.20
+      });
+      _breath(t, 0.35, 0.03);
+    } catch(e) {}
   }
 
-  // Ascending warm relief sigh — returning after being scared/sad
-  function _reliefChirp() {
-    if (!_ok('relief')) return;
+  // Focused "mmm~" — quiet content humming
+  function _focusedHum() {
+    if (!_ok('focused')) return;
     try {
       const t = ctx.currentTime;
-      [[550, 0, 0.12, 0.08], [660, 0.10, 0.12, 0.09], [880, 0.20, 0.15, 0.10]].forEach(([f, d, dur, vol]) => {
-        const o = new OscillatorNode(ctx, { type: 'triangle', frequency: f });
-        o.frequency.setValueAtTime(f, t + d);
-        const g = new GainNode(ctx, { gain: 0 });
-        g.gain.setValueAtTime(0, t + d);
-        g.gain.linearRampToValueAtTime(vol, t + d + 0.01);
-        g.gain.setValueAtTime(vol, t + d + dur * 0.5);
-        g.gain.linearRampToValueAtTime(0, t + d + dur);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + d); o.stop(t + d + dur + 0.02);
+      _formant(280, 650, t, 0.30, 0.05, {
+        wave: 'sine', vibRate: 4, vibDepth: 6,
+        slideTo: [300, 700], attack: 0.04, release: 0.12
       });
-    } catch(_) {}
+    } catch(e) {}
+  }
+
+  // Surprise gasp "oh!" — quick rising vocalization
+  function _surpriseGasp() {
+    if (!_ok('surprise')) return;
+    try {
+      const t = ctx.currentTime;
+      _formant(550, 1400, t, 0.14, 0.09, {
+        wave: 'triangle', attack: 0.004, release: 0.06,
+        slideTo: [750, 1900]
+      });
+      _breath(t, 0.05, 0.025);
+    } catch(e) {}
+  }
+
+  // User left — sad calling-out "aww?..." with rising end
+  function _userLeft() {
+    if (!_ok('userLeft')) return;
+    try {
+      const t = ctx.currentTime;
+      // Sad falling "aww" then questioning rise
+      _formant(480, 1150, t, 0.30, 0.08, {
+        wave: 'sine', vibRate: 5, vibDepth: 14,
+        slideTo: [380, 920], attack: 0.02, release: 0.12
+      });
+      // Rising "?" at end
+      _formant(380, 920, t + 0.32, 0.18, 0.07, {
+        wave: 'sine', vibRate: 4, vibDepth: 10,
+        slideTo: [460, 1100], attack: 0.015, release: 0.08
+      });
+    } catch(e) {}
+  }
+
+  // User returned — excited happy greeting "ah~!"
+  function _welcomeBack() {
+    if (!_ok('welcomeBack')) return;
+    try {
+      const t = ctx.currentTime;
+      // Excited ascending "ah~!"
+      _formant(500, 1300, t, 0.12, 0.10, {
+        wave: 'triangle', attack: 0.005, release: 0.05,
+        slideTo: [650, 1700]
+      });
+      _formant(650, 1700, t + 0.13, 0.15, 0.11, {
+        wave: 'triangle', attack: 0.005, release: 0.06,
+        vibRate: 8, vibDepth: 15,
+        slideTo: [720, 1850]
+      });
+      _breath(t, 0.06, 0.02);
+    } catch(e) {}
   }
 
   return { init };

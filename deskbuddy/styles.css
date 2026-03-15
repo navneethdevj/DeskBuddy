@@ -26,7 +26,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   will-change: transform, filter;
-  animation: glowIdle 4s ease-in-out infinite;
+  animation: glowIdle 4s ease-in-out infinite, idleSway 7s ease-in-out infinite;
 }
 
 .companion-inner {
@@ -35,6 +35,7 @@ html, body {
   height: 100%;
   animation: breathe 3s ease-in-out infinite;
   transform-origin: center center;
+  will-change: transform;
 }
 
 /* ===== Per-Expression Glow Animations (soft periwinkle tint) ===== */
@@ -114,16 +115,27 @@ html, body {
 }
 
 /* Expression → glow override (each has unique color + speed) */
-.companion.curious    { animation: glowCurious 2.5s ease-in-out infinite; }
-.companion.focused    { animation: glowFocused 3.5s ease-in-out infinite; }
-.companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite; }
-.companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite; }
-.companion.happy      { animation: glowHappy 1.8s ease-in-out infinite; }
+.companion.curious    { animation: glowCurious 2.5s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
+.companion.focused    { animation: glowFocused 3.5s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
+.companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite, idleSway 10s ease-in-out infinite; }
+.companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
+.companion.happy      { animation: glowHappy 1.8s ease-in-out infinite, idleSway 5s ease-in-out infinite; }
 
-/* ===== Breathing Animation ===== */
+/* ===== Breathing Animation (enhanced — more alive) ===== */
 @keyframes breathe {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-0.4vh); }
+  0%   { transform: translateY(0) scale(1); }
+  30%  { transform: translateY(-0.5vh) scale(1.004); }
+  50%  { transform: translateY(-0.6vh) scale(1.006); }
+  70%  { transform: translateY(-0.3vh) scale(1.003); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* Subtle idle sway — makes companion feel alive even when idle */
+@keyframes idleSway {
+  0%, 100% { margin-left: 0; margin-top: 0; }
+  25%      { margin-left: 2px; margin-top: -1px; }
+  50%      { margin-left: -1px; margin-top: 1px; }
+  75%      { margin-left: 1px; margin-top: -2px; }
 }
 
 /* Disable CSS keyframe on companion-inner when sprite system drives frames */
@@ -287,6 +299,152 @@ html, body {
   transform: translateY(0.1vh) scale(0.997);
 }
 
+/* ===== Expression Liveliness — micro-animations for aliveness ===== */
+
+/* Happy — gentle excited wiggle, the creature is delighted */
+.companion.happy .companion-inner {
+  animation: happyWiggle 1.6s ease-in-out infinite;
+}
+@keyframes happyWiggle {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  15%      { transform: translateY(-0.5vh) rotate(0.5deg) scale(1.008); }
+  30%      { transform: translateY(-0.3vh) rotate(-0.3deg) scale(1.005); }
+  50%      { transform: translateY(-0.7vh) rotate(0.4deg) scale(1.01); }
+  70%      { transform: translateY(-0.2vh) rotate(-0.2deg) scale(1.004); }
+  85%      { transform: translateY(-0.4vh) rotate(0.3deg) scale(1.006); }
+}
+
+/* Overjoyed — bigger bouncy excitement */
+.companion.overjoyed .companion-inner {
+  animation: overjoyedBounce 1.0s ease-in-out infinite;
+}
+@keyframes overjoyedBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  20%      { transform: translateY(-1.2vh) scale(1.015); }
+  40%      { transform: translateY(-0.3vh) scale(0.995); }
+  60%      { transform: translateY(-0.9vh) scale(1.012); }
+  80%      { transform: translateY(-0.1vh) scale(0.998); }
+}
+
+/* Sad — slow drooping sway */
+.companion.sad .companion-inner {
+  animation: sadDroop 4.5s ease-in-out infinite;
+}
+@keyframes sadDroop {
+  0%, 100% { transform: translateY(0.2vh) rotate(0deg); }
+  25%      { transform: translateY(0.4vh) rotate(-0.6deg); }
+  50%      { transform: translateY(0.5vh) rotate(0.4deg); }
+  75%      { transform: translateY(0.3vh) rotate(-0.3deg); }
+}
+
+/* Crying — trembling with sadness */
+.companion.crying .companion-inner {
+  animation: cryingTremble 0.8s ease-in-out infinite;
+}
+@keyframes cryingTremble {
+  0%, 100% { transform: translateY(0.3vh) rotate(0deg); }
+  25%      { transform: translateY(0.4vh) rotate(-0.4deg); }
+  50%      { transform: translateY(0.2vh) rotate(0.3deg); }
+  75%      { transform: translateY(0.5vh) rotate(-0.3deg); }
+}
+
+/* Scared — quick shivering tremble */
+.companion.scared .companion-inner {
+  animation: scaredShiver 0.4s ease-in-out infinite;
+}
+@keyframes scaredShiver {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(0.99); }
+  25%      { transform: translateY(-0.2vh) rotate(0.5deg) scale(0.988); }
+  50%      { transform: translateY(0.1vh) rotate(-0.4deg) scale(0.992); }
+  75%      { transform: translateY(-0.1vh) rotate(0.3deg) scale(0.987); }
+}
+
+/* Curious — gentle tilt like a puppy */
+.companion.curious .companion-inner {
+  animation: curiousTilt 2.5s ease-in-out infinite;
+}
+@keyframes curiousTilt {
+  0%, 100% { transform: translateY(-0.3vh) rotate(0deg) scale(1.005); }
+  35%      { transform: translateY(-0.6vh) rotate(2deg) scale(1.008); }
+  65%      { transform: translateY(-0.4vh) rotate(-1.5deg) scale(1.006); }
+}
+
+/* Sleepy — slow gentle nodding */
+.companion.sleepy .companion-inner {
+  animation: sleepyNod 5s ease-in-out infinite;
+}
+@keyframes sleepyNod {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30%      { transform: translateY(0.4vh) rotate(-1deg); }
+  60%      { transform: translateY(0.6vh) rotate(0.5deg); }
+  80%      { transform: translateY(0.3vh) rotate(-0.3deg); }
+}
+
+/* Suspicious — slow suspicious lean */
+.companion.suspicious .companion-inner {
+  animation: suspiciousLean 3s ease-in-out infinite;
+}
+@keyframes suspiciousLean {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-0.2vh) rotate(-1.5deg); }
+}
+
+/* Pouty — small huffing motions */
+.companion.pouty .companion-inner {
+  animation: poutyHuff 2.8s ease-in-out infinite;
+}
+@keyframes poutyHuff {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40%      { transform: translateY(0.2vh) scale(1.01); }
+  55%      { transform: translateY(-0.1vh) scale(0.995); }
+  70%      { transform: translateY(0.15vh) scale(1.005); }
+}
+
+/* Grumpy — sharp little irritated shifts */
+.companion.grumpy .companion-inner {
+  animation: grumpyShift 2.2s ease-in-out infinite;
+}
+@keyframes grumpyShift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  20%      { transform: translateY(0.1vh) rotate(-0.8deg); }
+  45%      { transform: translateY(-0.1vh) rotate(0.6deg); }
+  70%      { transform: translateY(0.05vh) rotate(-0.4deg); }
+}
+
+/* Sulking — slow slumped sway */
+.companion.sulking .companion-inner {
+  animation: sulkingSway 4s ease-in-out infinite;
+}
+@keyframes sulkingSway {
+  0%, 100% { transform: translateY(0.3vh) rotate(-0.5deg); }
+  50%      { transform: translateY(0.5vh) rotate(0.5deg); }
+}
+
+/* Focused — barely-there steady micro-pulse, creature is concentrating */
+.companion.focused .companion-inner {
+  animation: focusPulse 3.5s ease-in-out infinite;
+}
+@keyframes focusPulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-0.2vh) scale(1.003); }
+}
+
+/* ===== Eye shimmer — subtle inner glow pulse for aliveness ===== */
+.eye::after {
+  content: '';
+  position: absolute;
+  top: 8%; left: 15%;
+  width: 30%; height: 25%;
+  background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: eyeShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes eyeShimmer {
+  0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
+  50%      { opacity: 1; transform: translate(2%, -3%) scale(1.1); }
+}
+
 /* ===== Particles ===== */
 .particles-container {
   position: absolute;
@@ -373,7 +531,7 @@ html, body {
     0 0 5vmin rgba(195,218,255,0.52),
     0 0 14vmin rgba(180,210,255,0.18);
 }
-.companion.scared { animation: glowScared 0.9s ease-in-out infinite; }
+.companion.scared { animation: glowScared 0.9s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
 @keyframes glowScared {
   0%,100% { filter: drop-shadow(0 0 6vmin rgba(195,218,255,0.42)) drop-shadow(0 0 16vmin rgba(175,205,255,0.14)); }
   50%     { filter: drop-shadow(0 0 12vmin rgba(210,228,255,0.65)) drop-shadow(0 0 26vmin rgba(190,215,255,0.22)); }
@@ -388,7 +546,7 @@ html, body {
     0 0 4vmin rgba(100,145,210,0.32),
     0 0 10vmin rgba(90,130,200,0.12);
 }
-.companion.sad { animation: glowSad 5.5s ease-in-out infinite; }
+.companion.sad { animation: glowSad 5.5s ease-in-out infinite, idleSway 9s ease-in-out infinite; }
 @keyframes glowSad {
   0%,100% { filter: drop-shadow(0 0 4vmin rgba(100,145,210,0.28)) drop-shadow(0 0 11vmin rgba(85,125,195,0.10)); }
   50%     { filter: drop-shadow(0 0 7vmin rgba(110,155,220,0.40)) drop-shadow(0 0 16vmin rgba(95,135,210,0.15)); }
@@ -403,7 +561,7 @@ html, body {
     0 0 2vmin rgba(75,120,195,0.80),
     0 0 3vmin rgba(75,120,195,0.28);
 }
-.companion.crying { animation: glowCrying 7s ease-in-out infinite; }
+.companion.crying { animation: glowCrying 7s ease-in-out infinite, idleSway 9s ease-in-out infinite; }
 @keyframes glowCrying {
   0%,100% { filter: drop-shadow(0 0 3vmin rgba(75,120,195,0.24)) drop-shadow(0 0 9vmin rgba(60,105,175,0.08)); }
   50%     { filter: drop-shadow(0 0 5vmin rgba(85,130,205,0.34)) drop-shadow(0 0 13vmin rgba(70,115,185,0.12)); }
@@ -418,7 +576,7 @@ html, body {
     0 0 4vmin rgba(255,188,118,0.34),
     0 0 10vmin rgba(255,172,100,0.12);
 }
-.companion.pouty { animation: glowPouty 3.8s ease-in-out infinite; }
+.companion.pouty { animation: glowPouty 3.8s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
 @keyframes glowPouty {
   0%,100% { filter: drop-shadow(0 0 4vmin rgba(255,188,118,0.30)) drop-shadow(0 0 11vmin rgba(255,168,95,0.10)); }
   50%     { filter: drop-shadow(0 0 8vmin rgba(255,200,130,0.48)) drop-shadow(0 0 18vmin rgba(255,180,110,0.16)); }
@@ -433,7 +591,7 @@ html, body {
     0 0 5vmin rgba(255,138,128,0.40),
     0 0 12vmin rgba(245,118,108,0.14);
 }
-.companion.grumpy { animation: glowGrumpy 2.4s ease-in-out infinite; }
+.companion.grumpy { animation: glowGrumpy 2.4s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
 @keyframes glowGrumpy {
   0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,138,128,0.36)) drop-shadow(0 0 13vmin rgba(240,115,105,0.12)); }
   50%     { filter: drop-shadow(0 0 10vmin rgba(255,152,142,0.56)) drop-shadow(0 0 22vmin rgba(245,128,118,0.20)); }
@@ -448,7 +606,7 @@ html, body {
     0 0 20vmin rgba(255,232,175,0.24),
     0 0 36vmin rgba(255,225,155,0.09);
 }
-.companion.overjoyed { animation: glowOverjoyed 1.1s ease-in-out infinite; }
+.companion.overjoyed { animation: glowOverjoyed 1.1s ease-in-out infinite, idleSway 5s ease-in-out infinite; }
 @keyframes glowOverjoyed {
   0%,100% { filter: drop-shadow(0 0 9vmin rgba(255,240,198,0.58)) drop-shadow(0 0 22vmin rgba(255,230,170,0.20)); }
   50%     { filter: drop-shadow(0 0 18vmin rgba(255,248,215,0.85)) drop-shadow(0 0 38vmin rgba(255,238,185,0.32)); }
@@ -463,7 +621,7 @@ html, body {
     0 0 4vmin rgba(205,138,192,0.36),
     0 0 11vmin rgba(185,118,172,0.13);
 }
-.companion.sulking { animation: glowSulking 2.1s ease-in-out infinite; }
+.companion.sulking { animation: glowSulking 2.1s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
 @keyframes glowSulking {
   0%       { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
   15%      { filter: drop-shadow(0 0 9vmin rgba(215,148,202,0.55)); }
