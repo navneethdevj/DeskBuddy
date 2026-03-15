@@ -61,6 +61,9 @@ const Companion = (() => {
 
     startIdleBehaviors();
 
+    // Phase 3: Create emotion visual elements
+    createEmotionVisuals();
+
     return el;
   }
 
@@ -207,5 +210,188 @@ const Companion = (() => {
     }, delay);
   }
 
-  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils };
+  // ===== PHASE 3: Emotion-Based Visuals =====
+
+  let currentCheekOpacity = 0;
+  let targetCheekOpacity = 0;
+  let currentTopLidPercent = 8;
+  let targetTopLidPercent = 8;
+  let currentBottomLidPercent = 0;
+  let targetBottomLidPercent = 0;
+  let pupilSizeW = 14;
+  let pupilSizeH = 14;
+  let targetPupilSizeW = 14;
+  let targetPupilSizeH = 14;
+  let eyebrowElements = null;
+
+  /**
+   * Create cheek and eyelid DOM elements (called once on init).
+   */
+  function createEmotionVisuals() {
+    if (!el) return;
+
+    // Create cheeks
+    var cheeksLeft = document.createElement('div');
+    cheeksLeft.className = 'cheeks cheek-left';
+    cheeksLeft.style.position = 'absolute';
+    cheeksLeft.style.left = '20%';
+    cheeksLeft.style.top = '45%';
+    cheeksLeft.style.width = '8vmin';
+    cheeksLeft.style.height = '4vmin';
+    cheeksLeft.style.borderRadius = '50%';
+    cheeksLeft.style.background = 'radial-gradient(circle, rgba(255, 120, 150, 0.6), transparent)';
+    cheeksLeft.style.opacity = '0';
+    cheeksLeft.style.pointerEvents = 'none';
+    cheeksLeft.style.zIndex = '5';
+    el.appendChild(cheeksLeft);
+
+    var cheeksRight = document.createElement('div');
+    cheeksRight.className = 'cheeks cheek-right';
+    cheeksRight.style.position = 'absolute';
+    cheeksRight.style.right = '20%';
+    cheeksRight.style.top = '45%';
+    cheeksRight.style.width = '8vmin';
+    cheeksRight.style.height = '4vmin';
+    cheeksRight.style.borderRadius = '50%';
+    cheeksRight.style.background = 'radial-gradient(circle, rgba(255, 120, 150, 0.6), transparent)';
+    cheeksRight.style.opacity = '0';
+    cheeksRight.style.pointerEvents = 'none';
+    cheeksRight.style.zIndex = '5';
+    el.appendChild(cheeksRight);
+
+    // Create eyelids (overlays that clip over the eyes)
+    var topLid = document.createElement('div');
+    topLid.className = 'eyelid eyelid-top';
+    topLid.style.position = 'absolute';
+    topLid.style.top = '0';
+    topLid.style.left = '0';
+    topLid.style.width = '100%';
+    topLid.style.height = '50%';
+    topLid.style.background = '#111111';
+    topLid.style.zIndex = '10';
+    topLid.style.clipPath = 'inset(0 0 100% 0)';
+    topLid.style.pointerEvents = 'none';
+    el.appendChild(topLid);
+
+    var bottomLid = document.createElement('div');
+    bottomLid.className = 'eyelid eyelid-bottom';
+    bottomLid.style.position = 'absolute';
+    bottomLid.style.bottom = '0';
+    bottomLid.style.left = '0';
+    bottomLid.style.width = '100%';
+    bottomLid.style.height = '50%';
+    bottomLid.style.background = '#111111';
+    bottomLid.style.zIndex = '10';
+    bottomLid.style.clipPath = 'inset(100% 0 0 0)';
+    bottomLid.style.pointerEvents = 'none';
+    el.appendChild(bottomLid);
+
+    // Create eyebrows (SVG arcs)
+    var eyebrowLeftSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    eyebrowLeftSvg.setAttribute('viewBox', '0 0 100 50');
+    eyebrowLeftSvg.style.position = 'absolute';
+    eyebrowLeftSvg.style.left = '25%';
+    eyebrowLeftSvg.style.top = '25%';
+    eyebrowLeftSvg.style.width = '8vmin';
+    eyebrowLeftSvg.style.height = '2vmin';
+    eyebrowLeftSvg.style.opacity = '0';
+    eyebrowLeftSvg.style.pointerEvents = 'none';
+    eyebrowLeftSvg.style.zIndex = '8';
+    var arcLeft = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arcLeft.setAttribute('d', 'M 10 40 Q 50 10 90 40');
+    arcLeft.setAttribute('stroke', 'rgba(255, 150, 100, 0.8)');
+    arcLeft.setAttribute('stroke-width', '3');
+    arcLeft.setAttribute('fill', 'none');
+    arcLeft.setAttribute('stroke-linecap', 'round');
+    eyebrowLeftSvg.appendChild(arcLeft);
+    el.appendChild(eyebrowLeftSvg);
+
+    var eyebrowRightSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    eyebrowRightSvg.setAttribute('viewBox', '0 0 100 50');
+    eyebrowRightSvg.style.position = 'absolute';
+    eyebrowRightSvg.style.right = '25%';
+    eyebrowRightSvg.style.top = '25%';
+    eyebrowRightSvg.style.width = '8vmin';
+    eyebrowRightSvg.style.height = '2vmin';
+    eyebrowRightSvg.style.opacity = '0';
+    eyebrowRightSvg.style.pointerEvents = 'none';
+    eyebrowRightSvg.style.zIndex = '8';
+    var arcRight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arcRight.setAttribute('d', 'M 10 40 Q 50 10 90 40');
+    arcRight.setAttribute('stroke', 'rgba(255, 150, 100, 0.8)');
+    arcRight.setAttribute('stroke-width', '3');
+    arcRight.setAttribute('fill', 'none');
+    arcRight.setAttribute('stroke-linecap', 'round');
+    eyebrowRightSvg.appendChild(arcRight);
+    el.appendChild(eyebrowRightSvg);
+
+    eyebrowElements = { left: eyebrowLeftSvg, right: eyebrowRightSvg };
+  }
+
+  /**
+   * Update emotion visuals each frame.
+   * Called from Brain's tick() via Companion.updateEmotionVisuals().
+   */
+  function updateEmotionVisuals() {
+    if (!el) return;
+
+    var config;
+    if (Emotion.getEmotionConfig) {
+      config = Emotion.getEmotionConfig();
+    }
+    if (!config) return;
+
+    // Lerp cheek opacity
+    var cheekSpeed = 0.04;
+    targetCheekOpacity = config.cheekTarget || 0;
+    currentCheekOpacity += (targetCheekOpacity - currentCheekOpacity) * cheekSpeed;
+    var cheeks = el.querySelectorAll('.cheeks');
+    for (var ci = 0; ci < cheeks.length; ci++) {
+      cheeks[ci].style.opacity = Math.max(0, currentCheekOpacity).toFixed(3);
+    }
+
+    // Lerp eyelid positions
+    var lidSpeed = 0.06;
+    targetTopLidPercent = config.topLidTarget != null ? config.topLidTarget : 8;
+    targetBottomLidPercent = config.bottomLidTarget || 0;
+    currentTopLidPercent += (targetTopLidPercent - currentTopLidPercent) * lidSpeed;
+    currentBottomLidPercent += (targetBottomLidPercent - currentBottomLidPercent) * lidSpeed;
+
+    var topLid = el.querySelector('.eyelid-top');
+    var bottomLid = el.querySelector('.eyelid-bottom');
+    if (topLid) {
+      topLid.style.clipPath = 'inset(0 0 ' + (100 - currentTopLidPercent).toFixed(1) + '% 0)';
+    }
+    if (bottomLid) {
+      bottomLid.style.clipPath = 'inset(' + (100 - currentBottomLidPercent).toFixed(1) + '% 0 0 0)';
+    }
+
+    // Lerp pupil size
+    var pupilSpeed = 0.1;
+    targetPupilSizeW = (config.pupilSize && config.pupilSize.w) || 14;
+    targetPupilSizeH = (config.pupilSize && config.pupilSize.h) || 14;
+    pupilSizeW += (targetPupilSizeW - pupilSizeW) * pupilSpeed;
+    pupilSizeH += (targetPupilSizeH - pupilSizeH) * pupilSpeed;
+
+    var scaleX = config.pupilScaleX != null ? config.pupilScaleX : 1.0;
+    var pupils = el.querySelectorAll('.pupil');
+    for (var pi = 0; pi < pupils.length; pi++) {
+      pupils[pi].style.width = pupilSizeW.toFixed(1) + 'px';
+      pupils[pi].style.height = pupilSizeH.toFixed(1) + 'px';
+      if (scaleX !== 1.0) {
+        pupils[pi].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px) scaleX(' + scaleX.toFixed(2) + ')';
+      }
+    }
+
+    // Eyebrow visibility
+    if (eyebrowElements) {
+      var targetOpacity = config.showEyebrows ? (config.eyebrowOpacity || 0.65) : 0;
+      var currentLeft = parseFloat(eyebrowElements.left.style.opacity) || 0;
+      var newOpacity = currentLeft + (targetOpacity - currentLeft) * 0.06;
+      eyebrowElements.left.style.opacity = newOpacity.toFixed(3);
+      eyebrowElements.right.style.opacity = newOpacity.toFixed(3);
+    }
+  }
+
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils, updateEmotionVisuals };
 })();

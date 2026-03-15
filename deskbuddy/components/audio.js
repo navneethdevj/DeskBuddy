@@ -1,276 +1,506 @@
 /**
- * Audio — Web Audio API sound synthesis.
- * No audio files. No libraries. Pure oscillators.
- * All sounds are non-verbal creature sounds — cute, expressive, tiny.
- * Max gain: 0.15. All audio in try/catch — failure is always silent.
- *
- * window._emotionChanged = { from, to } is written by brain.js
- * whenever emotion transitions. Audio polls it every 200ms.
+ * Audio System — DeskBuddy Phase 3
+ * Web Audio API: generates all sounds procedurally (no audio files).
+ * Max gain: 0.15. Queue-based playback (100ms gap between sounds).
+ * All operations wrapped in try/catch for silent failures.
  */
 const Audio = (() => {
+  let audioContext = null;
+  let soundQueue = [];
+  let isPlayingSound = false;
+  let lastSoundEndTime = 0;
 
-  let ctx       = null;
-  let ready     = false;
-  let pitchMod  = 1.00;
-  let cooldowns = {};
-  let lastChange = null;
+  let cryingOscillators = null;
+  let cryingGain = null;
 
-  const COOLDOWN_MS = 1000;
+  const MAX_GAIN = 0.15;
+  const SOUND_QUEUE_GAP = 100; // ms
 
-  function init() {
-    const start = () => {
-      if (ready) return;
-      try {
-        ctx   = new (window.AudioContext || window.webkitAudioContext)();
-        ready = true;
-        setInterval(_poll, 200);
-      } catch (e) {}
-    };
-    document.addEventListener('keydown',   start, { once: true });
-    document.addEventListener('mousedown', start, { once: true });
-  }
+  /**
+   * Ensure AudioContext exists (create on first interaction).
+   */
+  function ensureAudioContext() {
+    if (audioContext) return audioContext;
 
-  function setPitchMod(mod) { pitchMod = mod || 1.0; }
-
-  function _poll() {
-    const c = window._emotionChanged;
-    if (!c || c === lastChange) return;
-    lastChange = c;
-    _playFor(c.from, c.to);
-  }
-
-  function _playFor(from, to) {
-    switch (to) {
-      case 'focused':
-      case 'idle':
-        if (from === 'overjoyed') forgivingSigh();
-        else if (from && from !== 'focused' && from !== 'idle') happyChirp();
-        break;
-      case 'curious':      curiousTrill();      break;
-      case 'embarrassed':  embarrassedSqueak(); break;
-      case 'suspicious':   suspiciousHum();     break;
-      case 'pouty':        poutyHuff();         break;
-      case 'grumpy':       grumpyDoubleHuff();  break;
-      case 'scared':       scaredYelp();        break;
-      case 'sad':          sadWhimper();        break;
-      case 'overjoyed':    overjoyedFanfare();  break;
-      case 'sleepy':       sleepyMurmur();      break;
-      // sulking: silence — the stare is the message
+    try {
+      const ContextClass = window.AudioContext || window.webkitAudioContext;
+      audioContext = new ContextClass();
+      return audioContext;
+    } catch (e) {
+      console.warn('AudioContext unavailable:', e);
+      return null;
     }
   }
 
-  function _ok(type) {
-    if (!ready || !ctx) return false;
-    const now = Date.now();
-    if (cooldowns[type] && now - cooldowns[type] < COOLDOWN_MS) return false;
-    cooldowns[type] = now;
-    return true;
+  /**
+   * Queue sound for playback (respects 100ms gap).
+   */
+  function queueSound(soundFunc, volume) {
+    soundQueue.push({ func: soundFunc, volume: volume });
+    processQueue();
   }
 
-  const hz = f => f * pitchMod;
+  /**
+   * Process queued sounds sequentially.
+   */
+  function processQueue() {
+    if (isPlayingSound || soundQueue.length === 0) return;
 
-  // ── happy chirp — "bwip-bwip!" ─────────────────────────────────────
-  function happyChirp(vol) {
-    if (!_ok('happyChirp')) return;
-    vol = (vol || 1) * 0.11;
+    var now = Date.now();
+    if (now < lastSoundEndTime + SOUND_QUEUE_GAP) {
+      setTimeout(processQueue, SOUND_QUEUE_GAP);
+      return;
+    }
+
+    isPlayingSound = true;
+    var item = soundQueue.shift();
+
     try {
-      const t = ctx.currentTime;
-      [[hz(520), hz(720), 0, vol], [hz(630), hz(850), 0.08, vol*0.85]].forEach(([f1,f2,d,g]) => {
-        const o = new OscillatorNode(ctx, { type:'sine', frequency:f1 });
-        o.frequency.linearRampToValueAtTime(f2, t+d+0.12);
-        const gn = new GainNode(ctx, { gain:0 });
-        gn.gain.linearRampToValueAtTime(g, t+d+0.01);
-        gn.gain.linearRampToValueAtTime(0, t+d+0.12);
-        o.connect(gn).connect(ctx.destination);
-        o.start(t+d); o.stop(t+d+0.14);
+      var ctx = ensureAudioContext();
+      if (!ctx) {
+        isPlayingSound = false;
+        processQueue();
+        return;
+      }
+
+      var duration = item.func(ctx, item.volume);
+      lastSoundEndTime = Date.now() + (duration * 1000);
+      setTimeout(function () {
+        isPlayingSound = false;
+        processQueue();
+      }, duration * 1000 + 50);
+    } catch (e) {
+      isPlayingSound = false;
+      processQueue();
+    }
+  }
+
+  // ===== SOUND RECIPES (all return duration in seconds) =====
+
+  function happyChirp(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      // Note 1
+      var o1 = ctx.createOscillator();
+      o1.type = 'sine';
+      o1.frequency.value = 520;
+      o1.frequency.linearRampToValueAtTime(720, now + 0.12);
+      var g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0, now);
+      g1.gain.linearRampToValueAtTime(0.11 * v, now + 0.01);
+      g1.gain.linearRampToValueAtTime(0, now + 0.12);
+      o1.connect(g1);
+      g1.connect(ctx.destination);
+      o1.start(now);
+      o1.stop(now + 0.13);
+
+      // Note 2 (80ms later)
+      var o2 = ctx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.value = 630;
+      o2.frequency.linearRampToValueAtTime(850, now + 0.19);
+      var g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0, now + 0.08);
+      g2.gain.linearRampToValueAtTime(0.09 * v, now + 0.09);
+      g2.gain.linearRampToValueAtTime(0, now + 0.19);
+      o2.connect(g2);
+      g2.connect(ctx.destination);
+      o2.start(now + 0.08);
+      o2.stop(now + 0.22);
+
+      return 0.22;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function curiousTrill(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 480;
+      o.frequency.linearRampToValueAtTime(545, now + 0.26);
+
+      var lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 16;
+      var lfoGain = ctx.createGain();
+      lfoGain.gain.value = 55;
+      lfo.connect(lfoGain);
+      lfoGain.connect(o.frequency);
+
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.10 * v, now + 0.015);
+      g.gain.linearRampToValueAtTime(0.08 * v, now + 0.20);
+      g.gain.linearRampToValueAtTime(0, now + 0.28);
+      o.connect(g);
+      g.connect(ctx.destination);
+
+      lfo.start(now);
+      o.start(now);
+      lfo.stop(now + 0.29);
+      o.stop(now + 0.29);
+
+      return 0.29;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function sleepyMurmur(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 175;
+
+      var lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 1.4;
+      var lfoGain = ctx.createGain();
+      lfoGain.gain.value = 7;
+      lfo.connect(lfoGain);
+      lfoGain.connect(o.frequency);
+
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.08 * v, now + 0.12);
+      g.gain.linearRampToValueAtTime(0.07 * v, now + 0.40);
+      g.gain.linearRampToValueAtTime(0, now + 0.70);
+      o.connect(g);
+      g.connect(ctx.destination);
+
+      lfo.start(now);
+      o.start(now);
+      lfo.stop(now + 0.71);
+      o.stop(now + 0.71);
+
+      return 0.71;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function embarrassedSqueak(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      // Part 1: squeak
+      var o1 = ctx.createOscillator();
+      o1.type = 'sine';
+      o1.frequency.value = 900;
+      o1.frequency.linearRampToValueAtTime(620, now + 0.085);
+      var g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0, now);
+      g1.gain.linearRampToValueAtTime(0.11 * v, now + 0.005);
+      g1.gain.linearRampToValueAtTime(0, now + 0.085);
+      o1.connect(g1);
+      g1.connect(ctx.destination);
+      o1.start(now);
+      o1.stop(now + 0.09);
+
+      // Part 2: flutter (gap 18ms)
+      var o2 = ctx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.value = 490;
+      var lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 22;
+      var lfoGain = ctx.createGain();
+      lfoGain.gain.value = 42;
+      lfo.connect(lfoGain);
+      lfoGain.connect(o2.frequency);
+
+      var g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0, now + 0.103);
+      g2.gain.linearRampToValueAtTime(0.07 * v, now + 0.113);
+      g2.gain.linearRampToValueAtTime(0, now + 0.28);
+      o2.connect(g2);
+      g2.connect(ctx.destination);
+
+      lfo.start(now + 0.103);
+      o2.start(now + 0.103);
+      lfo.stop(now + 0.29);
+      o2.stop(now + 0.29);
+
+      return 0.29;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function suspiciousHum(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 145;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.09 * v, now + 0.04);
+      g.gain.linearRampToValueAtTime(0.09 * v, now + 0.38);
+      g.gain.linearRampToValueAtTime(0, now + 0.45);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now);
+      o.stop(now + 0.46);
+      return 0.46;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function poutyHuff(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = 215;
+      o.frequency.linearRampToValueAtTime(138, now + 0.32);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.10 * v, now + 0.008);
+      g.gain.linearRampToValueAtTime(0.09 * v, now + 0.19);
+      g.gain.linearRampToValueAtTime(0, now + 0.32);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now);
+      o.stop(now + 0.33);
+      return 0.33;
+    } catch (e) {
+      return 0.01;
+    }
+  }
+
+  function grumpyDoubleHuff(ctx, volume) {
+    try {
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      [0, 0.225].forEach(function (offset, i) {
+        var o = ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.value = 228 + i * 7;
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(0, now + offset);
+        g.gain.linearRampToValueAtTime(0.12 * v, now + offset + 0.008);
+        g.gain.linearRampToValueAtTime(0.11 * v, now + offset + 0.165);
+        g.gain.linearRampToValueAtTime(0, now + offset + 0.195);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(now + offset);
+        o.stop(now + offset + 0.20);
       });
-    } catch(_) {}
+      return 0.425;
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── curious trill — "brrip?" ────────────────────────────────────────
-  function curiousTrill(vol) {
-    if (!_ok('curiousTrill')) return;
-    vol = (vol || 1) * 0.10;
+  function scaredYelp(ctx, volume) {
     try {
-      const t = ctx.currentTime;
-      const o   = new OscillatorNode(ctx, { type:'sine', frequency:hz(480) });
-      const lfo = new OscillatorNode(ctx, { type:'sine', frequency:16 });
-      const lg  = new GainNode(ctx, { gain:55 });
-      lfo.connect(lg).connect(o.frequency);
-      o.frequency.linearRampToValueAtTime(hz(545), t+0.26);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(vol, t+0.015); g.gain.linearRampToValueAtTime(0, t+0.28);
-      o.connect(g).connect(ctx.destination);
-      lfo.start(t); o.start(t); lfo.stop(t+0.29); o.stop(t+0.29);
-    } catch(_) {}
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 590;
+      o.frequency.exponentialRampToValueAtTime(1080, now + 0.115);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.12 * v, now + 0.005);
+      g.gain.linearRampToValueAtTime(0.10 * v, now + 0.08);
+      g.gain.linearRampToValueAtTime(0, now + 0.115);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now);
+      o.stop(now + 0.12);
+      return 0.12;
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── sleepy murmur — "mmmhh..." ──────────────────────────────────────
-  function sleepyMurmur(vol) {
-    if (!_ok('sleepyMurmur')) return;
-    vol = (vol || 1) * 0.08;
+  function sadWhimper(ctx, volume) {
     try {
-      const t = ctx.currentTime;
-      const o   = new OscillatorNode(ctx, { type:'sine', frequency:hz(175) });
-      const lfo = new OscillatorNode(ctx, { type:'sine', frequency:1.4 });
-      const lg  = new GainNode(ctx, { gain:7 });
-      lfo.connect(lg).connect(o.frequency);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(vol, t+0.12); g.gain.linearRampToValueAtTime(0, t+0.70);
-      o.connect(g).connect(ctx.destination);
-      lfo.start(t); o.start(t); lfo.stop(t+0.71); o.stop(t+0.71);
-    } catch(_) {}
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 345;
+      o.frequency.linearRampToValueAtTime(218, now + 0.52);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.07 * v, now + 0.02);
+      g.gain.linearRampToValueAtTime(0.06 * v, now + 0.40);
+      g.gain.linearRampToValueAtTime(0, now + 0.54);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now);
+      o.stop(now + 0.55);
+      return 0.55;
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── embarrassed squeak — "EEP—wiwiwi" ──────────────────────────────
-  function embarrassedSqueak() {
-    if (!_ok('embarrassedSqueak')) return;
+  function cryingAmbient(ctx, volume) {
     try {
-      const t = ctx.currentTime;
-      const o1 = new OscillatorNode(ctx, { type:'sine', frequency:hz(900) });
-      o1.frequency.linearRampToValueAtTime(hz(620), t+0.085);
-      const g1 = new GainNode(ctx, { gain:0 });
-      g1.gain.linearRampToValueAtTime(0.11, t+0.005); g1.gain.linearRampToValueAtTime(0, t+0.085);
-      o1.connect(g1).connect(ctx.destination); o1.start(t); o1.stop(t+0.09);
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
 
-      const o2  = new OscillatorNode(ctx, { type:'sine', frequency:hz(490) });
-      const lfo = new OscillatorNode(ctx, { type:'sine', frequency:22 });
-      const lg  = new GainNode(ctx, { gain:42 });
-      lfo.connect(lg).connect(o2.frequency);
-      const g2 = new GainNode(ctx, { gain:0 });
-      g2.gain.linearRampToValueAtTime(0.07, t+0.113); g2.gain.linearRampToValueAtTime(0, t+0.28);
-      o2.connect(g2).connect(ctx.destination);
-      lfo.start(t+0.103); o2.start(t+0.103); lfo.stop(t+0.29); o2.stop(t+0.29);
-    } catch(_) {}
+      cryingOscillators = [];
+      cryingGain = ctx.createGain();
+      cryingGain.gain.setValueAtTime(0, now);
+      cryingGain.gain.linearRampToValueAtTime(0.050 * v, now + 3.0);
+      cryingGain.connect(ctx.destination);
+
+      var osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.value = 161;
+      osc1.connect(cryingGain);
+      osc1.start();
+      cryingOscillators.push(osc1);
+
+      var osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = 166;
+      osc2.connect(cryingGain);
+      osc2.start();
+      cryingOscillators.push(osc2);
+
+      return 120; // Loops indefinitely
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── suspicious hum ──────────────────────────────────────────────────
-  function suspiciousHum() {
-    if (!_ok('suspiciousHum')) return;
+  function stopCryingAmbient(ctx) {
     try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type:'sine', frequency:hz(145) });
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(0.09, t+0.04);
-      g.gain.linearRampToValueAtTime(0.09, t+0.38); g.gain.linearRampToValueAtTime(0, t+0.45);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.46);
-    } catch(_) {}
+      if (cryingOscillators && cryingGain) {
+        cryingGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+        setTimeout(function () {
+          if (cryingOscillators) {
+            cryingOscillators.forEach(function (o) {
+              try { o.stop(); } catch (e) { }
+            });
+            cryingOscillators = null;
+          }
+          cryingGain = null;
+        }, 500);
+      }
+    } catch (e) {
+      // Silent
+    }
   }
 
-  // ── pouty huff — "hrmmph." ──────────────────────────────────────────
-  function poutyHuff() {
-    if (!_ok('poutyHuff')) return;
+  function overjoyedFanfare(ctx, volume) {
     try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type:'triangle', frequency:hz(215) });
-      o.frequency.linearRampToValueAtTime(hz(138), t+0.32);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(0.10, t+0.008); g.gain.linearRampToValueAtTime(0, t+0.32);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.33);
-    } catch(_) {}
-  }
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
 
-  // ── grumpy double-huff — "brrt. brrt." ─────────────────────────────
-  function grumpyDoubleHuff() {
-    if (!_ok('grumpyDoubleHuff')) return;
-    try {
-      const t = ctx.currentTime;
-      [0, 0.225].forEach((off, i) => {
-        const o = new OscillatorNode(ctx, { type:'triangle', frequency:hz(228 + i*7) });
-        const g = new GainNode(ctx, { gain:0 });
-        g.gain.linearRampToValueAtTime(0.12, t+off+0.008); g.gain.linearRampToValueAtTime(0, t+off+0.195);
-        o.connect(g).connect(ctx.destination); o.start(t+off); o.stop(t+off+0.20);
+      [[520, 705, 0.10, 0], [645, 875, 0.12, 0.17], [775, 1065, 0.14, 0.32]].forEach(function (params) {
+        var f1 = params[0], f2 = params[1], vol = params[2], offset = params[3];
+        var o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = f1;
+        o.frequency.exponentialRampToValueAtTime(f2, now + offset + 0.09);
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(0, now + offset);
+        g.gain.linearRampToValueAtTime(vol * v, now + offset + 0.008);
+        g.gain.linearRampToValueAtTime(0, now + offset + 0.095);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(now + offset);
+        o.stop(now + offset + 0.10);
       });
-    } catch(_) {}
+      return 0.42;
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── scared yelp — "wheep!" ──────────────────────────────────────────
-  function scaredYelp() {
-    if (!_ok('scaredYelp')) return;
+  function forgivingSigh(ctx, volume) {
     try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type:'sine', frequency:hz(590) });
-      o.frequency.exponentialRampToValueAtTime(hz(1080), t+0.115);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(0.12, t+0.005); g.gain.linearRampToValueAtTime(0, t+0.115);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.12);
-    } catch(_) {}
+      var now = ctx.currentTime;
+      var v = Math.min(volume || 1, 1);
+
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 375;
+      o.frequency.linearRampToValueAtTime(192, now + 0.75);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.09 * v, now + 0.025);
+      g.gain.linearRampToValueAtTime(0.08 * v, now + 0.60);
+      g.gain.linearRampToValueAtTime(0, now + 0.75);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now);
+      o.stop(now + 0.76);
+      return 0.76;
+    } catch (e) {
+      return 0.01;
+    }
   }
 
-  // ── sad whimper ─────────────────────────────────────────────────────
-  function sadWhimper(vol) {
-    if (!_ok('sadWhimper')) return;
-    vol = (vol || 1) * 0.07;
-    try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type:'sine', frequency:hz(345) });
-      o.frequency.linearRampToValueAtTime(hz(218), t+0.52);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(vol, t+0.02); g.gain.linearRampToValueAtTime(0, t+0.54);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.55);
-    } catch(_) {}
+  // ===== PUBLIC API =====
+
+  var _soundRecipes = {
+    happyChirp: happyChirp,
+    curiousTrill: curiousTrill,
+    sleepyMurmur: sleepyMurmur,
+    embarrassedSqueak: embarrassedSqueak,
+    suspiciousHum: suspiciousHum,
+    poutyHuff: poutyHuff,
+    grumpyDoubleHuff: grumpyDoubleHuff,
+    scaredYelp: scaredYelp,
+    sadWhimper: sadWhimper,
+    cryingAmbient: cryingAmbient,
+    overjoyedFanfare: overjoyedFanfare,
+    forgivingSigh: forgivingSigh
+  };
+
+  function playSound(soundName, volume) {
+    var ctx = ensureAudioContext();
+    if (!ctx) return;
+
+    var recipe = _soundRecipes[soundName];
+    if (recipe) {
+      queueSound(function (c) { return recipe(c, volume || 1.0); }, volume || 1.0);
+    }
   }
 
-  // ── overjoyed fanfare — "bwip! bwip! BWIP!" ────────────────────────
-  function overjoyedFanfare() {
-    if (!_ok('overjoyedFanfare')) return;
-    try {
-      const t = ctx.currentTime;
-      [[hz(520),hz(705),0.10,0],[hz(645),hz(875),0.12,0.17],[hz(775),hz(1065),0.14,0.32]].forEach(([f1,f2,g,d]) => {
-        const o = new OscillatorNode(ctx, { type:'sine', frequency:f1 });
-        o.frequency.exponentialRampToValueAtTime(f2, t+d+0.09);
-        const gn = new GainNode(ctx, { gain:0 });
-        gn.gain.linearRampToValueAtTime(g, t+d+0.008); gn.gain.linearRampToValueAtTime(0, t+d+0.095);
-        o.connect(gn).connect(ctx.destination); o.start(t+d); o.stop(t+d+0.10);
-      });
-    } catch(_) {}
+  function stopCrying() {
+    var ctx = ensureAudioContext();
+    if (ctx) stopCryingAmbient(ctx);
   }
 
-  // ── forgiving sigh — "haaahhh..." ──────────────────────────────────
-  function forgivingSigh() {
-    if (!_ok('forgivingSigh')) return;
-    try {
-      const t = ctx.currentTime;
-      const o = new OscillatorNode(ctx, { type:'sine', frequency:hz(375) });
-      o.frequency.linearRampToValueAtTime(hz(192), t+0.75);
-      const g = new GainNode(ctx, { gain:0 });
-      g.gain.linearRampToValueAtTime(0.09, t+0.025); g.gain.linearRampToValueAtTime(0, t+0.75);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.76);
-    } catch(_) {}
-  }
-
-  // ── crying ambient (looped, managed by brain.js) ────────────────────
-  let _cryO1 = null, _cryO2 = null, _cryG = null;
-
-  function startCryingAmbient() {
-    if (!ready || !ctx || _cryO1) return;
-    try {
-      _cryG  = new GainNode(ctx, { gain:0 });
-      _cryG.connect(ctx.destination);
-      _cryO1 = new OscillatorNode(ctx, { type:'sine', frequency:161 });
-      _cryO2 = new OscillatorNode(ctx, { type:'sine', frequency:166 });
-      _cryO1.connect(_cryG); _cryO2.connect(_cryG);
-      _cryO1.start(); _cryO2.start();
-      _cryG.gain.linearRampToValueAtTime(0.045, ctx.currentTime + 3.0);
-    } catch(_) {}
-  }
-
-  function stopCryingAmbient() {
-    if (!_cryG || !ctx) return;
-    try {
-      _cryG.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
-      setTimeout(() => {
-        try { _cryO1?.stop(); _cryO2?.stop(); } catch(_) {}
-        _cryO1 = _cryO2 = _cryG = null;
-      }, 1000);
-    } catch(_) {}
+  function init() {
+    // Initialize on first interaction
+    document.addEventListener('mousemove', ensureAudioContext, { once: true });
+    document.addEventListener('keydown', ensureAudioContext, { once: true });
+    document.addEventListener('click', ensureAudioContext, { once: true });
   }
 
   return {
-    init, setPitchMod,
-    happyChirp, curiousTrill, sleepyMurmur, embarrassedSqueak,
-    suspiciousHum, poutyHuff, grumpyDoubleHuff, scaredYelp,
-    sadWhimper, overjoyedFanfare, forgivingSigh,
-    startCryingAmbient, stopCryingAmbient
+    init: init,
+    playSound: playSound,
+    stopCrying: stopCrying,
+    ensureAudioContext: ensureAudioContext
   };
 })();

@@ -79,6 +79,24 @@ const Brain = (() => {
   let overjoyedTimer    = null;
   let sulkCheckInterval = null;
 
+  // ===== PHASE 3: State Duration Tracking =====
+  const DeskBuddyState = window.DeskBuddyState || {
+    userStillMs: 0,
+    lastMoveTime: Date.now(),
+    lookingAwayMs: 0,
+    lookingAwayStartTime: null,
+    noFaceMs: 0,
+    noFaceStartTime: null,
+    triggerEmbarrassed: false,
+    wasRecentlyAngry: false,
+    wasInCryingOrSad: false,
+    embarrassedCount: 0
+  };
+  window.DeskBuddyState = DeskBuddyState;
+
+  let lastBrainState = 'idle';
+  let brainStateEntryTime = Date.now();
+
   let gazeCurrentX = 0;
   let gazeCurrentY = 0;
   let gazeTargetX  = 0;
@@ -102,6 +120,9 @@ const Brain = (() => {
     Movement.init();
     enterState('idle');
     tick();
+
+    // Start emotion engine (Phase 3)
+    Emotion.startEmotionEngine(getState, getFocusLevel);
   }
 
   function stop() {
@@ -138,6 +159,15 @@ const Brain = (() => {
 
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
+
+    // Update state durations for emotion evaluation
+    updateStateDurations();
+
+    // Handle sound triggers for emotion transitions (Phase 3)
+    handleSoundTriggers();
+
+    // Update emotion-driven visuals (Phase 3)
+    if (Companion.updateEmotionVisuals) Companion.updateEmotionVisuals();
 
     // CURSOR TRACKING — disabled (Phase 2). Face camera is now attention source.
     // var near = isCursorNear();
@@ -463,7 +493,7 @@ const Brain = (() => {
     const fill    = document.getElementById('tear-fill');
     if (!overlay || !fill) return;
     overlay.style.display = 'block';
-    if (typeof Audio !== 'undefined') Audio.startCryingAmbient?.();
+    if (typeof Audio !== 'undefined') Audio.playSound?.('cryingAmbient');
     if (tearInterval) return;
     tearInterval = setInterval(() => {
       if (tearHeight < 65) { tearHeight = Math.min(65, tearHeight + 0.40); fill.style.height = tearHeight + '%'; }
@@ -475,7 +505,7 @@ const Brain = (() => {
     const fill = document.getElementById('tear-fill');
     const overlay = document.getElementById('tear-overlay');
     if (!fill || !overlay) return;
-    if (typeof Audio !== 'undefined') Audio.stopCryingAmbient?.();
+    if (typeof Audio !== 'undefined') Audio.stopCrying?.();
     tearDraining = true;
     const drain = setInterval(() => {
       tearHeight = Math.max(0, tearHeight - 2.5);
@@ -527,8 +557,136 @@ const Brain = (() => {
     }, 500);
   }
 
+  // ===== PHASE 3: State Duration & Sound Tracking =====
+
+  /**
+   * Update duration tracking for still, looking away, and no face states.
+   * Called every frame from tick().
+   */
+  function updateStateDurations() {
+    var now = Date.now();
+    var pState = window.perception ? window.perception.userState : '';
+
+    // Track "still" duration (no mouse or keyboard)
+    if (now - lastMouseMoveTime > MOUSE_ACTIVITY_TIMEOUT &&
+        now - lastKeyTime > KEY_ACTIVITY_TIMEOUT) {
+      DeskBuddyState.userStillMs = now - DeskBuddyState.lastMoveTime;
+    } else {
+      DeskBuddyState.userStillMs = 0;
+      DeskBuddyState.lastMoveTime = now;
+    }
+
+    // Track perception state transitions
+    if (pState !== lastBrainState) {
+      lastBrainState = pState;
+      brainStateEntryTime = now;
+
+      // Reset durations when state changes
+      if (pState !== 'LookingAway') {
+        DeskBuddyState.lookingAwayMs = 0;
+        DeskBuddyState.lookingAwayStartTime = null;
+      }
+      if (pState !== 'NoFace') {
+        DeskBuddyState.noFaceMs = 0;
+        DeskBuddyState.noFaceStartTime = null;
+      }
+    }
+
+    // Track LookingAway duration
+    if (pState === 'LookingAway') {
+      if (!DeskBuddyState.lookingAwayStartTime) {
+        DeskBuddyState.lookingAwayStartTime = now;
+      }
+      DeskBuddyState.lookingAwayMs = now - DeskBuddyState.lookingAwayStartTime;
+    }
+
+    // Track NoFace duration
+    if (pState === 'NoFace') {
+      if (!DeskBuddyState.noFaceStartTime) {
+        DeskBuddyState.noFaceStartTime = now;
+      }
+      DeskBuddyState.noFaceMs = now - DeskBuddyState.noFaceStartTime;
+    }
+  }
+
+  /**
+   * Trigger the embarrassed emotion (called when caught mid-scan).
+   */
+  function triggerEmbarrassed() {
+    DeskBuddyState.triggerEmbarrassed = true;
+  }
+
+  /**
+   * Handle sound triggers when emotion changes.
+   */
+  var lastSoundEmotion = null;
+  var ambientSoundTimers = {};
+
+  function handleSoundTriggers() {
+    var currentEmotion = Emotion.getEmotion ? Emotion.getEmotion() : Emotion.getState();
+    if (!currentEmotion || currentEmotion === lastSoundEmotion) return;
+
+    lastSoundEmotion = currentEmotion;
+
+    // Clear previous ambient timers
+    var keys = Object.keys(ambientSoundTimers);
+    for (var i = 0; i < keys.length; i++) {
+      clearTimeout(ambientSoundTimers[keys[i]]);
+    }
+    ambientSoundTimers = {};
+
+    // Play transition sound
+    var soundMap = {
+      happy: 'happyChirp',
+      curious: 'curiousTrill',
+      sleepy: null,
+      embarrassed: 'embarrassedSqueak',
+      suspicious: 'suspiciousHum',
+      pouty: 'poutyHuff',
+      grumpy: 'grumpyDoubleHuff',
+      scared: 'scaredYelp',
+      sad: 'sadWhimper',
+      crying: 'cryingAmbient',
+      overjoyed: 'overjoyedFanfare',
+      sulking: null,
+      forgiven: 'forgivingSigh'
+    };
+
+    if (soundMap[currentEmotion] && typeof Audio !== 'undefined' && Audio.playSound) {
+      Audio.playSound(soundMap[currentEmotion]);
+    }
+
+    // Schedule ambient loops
+    var ambientConfigs = {
+      happy: { sound: 'happyChirp', rateMs: [45000, 55000], volume: 0.75 },
+      sleepy: { sound: 'sleepyMurmur', rateMs: [32000, 40000] },
+      pouty: { sound: 'poutyHuff', rateMs: [25000, 30000] },
+      grumpy: { sound: 'grumpyDoubleHuff', rateMs: [40000, 40000] }
+    };
+
+    if (ambientConfigs[currentEmotion]) {
+      scheduleAmbientSound(currentEmotion, ambientConfigs[currentEmotion]);
+    }
+  }
+
+  function scheduleAmbientSound(emotion, config) {
+    var scheduleNext = function () {
+      var delay = config.rateMs[0] + Math.random() * (config.rateMs[1] - config.rateMs[0]);
+      var timeoutId = setTimeout(function () {
+        var currentEmo = Emotion.getEmotion ? Emotion.getEmotion() : Emotion.getState();
+        if (currentEmo === emotion && typeof Audio !== 'undefined' && Audio.playSound) {
+          Audio.playSound(config.sound, config.volume || 1.0);
+          scheduleNext();
+        }
+      }, delay);
+      ambientSoundTimers[emotion] = timeoutId;
+    };
+    scheduleNext();
+  }
+
   return {
     start, stop, getState, getFocusLevel,
+    triggerEmbarrassed: triggerEmbarrassed,
     startTears: _startTears, stopTears: _stopTears
   };
 })();
