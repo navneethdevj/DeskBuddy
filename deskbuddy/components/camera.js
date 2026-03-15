@@ -101,7 +101,7 @@ const Camera = (() => {
           'https://storage.googleapis.com/mediapipe-models/',
           'face_landmarker/face_landmarker/float16/1/face_landmarker.task'
         ].join(''),
-        delegate: 'CPU'
+        delegate: 'CPU'   // CPU avoids silent GPU delegate failures in Electron
       },
       outputFaceBlendshapes:              true,
       outputFacialTransformationMatrixes: true,
