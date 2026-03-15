@@ -265,6 +265,8 @@ const Brain = (() => {
    */
   function applyFocusEmotion() {
     if (currentState === 'curious') return;
+    // Don't override during overjoyed→sulking→forgiven sequence
+    if (overjoyedTimer || sulkCheckInterval) return;
 
     const p = window.perception;
 
@@ -313,6 +315,16 @@ const Brain = (() => {
 
     // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
+      // Return-from-absence: face reappeared while still in distress emotion
+      // applyFocusEmotion fires before enterState, so detect return here too
+      const wasAbsent = window._lastEmotion === 'scared'
+                     || window._lastEmotion === 'sad'
+                     || window._lastEmotion === 'crying';
+      if (wasAbsent && p.facePresent) {
+        _triggerOverjoyed();
+        return;
+      }
+
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
       // Start tears on crying, stop on any other emotion
