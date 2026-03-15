@@ -23,5 +23,8 @@
   Brain.start();
   Camera.init()
     .then(() => Perception.init())
-    .catch(() => Perception.init());
+    .catch((err) => {
+      console.warn('[Renderer] Camera init failed:', err);
+      Perception.init();
+    });
 })();
