@@ -10,13 +10,41 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Hidden camera — face detection only, never shown to user.
+       Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
+  <video id="camera-feed" autoplay playsinline muted
+    style="visibility:hidden;position:absolute;width:1px;height:1px;pointer-events:none;">
+  </video>
+
+  <!-- Tear overlay — rises during crying, drains on return -->
+  <div id="tear-overlay"><div id="tear-fill"></div></div>
+  <!-- Whisper text — rare soft messages from DeskBuddy -->
+  <div id="whisper-text"></div>
+  <!-- Focus timer — counts focused time -->
+  <div id="focus-timer">focus 00:00</div>
+  <!-- Attention bar — EyeOnTask concept, barely visible -->
+  <div id="attention-bar"><div id="attention-fill"></div></div>
+
+  <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
+       Electron renderer (nodeIntegration:false) does not provide -->
+  <script>var exports = {}; var module = { exports: exports };</script>
+  <script src="../node_modules/@mediapipe/tasks-vision/vision_bundle.cjs"></script>
+  <script>
+    // Copy MediaPipe classes from CJS exports to window for camera.js
+    window.FaceLandmarker  = exports.FaceLandmarker;
+    window.FilesetResolver = exports.FilesetResolver;
+  </script>
+
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
   <script src="components/spriteAnimator.js"></script>
   <script src="components/movement.js"></script>
   <script src="components/particles.js"></script>
   <script src="ui/status.js"></script>
+  <script src="components/audio.js"></script>
   <script src="components/brain.js"></script>
+  <script src="components/camera.js"></script>
+  <script src="components/perception.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

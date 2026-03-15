@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -8,37 +8,36 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width,
-    height,
-    frame: false,
-    transparent: false,
-    alwaysOnTop: true,
-    resizable: false,
-    skipTaskbar: false,
-    backgroundColor: '#111111',
+    width, height,
+    frame: false, transparent: false, alwaysOnTop: true,
+    resizable: false, skipTaskbar: false, backgroundColor: '#111111',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false  // required for MediaPipe WASM to load from node_modules
     }
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(createWindow);
-
-app.on('window-all-closed', () => {
-  app.quit();
+app.whenReady().then(() => {
+  // Electron 34 requires BOTH handlers. setPermissionCheckHandler runs
+  // synchronously before getUserMedia — without it camera is silently blocked.
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => {
+    if (permission === 'media' || permission === 'camera') return true;
+    return null;
+  });
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    callback(permission === 'media' || permission === 'camera');
+  });
+  createWindow();
 });
 
+app.on('window-all-closed', () => { app.quit(); });
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
