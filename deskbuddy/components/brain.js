@@ -24,6 +24,7 @@ const Brain = (() => {
   const FACE_GAZE_SOFTNESS = 0.30;  // how much face position shifts gaze
   const FACE_GAZE_LERP     = 0.07;  // smoothing (lower = slower/smoother)
   const IRIS_AMPLIFY       = 80;    // scale iris gazeX/Y to screen pixels
+  const IRIS_VERT_SCALE    = 0.6;   // vertical iris needs less amplification (eyes are wider than tall)
 
   // Neko-style body lean (https://github.com/mirandadam/neko)
   // Adapted from Neko's lerp-toward-cursor — we use face position instead
@@ -261,7 +262,7 @@ const Brain = (() => {
 
     // Layer 2 — iris gaze direction adds subtle extra offset
     const irisX = p.gazeX * IRIS_AMPLIFY;
-    const irisY = p.gazeY * (IRIS_AMPLIFY * 0.6);
+    const irisY = p.gazeY * (IRIS_AMPLIFY * IRIS_VERT_SCALE);
 
     gazeTargetX  = softX + irisX;
     gazeTargetY  = softY + irisY;
