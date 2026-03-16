@@ -171,10 +171,13 @@ const Brain = (() => {
   function start() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click',     _onScreenClick);
+    document.addEventListener('mousemove', _onHoverCheck);
     Movement.init();
     enterState('idle');
     tick();
     _startFocusTimer();
+    _startIdleLife();
   }
 
   function stop() {
@@ -884,6 +887,170 @@ const Brain = (() => {
       el.style.opacity = '0';
       setTimeout(_nextWhisper, 900);
     }, durationMs);
+  }
+
+  // ── SPONTANEOUS IDLE LIFE ─────────────────────────────────────────────────
+  // REPO STUDY: Timing from Neko (https://github.com/mirandadam/neko): idle behaviors fire
+  // every 12-35s with state guard — mostly quiet makes rare moments feel alive.
+  // Tamagotchi (https://github.com/tugcecerit/Tamagotchi-Game) weighted pool: variety without feeling scripted.
+
+  function _startIdleLife() {
+    setTimeout(_spontaneousBehavior, 12000 + Math.random() * 10000);
+  }
+
+  function _spontaneousBehavior() {
+    const emo   = Emotion.getState();
+    const block = ['scared','crying','overjoyed','sulking','grumpy','sad'];
+    if (currentState !== 'idle' && currentState !== 'observe') {
+      setTimeout(_spontaneousBehavior, 6000 + Math.random() * 5000);
+      return;
+    }
+    if (block.includes(emo)) {
+      setTimeout(_spontaneousBehavior, 8000 + Math.random() * 7000);
+      return;
+    }
+
+    const pool = [
+      { w: 40, fn: () => triggerIdleLook() },
+      { w: 25, fn: _doSlowBlink },
+      { w: 15, fn: _doWink },
+      { w: 12, fn: _doStretch },
+      { w: 8,  fn: _doSpontaneousCoo },
+    ];
+    const total = pool.reduce((s, b) => s + b.w, 0);
+    let r = Math.random() * total;
+    for (const b of pool) { r -= b.w; if (r <= 0) { b.fn(); break; } }
+
+    setTimeout(_spontaneousBehavior, 12000 + Math.random() * 23000);
+  }
+
+  function _doSlowBlink() {
+    const e = Companion.getElement();
+    if (!e) return;
+    e.classList.add('blink');
+    setTimeout(() => {
+      if (e) e.classList.remove('blink');
+      if (!window._emotionChanged) {
+        window._emotionChanged = { from: null, to: '__slowblink' };
+        setTimeout(() => {
+          if (window._emotionChanged?.to === '__slowblink') window._emotionChanged = null;
+        }, 250);
+      }
+    }, 400 + Math.random() * 160);
+  }
+
+  function _doWink() {
+    const e = Companion.getElement();
+    if (!e) return;
+    const sel   = Math.random() < 0.5 ? '.eye-left' : '.eye-right';
+    const eyeEl = e.querySelector(sel);
+    if (!eyeEl) return;
+    eyeEl.style.height     = '2vmin';
+    eyeEl.style.transition = 'height 0.08s ease';
+    setTimeout(() => {
+      eyeEl.style.height     = '';
+      eyeEl.style.transition = '';
+    }, 180 + Math.random() * 80);
+  }
+
+  function _doStretch() {
+    const prev = Emotion.getState();
+    Emotion.setState('curious');
+    setTimeout(() => {
+      if (Emotion.getState() === 'curious') Emotion.setState(prev || 'idle');
+    }, 550 + Math.random() * 350);
+  }
+
+  function _doSpontaneousCoo() {
+    if (!window.perception?.facePresent) return;
+    window._emotionChanged = { from: null, to: '__coo' };
+    setTimeout(() => {
+      if (window._emotionChanged?.to === '__coo') window._emotionChanged = null;
+    }, 250);
+  }
+
+  // ── USER INTERACTIONS ─────────────────────────────────────────────────────
+  // REPO STUDY: PetPet (https://github.com/Nyannnnn/PetPet): immediate audio+visual on click.
+  // Desktop Goose (https://github.com/samperson/desktop-goose): proximity,
+  // escalation — repeated rapid clicks escalate to startled reaction.
+  // WebPet (https://github.com/RobThePCGuy/WebPet): hover-based curiosity.
+
+  let _hoverAccumMs = 0;
+  let _lastHoverT   = 0;
+  let _hoverReacted = false;
+  let _lastClickT   = 0;
+  let _rapidClicks  = 0;
+
+  function _onScreenClick(e) {
+    const now  = Date.now();
+    const c    = Companion.getCenter();
+    const dist = Math.hypot(e.clientX - c.x, e.clientY - c.y);
+
+    _rapidClicks = (now - _lastClickT < 450) ? _rapidClicks + 1 : 1;
+    _lastClickT  = now;
+
+    if (dist < 180) {
+      _onPet();
+    } else if (_rapidClicks >= 4) {
+      _onRapidClick();
+    }
+  }
+
+  function _onPet() {
+    const emo = Emotion.getState();
+    if (emo === 'sulking' || emo === 'grumpy') {
+      window._emotionChanged = { from: emo, to: '__pet_grumpy' };
+      setTimeout(() => {
+        if (window._emotionChanged?.to === '__pet_grumpy') window._emotionChanged = null;
+      }, 300);
+    } else {
+      const prev = emo;
+      Emotion.setState('happy');
+      window._emotionChanged = { from: prev, to: '__pet_happy' };
+      if (typeof Particles !== 'undefined') Particles.spawn('happy');
+      setTimeout(() => {
+        if (Emotion.getState() === 'happy') Emotion.setState(prev || 'idle');
+        if (window._emotionChanged?.to === '__pet_happy') window._emotionChanged = null;
+      }, 800);
+    }
+  }
+
+  function _onRapidClick() {
+    if (Emotion.getState() === 'scared') return;
+    const prev = Emotion.getState();
+    Emotion.setState('scared');
+    window._emotionChanged = { from: prev, to: 'scared' };
+    setTimeout(() => {
+      Emotion.setState('suspicious');
+      window._emotionChanged = { from: 'scared', to: 'suspicious' };
+    }, 1100);
+    _rapidClicks = 0;
+  }
+
+  function _onHoverCheck(e) {
+    const now  = Date.now();
+    const c    = Companion.getCenter();
+    const dist = Math.hypot(e.clientX - c.x, e.clientY - c.y);
+
+    if (dist < 150) {
+      _hoverAccumMs += now - (_lastHoverT || now);
+      _lastHoverT    = now;
+      if (_hoverAccumMs > 2200 && !_hoverReacted) {
+        _hoverReacted = true;
+        if (currentState === 'idle' || currentState === 'observe') {
+          const prev = Emotion.getState();
+          Emotion.setState('curious');
+          window._emotionChanged = { from: prev, to: '__hover' };
+          setTimeout(() => {
+            if (window._emotionChanged?.to === '__hover') window._emotionChanged = null;
+          }, 300);
+        }
+      }
+    } else {
+      _hoverAccumMs = 0;
+      _hoverReacted = false;
+      _lastHoverT   = 0;
+    }
   }
 
   return { start, stop, getState, getFocusLevel, showWhisper };

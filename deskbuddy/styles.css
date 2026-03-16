@@ -251,7 +251,7 @@ html, body {
 .companion.sleepy .eyebrow-right      { rotate: -14deg; }
 
 /* HAPPY — high arched, lifted with joy, wider and bright */
-.companion.happy .eyebrow             { transform: translateY(-24vmin); width: 13vmin; opacity: 0.85; }
+.companion.happy .eyebrow             { transform: translateY(-28vmin); width: 14vmin; opacity: 0.90; }
 .companion.happy .eyebrow-left        { rotate: -12deg; }
 .companion.happy .eyebrow-right       { rotate:  12deg; }
 
@@ -428,9 +428,9 @@ html, body {
 
 /* ===== Expression: Focused (determined narrow gaze) ===== */
 .companion.focused .eye {
-  width: 26vmin;
-  height: 18vmin;
-  border-radius: 42% 42% 50% 50% / 36% 36% 64% 64%;
+  width: 27vmin;
+  height: 16vmin;
+  border-radius: 40% 40% 52% 52% / 32% 32% 68% 68%;
   box-shadow: 0 0 4vmin rgba(110, 130, 225, 0.38),
               0 0 10vmin rgba(110, 130, 225, 0.14),
               0 0 20vmin rgba(110, 130, 225, 0.05);
@@ -463,10 +463,10 @@ html, body {
    Flat top (2% vertical) + heavily curved bottom (98%) = inverted-U crescent.
    Narrow height makes the pupil hidden (overflow:hidden) = proper closed-eye smile. */
 .companion.happy .eye {
-  width: 34vmin;
-  height: 7vmin;
-  border-radius: 50% 50% 50% 50% / 2% 2% 98% 98%;
-  transform: translateY(-1vmin);
+  width: 38vmin;
+  height: 8vmin;
+  border-radius: 50% 50% 50% 50% / 98% 98% 2% 2%;
+  transform: translateY(1vmin);
   box-shadow: 0 0 7vmin rgba(160, 140, 245, 0.52),
               0 0 18vmin rgba(160, 140, 245, 0.18),
               0 0 30vmin rgba(160, 140, 245, 0.06);
@@ -882,7 +882,12 @@ html, body {
     0 0 10vmin rgba(195,218,255,0.62),
     0 0 22vmin rgba(180,210,255,0.28);
 }
-.companion.scared { animation: glowScared 0.9s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
+.companion.scared { animation: glowScared 0.9s ease-in-out infinite, scaredPulse 0.35s ease-in-out infinite; }
+
+@keyframes scaredPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
+}
 @keyframes glowScared {
   0%,100% { filter: drop-shadow(0 0 6vmin rgba(195,218,255,0.42)) drop-shadow(0 0 16vmin rgba(175,205,255,0.14)); }
   50%     { filter: drop-shadow(0 0 12vmin rgba(210,228,255,0.65)) drop-shadow(0 0 26vmin rgba(190,215,255,0.22)); }
@@ -948,8 +953,8 @@ html, body {
     0 0 7vmin rgba(255,138,128,0.48),
     0 0 16vmin rgba(245,118,108,0.18);
 }
-.companion.grumpy .eye-left  { transform: rotate(-8deg); }
-.companion.grumpy .eye-right { transform: rotate(8deg); }
+.companion.grumpy .eye-left  { transform: rotate(-8deg) translateY(2vmin); }
+.companion.grumpy .eye-right { transform: rotate(8deg)  translateY(2vmin); }
 .companion.grumpy { animation: glowGrumpy 2.4s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
 @keyframes glowGrumpy {
   0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,138,128,0.36)) drop-shadow(0 0 13vmin rgba(240,115,105,0.12)); }
@@ -958,7 +963,7 @@ html, body {
 
 /* OVERJOYED — largest eyes, brightest glow. Maximum cuteness and sparkle. Ecstatic. */
 .companion.overjoyed .eye {
-  width: 42vmin; height: 52vmin;
+  width: 44vmin; height: 52vmin;
   border-radius: 50%;
   box-shadow:
     0 0 4vmin rgba(255,240,198,0.98),

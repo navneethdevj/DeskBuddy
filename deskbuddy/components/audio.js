@@ -119,6 +119,15 @@ const Audio = (() => {
         // Soft celebratory coo at focus milestone — quiet, not jarring
         if (window.perception?.facePresent) _contentCoo();
         break;
+      case '__slowblink':
+        if (window.perception?.facePresent) _contentCoo();
+        break;
+      case '__coo':
+        if (window.perception?.facePresent) _focusedHum();
+        break;
+      case '__pet_happy':  _giggle();       break;
+      case '__pet_grumpy': _grumpyHmph();  break;
+      case '__hover':      _curiousOoh();  break;
     }
   }
 
