@@ -460,7 +460,7 @@ html, body {
 
 /* ===== Expression: Happy (^_^ genuine smile arc — warm and wide) ===== */
 /* Classic anime ^_^ : very thin upward arc, eyes squeezed shut from joy.
-   Flat top (2% vertical) + heavily curved bottom (98%) = inverted-U crescent.
+   Rounded top (98% vertical) + flat bottom (2%) = upward arch ^ smile.
    Narrow height makes the pupil hidden (overflow:hidden) = proper closed-eye smile. */
 .companion.happy .eye {
   width: 38vmin;
