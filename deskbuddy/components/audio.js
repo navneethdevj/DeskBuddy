@@ -4,6 +4,21 @@
 // WebPet: no audio system → all audio is original formant synthesis
 // EyeOnTask: no audio feedback → milestone coo adds auditory reward for sustained focus
 // Web Shimeji: repo unavailable → concept of expression-triggered audio cues applied
+//
+// REPO STUDY (Part B — Voice Redesign):
+// web-audio-api-recipes (mohayonao): FM synthesis creates alien/metallic timbres via
+//   modulator-to-carrier ratio — high ratios (3+) = glassy bells, low (<1) = warm sub-harmonics.
+//   Applied: _fm() helper with configurable modRatio and modDepth.
+// jsfx/chiptune: square/sawtooth waves + instant attack = retro 8-bit character sounds.
+//   Applied: _beep() helper with near-zero attack for digital creature voice.
+// Tone.js (src/instrument/): FMSynth, AMSynth, MembraneSynth parameterization — "fat" bass
+//   uses low modRatio + sawtooth, "thin" digital voice uses high modRatio + triangle.
+//   Applied: diverse timbres per emotion via different wave/ratio combos.
+// mdn/webaudio-examples: ring modulation = multiply two signals for robotic sidebands.
+//   Applied: _ring() helper for whale-warble and electronic shimmer textures.
+// find-the-fox: short staccato creature sounds with fast envelopes, percussive quality.
+//   Applied: rapid attack/release patterns in _fm() for staccato bell tones.
+// REPO BONUS: Combined FM + ring mod layering from Tone.js concepts for richer textures.
 
 /**
  * Audio — Cute non-verbal creature voice using Web Audio API formant synthesis.
@@ -230,373 +245,382 @@ const Audio = (() => {
     src.start(time); src.stop(time + dur + 0.01);
   }
 
+  // ── EXTRA SYNTHESIS HELPERS ───────────────────────────────────────────────
+
+  /**
+   * FM synthesis — frequency modulation creates rich metallic/alien timbres.
+   * Concept from Tone.js FM synth: modulator oscillator modulates carrier frequency.
+   * modRatio = modulator:carrier frequency ratio — higher = more metallic/alien
+   * modDepth = how much the modulator affects pitch — higher = more robotic
+   */
+  function _fm(carrierFreq, modRatio, modDepth, time, dur, vol, opts) {
+    const o = opts || {};
+    const carrier  = new OscillatorNode(ctx, { type: o.wave || 'sine', frequency: carrierFreq });
+    const modFreq  = carrierFreq * modRatio;
+    const modulator = new OscillatorNode(ctx, { type: 'sine', frequency: modFreq });
+    const modGain  = new GainNode(ctx, { gain: modDepth });
+
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);  // FM: modulator drives carrier frequency
+
+    const attack = o.attack || 0.01;
+    const release = o.release || dur * 0.4;
+    const sustainEnd = time + dur - release;
+
+    const masterGain = new GainNode(ctx, { gain: 0 });
+    masterGain.gain.setValueAtTime(0, time);
+    masterGain.gain.linearRampToValueAtTime(vol, time + attack);
+    masterGain.gain.setValueAtTime(vol, sustainEnd);
+    masterGain.gain.linearRampToValueAtTime(0, time + dur);
+
+    if (o.slideTo) {
+      carrier.frequency.setValueAtTime(carrierFreq, time);
+      carrier.frequency.linearRampToValueAtTime(o.slideTo, time + dur * 0.85);
+    }
+
+    carrier.connect(masterGain).connect(ctx.destination);
+    modulator.start(time); modulator.stop(time + dur + 0.02);
+    carrier.start(time);   carrier.stop(time + dur + 0.02);
+    return masterGain;
+  }
+
+  /**
+   * Ring modulation — multiplies two oscillators for metallic robotic effect.
+   * Creates sidebands that sound electronic and alien.
+   * From Web Audio recipes: ring mod = carrier * modulator signal
+   */
+  function _ring(freq, ringFreq, time, dur, vol, wave) {
+    const carrier  = new OscillatorNode(ctx, { type: wave || 'sine', frequency: freq });
+    const ring     = new OscillatorNode(ctx, { type: 'sine', frequency: ringFreq });
+    const ringGain = new GainNode(ctx, { gain: 0 });  // ring as amplitude modulator
+    const carrierGain = new GainNode(ctx, { gain: vol });
+
+    // Ring mod: modulate carrier amplitude with ring oscillator
+    ring.connect(ringGain.gain);
+    carrier.connect(carrierGain);
+
+    const envelope = new GainNode(ctx, { gain: 0 });
+    carrierGain.connect(envelope).connect(ctx.destination);
+    envelope.gain.setValueAtTime(0, time);
+    envelope.gain.linearRampToValueAtTime(1, time + 0.008);
+    envelope.gain.setValueAtTime(1, time + dur * 0.6);
+    envelope.gain.linearRampToValueAtTime(0, time + dur);
+
+    ring.start(time); ring.stop(time + dur + 0.02);
+    carrier.start(time); carrier.stop(time + dur + 0.02);
+  }
+
+  /**
+   * Digital beep — clean square/sawtooth with instant attack.
+   * Creates chiptune / 8-bit character sounds.
+   * From chiptune synthesis: square wave + very fast attack = retro beep.
+   */
+  function _beep(freq, time, dur, vol, wave) {
+    const osc = new OscillatorNode(ctx, { type: wave || 'square', frequency: freq });
+    const g   = new GainNode(ctx, { gain: 0 });
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(vol, time + 0.003);   // near-instant attack
+    g.gain.setValueAtTime(vol, time + dur * 0.7);
+    g.gain.linearRampToValueAtTime(0, time + dur);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(time); osc.stop(time + dur + 0.01);
+  }
+
   // ── CUTE NON-VERBAL VOICE SOUNDS ──────────────────────────────────────────
 
-  // Giggle — warm bubbly three-syllable "hehehe~" when user smiles
+  // GIGGLE — crystal FM bells cascade (FM synthesis, high modRatio = glassy/alien)
+  // Three ascending bell tones — each completely distinct frequency and timbre
   function _giggle() {
     if (!_ok('giggle')) return;
     try {
       const t = ctx.currentTime;
-      // Three ascending syllables with sparkly F3 shimmer
-      _formant(620, 1700, t, 0.09, 0.09, {
-        wave: 'triangle', attack: 0.004, release: 0.03,
-        tremRate: 26, tremDepth: 0.025, f3: 3200
-      });
-      _formant(720, 1900, t + 0.11, 0.10, 0.10, {
-        wave: 'triangle', attack: 0.004, release: 0.04,
-        tremRate: 28, tremDepth: 0.025, f3: 3400
-      });
-      _formant(800, 2100, t + 0.22, 0.13, 0.11, {
-        wave: 'triangle', attack: 0.005, release: 0.05,
-        tremRate: 30, tremDepth: 0.03, vibRate: 10, vibDepth: 8, f3: 3600
-      });
-      // Tiny breath between syllables
-      _breath(t + 0.05, 0.04, 0.015, 3500);
-      _breath(t + 0.16, 0.04, 0.012, 3800);
-    } catch(e) {}
+      // Bell 1: low sweet chime (FM modRatio 3.5 = bell-like partial series)
+      _fm(520, 3.5, 180, t,       0.10, 0.085, { wave: 'sine', attack: 0.003, release: 0.06 });
+      // Bell 2: mid crystal chime (ring mod adds shimmer)
+      _fm(780, 4.2, 240, t+0.12,  0.11, 0.090, { wave: 'sine', attack: 0.003, release: 0.07 });
+      // Bell 3: high sparkling top note
+      _fm(960, 5.0, 320, t+0.23,  0.14, 0.095, { wave: 'sine', attack: 0.002, release: 0.09,
+        slideTo: 1100 });
+      // Tiny percussive breath between bells — texture
+      _breath(t + 0.08, 0.03, 0.008, 4800);
+      _breath(t + 0.19, 0.03, 0.007, 5200);
+    } catch(_) {}
   }
 
-  // Content coo — genuinely warm ascending "mmm~aah" for happiness
+  // CONTENT COO — warm alien hum, round and cozy, with ring mod shimmer
+  // Uses FM with low modRatio = warm organ-like, plus gentle ring glow
   function _contentCoo() {
     if (!_ok('coo')) return;
     try {
       const t = ctx.currentTime;
-      // Warm body "mmm" rising to open "aah" — feels like genuine contentment
-      _formant(380, 900, t, 0.18, 0.08, {
-        wave: 'sine', vibRate: 5, vibDepth: 10,
-        slideTo: [480, 1150], attack: 0.03, release: 0.06
+      // Warm body hum (FM modRatio 0.5 = sub-harmonic warmth)
+      _fm(320, 0.5, 60, t,       0.45, 0.075, {
+        attack: 0.06, release: 0.18, slideTo: 380
       });
-      // Opens into bright warm "aah~"
-      _formant(500, 1250, t + 0.18, 0.25, 0.10, {
-        wave: 'triangle', vibRate: 5.5, vibDepth: 14,
-        slideTo: [550, 1350], attack: 0.02, release: 0.10,
-        f3: 2800, f3slide: 3000
+      // Rising openness — alien "aah" rising to brightness
+      _fm(420, 1.5, 90, t + 0.20, 0.32, 0.085, {
+        wave: 'triangle', attack: 0.04, release: 0.14, slideTo: 500
       });
-      _breath(t + 0.02, 0.06, 0.012, 3000);
-    } catch(e) {}
+      // Ring mod shimmer layer — feels warm and electronic simultaneously
+      _ring(420, 6, t + 0.22, 0.28, 0.018, 'sine');
+    } catch(_) {}
   }
 
-  // Curious "ooh?" — rising two-syllable wonder with wide eyes feel
+  // CURIOUS OOH — rising digital chirp with square wave chiptune feel
+  // Square wave = immediately digital/alien, rising pitch = question energy
   function _curiousOoh() {
     if (!_ok('curious')) return;
     try {
       const t = ctx.currentTime;
-      // Short "oh" opener
-      _formant(350, 880, t, 0.12, 0.07, {
-        wave: 'sine', attack: 0.01, release: 0.04,
-        slideTo: [400, 1000]
+      // Short digital "mm?" onset — square wave, chiptune feel
+      _beep(340, t, 0.08, 0.055, 'square');
+      // Main rising "ooh?" — FM with pitch rise = question inflection
+      _fm(400, 2.0, 80, t + 0.10, 0.32, 0.085, {
+        wave: 'triangle', attack: 0.015, release: 0.12, slideTo: 620
       });
-      // Rising "ooh?" with question inflection
-      _formant(420, 1050, t + 0.14, 0.28, 0.09, {
-        wave: 'sine', vibRate: 5, vibDepth: 12,
-        slideTo: [580, 1450], attack: 0.02, release: 0.10,
-        f3: 2400, f3slide: 2900
+      // Tiny sparkle at peak
+      _fm(620, 4.0, 160, t + 0.32, 0.12, 0.060, {
+        attack: 0.008, release: 0.06, slideTo: 700
       });
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // Sleepy yawn — long realistic "aaaahhh~mmm" with inhale and exhale phases
+  // SLEEPY YAWN — pure sine slow drift, soft as breath
+  // Pure sine = the only voice texture with NO digital character — pure organic
   function _sleepyYawn() {
     if (!_ok('yawn')) return;
     try {
       const t = ctx.currentTime;
-      // Phase 1: inhale breath (0.0s–0.15s)
-      _breath(t, 0.15, 0.02, 1800);
-      // Phase 2: wide open "aaahhhh" — peak of yawn (0.12s–0.75s)
-      _formant(550, 1350, t + 0.12, 0.65, 0.08, {
-        wave: 'sine', vibRate: 2.5, vibDepth: 18,
-        slideTo: [280, 700], attack: 0.08, release: 0.30
+      // Soft inhale breath
+      _breath(t, 0.18, 0.018, 1400);
+      // Wide yawn — pure sine, very slow rise and fall
+      _fm(320, 0.25, 20, t + 0.10, 0.72, 0.065, {
+        wave: 'sine', attack: 0.12, release: 0.35, slideTo: 180
       });
-      // Breathy overlay across the whole yawn
-      _breath(t + 0.15, 0.55, 0.025, 1600);
-      // Phase 3: closing "mmm~" — mouth closing (0.65s–0.95s)
-      _formant(280, 650, t + 0.70, 0.28, 0.05, {
-        wave: 'sine', vibRate: 2, vibDepth: 8,
-        slideTo: [220, 520], attack: 0.03, release: 0.15
+      // Trailing murmur — even quieter
+      _fm(200, 0.25, 12, t + 0.68, 0.30, 0.035, {
+        wave: 'sine', attack: 0.05, release: 0.18, slideTo: 160
       });
-      // Trailing exhale sigh
-      _breath(t + 0.80, 0.18, 0.018, 1200);
-    } catch(e) {}
+      _breath(t + 0.82, 0.16, 0.014, 1000);
+    } catch(_) {}
   }
 
-  // Suspicious / attention nudge — playful staccato "mm-mm!" to get user to look back
-  // Distinct from sad sounds: bright, chirpy, insistent like "hey! over here!"
+  // SUSPICIOUS NUDGE — staccato chiptune two-note poke, like a little beep-boop
+  // Completely different from sad sounds: bright, digital, insistent
   function _suspiciousNudge() {
     if (!_ok('suspicious')) return;
     try {
       const t = ctx.currentTime;
-      // Two quick ascending chirps — "mm-MM!" (playful, not sad)
-      _formant(400, 1050, t, 0.10, 0.09, {
-        wave: 'triangle', attack: 0.005, release: 0.04,
-        slideTo: [450, 1150]
-      });
-      _formant(520, 1350, t + 0.13, 0.12, 0.10, {
-        wave: 'triangle', attack: 0.005, release: 0.05,
-        slideTo: [580, 1500], f3: 2600
-      });
-      // Tiny puff for emphasis
-      _breath(t + 0.12, 0.04, 0.02, 3200);
-    } catch(e) {}
+      // "Beep" — sharp square pulse
+      _beep(480, t,       0.07, 0.065, 'square');
+      // "Boop" — slightly higher, the question
+      _beep(580, t + 0.11, 0.08, 0.072, 'square');
+      // Tiny FM shimmer after the boop
+      _fm(580, 3.0, 80, t + 0.12, 0.10, 0.030, { attack: 0.005, release: 0.06 });
+    } catch(_) {}
   }
 
-  // Pouty "mweeeh~" — exaggerated descending whine with trembling lip feel
+  // POUTY MWEH — descending sawtooth whine, rich and wavering
+  // Sawtooth = nasal and buzzy, exaggerated lip-out energy
   function _poutyMweh() {
     if (!_ok('pouty')) return;
     try {
       const t = ctx.currentTime;
-      // Initial "mw-" onset
-      _formant(580, 1450, t, 0.08, 0.08, {
-        wave: 'triangle', attack: 0.005, release: 0.03
+      // "Mw-" onset — nasal sawtooth
+      _beep(520, t, 0.06, 0.065, 'sawtooth');
+      // Long descending "eeeh~" with slow vibrato — ring mod gives it a whiny edge
+      _fm(500, 0.75, 40, t + 0.06, 0.42, 0.085, {
+        wave: 'sawtooth', attack: 0.01, release: 0.18, slideTo: 290
       });
-      // Long wavering descending "eeeeh~"
-      _formant(560, 1400, t + 0.08, 0.38, 0.10, {
-        wave: 'triangle', vibRate: 7.5, vibDepth: 22,
-        slideTo: [320, 820], attack: 0.01, release: 0.16,
-        tremRate: 9, tremDepth: 0.025
-      });
-      // Sub-harmonic for pouty fullness
-      _formant(280, 700, t + 0.10, 0.30, 0.04, {
-        wave: 'sine', vibRate: 7.5, vibDepth: 12,
-        slideTo: [160, 410], attack: 0.02, release: 0.12
-      });
-    } catch(e) {}
+      _ring(480, 8, t + 0.08, 0.38, 0.022, 'sine');
+    } catch(_) {}
   }
 
-  // Grumpy "hmph!" — deep percussive nasal puffs with low rumble
+  // GRUMPY HMPH — deep bass sawtooth grumble with two short puffs
+  // Low sawtooth = unmistakably grumpy buzz, nothing else sounds like this
   function _grumpyHmph() {
     if (!_ok('grumpy')) return;
     try {
       const t = ctx.currentTime;
-      // Deep "hmph" — closed mouth, nasal
-      _formant(180, 480, t, 0.10, 0.10, {
-        wave: 'triangle', attack: 0.004, release: 0.04,
-        slideTo: [150, 400]
+      // Grumble 1: low bass buzz
+      _fm(140, 0.5, 30, t,       0.12, 0.095, {
+        wave: 'sawtooth', attack: 0.005, release: 0.04, slideTo: 120
       });
-      _breath(t, 0.07, 0.03, 1500);
-      // Second shorter puff — "hf!"
-      _formant(160, 440, t + 0.16, 0.08, 0.09, {
-        wave: 'triangle', attack: 0.003, release: 0.03,
-        slideTo: [140, 380]
+      _breath(t, 0.08, 0.028, 1200);
+      // Grumble 2: second lower puff — "hf!"
+      _fm(128, 0.5, 28, t + 0.18, 0.10, 0.090, {
+        wave: 'sawtooth', attack: 0.004, release: 0.035, slideTo: 110
       });
-      _breath(t + 0.16, 0.05, 0.028, 1200);
-    } catch(e) {}
+      _breath(t + 0.18, 0.06, 0.025, 1000);
+    } catch(_) {}
   }
 
-  // Scared "eep!" — sharp trembling squeak with startled gasp
+  // SCARED EEP — electric zap noise burst + rising FM spark
+  // Noise burst = unique among all sounds; no other emotion uses this
   function _scaredEep() {
     if (!_ok('scared')) return;
     try {
       const t = ctx.currentTime;
-      // Startled intake gasp
-      _breath(t, 0.04, 0.03, 3800);
-      // High sharp "EEP!" with trembling
-      _formant(850, 2300, t + 0.03, 0.11, 0.10, {
-        wave: 'sine', attack: 0.003, release: 0.04,
-        slideTo: [1100, 2700], tremRate: 18, tremDepth: 0.02,
-        f3: 3500
+      // Startled noise burst (electric zap quality)
+      _breath(t, 0.04, 0.040, 5500);
+      // Rising "EEP!" — FM with high modRatio = sparkly metallic shock
+      _fm(720, 6.0, 400, t + 0.03, 0.13, 0.095, {
+        wave: 'sine', attack: 0.003, release: 0.04, slideTo: 1200
       });
-      // Trailing shaky whimper
-      _formant(600, 1500, t + 0.16, 0.14, 0.05, {
-        wave: 'sine', vibRate: 9, vibDepth: 20,
-        slideTo: [480, 1200], attack: 0.01, release: 0.08,
-        tremRate: 12, tremDepth: 0.015
-      });
-    } catch(e) {}
+      // Trailing shaky digital tremor
+      _beep(580, t + 0.17, 0.06, 0.035, 'sine');
+      _beep(540, t + 0.23, 0.05, 0.025, 'sine');
+    } catch(_) {}
   }
 
-  // Sad "awww..." — long slow descending whimper with genuine melancholy
+  // SAD AWW — deep whale-like warble, ring modulated for alien melancholy
+  // Ring mod at low freq = slow underwater warble — completely unique timbre
   function _sadAww() {
     if (!_ok('sad')) return;
     try {
       const t = ctx.currentTime;
-      // Soft onset breath
-      _breath(t, 0.06, 0.015, 1800);
-      // Main sad vocalization — slow descending "awww..." with emotional vibrato
-      _formant(480, 1150, t + 0.03, 0.55, 0.08, {
-        wave: 'sine', vibRate: 5, vibDepth: 20,
-        slideTo: [310, 760], attack: 0.04, release: 0.22,
-        tremRate: 3.5, tremDepth: 0.018
+      _breath(t, 0.06, 0.012, 1400);
+      // Main descending whale tone — FM for warmth, low modRatio
+      _fm(380, 0.75, 55, t + 0.04, 0.58, 0.075, {
+        wave: 'sine', attack: 0.05, release: 0.24, slideTo: 240
       });
-      // Harmony layer — minor-feeling undertone
-      _formant(400, 960, t + 0.08, 0.45, 0.05, {
-        wave: 'sine', vibRate: 5.5, vibDepth: 16,
-        slideTo: [260, 640], attack: 0.04, release: 0.20
+      // Ring mod at 4Hz = slow underwater warble
+      _ring(370, 4, t + 0.06, 0.52, 0.020, 'sine');
+      // Trailing lower whimper
+      _fm(260, 0.75, 35, t + 0.52, 0.28, 0.045, {
+        wave: 'sine', attack: 0.03, release: 0.15, slideTo: 200
       });
-      // Trailing whimper
-      _formant(310, 760, t + 0.52, 0.22, 0.04, {
-        wave: 'sine', vibRate: 6, vibDepth: 14,
-        slideTo: [250, 620], attack: 0.02, release: 0.12,
-        tremRate: 5, tremDepth: 0.012
-      });
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // Crying — rhythmic sobs "huh...huh...huh..." with breath between each
+  // CRYING SOB — rhythmic whale pulse sobs, each unique frequency
   function _cryingSob() {
     if (!_ok('crying')) return;
     try {
       const t = ctx.currentTime;
-      // Four sob pulses, progressively lower and softer
-      [0, 0.24, 0.48, 0.70].forEach((off, i) => {
-        const pitch = 500 - i * 35;
-        const loudness = 0.08 - i * 0.012;
-        // Vocalized sob
-        _formant(pitch, pitch * 2.2, t + off, 0.15, loudness, {
-          wave: 'sine', vibRate: 6.5, vibDepth: 18,
-          slideTo: [pitch - 60, (pitch - 60) * 2.2],
-          attack: 0.006, release: 0.07,
-          tremRate: 5, tremDepth: 0.012
+      // Four sob pulses, progressively lower — no two the same pitch
+      [[420,0],[370,0.24],[330,0.46],[295,0.66]].forEach(([freq, off], i) => {
+        const vol = 0.080 - i * 0.012;
+        _fm(freq, 0.75, 45, t + off, 0.17, vol, {
+          wave: 'sine', attack: 0.006, release: 0.08, slideTo: freq * 0.85
         });
-        // Breath hiccup between sobs
-        _breath(t + off + 0.12, 0.08, 0.018, 1600);
+        _ring(freq, 4.5, t + off, 0.14, 0.015, 'sine');
+        _breath(t + off + 0.13, 0.08, 0.016, 1400);
       });
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // Overjoyed "eee~hee~!" — excited ascending four-note burst with sparkle
+  // OVERJOYED SQUEAL — ascending FM crystal cascade, four distinct tones
+  // Each note has different FM modRatio = different bell character in the cascade
   function _overjoyedSqueal() {
     if (!_ok('overjoyed')) return;
     try {
       const t = ctx.currentTime;
-      // Rapid ascending sparkly notes
-      var notes = [
-        [560, 1500, 0,    0.08, 0.09],
-        [680, 1800, 0.08, 0.08, 0.10],
-        [800, 2100, 0.16, 0.09, 0.11],
-        [900, 2400, 0.25, 0.12, 0.11]
-      ];
-      notes.forEach(function(n) {
-        _formant(n[0], n[1], t + n[2], n[3], n[4], {
-          wave: 'triangle', attack: 0.004, release: 0.03,
-          tremRate: 24, tremDepth: 0.02,
-          f3: n[1] + 1200
-        });
-      });
-      _breath(t + 0.04, 0.04, 0.012, 3800);
-      _breath(t + 0.20, 0.04, 0.010, 4000);
-    } catch(e) {}
+      // Four ascending sparkle notes — each unique timbre via different modRatio
+      _fm(480, 3.0, 120, t,       0.09, 0.085, { wave: 'sine', attack: 0.004, release: 0.04 });
+      _fm(640, 4.0, 180, t+0.09,  0.09, 0.092, { wave: 'sine', attack: 0.004, release: 0.04, slideTo: 700 });
+      _fm(800, 5.0, 260, t+0.18,  0.10, 0.098, { wave: 'sine', attack: 0.003, release: 0.05, slideTo: 880 });
+      _fm(960, 6.0, 360, t+0.28,  0.13, 0.105, { wave: 'triangle', attack: 0.003, release: 0.07, slideTo: 1100 });
+      // Sparkle breath at peak
+      _breath(t + 0.06, 0.03, 0.010, 5000);
+      _breath(t + 0.23, 0.03, 0.009, 5500);
+    } catch(_) {}
   }
 
-  // Sulking sigh — long heavy "haahh..." deflating breath with sad undertone
+  // SULKING SIGH — heavy low sawtooth exhale, barely vocalizing
+  // Sawtooth + low pass concept from Tone.js: buzzy then muffled = sulky
   function _sulkingSigh() {
     if (!_ok('sulking')) return;
     try {
       const t = ctx.currentTime;
-      // Heavy exhale breath — the main component
-      _breath(t, 0.40, 0.03, 1400);
-      // Quiet sad vocalization underneath the breath
-      _formant(320, 800, t + 0.03, 0.45, 0.06, {
-        wave: 'sine', vibRate: 3, vibDepth: 10,
-        slideTo: [220, 560], attack: 0.05, release: 0.20
+      // Heavy breath exhale (the main component)
+      _breath(t, 0.42, 0.028, 1200);
+      // Quiet sulky vocalization under the breath — sawtooth muffled
+      _fm(260, 0.5, 20, t + 0.04, 0.48, 0.050, {
+        wave: 'sawtooth', attack: 0.06, release: 0.22, slideTo: 180
       });
-      // Trailing faint moan
-      _formant(240, 600, t + 0.40, 0.18, 0.03, {
-        wave: 'sine', vibRate: 3.5, vibDepth: 8,
-        slideTo: [200, 500], attack: 0.02, release: 0.10
-      });
-    } catch(e) {}
+      // Faint trailing digital mutter
+      _beep(220, t + 0.44, 0.14, 0.018, 'sawtooth');
+    } catch(_) {}
   }
 
-  // Focused hum — gentle contented "mmm~" barely audible background purr
+  // FOCUSED HUM — clean triangle wave meditation hum, barely there
+  // Triangle wave = softer than square, warmer than sine — focused quiet
   function _focusedHum() {
     if (!_ok('focused')) return;
     try {
       const t = ctx.currentTime;
-      _formant(260, 620, t, 0.35, 0.04, {
-        wave: 'sine', vibRate: 4, vibDepth: 6,
-        slideTo: [290, 680], attack: 0.05, release: 0.14
+      _fm(230, 1.0, 15, t, 0.38, 0.038, {
+        wave: 'triangle', attack: 0.08, release: 0.16, slideTo: 255
       });
-      // Very faint harmonics for warmth
-      _formant(520, 1240, t + 0.05, 0.25, 0.015, {
-        wave: 'sine', vibRate: 4, vibDepth: 4,
-        slideTo: [580, 1360], attack: 0.04, release: 0.10
+      // Quiet octave above — adds presence without being loud
+      _fm(460, 1.0, 8, t + 0.06, 0.26, 0.015, {
+        wave: 'triangle', attack: 0.06, release: 0.12, slideTo: 510
       });
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // Surprise gasp — quick "oh!" with startled breath and rising tone
+  // SURPRISE GASP — sharp FM electric snap, clearly startled
   function _surpriseGasp() {
     if (!_ok('surprise')) return;
     try {
       const t = ctx.currentTime;
-      // Sharp intake breath
-      _breath(t, 0.04, 0.025, 3200);
-      // Rising "OH!" vocalization
-      _formant(500, 1300, t + 0.03, 0.12, 0.09, {
-        wave: 'triangle', attack: 0.004, release: 0.05,
-        slideTo: [720, 1850], f3: 2800
+      _breath(t, 0.04, 0.028, 4000);
+      _fm(560, 5.5, 300, t + 0.03, 0.13, 0.090, {
+        wave: 'sine', attack: 0.004, release: 0.05, slideTo: 820
       });
-      // Brief echo tail
-      _formant(680, 1750, t + 0.16, 0.08, 0.04, {
-        wave: 'sine', attack: 0.005, release: 0.04,
-        slideTo: [600, 1500]
+      // Brief echo
+      _fm(760, 4.0, 200, t + 0.17, 0.08, 0.045, {
+        wave: 'sine', attack: 0.004, release: 0.04, slideTo: 680
       });
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // User left — distinctly sad lonely whimper "aww...mmm..." trailing off
+  // USER LEFT — slow descending whale tone, ring modulated, genuinely sad
   function _userLeft() {
     if (!_ok('userLeft')) return;
     try {
       const t = ctx.currentTime;
-      // Sad falling "awww..." — long, heavy, melancholic
-      _formant(460, 1100, t, 0.40, 0.08, {
-        wave: 'sine', vibRate: 5, vibDepth: 18,
-        slideTo: [320, 780], attack: 0.03, release: 0.16,
-        tremRate: 3, tremDepth: 0.012
+      _fm(380, 0.75, 55, t, 0.44, 0.075, {
+        wave: 'sine', attack: 0.04, release: 0.18, slideTo: 260
       });
-      // Underlying minor harmony for genuine sadness
-      _formant(380, 920, t + 0.05, 0.35, 0.04, {
-        wave: 'sine', vibRate: 5.5, vibDepth: 14,
-        slideTo: [260, 640], attack: 0.03, release: 0.15
+      _ring(370, 3.5, t + 0.02, 0.40, 0.018, 'sine');
+      _fm(280, 0.75, 35, t + 0.38, 0.32, 0.055, {
+        wave: 'sine', attack: 0.03, release: 0.16, slideTo: 210
       });
-      // Quiet trailing whimper "mm..." — fading away
-      _formant(320, 780, t + 0.42, 0.28, 0.05, {
-        wave: 'sine', vibRate: 6, vibDepth: 12,
-        slideTo: [240, 590], attack: 0.02, release: 0.15,
-        tremRate: 4, tremDepth: 0.010
-      });
-      // Sad breath at end
-      _breath(t + 0.60, 0.15, 0.018, 1200);
-    } catch(e) {}
+      _breath(t + 0.60, 0.16, 0.016, 1000);
+    } catch(_) {}
   }
 
-  // User returned — excited joyful multi-note greeting "ah~hah~!"
+  // WELCOME BACK — ascending FM greeting, three notes, excited and warm
   function _welcomeBack() {
     if (!_ok('welcomeBack')) return;
     try {
       const t = ctx.currentTime;
-      // Happy breath burst
-      _breath(t, 0.04, 0.015, 3500);
-      // Ascending excited three-note greeting
-      _formant(460, 1200, t + 0.02, 0.10, 0.09, {
-        wave: 'triangle', attack: 0.005, release: 0.04,
-        slideTo: [540, 1400], f3: 2600
+      _breath(t, 0.04, 0.012, 4000);
+      _fm(380, 2.0, 70, t + 0.02, 0.11, 0.088, {
+        wave: 'triangle', attack: 0.006, release: 0.04, slideTo: 440
       });
-      _formant(600, 1550, t + 0.13, 0.11, 0.10, {
-        wave: 'triangle', attack: 0.005, release: 0.05,
-        vibRate: 7, vibDepth: 12, f3: 2900
+      _fm(520, 3.0, 120, t + 0.14, 0.12, 0.095, {
+        wave: 'triangle', attack: 0.005, release: 0.05
       });
-      _formant(720, 1850, t + 0.25, 0.16, 0.11, {
-        wave: 'triangle', attack: 0.005, release: 0.07,
-        vibRate: 8, vibDepth: 15, f3: 3200,
-        slideTo: [760, 1950]
+      _fm(660, 4.0, 200, t + 0.27, 0.16, 0.105, {
+        wave: 'triangle', attack: 0.004, release: 0.07, slideTo: 740
       });
-      _breath(t + 0.14, 0.03, 0.012, 3800);
-    } catch(e) {}
+      _breath(t + 0.16, 0.03, 0.010, 4200);
+    } catch(_) {}
   }
 
-  // Relief sigh — gentle "ahh~" when recovering from scared/sad/crying to idle
+  // RELIEF SIGH — soft FM resolution tone, gentle landing
   function _reliefSigh() {
     if (!_ok('relief')) return;
     try {
       const t = ctx.currentTime;
-      _breath(t, 0.08, 0.015, 2000);
-      _formant(420, 1050, t + 0.04, 0.30, 0.07, {
-        wave: 'sine', vibRate: 4.5, vibDepth: 10,
-        slideTo: [380, 940], attack: 0.03, release: 0.12
+      _breath(t, 0.07, 0.014, 1800);
+      _fm(380, 1.0, 30, t + 0.04, 0.32, 0.065, {
+        wave: 'sine', attack: 0.04, release: 0.14, slideTo: 350
       });
-    } catch(e) {}
+    } catch(_) {}
   }
 
   return { init };
