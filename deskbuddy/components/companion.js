@@ -58,15 +58,13 @@ const Companion = (() => {
 
     el.innerHTML = `
       <div class="companion-inner">
+        <div class="eyebrows">
+          <div class="eyebrow eyebrow-left"></div>
+          <div class="eyebrow eyebrow-right"></div>
+        </div>
         <div class="eyes">
-          <div class="eye-wrap eye-wrap-left">
-            <div class="eyebrow"></div>
-            <div class="eye eye-left"><div class="pupil"></div></div>
-          </div>
-          <div class="eye-wrap eye-wrap-right">
-            <div class="eyebrow"></div>
-            <div class="eye eye-right"><div class="pupil"></div></div>
-          </div>
+          <div class="eye eye-left"><div class="pupil"></div></div>
+          <div class="eye eye-right"><div class="pupil"></div></div>
         </div>
       </div>
     `;
