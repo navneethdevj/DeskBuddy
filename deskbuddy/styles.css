@@ -45,8 +45,10 @@ html, body {
   animation: breathe 3s ease-in-out infinite;
   transform-origin: center center;
   will-change: transform;
-  /* Smooth transition between emotion micro-animations to avoid visual jumps */
-  transition: transform 0.4s cubic-bezier(.4, 0, .2, 1);
+  /* Smooth transition between emotion micro-animations to avoid visual jumps.
+     0.6s gives enough time for the transform to blend between old animation's
+     last frame and new animation's first frame when emotion class swaps. */
+  transition: transform 0.6s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ===== Per-Expression Glow Animations (soft periwinkle tint) ===== */
@@ -179,10 +181,12 @@ html, body {
   100%     { translate: 0 0; }
 }
 
-/* Disable CSS keyframe on companion-inner when sprite system drives frames */
+/* Disable CSS keyframe on companion-inner when sprite system drives frames.
+   Transition kept long enough to smooth both sprite frame blending AND
+   emotion animation cross-blending when classes swap. */
 .companion.sprite-active .companion-inner {
   animation: none;
-  transition: transform 0.1s ease;
+  transition: transform 0.25s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ===== Eyes ===== */
@@ -214,6 +218,8 @@ html, body {
   border-radius: 50%;
   transform: translateY(-22vmin);
   will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   transition:
     transform 0.65s cubic-bezier(.4, 0, .2, 1),
     rotate    0.65s cubic-bezier(.4, 0, .2, 1),
@@ -326,6 +332,9 @@ html, body {
   border-radius: 50% 50% 46% 46% / 55% 55% 44% 44%;
   position: relative;
   overflow: hidden;
+  will-change: width, height, border-radius, transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   transition: height 0.55s cubic-bezier(.4, 0, .2, 1),
               width 0.55s cubic-bezier(.4, 0, .2, 1),
               border-radius 0.55s cubic-bezier(.4, 0, .2, 1),
@@ -431,14 +440,15 @@ html, body {
   transition: height 0.08s ease-out, width 0.08s ease-out, border-radius 0.08s ease-out;
 }
 
-/* Fast blink recovery — eye opening after blink removal should be snappy, not the slow 0.55s default */
-.eyes .eye {
+/* Blink recovery — fast snap-back for eye shape after blink, managed via JS class.
+   Avoids overriding the smooth 0.55s emotion transitions on the base .eye rule. */
+.companion.blink-recovering .eyes .eye {
   transition: height 0.16s cubic-bezier(.4, 0, .2, 1),
               width 0.16s cubic-bezier(.4, 0, .2, 1),
               border-radius 0.16s cubic-bezier(.4, 0, .2, 1),
-              transform 0.55s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.6s cubic-bezier(.4, 0, .2, 1),
-              box-shadow 0.55s cubic-bezier(.4, 0, .2, 1);
+              transform 0.16s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.3s cubic-bezier(.4, 0, .2, 1),
+              box-shadow 0.3s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
@@ -493,13 +503,14 @@ html, body {
   animation: sadDroop 5s ease-in-out infinite;
 }
 @keyframes sadDroop {
-  0%       { transform: translateY(0.2vh) rotate(0deg); }
-  15%      { transform: translateY(0.3vh) rotate(-0.3deg); }
-  30%      { transform: translateY(0.4vh) rotate(-0.55deg); }
-  50%      { transform: translateY(0.5vh) rotate(0.1deg); }
-  65%      { transform: translateY(0.4vh) rotate(0.35deg); }
-  80%      { transform: translateY(0.3vh) rotate(-0.1deg); }
-  100%     { transform: translateY(0.2vh) rotate(0deg); }
+  0%       { transform: translateY(0) rotate(0deg); }
+  10%      { transform: translateY(0.15vh) rotate(-0.15deg); }
+  25%      { transform: translateY(0.35vh) rotate(-0.45deg); }
+  40%      { transform: translateY(0.5vh) rotate(-0.1deg); }
+  55%      { transform: translateY(0.5vh) rotate(0.25deg); }
+  70%      { transform: translateY(0.4vh) rotate(0.15deg); }
+  85%      { transform: translateY(0.2vh) rotate(-0.05deg); }
+  100%     { transform: translateY(0) rotate(0deg); }
 }
 
 /* Crying — trembling with sadness */
@@ -507,13 +518,14 @@ html, body {
   animation: cryingTremble 1.0s ease-in-out infinite;
 }
 @keyframes cryingTremble {
-  0%       { transform: translateY(0.3vh) rotate(0deg); }
-  15%      { transform: translateY(0.35vh) rotate(-0.2deg); }
-  30%      { transform: translateY(0.4vh) rotate(-0.35deg); }
-  50%      { transform: translateY(0.25vh) rotate(0.15deg); }
-  65%      { transform: translateY(0.35vh) rotate(0.25deg); }
-  80%      { transform: translateY(0.45vh) rotate(-0.15deg); }
-  100%     { transform: translateY(0.3vh) rotate(0deg); }
+  0%       { transform: translateY(0) rotate(0deg); }
+  10%      { transform: translateY(0.15vh) rotate(-0.1deg); }
+  25%      { transform: translateY(0.3vh) rotate(-0.25deg); }
+  40%      { transform: translateY(0.4vh) rotate(0.08deg); }
+  55%      { transform: translateY(0.25vh) rotate(0.2deg); }
+  70%      { transform: translateY(0.35vh) rotate(-0.1deg); }
+  85%      { transform: translateY(0.45vh) rotate(-0.15deg); }
+  100%     { transform: translateY(0) rotate(0deg); }
 }
 
 /* Scared — quick shivering tremble */
@@ -521,13 +533,14 @@ html, body {
   animation: scaredShiver 0.5s ease-in-out infinite;
 }
 @keyframes scaredShiver {
-  0%       { transform: translateY(0) rotate(0deg) scale(0.99); }
-  15%      { transform: translateY(-0.1vh) rotate(0.3deg) scale(0.989); }
-  30%      { transform: translateY(-0.2vh) rotate(0.45deg) scale(0.988); }
-  50%      { transform: translateY(0.05vh) rotate(-0.2deg) scale(0.991); }
-  65%      { transform: translateY(0.1vh) rotate(-0.35deg) scale(0.992); }
-  80%      { transform: translateY(-0.05vh) rotate(0.15deg) scale(0.988); }
-  100%     { transform: translateY(0) rotate(0deg) scale(0.99); }
+  0%       { transform: translateY(0) rotate(0deg) scale(1); }
+  10%      { transform: translateY(-0.05vh) rotate(0.15deg) scale(0.994); }
+  25%      { transform: translateY(-0.15vh) rotate(0.4deg) scale(0.989); }
+  40%      { transform: translateY(-0.2vh) rotate(0.2deg) scale(0.988); }
+  55%      { transform: translateY(0.05vh) rotate(-0.25deg) scale(0.991); }
+  70%      { transform: translateY(0.1vh) rotate(-0.3deg) scale(0.992); }
+  85%      { transform: translateY(-0.05vh) rotate(0.1deg) scale(0.99); }
+  100%     { transform: translateY(0) rotate(0deg) scale(1); }
 }
 
 /* Curious — gentle tilt like a puppy */
@@ -535,13 +548,14 @@ html, body {
   animation: curiousTilt 3s ease-in-out infinite;
 }
 @keyframes curiousTilt {
-  0%       { transform: translateY(-0.3vh) rotate(0deg) scale(1.005); }
-  20%      { transform: translateY(-0.45vh) rotate(1.2deg) scale(1.007); }
+  0%       { transform: translateY(0) rotate(0deg) scale(1); }
+  12%      { transform: translateY(-0.25vh) rotate(0.6deg) scale(1.003); }
+  25%      { transform: translateY(-0.45vh) rotate(1.4deg) scale(1.006); }
   40%      { transform: translateY(-0.6vh) rotate(1.8deg) scale(1.008); }
-  55%      { transform: translateY(-0.5vh) rotate(0.4deg) scale(1.007); }
-  70%      { transform: translateY(-0.4vh) rotate(-1deg) scale(1.006); }
-  85%      { transform: translateY(-0.35vh) rotate(-0.5deg) scale(1.005); }
-  100%     { transform: translateY(-0.3vh) rotate(0deg) scale(1.005); }
+  55%      { transform: translateY(-0.5vh) rotate(0.8deg) scale(1.007); }
+  70%      { transform: translateY(-0.35vh) rotate(-0.6deg) scale(1.005); }
+  85%      { transform: translateY(-0.2vh) rotate(-0.3deg) scale(1.002); }
+  100%     { transform: translateY(0) rotate(0deg) scale(1); }
 }
 
 /* Sleepy — slow gentle nodding */
@@ -608,12 +622,14 @@ html, body {
   animation: sulkingSway 4.5s ease-in-out infinite;
 }
 @keyframes sulkingSway {
-  0%       { transform: translateY(0.3vh) rotate(-0.5deg); }
-  20%      { transform: translateY(0.35vh) rotate(-0.2deg); }
-  40%      { transform: translateY(0.45vh) rotate(0.2deg); }
-  60%      { transform: translateY(0.5vh) rotate(0.45deg); }
-  80%      { transform: translateY(0.4vh) rotate(0.1deg); }
-  100%     { transform: translateY(0.3vh) rotate(-0.5deg); }
+  0%       { transform: translateY(0) rotate(0deg); }
+  12%      { transform: translateY(0.15vh) rotate(-0.3deg); }
+  25%      { transform: translateY(0.3vh) rotate(-0.5deg); }
+  40%      { transform: translateY(0.4vh) rotate(-0.1deg); }
+  55%      { transform: translateY(0.5vh) rotate(0.3deg); }
+  70%      { transform: translateY(0.45vh) rotate(0.45deg); }
+  85%      { transform: translateY(0.25vh) rotate(0.15deg); }
+  100%     { transform: translateY(0) rotate(0deg); }
 }
 
 /* Focused — barely-there steady micro-pulse, creature is concentrating */
@@ -904,6 +920,8 @@ html, body {
   background: linear-gradient(to top, rgba(70,148,200,0.28) 0%, rgba(90,165,215,0.16) 55%, transparent 100%);
   border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px;
   animation: tearWave 4s ease-in-out infinite;
+  /* Smooth height transitions instead of discrete setInterval steps */
+  transition: height 1s cubic-bezier(.4, 0, .2, 1);
 }
 @keyframes tearWave {
   0%   { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }

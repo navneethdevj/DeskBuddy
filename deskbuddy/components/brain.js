@@ -589,7 +589,7 @@ const Brain = (() => {
       Emotion.setState('happy');
       setTimeout(function () {
         if (currentState === 'idle') Emotion.setState('idle');
-      }, 400);
+      }, 1200);
     }, delay);
   }
 
@@ -608,7 +608,9 @@ const Brain = (() => {
   }
 
   // ── TEAR OVERLAY ──────────────────────────────────────────────────────────
-  // Water rises during crying, drains fast when user returns
+  // Water rises during crying, drains fast when user returns.
+  // The CSS transition on #tear-fill (1s cubic-bezier) handles smooth interpolation
+  // between setInterval steps, so visual height changes are continuous.
   function _startTears() {
     const overlay = document.getElementById('tear-overlay');
     const fill    = document.getElementById('tear-fill');
@@ -617,10 +619,10 @@ const Brain = (() => {
     if (tearInterval) return;
     tearInterval = setInterval(() => {
       if (tearHeight < MAX_TEAR_HEIGHT) {
-        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE);
+        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE * 2);
         fill.style.height = tearHeight + '%';
       }
-    }, 1000);
+    }, 2000);
   }
 
   function _stopTears() {
@@ -630,14 +632,14 @@ const Brain = (() => {
     if (!fill || !overlay) return;
     tearDraining = true;
     const drain = setInterval(() => {
-      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE);
+      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE * 2);
       fill.style.height = tearHeight + '%';
       if (tearHeight <= 0) {
         clearInterval(drain);
         overlay.style.display = 'none';
         tearDraining = false;
       }
-    }, 80);
+    }, 200);
   }
 
   // ── OVERJOYED → SULKING → FORGIVEN sequence ───────────────────────────────

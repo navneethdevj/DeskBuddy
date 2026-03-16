@@ -257,10 +257,18 @@ const Companion = (() => {
     const delay = 2500 + Math.random() * 2500;
     setTimeout(() => {
       if (!el) return;
+      el.classList.remove('blink-recovering');
       el.classList.add('blink');
       var blinkDuration = 150 + Math.random() * 150; // 150–300 ms
       setTimeout(() => {
-        if (el) el.classList.remove('blink');
+        if (!el) return;
+        el.classList.remove('blink');
+        el.classList.add('blink-recovering');
+        // Remove recovery class after the fast transition completes,
+        // restoring the normal 0.55s emotion transition speed
+        setTimeout(() => {
+          if (el) el.classList.remove('blink-recovering');
+        }, 200);
       }, blinkDuration);
       scheduleBlink();
     }, delay);
