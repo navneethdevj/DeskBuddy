@@ -294,12 +294,20 @@ const Brain = (() => {
         else                            emotion = 'focused';
         break;
 
-      case 'LookingAway':
-        if      (tms >= LOOKING_AWAY_GRUMPY_MS)     emotion = 'grumpy';
-        else if (tms >= LOOKING_AWAY_POUTY_MS)       emotion = 'pouty';
-        else if (tms >= LOOKING_AWAY_SUSPICIOUS_MS)  emotion = 'suspicious';
-        else                                         emotion = 'idle';
+      case 'LookingAway': {
+        // AI tolerance: users who frequently look away get a gentler DeskBuddy
+        const tolerance = (typeof AICompanion !== 'undefined')
+          ? AICompanion.getLookAwayTolerance()
+          : 1.0;
+        const grumpyMs  = LOOKING_AWAY_GRUMPY_MS  / tolerance;
+        const poutyMs   = LOOKING_AWAY_POUTY_MS   / tolerance;
+        const suspMs    = LOOKING_AWAY_SUSPICIOUS_MS / tolerance;
+        if      (tms >= grumpyMs) emotion = 'grumpy';
+        else if (tms >= poutyMs)  emotion = 'pouty';
+        else if (tms >= suspMs)   emotion = 'suspicious';
+        else                      emotion = 'idle';
         break;
+      }
 
       case 'Sleepy':
         emotion = 'sleepy';
@@ -310,6 +318,10 @@ const Brain = (() => {
         else if (tms >= NOFACE_SAD_MS)    emotion = 'sad';
         else if (tms >= NOFACE_SCARED_MS) emotion = 'scared';
         else                              emotion = 'idle';
+        // Record a break when user first leaves (5s NoFace threshold)
+        if (tms >= 5000 && tms < 6000 && typeof AICompanion !== 'undefined') {
+          AICompanion.recordBreak();
+        }
         break;
 
       default:
@@ -680,6 +692,7 @@ const Brain = (() => {
 
       if (state === 'Focused') {
         _focusSecs++;
+        if (typeof AICompanion !== 'undefined') AICompanion.updateFocusMinutes(Math.floor(_focusSecs / 60));
         _nofaceSecs = 0;
       } else if (state === 'NoFace') {
         _nofaceSecs++;
