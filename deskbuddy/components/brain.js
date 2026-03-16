@@ -51,13 +51,13 @@ const Brain = (() => {
   // Curious trigger: sustained focused attention for this long → curious state
   const CURIOUS_ATTENTION_MS = 20000;   // 20s focused + high attention → curious
 
-  // Emotion timing thresholds (ms) — tuned for responsive feel
-  const LOOKING_AWAY_SUSPICIOUS_MS =  5000;   //  5s → suspicious
-  const LOOKING_AWAY_POUTY_MS      = 15000;   // 15s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 30000;   // 30s → grumpy
-  const NOFACE_SCARED_MS           =  4000;   //  4s → scared
-  const NOFACE_SAD_MS              = 15000;   // 15s → sad
-  const NOFACE_CRYING_MS           = 30000;   // 30s → crying
+  // Emotion timing thresholds (ms) — tuned for stable, deliberate transitions
+  const LOOKING_AWAY_SUSPICIOUS_MS =  8000;   //  8s → suspicious
+  const LOOKING_AWAY_POUTY_MS      = 20000;   // 20s → pouty
+  const LOOKING_AWAY_GRUMPY_MS     = 40000;   // 40s → grumpy
+  const NOFACE_SCARED_MS           =  6000;   //  6s → scared
+  const NOFACE_SAD_MS              = 20000;   // 20s → sad
+  const NOFACE_CRYING_MS           = 40000;   // 40s → crying
 
   // Tear overlay tuning
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
@@ -75,25 +75,25 @@ const Brain = (() => {
 
   // Labels for emotion states — shown in status bar for richer feedback
   const EMOTION_LABELS = {
-    idle:        'Relaxed',
-    curious:     'Curious ✦',
-    focused:     'Focused',
-    sleepy:      'Sleepy 💤',
-    suspicious:  'Suspicious 👀',
-    happy:       'Happy ♡',
-    scared:      'Scared!',
-    sad:         'Sad…',
-    crying:      'Crying 💧',
-    pouty:       'Pouty',
-    grumpy:      'Grumpy 😤',
-    overjoyed:   'Overjoyed! ✨',
-    sulking:     'Sulking…',
-    embarrassed: 'Embarrassed',
-    forgiven:    'Forgiven ♡'
+    idle:        'Relaxed — just vibing',
+    curious:     'Curious — what are you doing? ✦',
+    focused:     'Focused — in the zone',
+    sleepy:      'Sleepy — getting drowsy 💤',
+    suspicious:  'Suspicious — where did you go? 👀',
+    happy:       'Happy — smiling back at you ♡',
+    scared:      'Scared — where are you?!',
+    sad:         'Sad — missing you…',
+    crying:      'Crying — please come back 💧',
+    pouty:       'Pouty — feeling ignored',
+    grumpy:      'Grumpy — really not happy 😤',
+    overjoyed:   'Overjoyed — you came back! ✨',
+    sulking:     'Sulking — still upset…',
+    embarrassed: 'Embarrassed — oh gosh',
+    forgiven:    'Forgiven — all good now ♡'
   };
 
   // Minimum time an emotion must hold before changing (prevents rapid flipping)
-  const EMOTION_HOLD_MS = 1500;
+  const EMOTION_HOLD_MS = 2500;
   let _emotionSetAt = 0;
 
   window._lastEmotion    = null;
@@ -426,17 +426,19 @@ const Brain = (() => {
   }
 
   /**
-   * Update the status bar to show the current emotion with context.
+   * Update the status bar to show the current emotion with rich context.
    */
   function _updateStatusBar() {
     const currentEmotion = window._lastEmotion || Emotion.getState();
-    const label = EMOTION_LABELS[currentEmotion] || currentEmotion || 'Idle';
+    const label = EMOTION_LABELS[currentEmotion] || currentEmotion || 'Relaxed — just vibing';
     const p = window.perception;
 
     if (window.cameraAvailable && p && p.facePresent) {
-      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
+      const attn = p.attentionScore || 0;
+      const attnDesc = attn > 80 ? 'Very focused' : attn > 50 ? 'Attentive' : attn > 25 ? 'Distracted' : 'Zoning out';
+      Status.setText(label + ' · ' + attnDesc + ' (' + attn + '%)');
     } else if (window.cameraAvailable && p && !p.facePresent) {
-      Status.setText(label);
+      Status.setText(label + ' · Looking for you…');
     } else {
       Status.setText(label);
     }
@@ -669,15 +671,26 @@ const Brain = (() => {
     }, 600 + Math.random() * 400);
   }
 
-  /** Briefly flash a happy expression during idle. */
+  /** Briefly flash a happy expression during idle (no-camera only). */
   function scheduleHappyFlash() {
-    var delay = 4000 + Math.random() * 6000;
+    // Longer interval to prevent random-feeling emotion changes
+    var delay = 10000 + Math.random() * 15000;
     setTimeout(function () {
       if (currentState !== 'idle') return;
       Emotion.setState('happy');
+      window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
+      window._lastEmotion    = 'happy';
+      _emotionSetAt           = Date.now();
+      _updateStatusBar();
       setTimeout(function () {
-        if (currentState === 'idle') Emotion.setState('idle');
-      }, 1200);
+        if (currentState === 'idle') {
+          Emotion.setState('idle');
+          window._emotionChanged = { from: 'happy', to: 'idle' };
+          window._lastEmotion    = 'idle';
+          _emotionSetAt           = Date.now();
+          _updateStatusBar();
+        }
+      }, 2000);
     }, delay);
   }
 
