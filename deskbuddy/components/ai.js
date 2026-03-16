@@ -76,7 +76,6 @@ const AICompanion = (() => {
     if (!p) return;
 
     if (p.userState === 'Focused') {
-      _session.focusMins++;
       _session.peakAttention = Math.max(_session.peakAttention, p.attentionScore || 0);
     }
     if (p.userSmiling)      _session.smileCount++;
@@ -227,7 +226,10 @@ The whisper should feel personal and warm, never generic. Examples of good whisp
   async function _callClaude(prompt) {
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 200,
