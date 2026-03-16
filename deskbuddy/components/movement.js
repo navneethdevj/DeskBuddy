@@ -18,6 +18,10 @@ const Movement = (() => {
   const CURVE_AMOUNT = 0.2;
   const DECAY_FACTOR = 0.92;
 
+  // Delta-time tracking for frame-rate independent motion
+  let lastFrameTime = 0;
+  const TARGET_FRAME_MS = 16.67; // 60fps reference
+
   let homeX = 0;
   let homeY = 0;
   let targetX = 0;
@@ -41,9 +45,15 @@ const Movement = (() => {
   }
 
   /**
-   * Advance one frame of drifting movement (called by Brain at 60 FPS).
+   * Advance one frame of drifting movement (called by Brain at rAF rate).
+   * Uses delta-time compensation for frame-rate independent motion.
    */
   function update() {
+    const now = performance.now();
+    const dt = lastFrameTime ? Math.min(now - lastFrameTime, 100) : TARGET_FRAME_MS;
+    lastFrameTime = now;
+    const dtScale = dt / TARGET_FRAME_MS; // 1.0 at 60fps, 2.0 at 30fps, etc.
+
     const pos = Companion.getPosition();
     let dx = targetX - pos.x;
     let dy = targetY - pos.y;
@@ -64,14 +74,15 @@ const Movement = (() => {
     const desiredVX = (dirX + perpX) * SPEED;
     const desiredVY = (dirY + perpY) * SPEED;
 
-    // Smooth steering toward desired velocity
-    vx += (desiredVX - vx) * STEER_STRENGTH;
-    vy += (desiredVY - vy) * STEER_STRENGTH;
+    // Smooth steering toward desired velocity (dt-scaled)
+    const steerFactor = 1 - Math.pow(1 - STEER_STRENGTH, dtScale);
+    vx += (desiredVX - vx) * steerFactor;
+    vy += (desiredVY - vy) * steerFactor;
 
     // Apply mouse push
     const push = Companion.getMousePush();
-    const newX = pos.x + vx + push.dx;
-    const newY = pos.y + vy + push.dy;
+    const newX = pos.x + (vx + push.dx) * dtScale;
+    const newY = pos.y + (vy + push.dy) * dtScale;
 
     const clampedX = clamp(newX, -MAX_DRIFT, MAX_DRIFT);
     const clampedY = clamp(newY, -MAX_DRIFT, MAX_DRIFT);
@@ -81,6 +92,7 @@ const Movement = (() => {
 
   /**
    * Gradually reduce velocity toward zero (smooth deceleration).
+   * Uses delta-time compensation for consistent deceleration at any frame rate.
    */
   function decay() {
     if (Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01) {
@@ -88,11 +100,17 @@ const Movement = (() => {
       vy = 0;
       return;
     }
-    vx *= DECAY_FACTOR;
-    vy *= DECAY_FACTOR;
+    const now = performance.now();
+    const dt = lastFrameTime ? Math.min(now - lastFrameTime, 100) : TARGET_FRAME_MS;
+    lastFrameTime = now;
+    const dtScale = dt / TARGET_FRAME_MS;
+
+    const decayAmount = Math.pow(DECAY_FACTOR, dtScale);
+    vx *= decayAmount;
+    vy *= decayAmount;
     const pos = Companion.getPosition();
-    const newX = clamp(pos.x + vx, -MAX_DRIFT, MAX_DRIFT);
-    const newY = clamp(pos.y + vy, -MAX_DRIFT, MAX_DRIFT);
+    const newX = clamp(pos.x + vx * dtScale, -MAX_DRIFT, MAX_DRIFT);
+    const newY = clamp(pos.y + vy * dtScale, -MAX_DRIFT, MAX_DRIFT);
     Companion.setPosition(newX, newY);
   }
 

@@ -122,6 +122,9 @@ const Brain = (() => {
 
   // Neko-style lean state — body offset toward face
   let leanCurrentX = 0, leanCurrentY = 0;
+  // Delta-time for lean interpolation
+  let leanLastTime = 0;
+  const LEAN_HALF_LIFE_MS = 250; // ~250ms half-life for body lean convergence
 
   // Face dropout grace — hold last gaze when face detection drops.
   // 1500ms covers typical MediaPipe dropout bursts (1–3 frames at 15fps)
@@ -414,6 +417,12 @@ const Brain = (() => {
     const p = window.perception;
     if (!p?.facePresent) return;
 
+    // Delta-time for frame-rate independent lean
+    const now = performance.now();
+    const dt = leanLastTime ? Math.min(now - leanLastTime, 100) : 16.67;
+    leanLastTime = now;
+    const leanFactor = 1 - Math.pow(2, -dt / LEAN_HALF_LIFE_MS);
+
     const center   = Companion.getCenter();
     const facePosX = (1 - p.faceX) * window.innerWidth;
     const facePosY = p.faceY * window.innerHeight;
@@ -421,8 +430,8 @@ const Brain = (() => {
     const targetX = (facePosX - center.x) * LEAN_STRENGTH;
     const targetY = (facePosY - center.y) * LEAN_STRENGTH;
 
-    leanCurrentX += (targetX - leanCurrentX) * LEAN_LERP;
-    leanCurrentY += (targetY - leanCurrentY) * LEAN_LERP;
+    leanCurrentX += (targetX - leanCurrentX) * leanFactor;
+    leanCurrentY += (targetY - leanCurrentY) * leanFactor;
 
     Companion.setPosition(
       Math.max(-MAX_DRIFT, Math.min(MAX_DRIFT, leanCurrentX)),

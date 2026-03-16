@@ -34,6 +34,8 @@ html, body {
   height: 100vh;
   will-change: transform, filter;
   animation: glowIdle 4s ease-in-out infinite, idleSway 7s ease-in-out infinite;
+  /* Smooth transition when switching between glow animations on emotion change */
+  transition: filter 0.8s cubic-bezier(.4, 0, .2, 1);
 }
 
 .companion-inner {
@@ -43,6 +45,8 @@ html, body {
   animation: breathe 3s ease-in-out infinite;
   transform-origin: center center;
   will-change: transform;
+  /* Smooth transition between emotion micro-animations to avoid visual jumps */
+  transition: transform 0.4s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ===== Per-Expression Glow Animations (soft periwinkle tint) ===== */
@@ -146,11 +150,17 @@ html, body {
 /* ===== Breathing Animation (enhanced — more alive, smoother sine-like motion) ===== */
 @keyframes breathe {
   0%   { transform: translateY(0) scale(1); }
+  8%   { transform: translateY(-0.08vh) scale(1.0008); }
   15%  { transform: translateY(-0.2vh) scale(1.002); }
+  25%  { transform: translateY(-0.38vh) scale(1.0038); }
   35%  { transform: translateY(-0.5vh) scale(1.005); }
+  42%  { transform: translateY(-0.56vh) scale(1.0056); }
   50%  { transform: translateY(-0.6vh) scale(1.006); }
+  58%  { transform: translateY(-0.56vh) scale(1.0056); }
   65%  { transform: translateY(-0.5vh) scale(1.005); }
+  75%  { transform: translateY(-0.38vh) scale(1.0038); }
   85%  { transform: translateY(-0.2vh) scale(1.002); }
+  92%  { transform: translateY(-0.08vh) scale(1.0008); }
   100% { transform: translateY(0) scale(1); }
 }
 
@@ -158,10 +168,15 @@ html, body {
    Uses the CSS 'translate' property (composited separately from 'transform')
    so it combines cleanly with the inline transform from JS without reflow. */
 @keyframes idleSway {
-  0%, 100% { translate: 0 0; }
+  0%       { translate: 0 0; }
+  12.5%    { translate: 1.4px -0.7px; }
   25%      { translate: 2px -1px; }
+  37.5%    { translate: 0.8px 0.2px; }
   50%      { translate: -1px 1px; }
+  62.5%    { translate: -0.2px -0.5px; }
   75%      { translate: 1px -2px; }
+  87.5%    { translate: 0.6px -1px; }
+  100%     { translate: 0 0; }
 }
 
 /* Disable CSS keyframe on companion-inner when sprite system drives frames */
@@ -200,10 +215,10 @@ html, body {
   transform: translateY(-22vmin);
   will-change: transform, opacity;
   transition:
-    transform 0.50s cubic-bezier(.25, .1, .25, 1),
-    rotate    0.50s cubic-bezier(.25, .1, .25, 1),
-    width     0.50s cubic-bezier(.25, .1, .25, 1),
-    opacity   0.50s cubic-bezier(.25, .1, .25, 1);
+    transform 0.65s cubic-bezier(.4, 0, .2, 1),
+    rotate    0.65s cubic-bezier(.4, 0, .2, 1),
+    width     0.65s cubic-bezier(.4, 0, .2, 1),
+    opacity   0.65s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* CURIOUS — raised high in wonder */
@@ -311,12 +326,12 @@ html, body {
   border-radius: 50% 50% 46% 46% / 55% 55% 44% 44%;
   position: relative;
   overflow: hidden;
-  transition: height 0.50s cubic-bezier(.25, .1, .25, 1),
-              width 0.50s cubic-bezier(.25, .1, .25, 1),
-              border-radius 0.50s cubic-bezier(.25, .1, .25, 1),
-              transform 0.50s cubic-bezier(.25, .1, .25, 1),
-              opacity 0.55s cubic-bezier(.25, .1, .25, 1),
-              box-shadow 0.50s cubic-bezier(.25, .1, .25, 1);
+  transition: height 0.55s cubic-bezier(.4, 0, .2, 1),
+              width 0.55s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.55s cubic-bezier(.4, 0, .2, 1),
+              transform 0.55s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.6s cubic-bezier(.4, 0, .2, 1),
+              box-shadow 0.55s cubic-bezier(.4, 0, .2, 1);
   box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
               0 0 12vmin rgba(120, 135, 235, 0.15),
               0 0 22vmin rgba(120, 135, 235, 0.06);
@@ -403,6 +418,9 @@ html, body {
   margin-left: -8vmin;
   pointer-events: none;
   will-change: transform;
+  /* Ensure subpixel rendering for smoother movement */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
@@ -413,14 +431,14 @@ html, body {
   transition: height 0.08s ease-out, width 0.08s ease-out, border-radius 0.08s ease-out;
 }
 
-/* Fast blink recovery — eye opening after blink removal should be snappy, not the slow 0.5s default */
+/* Fast blink recovery — eye opening after blink removal should be snappy, not the slow 0.55s default */
 .eyes .eye {
-  transition: height 0.14s cubic-bezier(.25, .1, .25, 1),
-              width 0.14s cubic-bezier(.25, .1, .25, 1),
-              border-radius 0.14s cubic-bezier(.25, .1, .25, 1),
-              transform 0.50s cubic-bezier(.25, .1, .25, 1),
-              opacity 0.55s cubic-bezier(.25, .1, .25, 1),
-              box-shadow 0.50s cubic-bezier(.25, .1, .25, 1);
+  transition: height 0.16s cubic-bezier(.4, 0, .2, 1),
+              width 0.16s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.16s cubic-bezier(.4, 0, .2, 1),
+              transform 0.55s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.6s cubic-bezier(.4, 0, .2, 1),
+              box-shadow 0.55s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
