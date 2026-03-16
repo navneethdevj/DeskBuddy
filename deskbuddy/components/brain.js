@@ -1,3 +1,10 @@
+// REPO STUDY FINDINGS:
+// Tamagotchi: achievements via bar color thresholds + showNotification() → focus milestone whispers
+// Desktop Goose: time-based escalation (curQuitAlpha accumulates over held ESC) → progressive milestone msgs
+// EyeOnTask: blink counter + cv2.putText for sustained attention feedback → milestone pulse on timer
+// WebPet: showNotification() with CSS slide-up animation → used existing showWhisper() queue system
+// Web Shimeji: repo unavailable → concept of layered expression changes applied to eyebrow DOM structure
+
 /**
  * Creature Brain — attention-based behavior state machine with focus meter.
  * Cycles through states (observe, curious, idle, sleepy) on a timer and
@@ -12,8 +19,8 @@
  */
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
-  const STATE_MIN = 2000;
-  const STATE_MAX = 5000;
+  const STATE_MIN = 4000;
+  const STATE_MAX = 8000;
   const MAX_DRIFT = 40;
 
   // Face gaze — two layer system (face position + iris direction)
@@ -44,19 +51,20 @@ const Brain = (() => {
   // Curious trigger: sustained focused attention for this long → curious state
   const CURIOUS_ATTENTION_MS = 20000;   // 20s focused + high attention → curious
 
-  // Emotion timing thresholds (ms) — from VERIFY spec
-  const LOOKING_AWAY_SUSPICIOUS_MS = 15000;   // 15s → suspicious
-  const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 100000;  // 100s → grumpy
+  // Emotion timing thresholds (ms) — tuned for stable, deliberate transitions
+  const LOOKING_AWAY_SUSPICIOUS_MS =  8000;   //  8s → suspicious
+  const LOOKING_AWAY_POUTY_MS      = 20000;   // 20s → pouty
+  const LOOKING_AWAY_GRUMPY_MS     = 40000;   // 40s → grumpy
   const NOFACE_SCARED_MS           =  6000;   //  6s → scared
-  const NOFACE_SAD_MS              = 35000;   // 35s → sad
-  const NOFACE_CRYING_MS           = 50000;   // 50s → crying
+  const NOFACE_SAD_MS              = 20000;   // 20s → sad
+  const NOFACE_CRYING_MS           = 40000;   // 40s → crying
 
   // Tear overlay tuning
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
   const TEAR_RISE_RATE  = 0.40;   // % per second during crying
   const TEAR_DRAIN_RATE = 2.5;    // % per drain tick when stopping
 
+  // Labels for brain states (behavior mode)
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -64,6 +72,29 @@ const Brain = (() => {
     followCursor: 'Watching You',
     sleepy: 'Sleepy'
   };
+
+  // Labels for emotion states — shown in status bar for richer feedback
+  const EMOTION_LABELS = {
+    idle:        'Relaxed — just vibing',
+    curious:     'Curious — what are you doing? ✦',
+    focused:     'Focused — in the zone',
+    sleepy:      'Sleepy — getting drowsy 💤',
+    suspicious:  'Suspicious — where did you go? 👀',
+    happy:       'Happy — smiling back at you ♡',
+    scared:      'Scared — where are you?!',
+    sad:         'Sad — missing you…',
+    crying:      'Crying — please come back 💧',
+    pouty:       'Pouty — feeling ignored',
+    grumpy:      'Grumpy — really not happy 😤',
+    overjoyed:   'Overjoyed — you came back! ✨',
+    sulking:     'Sulking — still upset…',
+    embarrassed: 'Embarrassed — oh gosh',
+    forgiven:    'Forgiven — all good now ♡'
+  };
+
+  // Minimum time an emotion must hold before changing (prevents rapid flipping)
+  const EMOTION_HOLD_MS = 2500;
+  let _emotionSetAt = 0;
 
   window._lastEmotion    = null;
   window._emotionChanged = null;
@@ -97,6 +128,15 @@ const Brain = (() => {
   let _nofaceSecs = 0;
   let _timerInt   = null;
 
+  // Focus milestones — whisper + timer pulse at key focus durations.
+  // Inspired by Tamagotchi time-reward concept: achievements feel meaningful.
+  // fired:false resets each time the session resets (60s absence).
+  const _MILESTONES = [
+    { secs: 1500, msg: '25 min ˆωˆ  maybe a tiny stretch?',         fired: false },
+    { secs: 2700, msg: '45 min!! ˆωˆ  you deserve a breather ♡',    fired: false },
+    { secs: 3600, msg: 'one whole hour  ˆωˆ  please rest a little', fired: false },
+  ];
+
   // Whisper queue
   let _whisperQueue = [];
   let _whisperBusy  = false;
@@ -106,6 +146,9 @@ const Brain = (() => {
 
   // Neko-style lean state — body offset toward face
   let leanCurrentX = 0, leanCurrentY = 0;
+  // Delta-time for lean interpolation
+  let leanLastTime = 0;
+  const LEAN_HALF_LIFE_MS = 250; // ~250ms half-life for body lean convergence
 
   // Face dropout grace — hold last gaze when face detection drops.
   // 1500ms covers typical MediaPipe dropout bursts (1–3 frames at 15fps)
@@ -128,10 +171,13 @@ const Brain = (() => {
   function start() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click',     _onScreenClick);
+    document.addEventListener('mousemove', _onHoverCheck);
     Movement.init();
     enterState('idle');
     tick();
     _startFocusTimer();
+    _startIdleLife();
   }
 
   function stop() {
@@ -247,7 +293,6 @@ const Brain = (() => {
    * Implemented via MediaPipe blendshapes (face-api NOT installed).
    */
   function applyFocusEmotion() {
-    if (currentState === 'curious') return;
     // Don't override during overjoyed→sulking→forgiven sequence
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -255,9 +300,10 @@ const Brain = (() => {
 
     // No camera available — fall back to original focus meter logic
     if (!window.cameraAvailable || !p) {
-      if      (focusLevel > 70) Emotion.setState('focused');
-      else if (focusLevel < 30) Emotion.setState('sleepy');
-      else                      Emotion.setState('idle');
+      const fallbackEmotion = focusLevel > 70 ? 'focused'
+                            : focusLevel < 30 ? 'sleepy'
+                            :                   'idle';
+      _setEmotionWithHold(fallbackEmotion);
       return;
     }
 
@@ -269,21 +315,28 @@ const Brain = (() => {
         // face-api concept: react to user expressions
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
-        // Both surprise (instant) and sustained attention (20s) trigger curious —
-        // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
+        // Sustained attention (20s) triggers curious — "you've been watching me"
         if (p.userSmiling)              emotion = 'happy';
         else if (p.userSurprised)       emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
-              && p.attentionScore > 50) emotion = 'curious';
+              && p.attentionScore > 65) emotion = 'curious';
         else                            emotion = 'focused';
         break;
 
-      case 'LookingAway':
-        if      (tms >= LOOKING_AWAY_GRUMPY_MS)     emotion = 'grumpy';
-        else if (tms >= LOOKING_AWAY_POUTY_MS)       emotion = 'pouty';
-        else if (tms >= LOOKING_AWAY_SUSPICIOUS_MS)  emotion = 'suspicious';
-        else                                         emotion = 'idle';
+      case 'LookingAway': {
+        // AI tolerance: users who frequently look away get a gentler DeskBuddy
+        const tolerance = (typeof AICompanion !== 'undefined')
+          ? AICompanion.getLookAwayTolerance()
+          : 1.0;
+        const grumpyMs  = LOOKING_AWAY_GRUMPY_MS  / tolerance;
+        const poutyMs   = LOOKING_AWAY_POUTY_MS   / tolerance;
+        const suspMs    = LOOKING_AWAY_SUSPICIOUS_MS / tolerance;
+        if      (tms >= grumpyMs) emotion = 'grumpy';
+        else if (tms >= poutyMs)  emotion = 'pouty';
+        else if (tms >= suspMs)   emotion = 'suspicious';
+        else                      emotion = 'idle';
         break;
+      }
 
       case 'Sleepy':
         emotion = 'sleepy';
@@ -294,35 +347,104 @@ const Brain = (() => {
         else if (tms >= NOFACE_SAD_MS)    emotion = 'sad';
         else if (tms >= NOFACE_SCARED_MS) emotion = 'scared';
         else                              emotion = 'idle';
+        // Record a break when user first leaves (5s NoFace threshold)
+        if (tms >= 5000 && tms < 6000 && typeof AICompanion !== 'undefined') {
+          AICompanion.recordBreak();
+        }
         break;
 
       default:
         emotion = 'idle';
     }
 
+    _setEmotionWithHold(emotion);
+  }
+
+  /**
+   * Apply emotion only if hold time has elapsed (prevents rapid flipping).
+   * Escalating emotions (e.g. idle→scared→sad→crying) always go through.
+   */
+  function _setEmotionWithHold(emotion) {
+    const p = window.perception;
+    const now = Date.now();
+
+    // Always allow escalation within the same perception state
+    // e.g. scared→sad→crying, suspicious→pouty→grumpy
+    const isEscalation = _isEmotionEscalation(window._lastEmotion, emotion);
+
+    // Enforce minimum hold time to prevent rapid flipping between unrelated emotions
+    if (!isEscalation && emotion !== window._lastEmotion && window._lastEmotion != null) {
+      if (now - _emotionSetAt < EMOTION_HOLD_MS) return;
+    }
+
     // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
       // Return-from-absence: face reappeared while still in distress emotion
       // applyFocusEmotion fires before enterState, so detect return here too
-      const wasAbsent = window._lastEmotion === 'scared'
-                     || window._lastEmotion === 'sad'
-                     || window._lastEmotion === 'crying';
-      if (wasAbsent && p.facePresent) {
-        _triggerOverjoyed();
-        return;
+      if (p) {
+        const wasAbsent = window._lastEmotion === 'scared'
+                       || window._lastEmotion === 'sad'
+                       || window._lastEmotion === 'crying';
+        if (wasAbsent && p.facePresent) {
+          _triggerOverjoyed();
+          return;
+        }
       }
 
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+      _emotionSetAt           = now;
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
         _startTears();
       } else if (tearInterval || tearHeight > 0) {
         if (!tearDraining) _stopTears();
       }
+
+      // Update status bar to reflect the new emotion
+      _updateStatusBar();
     }
 
     Emotion.setState(emotion);
+  }
+
+  /**
+   * Check if switching from one emotion to another is a natural escalation
+   * within the same perception state (e.g. scared→sad→crying).
+   */
+  function _isEmotionEscalation(from, to) {
+    // NoFace escalation: idle→scared→sad→crying
+    const noFaceChain = ['idle', 'scared', 'sad', 'crying'];
+    const fromIdx = noFaceChain.indexOf(from);
+    const toIdx   = noFaceChain.indexOf(to);
+    if (fromIdx >= 0 && toIdx > fromIdx) return true;
+
+    // LookingAway escalation: idle→suspicious→pouty→grumpy
+    const lookChain = ['idle', 'suspicious', 'pouty', 'grumpy'];
+    const fromLook  = lookChain.indexOf(from);
+    const toLook    = lookChain.indexOf(to);
+    if (fromLook >= 0 && toLook > fromLook) return true;
+
+    return false;
+  }
+
+  /**
+   * Update the status bar to show the current emotion with rich context.
+   */
+  function _updateStatusBar() {
+    const currentEmotion = window._lastEmotion || Emotion.getState();
+    const label = EMOTION_LABELS[currentEmotion] || currentEmotion || 'Relaxed — just vibing';
+    const p = window.perception;
+
+    if (window.cameraAvailable && p && p.facePresent) {
+      const attn = p.attentionScore || 0;
+      const attnDesc = attn > 80 ? 'Very focused' : attn > 50 ? 'Attentive' : attn > 25 ? 'Distracted' : 'Zoning out';
+      Status.setText(label + ' · ' + attnDesc + ' (' + attn + '%)');
+    } else if (window.cameraAvailable && p && !p.facePresent) {
+      Status.setText(label + ' · Looking for you…');
+    } else {
+      Status.setText(label);
+    }
   }
 
   // ===== Gaze Logic (idle / sleepy states) =====
@@ -386,6 +508,12 @@ const Brain = (() => {
     const p = window.perception;
     if (!p?.facePresent) return;
 
+    // Delta-time for frame-rate independent lean
+    const now = performance.now();
+    const dt = leanLastTime ? Math.min(now - leanLastTime, 100) : 16.67;
+    leanLastTime = now;
+    const leanFactor = 1 - Math.pow(2, -dt / LEAN_HALF_LIFE_MS);
+
     const center   = Companion.getCenter();
     const facePosX = (1 - p.faceX) * window.innerWidth;
     const facePosY = p.faceY * window.innerHeight;
@@ -393,8 +521,8 @@ const Brain = (() => {
     const targetX = (facePosX - center.x) * LEAN_STRENGTH;
     const targetY = (facePosY - center.y) * LEAN_STRENGTH;
 
-    leanCurrentX += (targetX - leanCurrentX) * LEAN_LERP;
-    leanCurrentY += (targetY - leanCurrentY) * LEAN_LERP;
+    leanCurrentX += (targetX - leanCurrentX) * leanFactor;
+    leanCurrentY += (targetY - leanCurrentY) * leanFactor;
 
     Companion.setPosition(
       Math.max(-MAX_DRIFT, Math.min(MAX_DRIFT, leanCurrentX)),
@@ -448,14 +576,8 @@ const Brain = (() => {
 
     currentState = state;
 
-    // Build status text including perception info when camera is active
-    var label = STATE_LABELS[state] || state;
-    var p = window.perception;
-    if (window.cameraAvailable && p && p.facePresent) {
-      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
-    } else {
-      Status.setText('Status: ' + label);
-    }
+    // Update status bar — show the actual emotion, not just the brain state
+    _updateStatusBar();
 
     if (stateTimer) {
       clearTimeout(stateTimer);
@@ -464,9 +586,13 @@ const Brain = (() => {
 
     Companion.setRotation(0);
 
+    // When camera perception is driving emotions, don't override them from here.
+    // applyFocusEmotion() runs every frame and handles the correct emotion.
+    const cameraActive = window.cameraAvailable && window.perception;
+
     switch (state) {
       case 'observe':
-        Emotion.setState('focused');
+        if (!cameraActive) Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
       case 'curious':
@@ -475,17 +601,18 @@ const Brain = (() => {
         triggerLookSequence();
         break;
       case 'idle':
-        Emotion.setState('idle');
+        if (!cameraActive) Emotion.setState('idle');
         if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
-        scheduleHappyFlash();
+        // Only schedule random happy flash when no camera
+        if (!cameraActive) scheduleHappyFlash();
         break;
       case 'followCursor':
-        Emotion.setState('focused');
+        if (!cameraActive) Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
       case 'sleepy':
-        Emotion.setState('sleepy');
+        if (!cameraActive) Emotion.setState('sleepy');
         if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
         break;
@@ -515,9 +642,12 @@ const Brain = (() => {
       if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
       if (p.userState === 'Focused'
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
-       && p.attentionScore > 50)     { enterState('curious'); return; }
+       && p.attentionScore > 65)     { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }
+      // Camera active but no specific match — stay in observe (let applyFocusEmotion drive)
+      enterState('observe');
+      return;
     }
     // Fallback: random (original behavior, used when camera unavailable)
     var next = STATES[Math.floor(Math.random() * STATES.length)];
@@ -544,15 +674,26 @@ const Brain = (() => {
     }, 600 + Math.random() * 400);
   }
 
-  /** Briefly flash a happy expression during idle. */
+  /** Briefly flash a happy expression during idle (no-camera only). */
   function scheduleHappyFlash() {
-    var delay = 4000 + Math.random() * 6000;
+    // Longer interval to prevent random-feeling emotion changes
+    var delay = 10000 + Math.random() * 15000;
     setTimeout(function () {
       if (currentState !== 'idle') return;
       Emotion.setState('happy');
+      window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
+      window._lastEmotion    = 'happy';
+      _emotionSetAt           = Date.now();
+      _updateStatusBar();
       setTimeout(function () {
-        if (currentState === 'idle') Emotion.setState('idle');
-      }, 400);
+        if (currentState === 'idle') {
+          Emotion.setState('idle');
+          window._emotionChanged = { from: 'happy', to: 'idle' };
+          window._lastEmotion    = 'idle';
+          _emotionSetAt           = Date.now();
+          _updateStatusBar();
+        }
+      }, 2000);
     }, delay);
   }
 
@@ -571,7 +712,9 @@ const Brain = (() => {
   }
 
   // ── TEAR OVERLAY ──────────────────────────────────────────────────────────
-  // Water rises during crying, drains fast when user returns
+  // Water rises during crying, drains fast when user returns.
+  // The CSS transition on #tear-fill (1s cubic-bezier) handles smooth interpolation
+  // between setInterval steps, so visual height changes are continuous.
   function _startTears() {
     const overlay = document.getElementById('tear-overlay');
     const fill    = document.getElementById('tear-fill');
@@ -580,10 +723,10 @@ const Brain = (() => {
     if (tearInterval) return;
     tearInterval = setInterval(() => {
       if (tearHeight < MAX_TEAR_HEIGHT) {
-        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE);
+        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE * 2);
         fill.style.height = tearHeight + '%';
       }
-    }, 1000);
+    }, 2000);
   }
 
   function _stopTears() {
@@ -593,14 +736,14 @@ const Brain = (() => {
     if (!fill || !overlay) return;
     tearDraining = true;
     const drain = setInterval(() => {
-      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE);
+      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE * 2);
       fill.style.height = tearHeight + '%';
       if (tearHeight <= 0) {
         clearInterval(drain);
         overlay.style.display = 'none';
         tearDraining = false;
       }
-    }, 80);
+    }, 200);
   }
 
   // ── OVERJOYED → SULKING → FORGIVEN sequence ───────────────────────────────
@@ -619,6 +762,8 @@ const Brain = (() => {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
+    _emotionSetAt           = Date.now();
+    _updateStatusBar();
 
     // After 5s of joy → lingering upset (sulking)
     overjoyedTimer = setTimeout(() => {
@@ -627,6 +772,8 @@ const Brain = (() => {
         Emotion.setState('sulking');
         window._emotionChanged = { from: 'overjoyed', to: 'sulking' };
         window._lastEmotion    = 'sulking';
+        _emotionSetAt           = Date.now();
+        _updateStatusBar();
         _startSulkResolution();
       } else {
         enterState('idle');
@@ -648,6 +795,8 @@ const Brain = (() => {
           clearInterval(sulkCheckInterval); sulkCheckInterval = null;
           window._emotionChanged = { from: 'sulking', to: 'forgiven' };
           window._lastEmotion    = null;
+          _emotionSetAt           = Date.now();
+          _updateStatusBar();
           enterState('observe');
         }
       } else {
@@ -664,13 +813,43 @@ const Brain = (() => {
 
       if (state === 'Focused') {
         _focusSecs++;
+        if (typeof AICompanion !== 'undefined') AICompanion.updateFocusMinutes(Math.floor(_focusSecs / 60));
         _nofaceSecs = 0;
       } else if (state === 'NoFace') {
         _nofaceSecs++;
-        if (_nofaceSecs >= 60) { _focusSecs = 0; _nofaceSecs = 0; }
+        if (_nofaceSecs >= 60) {
+          _focusSecs  = 0;
+          _nofaceSecs = 0;
+          // Reset milestones so they can fire again next session
+          _MILESTONES.forEach(m => { m.fired = false; });
+        }
       } else {
         _nofaceSecs = 0;
         // Timer pauses but does not reset for LookingAway/Sleepy
+      }
+
+      // Focus milestone check — fires whisper + brief timer glow
+      if (state === 'Focused') {
+        _MILESTONES.forEach(m => {
+          if (!m.fired && _focusSecs >= m.secs) {
+            m.fired = true;
+            // Whisper message
+            showWhisper(m.msg, 6000);
+            // Brief brightness pulse on the timer element
+            const tel = document.getElementById('focus-timer');
+            if (tel) {
+              tel.classList.add('milestone');
+              setTimeout(() => tel.classList.remove('milestone'), 3000);
+            }
+            // Emit sound signal for audio.js
+            window._emotionChanged = { from: window._lastEmotion, to: '__milestone' };
+            setTimeout(() => {
+              if (window._emotionChanged?.to === '__milestone') {
+                window._emotionChanged = null;
+              }
+            }, 300);
+          }
+        });
       }
 
       // Update focus timer display
@@ -708,6 +887,170 @@ const Brain = (() => {
       el.style.opacity = '0';
       setTimeout(_nextWhisper, 900);
     }, durationMs);
+  }
+
+  // ── SPONTANEOUS IDLE LIFE ─────────────────────────────────────────────────
+  // REPO STUDY: Timing from Neko (https://github.com/mirandadam/neko): idle behaviors fire
+  // every 12-35s with state guard — mostly quiet makes rare moments feel alive.
+  // Tamagotchi (https://github.com/tugcecerit/Tamagotchi-Game) weighted pool: variety without feeling scripted.
+
+  function _startIdleLife() {
+    setTimeout(_spontaneousBehavior, 12000 + Math.random() * 10000);
+  }
+
+  function _spontaneousBehavior() {
+    const emo   = Emotion.getState();
+    const block = ['scared','crying','overjoyed','sulking','grumpy','sad'];
+    if (currentState !== 'idle' && currentState !== 'observe') {
+      setTimeout(_spontaneousBehavior, 6000 + Math.random() * 5000);
+      return;
+    }
+    if (block.includes(emo)) {
+      setTimeout(_spontaneousBehavior, 8000 + Math.random() * 7000);
+      return;
+    }
+
+    const pool = [
+      { w: 40, fn: () => triggerIdleLook() },
+      { w: 25, fn: _doSlowBlink },
+      { w: 15, fn: _doWink },
+      { w: 12, fn: _doStretch },
+      { w: 8,  fn: _doSpontaneousCoo },
+    ];
+    const total = pool.reduce((s, b) => s + b.w, 0);
+    let r = Math.random() * total;
+    for (const b of pool) { r -= b.w; if (r <= 0) { b.fn(); break; } }
+
+    setTimeout(_spontaneousBehavior, 12000 + Math.random() * 23000);
+  }
+
+  function _doSlowBlink() {
+    const e = Companion.getElement();
+    if (!e) return;
+    e.classList.add('blink');
+    setTimeout(() => {
+      if (e) e.classList.remove('blink');
+      if (!window._emotionChanged) {
+        window._emotionChanged = { from: null, to: '__slowblink' };
+        setTimeout(() => {
+          if (window._emotionChanged?.to === '__slowblink') window._emotionChanged = null;
+        }, 250);
+      }
+    }, 400 + Math.random() * 160);
+  }
+
+  function _doWink() {
+    const e = Companion.getElement();
+    if (!e) return;
+    const sel   = Math.random() < 0.5 ? '.eye-left' : '.eye-right';
+    const eyeEl = e.querySelector(sel);
+    if (!eyeEl) return;
+    eyeEl.style.height     = '2vmin';
+    eyeEl.style.transition = 'height 0.08s ease';
+    setTimeout(() => {
+      eyeEl.style.height     = '';
+      eyeEl.style.transition = '';
+    }, 180 + Math.random() * 80);
+  }
+
+  function _doStretch() {
+    const prev = Emotion.getState();
+    Emotion.setState('curious');
+    setTimeout(() => {
+      if (Emotion.getState() === 'curious') Emotion.setState(prev || 'idle');
+    }, 550 + Math.random() * 350);
+  }
+
+  function _doSpontaneousCoo() {
+    if (!window.perception?.facePresent) return;
+    window._emotionChanged = { from: null, to: '__coo' };
+    setTimeout(() => {
+      if (window._emotionChanged?.to === '__coo') window._emotionChanged = null;
+    }, 250);
+  }
+
+  // ── USER INTERACTIONS ─────────────────────────────────────────────────────
+  // REPO STUDY: PetPet (https://github.com/Nyannnnn/PetPet): immediate audio+visual on click.
+  // Desktop Goose (https://github.com/samperson/desktop-goose): proximity,
+  // escalation — repeated rapid clicks escalate to startled reaction.
+  // WebPet (https://github.com/RobThePCGuy/WebPet): hover-based curiosity.
+
+  let _hoverAccumMs = 0;
+  let _lastHoverT   = 0;
+  let _hoverReacted = false;
+  let _lastClickT   = 0;
+  let _rapidClicks  = 0;
+
+  function _onScreenClick(e) {
+    const now  = Date.now();
+    const c    = Companion.getCenter();
+    const dist = Math.hypot(e.clientX - c.x, e.clientY - c.y);
+
+    _rapidClicks = (now - _lastClickT < 450) ? _rapidClicks + 1 : 1;
+    _lastClickT  = now;
+
+    if (dist < 180) {
+      _onPet();
+    } else if (_rapidClicks >= 4) {
+      _onRapidClick();
+    }
+  }
+
+  function _onPet() {
+    const emo = Emotion.getState();
+    if (emo === 'sulking' || emo === 'grumpy') {
+      window._emotionChanged = { from: emo, to: '__pet_grumpy' };
+      setTimeout(() => {
+        if (window._emotionChanged?.to === '__pet_grumpy') window._emotionChanged = null;
+      }, 300);
+    } else {
+      const prev = emo;
+      Emotion.setState('happy');
+      window._emotionChanged = { from: prev, to: '__pet_happy' };
+      if (typeof Particles !== 'undefined') Particles.spawn('happy');
+      setTimeout(() => {
+        if (Emotion.getState() === 'happy') Emotion.setState(prev || 'idle');
+        if (window._emotionChanged?.to === '__pet_happy') window._emotionChanged = null;
+      }, 800);
+    }
+  }
+
+  function _onRapidClick() {
+    if (Emotion.getState() === 'scared') return;
+    const prev = Emotion.getState();
+    Emotion.setState('scared');
+    window._emotionChanged = { from: prev, to: 'scared' };
+    setTimeout(() => {
+      Emotion.setState('suspicious');
+      window._emotionChanged = { from: 'scared', to: 'suspicious' };
+    }, 1100);
+    _rapidClicks = 0;
+  }
+
+  function _onHoverCheck(e) {
+    const now  = Date.now();
+    const c    = Companion.getCenter();
+    const dist = Math.hypot(e.clientX - c.x, e.clientY - c.y);
+
+    if (dist < 150) {
+      _hoverAccumMs += now - (_lastHoverT || now);
+      _lastHoverT    = now;
+      if (_hoverAccumMs > 2200 && !_hoverReacted) {
+        _hoverReacted = true;
+        if (currentState === 'idle' || currentState === 'observe') {
+          const prev = Emotion.getState();
+          Emotion.setState('curious');
+          window._emotionChanged = { from: prev, to: '__hover' };
+          setTimeout(() => {
+            if (window._emotionChanged?.to === '__hover') window._emotionChanged = null;
+          }, 300);
+        }
+      }
+    } else {
+      _hoverAccumMs = 0;
+      _hoverReacted = false;
+      _lastHoverT   = 0;
+    }
   }
 
   return { start, stop, getState, getFocusLevel, showWhisper };

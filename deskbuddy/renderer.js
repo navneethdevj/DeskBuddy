@@ -21,6 +21,7 @@
 
   // Start the creature brain (owns the main loop)
   Brain.start();
+  AICompanion.init();
   Audio.init();
   Camera.init()
     .then(() => Perception.init())
