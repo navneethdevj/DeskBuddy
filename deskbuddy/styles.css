@@ -230,7 +230,7 @@ html, body {
 }
 
 /* IDLE — relaxed, slightly arched, visible resting brows */
-.companion:not(.curious):not(.focused):not(.sleepy):not(.happy):not(.suspicious):not(.scared):not(.sad):not(.crying):not(.pouty):not(.grumpy):not(.overjoyed):not(.sulking):not(.embarrassed):not(.blink) .eyebrow {
+.companion.idle .eyebrow {
   transform: translateY(-22vmin);
   opacity: 0.55;
 }
