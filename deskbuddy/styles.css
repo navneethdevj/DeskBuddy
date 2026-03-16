@@ -1,5 +1,5 @@
 /* REPO STUDY FINDINGS:
-   WebPet: eyes are text-based (#eye-left/#eye-right) with CSS transitions, showNotification() slide-up → overlay div eyelids
+   WebPet: eyes are text-based (#eye-left/#eye-right) with CSS transitions, showNotification() slide-up → eyebrow divs above eyes
    Web Shimeji: repo unavailable → concept of layered expression DOM elements (lid over eye) applied
    Tamagotchi: bar color thresholds (green>orange>red) for milestone feedback → milestone pulse class
    EyeOnTask: cv2.putText overlays for attention state → timer brightness pulse
@@ -164,32 +164,37 @@ html, body {
   left: 0;
 }
 
+/* Eye wrapper — holds eyebrow + eye as a unit so eyebrow stays above */
+.eye-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
 /* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
    to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
-   focal point so the whole color field follows the gaze direction. */
+   focal point so the whole color field follows the gaze direction.
+   Rounder, slightly wider shape for max cuteness. */
 .eye {
-  width: 28vmin;
-  height: 33vmin;
+  width: 30vmin;
+  height: 30vmin;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,
-    #8190d9  6%,
-    #8795db 12%,
-    #8d9adc 18%,
-    #949fdd 24%,
-    #9aa4de 30%,
-    #a0aae0 36%,
-    #a6afe1 42%,
-    #acb4e2 48%,
-    #b2b9e3 54%,
-    #b8bee5 60%,
-    #bec3e6 66%,
-    #c4c8e7 72%,
-    #cbcde8 78%,
-    #d1d2ea 84%,
-    #d7d8eb 90%,
-    #ddddec 95%,
-    #e3e2ee 100%
+    #8895e0  0%,
+    #8d9ae2  8%,
+    #939fe4 16%,
+    #99a5e6 24%,
+    #a0aae8 32%,
+    #a6b0ea 40%,
+    #adb5ec 48%,
+    #b3bbee 56%,
+    #bac1f0 64%,
+    #c1c7f2 72%,
+    #c8cdf4 80%,
+    #d0d4f6 88%,
+    #d8dbf8 95%,
+    #e0e0fa 100%
   );
   border-radius: 50%;
   position: relative;
@@ -261,28 +266,26 @@ html, body {
               0 0 24vmin rgba(160, 140, 245, 0.05);
 }
 
-/* ===== Pupil (moves inside eye to track cursor) ===== */
+/* ===== Pupil (moves inside eye to track cursor — fades into the eye) ===== */
 .pupil {
   position: absolute;
-  width: 12vmin;
-  height: 12vmin;
+  width: 14vmin;
+  height: 14vmin;
   background: radial-gradient(
     circle,
-    #5a9ac8  0%,
-    #5686b8 10%,
-    #4f6faa 22%,
-    #51629e 34%,
-    #5c6ba6 46%,
-    #6b79b4 58%,
-    #7584c4 68%,
-    #7b8bd8 80%,
-    rgba(123, 139, 216, 0) 100%
+    rgba(75, 110, 175, 0.65)  0%,
+    rgba(80, 115, 180, 0.55)  12%,
+    rgba(90, 125, 190, 0.42)  26%,
+    rgba(100, 130, 195, 0.30) 40%,
+    rgba(110, 140, 205, 0.18) 55%,
+    rgba(120, 148, 212, 0.08) 72%,
+    rgba(130, 155, 218, 0)    100%
   );
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -6vmin;
-  margin-left: -6vmin;
+  margin-top: -7vmin;
+  margin-left: -7vmin;
   pointer-events: none;
   will-change: transform;
 }
@@ -756,70 +759,135 @@ html, body {
 }
 
 /* ==========================================================================
-   EYELIDS — DOM overlay divs for genuine lid movement.
-   Background #111111 matches app bg so lids look physical.
-   Transition 0.30s cubic feels organic — fast enough to react,
-   slow enough to feel weighted.
-   Concept from WebPet/Web Shimeji: separate lid elements give far more
-   expression range than border-radius alone.
+   EYEBROWS — soft arched lines above each eye for expression.
+   Positioned above the eye via the .eye-wrap flex column layout.
+   Transitions on transform/border-radius give smooth emotion changes.
    ========================================================================== */
 
-.eyelid-top {
-  position: absolute;
-  top: 0; left: -1%; width: 102%;
-  height: 8%;
-  background: #111111;
-  border-radius: 0 0 50% 50%;
-  z-index: 5;
+.eyebrow {
+  width: 18vmin;
+  height: 2.5vmin;
+  background: radial-gradient(
+    ellipse at 50% 80%,
+    rgba(160, 170, 235, 0.55) 0%,
+    rgba(140, 150, 220, 0.35) 40%,
+    rgba(130, 140, 215, 0.12) 75%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 40% 40%;
+  margin-bottom: 1.5vmin;
   pointer-events: none;
-  transition: height 0.30s cubic-bezier(.4, 0, .2, 1);
+  transition: transform 0.35s cubic-bezier(.4, 0, .2, 1),
+              width 0.35s cubic-bezier(.4, 0, .2, 1),
+              height 0.35s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.35s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.35s ease,
+              margin-bottom 0.35s ease;
 }
 
-.eyelid-bottom {
-  position: absolute;
-  bottom: 0; left: -1%; width: 102%;
-  height: 0%;
-  background: #111111;
-  border-radius: 50% 50% 0 0;
-  z-index: 5;
-  pointer-events: none;
-  transition: height 0.30s cubic-bezier(.4, 0, .2, 1);
+/* Per-emotion eyebrow positions */
+
+/* Curious — raised high, wide and arched = wonder */
+.companion.curious .eyebrow {
+  transform: translateY(-2vmin) scaleX(1.1);
+  margin-bottom: 3vmin;
 }
 
-/* Per-emotion lid heights */
-.companion.focused   .eyelid-top              { height: 18%; }
+/* Focused — slightly lowered, narrower = concentration */
+.companion.focused .eyebrow {
+  transform: translateY(1vmin);
+  width: 16vmin;
+  margin-bottom: 0.5vmin;
+}
 
-.companion.sleepy    .eyelid-top              { height: 52%; }
-.companion.sleepy    .eyelid-bottom           { height: 8%;  }
+/* Sleepy — droopy, relaxed, lower */
+.companion.sleepy .eyebrow {
+  transform: translateY(2vmin) rotate(-2deg);
+  opacity: 0.4;
+  margin-bottom: 0;
+}
 
-.companion.sad       .eyelid-top              { height: 36%; }
+/* Suspicious — inner-raised asymmetric (one skeptical, one lowered) */
+.companion.suspicious .eye-wrap-left .eyebrow {
+  transform: translateY(1vmin) rotate(8deg);
+  width: 14vmin;
+}
+.companion.suspicious .eye-wrap-right .eyebrow {
+  transform: translateY(-1vmin) rotate(-4deg);
+  width: 16vmin;
+}
 
-.companion.crying    .eyelid-top              { height: 44%; }
-.companion.crying    .eyelid-bottom           { height: 6%;  }
+/* Happy — raised and gently arched = joyful */
+.companion.happy .eyebrow {
+  transform: translateY(-1.5vmin) scaleX(1.05);
+  margin-bottom: 2.5vmin;
+}
 
-/* Suspicious: asymmetric — one lid lower than the other */
-.companion.suspicious .eyelid-top             { height: 24%; }
-.companion.suspicious .eye-left  .eyelid-top  { height: 32%; }
-.companion.suspicious .eye-right .eyelid-top  { height: 16%; }
+/* Scared — raised very high, wider = alarmed */
+.companion.scared .eyebrow {
+  transform: translateY(-3vmin) scaleX(1.15);
+  margin-bottom: 4vmin;
+}
 
-.companion.grumpy    .eyelid-top              { height: 38%; }
+/* Sad — inner corners raised = worried/sad tilt */
+.companion.sad .eye-wrap-left .eyebrow {
+  transform: translateY(0.5vmin) rotate(-6deg);
+}
+.companion.sad .eye-wrap-right .eyebrow {
+  transform: translateY(0.5vmin) rotate(6deg);
+}
 
-.companion.pouty     .eyelid-top              { height: 28%; }
+/* Crying — more extreme sad tilt + lower */
+.companion.crying .eye-wrap-left .eyebrow {
+  transform: translateY(1vmin) rotate(-8deg);
+  opacity: 0.6;
+}
+.companion.crying .eye-wrap-right .eyebrow {
+  transform: translateY(1vmin) rotate(8deg);
+  opacity: 0.6;
+}
 
-.companion.sulking   .eyelid-top              { height: 30%; }
-.companion.sulking   .eyelid-bottom           { height: 10%; }
+/* Pouty — pushed together and down, slight furrow */
+.companion.pouty .eyebrow {
+  transform: translateY(1.5vmin) rotate(3deg);
+  width: 15vmin;
+  margin-bottom: 0.2vmin;
+}
+.companion.pouty .eye-wrap-right .eyebrow {
+  transform: translateY(1.5vmin) rotate(-3deg);
+}
 
-/* Wide open states */
-.companion.curious   .eyelid-top              { height: 2%;  }
-.companion.scared    .eyelid-top              { height: 0%;  }
-.companion.overjoyed .eyelid-top              { height: 0%;  }
+/* Grumpy — angled down inward = angry frown */
+.companion.grumpy .eye-wrap-left .eyebrow {
+  transform: translateY(2vmin) rotate(10deg);
+  width: 14vmin;
+  margin-bottom: 0;
+}
+.companion.grumpy .eye-wrap-right .eyebrow {
+  transform: translateY(2vmin) rotate(-10deg);
+  width: 14vmin;
+  margin-bottom: 0;
+}
 
-/* Happy squint — bottom rises slightly */
-.companion.happy     .eyelid-bottom           { height: 8%;  }
+/* Overjoyed — highest raise = maximum happiness */
+.companion.overjoyed .eyebrow {
+  transform: translateY(-3.5vmin) scaleX(1.2);
+  margin-bottom: 4.5vmin;
+}
 
-/* Blink fully closes both lids — fast override */
-.companion.blink .eyelid-top    { height: 50% !important; transition: height 0.07s ease; }
-.companion.blink .eyelid-bottom { height: 50% !important; transition: height 0.07s ease; }
+/* Sulking — heavy lower, tight furrowed */
+.companion.sulking .eye-wrap-left .eyebrow {
+  transform: translateY(2vmin) rotate(6deg);
+  width: 13vmin;
+  margin-bottom: 0;
+}
+.companion.sulking .eye-wrap-right .eyebrow {
+  transform: translateY(2vmin) rotate(-6deg);
+  width: 13vmin;
+  margin-bottom: 0;
+}
+
+/* Blink — eyebrows stay, only eyes squish */
 
 /* ==========================================================================
    TEARDROPS — individual drops injected by brain.js during sad/crying

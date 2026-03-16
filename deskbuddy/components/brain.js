@@ -3,7 +3,7 @@
 // Desktop Goose: time-based escalation (curQuitAlpha accumulates over held ESC) → progressive milestone msgs
 // EyeOnTask: blink counter + cv2.putText for sustained attention feedback → milestone pulse on timer
 // WebPet: showNotification() with CSS slide-up animation → used existing showWhisper() queue system
-// Web Shimeji: repo unavailable → concept of layered expression changes applied to eyelid DOM structure
+// Web Shimeji: repo unavailable → concept of layered expression changes applied to eyebrow DOM structure
 
 /**
  * Creature Brain — attention-based behavior state machine with focus meter.

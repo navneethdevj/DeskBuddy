@@ -1,6 +1,6 @@
 // REPO STUDY FINDINGS:
-// WebPet: eyes are text-based emoji chars (#eye-left/#eye-right), expression via innerHTML swap → separate DOM eyelid overlays give far more expression range
-// Web Shimeji: repo unavailable (404) → concept of CSS-layered expression elements (lid on top of eye) applied via z-index 5 eyelid divs
+// WebPet: eyes are text-based emoji chars (#eye-left/#eye-right), expression via innerHTML swap → separate DOM eyebrow elements for richer expression
+// Web Shimeji: repo unavailable (404) → concept of CSS-layered expression elements applied via eyebrow divs above eyes
 // Tamagotchi: stat bars change color at thresholds + showNotification() for alerts → inspired milestone pulse + whisper celebration
 // EyeOnTask: blink detection via EAR, cv2.putText for visual state feedback → attention bar already exists, milestone adds text reward
 // Desktop Goose: time-based escalation (curQuitAlpha accumulates over held ESC) → inspired progressive milestone messages
@@ -59,15 +59,13 @@ const Companion = (() => {
     el.innerHTML = `
       <div class="companion-inner">
         <div class="eyes">
-          <div class="eye eye-left">
-            <div class="eyelid-top"></div>
-            <div class="eyelid-bottom"></div>
-            <div class="pupil"></div>
+          <div class="eye-wrap eye-wrap-left">
+            <div class="eyebrow"></div>
+            <div class="eye eye-left"><div class="pupil"></div></div>
           </div>
-          <div class="eye eye-right">
-            <div class="eyelid-top"></div>
-            <div class="eyelid-bottom"></div>
-            <div class="pupil"></div>
+          <div class="eye-wrap eye-wrap-right">
+            <div class="eyebrow"></div>
+            <div class="eye eye-right"><div class="pupil"></div></div>
           </div>
         </div>
       </div>
