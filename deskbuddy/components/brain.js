@@ -19,8 +19,8 @@
  */
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
-  const STATE_MIN = 2000;
-  const STATE_MAX = 5000;
+  const STATE_MIN = 4000;
+  const STATE_MAX = 8000;
   const MAX_DRIFT = 40;
 
   // Face gaze — two layer system (face position + iris direction)
@@ -64,6 +64,7 @@ const Brain = (() => {
   const TEAR_RISE_RATE  = 0.40;   // % per second during crying
   const TEAR_DRAIN_RATE = 2.5;    // % per drain tick when stopping
 
+  // Labels for brain states (behavior mode)
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -71,6 +72,29 @@ const Brain = (() => {
     followCursor: 'Watching You',
     sleepy: 'Sleepy'
   };
+
+  // Labels for emotion states — shown in status bar for richer feedback
+  const EMOTION_LABELS = {
+    idle:        'Relaxed',
+    curious:     'Curious ✦',
+    focused:     'Focused',
+    sleepy:      'Sleepy 💤',
+    suspicious:  'Suspicious 👀',
+    happy:       'Happy ♡',
+    scared:      'Scared!',
+    sad:         'Sad…',
+    crying:      'Crying 💧',
+    pouty:       'Pouty',
+    grumpy:      'Grumpy 😤',
+    overjoyed:   'Overjoyed! ✨',
+    sulking:     'Sulking…',
+    embarrassed: 'Embarrassed',
+    forgiven:    'Forgiven ♡'
+  };
+
+  // Minimum time an emotion must hold before changing (prevents rapid flipping)
+  const EMOTION_HOLD_MS = 1500;
+  let _emotionSetAt = 0;
 
   window._lastEmotion    = null;
   window._emotionChanged = null;
@@ -273,9 +297,10 @@ const Brain = (() => {
 
     // No camera available — fall back to original focus meter logic
     if (!window.cameraAvailable || !p) {
-      if      (focusLevel > 70) Emotion.setState('focused');
-      else if (focusLevel < 30) Emotion.setState('sleepy');
-      else                      Emotion.setState('idle');
+      const fallbackEmotion = focusLevel > 70 ? 'focused'
+                            : focusLevel < 30 ? 'sleepy'
+                            :                   'idle';
+      _setEmotionWithHold(fallbackEmotion);
       return;
     }
 
@@ -329,29 +354,92 @@ const Brain = (() => {
         emotion = 'idle';
     }
 
+    _setEmotionWithHold(emotion);
+  }
+
+  /**
+   * Apply emotion only if hold time has elapsed (prevents rapid flipping).
+   * Escalating emotions (e.g. idle→scared→sad→crying) always go through.
+   */
+  function _setEmotionWithHold(emotion) {
+    const p = window.perception;
+    const now = Date.now();
+
+    // Always allow escalation within the same perception state
+    // e.g. scared→sad→crying, suspicious→pouty→grumpy
+    const isEscalation = _isEmotionEscalation(window._lastEmotion, emotion);
+
+    // Enforce minimum hold time to prevent rapid flipping between unrelated emotions
+    if (!isEscalation && emotion !== window._lastEmotion && window._lastEmotion != null) {
+      if (now - _emotionSetAt < EMOTION_HOLD_MS) return;
+    }
+
     // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
       // Return-from-absence: face reappeared while still in distress emotion
       // applyFocusEmotion fires before enterState, so detect return here too
-      const wasAbsent = window._lastEmotion === 'scared'
-                     || window._lastEmotion === 'sad'
-                     || window._lastEmotion === 'crying';
-      if (wasAbsent && p.facePresent) {
-        _triggerOverjoyed();
-        return;
+      if (p) {
+        const wasAbsent = window._lastEmotion === 'scared'
+                       || window._lastEmotion === 'sad'
+                       || window._lastEmotion === 'crying';
+        if (wasAbsent && p.facePresent) {
+          _triggerOverjoyed();
+          return;
+        }
       }
 
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+      _emotionSetAt           = now;
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
         _startTears();
       } else if (tearInterval || tearHeight > 0) {
         if (!tearDraining) _stopTears();
       }
+
+      // Update status bar to reflect the new emotion
+      _updateStatusBar();
     }
 
     Emotion.setState(emotion);
+  }
+
+  /**
+   * Check if switching from one emotion to another is a natural escalation
+   * within the same perception state (e.g. scared→sad→crying).
+   */
+  function _isEmotionEscalation(from, to) {
+    // NoFace escalation: idle→scared→sad→crying
+    const noFaceChain = ['idle', 'scared', 'sad', 'crying'];
+    const fromIdx = noFaceChain.indexOf(from);
+    const toIdx   = noFaceChain.indexOf(to);
+    if (fromIdx >= 0 && toIdx > fromIdx) return true;
+
+    // LookingAway escalation: idle→suspicious→pouty→grumpy
+    const lookChain = ['idle', 'suspicious', 'pouty', 'grumpy'];
+    const fromLook  = lookChain.indexOf(from);
+    const toLook    = lookChain.indexOf(to);
+    if (fromLook >= 0 && toLook > fromLook) return true;
+
+    return false;
+  }
+
+  /**
+   * Update the status bar to show the current emotion with context.
+   */
+  function _updateStatusBar() {
+    const currentEmotion = window._lastEmotion || Emotion.getState();
+    const label = EMOTION_LABELS[currentEmotion] || currentEmotion || 'Idle';
+    const p = window.perception;
+
+    if (window.cameraAvailable && p && p.facePresent) {
+      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
+    } else if (window.cameraAvailable && p && !p.facePresent) {
+      Status.setText(label);
+    } else {
+      Status.setText(label);
+    }
   }
 
   // ===== Gaze Logic (idle / sleepy states) =====
@@ -483,14 +571,8 @@ const Brain = (() => {
 
     currentState = state;
 
-    // Build status text including perception info when camera is active
-    var label = STATE_LABELS[state] || state;
-    var p = window.perception;
-    if (window.cameraAvailable && p && p.facePresent) {
-      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
-    } else {
-      Status.setText('Status: ' + label);
-    }
+    // Update status bar — show the actual emotion, not just the brain state
+    _updateStatusBar();
 
     if (stateTimer) {
       clearTimeout(stateTimer);
@@ -499,9 +581,13 @@ const Brain = (() => {
 
     Companion.setRotation(0);
 
+    // When camera perception is driving emotions, don't override them from here.
+    // applyFocusEmotion() runs every frame and handles the correct emotion.
+    const cameraActive = window.cameraAvailable && window.perception;
+
     switch (state) {
       case 'observe':
-        Emotion.setState('focused');
+        if (!cameraActive) Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
       case 'curious':
@@ -510,17 +596,18 @@ const Brain = (() => {
         triggerLookSequence();
         break;
       case 'idle':
-        Emotion.setState('idle');
+        if (!cameraActive) Emotion.setState('idle');
         if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
-        scheduleHappyFlash();
+        // Only schedule random happy flash when no camera
+        if (!cameraActive) scheduleHappyFlash();
         break;
       case 'followCursor':
-        Emotion.setState('focused');
+        if (!cameraActive) Emotion.setState('focused');
         SpriteAnimator.play('idle');
         break;
       case 'sleepy':
-        Emotion.setState('sleepy');
+        if (!cameraActive) Emotion.setState('sleepy');
         if (!window.perception?.facePresent) Companion.resetLook();
         SpriteAnimator.play('idle');
         break;
@@ -553,6 +640,9 @@ const Brain = (() => {
        && p.attentionScore > 65)     { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }
+      // Camera active but no specific match — stay in observe (let applyFocusEmotion drive)
+      enterState('observe');
+      return;
     }
     // Fallback: random (original behavior, used when camera unavailable)
     var next = STATES[Math.floor(Math.random() * STATES.length)];
@@ -656,6 +746,8 @@ const Brain = (() => {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
+    _emotionSetAt           = Date.now();
+    _updateStatusBar();
 
     // After 5s of joy → lingering upset (sulking)
     overjoyedTimer = setTimeout(() => {
@@ -664,6 +756,8 @@ const Brain = (() => {
         Emotion.setState('sulking');
         window._emotionChanged = { from: 'overjoyed', to: 'sulking' };
         window._lastEmotion    = 'sulking';
+        _emotionSetAt           = Date.now();
+        _updateStatusBar();
         _startSulkResolution();
       } else {
         enterState('idle');
@@ -685,6 +779,8 @@ const Brain = (() => {
           clearInterval(sulkCheckInterval); sulkCheckInterval = null;
           window._emotionChanged = { from: 'sulking', to: 'forgiven' };
           window._lastEmotion    = null;
+          _emotionSetAt           = Date.now();
+          _updateStatusBar();
           enterState('observe');
         }
       } else {
