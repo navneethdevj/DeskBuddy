@@ -51,13 +51,13 @@ const Brain = (() => {
   // Curious trigger: sustained focused attention for this long → curious state
   const CURIOUS_ATTENTION_MS = 20000;   // 20s focused + high attention → curious
 
-  // Emotion timing thresholds (ms) — from VERIFY spec
-  const LOOKING_AWAY_SUSPICIOUS_MS = 15000;   // 15s → suspicious
-  const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 100000;  // 100s → grumpy
-  const NOFACE_SCARED_MS           =  6000;   //  6s → scared
-  const NOFACE_SAD_MS              = 35000;   // 35s → sad
-  const NOFACE_CRYING_MS           = 50000;   // 50s → crying
+  // Emotion timing thresholds (ms) — tuned for responsive feel
+  const LOOKING_AWAY_SUSPICIOUS_MS =  5000;   //  5s → suspicious
+  const LOOKING_AWAY_POUTY_MS      = 15000;   // 15s → pouty
+  const LOOKING_AWAY_GRUMPY_MS     = 30000;   // 30s → grumpy
+  const NOFACE_SCARED_MS           =  4000;   //  4s → scared
+  const NOFACE_SAD_MS              = 15000;   // 15s → sad
+  const NOFACE_CRYING_MS           = 30000;   // 30s → crying
 
   // Tear overlay tuning
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
@@ -266,7 +266,6 @@ const Brain = (() => {
    * Implemented via MediaPipe blendshapes (face-api NOT installed).
    */
   function applyFocusEmotion() {
-    if (currentState === 'curious') return;
     // Don't override during overjoyed→sulking→forgiven sequence
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -288,12 +287,11 @@ const Brain = (() => {
         // face-api concept: react to user expressions
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
-        // Both surprise (instant) and sustained attention (20s) trigger curious —
-        // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
+        // Sustained attention (20s) triggers curious — "you've been watching me"
         if (p.userSmiling)              emotion = 'happy';
         else if (p.userSurprised)       emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
-              && p.attentionScore > 50) emotion = 'curious';
+              && p.attentionScore > 65) emotion = 'curious';
         else                            emotion = 'focused';
         break;
 
@@ -552,7 +550,7 @@ const Brain = (() => {
       if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
       if (p.userState === 'Focused'
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
-       && p.attentionScore > 50)     { enterState('curious'); return; }
+       && p.attentionScore > 65)     { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }
     }
