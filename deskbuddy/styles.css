@@ -844,6 +844,20 @@ html, body {
   box-shadow: 0 0 3px rgba(205, 138, 192, 0.3);
 }
 
+.particle-embarrassed {
+  width: 3px;
+  height: 3px;
+  background: rgba(220, 170, 200, 0.6);
+  box-shadow: 0 0 4px rgba(220, 170, 200, 0.4);
+}
+
+.particle-forgiven {
+  width: 3px;
+  height: 3px;
+  background: rgba(180, 200, 255, 0.7);
+  box-shadow: 0 0 5px rgba(180, 200, 255, 0.5);
+}
+
 @keyframes particleFade {
   0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
   20%  { opacity: 1; }
