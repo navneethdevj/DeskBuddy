@@ -295,16 +295,6 @@ const Brain = (() => {
   function applyFocusEmotion() {
     const p = window.perception;
 
-    // Smile is highest priority — bypasses ALL guards, including the overjoyed/sulk
-    // sequence. This lets the user "smile their way out" if DeskBuddy is in a
-    // return-from-absence emotional arc. userSmiling is set directly from blendshapes
-    // every 66ms, while userState lags by DEBOUNCE_MS (1s), so checking here also
-    // fires for 'LookingAway' without the 1-second wait.
-    if (window.cameraAvailable && p && p.userSmiling && p.facePresent) {
-      _setEmotionImmediate('happy');
-      return;
-    }
-
     // Don't override during overjoyed→sulking→forgiven sequence
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -322,10 +312,11 @@ const Brain = (() => {
 
     switch (p.userState) {
       case 'Focused':
-        // face-api concept: react to user expressions
-        // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
-        // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
-        // Sustained attention (20s) triggers curious — "you've been watching me"
+        if (p.userSmiling) {
+          // Expression reaction — bypass hold gate entirely
+          _setEmotionImmediate('happy');
+          return;
+        }
         if (p.userSurprised) {
           _setEmotionImmediate('curious');
           return;
@@ -459,17 +450,10 @@ const Brain = (() => {
     if (emotion === window._lastEmotion) return;
     const p = window.perception;
     if (p) {
-      if (emotion === 'happy') {
-        // Smile overrides the return-from-absence emotional arc — cancel any running
-        // overjoyed/sulk sequence so the user's happy expression shows immediately.
-        if (overjoyedTimer)    { clearTimeout(overjoyedTimer);    overjoyedTimer    = null; }
-        if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
-      } else {
-        const wasAbsent = window._lastEmotion === 'scared'
-                       || window._lastEmotion === 'sad'
-                       || window._lastEmotion === 'crying';
-        if (wasAbsent && p.facePresent) { _triggerOverjoyed(); return; }
-      }
+      const wasAbsent = window._lastEmotion === 'scared'
+                     || window._lastEmotion === 'sad'
+                     || window._lastEmotion === 'crying';
+      if (wasAbsent && p.facePresent) { _triggerOverjoyed(); return; }
     }
     window._emotionChanged = { from: window._lastEmotion, to: emotion };
     window._lastEmotion    = emotion;
