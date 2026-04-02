@@ -293,10 +293,20 @@ const Brain = (() => {
    * Implemented via MediaPipe blendshapes (face-api NOT installed).
    */
   function applyFocusEmotion() {
+    const p = window.perception;
+
+    // Smile is highest priority — bypasses ALL guards, including the overjoyed/sulk
+    // sequence. This lets the user "smile their way out" if DeskBuddy is in a
+    // return-from-absence emotional arc. userSmiling is set directly from blendshapes
+    // every 66ms, while userState lags by DEBOUNCE_MS (1s), so checking here also
+    // fires for 'LookingAway' without the 1-second wait.
+    if (window.cameraAvailable && p && p.userSmiling && p.facePresent) {
+      _setEmotionWithHold('happy');
+      return;
+    }
+
     // Don't override during overjoyed→sulking→forgiven sequence
     if (overjoyedTimer || sulkCheckInterval) return;
-
-    const p = window.perception;
 
     // No camera available — fall back to original focus meter logic
     if (!window.cameraAvailable || !p) {
@@ -304,15 +314,6 @@ const Brain = (() => {
                             : focusLevel < 30 ? 'sleepy'
                             :                   'idle';
       _setEmotionWithHold(fallbackEmotion);
-      return;
-    }
-
-    // Smile reacts instantly regardless of userState debounce — userSmiling is set
-    // directly from blendshapes every 66ms, while userState lags by DEBOUNCE_MS (1s).
-    // Pulling the check here means smiling while technically 'LookingAway' (e.g. while
-    // turning back to screen) still triggers happy without the 1-second wait.
-    if (p.userSmiling && p.facePresent) {
-      _setEmotionWithHold('happy');
       return;
     }
 
@@ -389,15 +390,22 @@ const Brain = (() => {
 
     // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
-      // Return-from-absence: face reappeared while still in distress emotion
-      // applyFocusEmotion fires before enterState, so detect return here too
       if (p) {
-        const wasAbsent = window._lastEmotion === 'scared'
-                       || window._lastEmotion === 'sad'
-                       || window._lastEmotion === 'crying';
-        if (wasAbsent && p.facePresent) {
-          _triggerOverjoyed();
-          return;
+        if (isSmileHappy) {
+          // Smile overrides the return-from-absence emotional arc — cancel any running
+          // overjoyed/sulk sequence so the user's happy expression shows immediately.
+          if (overjoyedTimer)    { clearTimeout(overjoyedTimer);    overjoyedTimer    = null; }
+          if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+        } else {
+          // Return-from-absence: face reappeared while still in distress emotion
+          // applyFocusEmotion fires before enterState, so detect return here too
+          const wasAbsent = window._lastEmotion === 'scared'
+                         || window._lastEmotion === 'sad'
+                         || window._lastEmotion === 'crying';
+          if (wasAbsent && p.facePresent) {
+            _triggerOverjoyed();
+            return;
+          }
         }
       }
 
