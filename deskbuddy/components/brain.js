@@ -372,8 +372,10 @@ const Brain = (() => {
     // e.g. scared→sad→crying, suspicious→pouty→grumpy
     const isEscalation = _isEmotionEscalation(window._lastEmotion, emotion);
 
-    // Enforce minimum hold time to prevent rapid flipping between unrelated emotions
-    if (!isEscalation && emotion !== window._lastEmotion && window._lastEmotion != null) {
+    // Enforce minimum hold time to prevent rapid flipping between unrelated emotions.
+    // Exception: smile→happy should respond immediately (user expects instant feedback).
+    const isSmileHappy = emotion === 'happy' && window.perception?.userSmiling;
+    if (!isEscalation && !isSmileHappy && emotion !== window._lastEmotion && window._lastEmotion != null) {
       if (now - _emotionSetAt < EMOTION_HOLD_MS) return;
     }
 

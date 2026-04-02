@@ -463,10 +463,10 @@ html, body {
    Rounded top (98% vertical) + flat bottom (2%) = upward arch ^ smile.
    Narrow height makes the pupil hidden (overflow:hidden) = proper closed-eye smile. */
 .companion.happy .eye {
-  width: 38vmin;
-  height: 8vmin;
-  border-radius: 50% 50% 50% 50% / 98% 98% 2% 2%;
-  transform: translateY(1vmin);
+  width: 32vmin;
+  height: 22vmin;
+  border-radius: 50% 50% 50% 50% / 75% 75% 25% 25%;
+  transform: translateY(-1vmin);
   box-shadow: 0 0 7vmin rgba(160, 140, 245, 0.52),
               0 0 18vmin rgba(160, 140, 245, 0.18),
               0 0 30vmin rgba(160, 140, 245, 0.06);
