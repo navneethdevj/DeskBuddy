@@ -301,7 +301,7 @@ const Brain = (() => {
     // every 66ms, while userState lags by DEBOUNCE_MS (1s), so checking here also
     // fires for 'LookingAway' without the 1-second wait.
     if (window.cameraAvailable && p && p.userSmiling && p.facePresent) {
-      _setEmotionWithHold('happy');
+      _setEmotionImmediate('happy');
       return;
     }
 
@@ -326,8 +326,11 @@ const Brain = (() => {
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
         // Sustained attention (20s) triggers curious — "you've been watching me"
-        if (p.userSurprised)       emotion = 'curious';
-        else if (tms >= CURIOUS_ATTENTION_MS
+        if (p.userSurprised) {
+          _setEmotionImmediate('curious');
+          return;
+        }
+        if (tms >= CURIOUS_ATTENTION_MS
               && p.attentionScore > 65) emotion = 'curious';
         else                            emotion = 'focused';
         break;
@@ -444,6 +447,37 @@ const Brain = (() => {
     if (fromLook >= 0 && toLook > fromLook) return true;
 
     return false;
+  }
+
+  /**
+   * Set emotion immediately, bypassing EMOTION_HOLD_MS.
+   * Use ONLY for real-time expression reactions (smile, surprise) where
+   * the face is actively doing something right now — not for state-driven
+   * transitions which need debouncing.
+   */
+  function _setEmotionImmediate(emotion) {
+    if (emotion === window._lastEmotion) return;
+    const p = window.perception;
+    if (p) {
+      if (emotion === 'happy') {
+        // Smile overrides the return-from-absence emotional arc — cancel any running
+        // overjoyed/sulk sequence so the user's happy expression shows immediately.
+        if (overjoyedTimer)    { clearTimeout(overjoyedTimer);    overjoyedTimer    = null; }
+        if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+      } else {
+        const wasAbsent = window._lastEmotion === 'scared'
+                       || window._lastEmotion === 'sad'
+                       || window._lastEmotion === 'crying';
+        if (wasAbsent && p.facePresent) { _triggerOverjoyed(); return; }
+      }
+    }
+    window._emotionChanged = { from: window._lastEmotion, to: emotion };
+    window._lastEmotion    = emotion;
+    _emotionSetAt          = Date.now();
+    if (emotion === 'crying') _startTears();
+    else if (tearInterval || tearHeight > 0) { if (!tearDraining) _stopTears(); }
+    _updateStatusBar();
+    Emotion.setState(emotion);
   }
 
   /**

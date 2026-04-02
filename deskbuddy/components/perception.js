@@ -68,7 +68,7 @@ const Perception = (() => {
   const ATTN_DECAY_NOFACE = 1.6;  // faster decay when face gone entirely
 
   // From face-api.js expression concept — thresholds for smile and surprise
-  const SMILE_THRESHOLD    = 0.45;
+  const SMILE_THRESHOLD    = 0.28;
   const SURPRISE_THRESHOLD = 0.65;
 
   // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===

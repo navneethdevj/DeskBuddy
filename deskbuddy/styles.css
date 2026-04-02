@@ -252,8 +252,8 @@ html, body {
 
 /* HAPPY — high arched, lifted with joy, wider and bright */
 .companion.happy .eyebrow             { transform: translateY(-28vmin); width: 14vmin; opacity: 0.90; }
-.companion.happy .eyebrow-left        { rotate: -12deg; }
-.companion.happy .eyebrow-right       { rotate:  12deg; }
+.companion.happy .eyebrow-left        { rotate: -7deg; }
+.companion.happy .eyebrow-right       { rotate:  7deg; }
 
 /* SUSPICIOUS — strongly asymmetric: one raised skeptically, other lowered */
 .companion.suspicious .eyebrow-left   { transform: translateY(-32vmin); rotate: -18deg; width: 13vmin; }
@@ -459,18 +459,17 @@ html, body {
 .companion.suspicious .eye-right { transform: skewY(-7deg); }
 
 /* ===== Expression: Happy (^_^ genuine smile arc — warm and wide) ===== */
-/* Classic anime ^_^ : very thin upward arch, eyes squeezed shut from joy.
-   Strong dome on top (95% vertical), nearly flat bottom (5%) = ^ arch.
-   Tiny height ensures the pupil is hidden (overflow:hidden on parent) = proper
-   closed-eye smile that reads as cute, not creepy. */
+/* Flat top (upper lid pressing down), dome bottom (lower lid curve) = ⌣.
+   / 2% 2% 88% 88%: top corners get 2% vertical radius (nearly straight line),
+   bottom corners get 88% of 11vmin (full curve). Width 30 prevents grotesque stretch. */
 .companion.happy .eye {
-  width: 38vmin;
-  height: 8vmin;
-  border-radius: 50% 50% 50% 50% / 95% 95% 5% 5%;
-  transform: translateY(3vmin);
-  box-shadow: 0 0 7vmin rgba(160, 140, 245, 0.52),
-              0 0 18vmin rgba(160, 140, 245, 0.18),
-              0 0 30vmin rgba(160, 140, 245, 0.06);
+  width: 30vmin;
+  height: 11vmin;
+  border-radius: 50% 50% 50% 50% / 2% 2% 88% 88%;
+  transform: none;
+  box-shadow: 0 0 6vmin rgba(160, 145, 250, 0.50),
+              0 0 16vmin rgba(160, 145, 250, 0.16),
+              0 0 28vmin rgba(160, 145, 250, 0.05);
 }
 
 /* ===== Pupil (moves inside eye to track cursor — fades into the eye) ===== */
