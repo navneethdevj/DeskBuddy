@@ -67,8 +67,10 @@ const Particles = (() => {
       case 'suspicious': rate = 0.008; break;
       case 'pouty':      rate = 0.010; break;
       case 'grumpy':     rate = 0.010; break;
-      case 'sulking':    rate = 0.006; break;
-      default:           rate = 0.005; break;
+      case 'sulking':      rate = 0.006; break;
+      case 'embarrassed': rate = 0.008; break;
+      case 'forgiven':    rate = 0.010; break;
+      default:            rate = 0.005; break;
     }
 
     if (Math.random() < rate) {
