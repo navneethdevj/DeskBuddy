@@ -225,7 +225,7 @@ The whisper should feel personal and warm, never generic. Examples of good whisp
 
   async function _callClaude(prompt) {
     const apiKey = window.deskbuddy?.anthropicApiKey;
-    if (!apiKey) throw new Error('No API key configured. Set ANTHROPIC_API_KEY environment variable.');
+    if (!apiKey) throw new Error('No API key configured. Set ANTHROPIC_API_KEY in your system environment before launching the app.');
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: {

@@ -325,7 +325,7 @@ const Brain = (() => {
 
       case 'LookingAway': {
         // AI tolerance: users who frequently look away get a gentler DeskBuddy
-        const tolerance = (typeof AICompanion !== 'undefined')
+        const tolerance = _hasAI()
           ? AICompanion.getLookAwayTolerance()
           : 1.0;
         const grumpyMs  = LOOKING_AWAY_GRUMPY_MS  / tolerance;
@@ -348,7 +348,7 @@ const Brain = (() => {
         else if (tms >= NOFACE_SCARED_MS) emotion = 'scared';
         else                              emotion = 'idle';
         // Record a break when user first leaves (5s NoFace threshold)
-        if (tms >= 5000 && tms < 6000 && typeof AICompanion !== 'undefined') {
+        if (tms >= 5000 && tms < 6000 && _hasAI()) {
           AICompanion.recordBreak();
         }
         break;
@@ -805,6 +805,10 @@ const Brain = (() => {
     }, 500);
   }
 
+  // ── AI COMPANION GUARD ────────────────────────────────────────────────────
+  /** Returns true when the AICompanion module is loaded and available. */
+  function _hasAI() { return typeof AICompanion !== 'undefined'; }
+
   // ── FOCUS TIMER ───────────────────────────────────────────────────────────
   function _startFocusTimer() {
     if (_timerInt) return;
@@ -813,7 +817,7 @@ const Brain = (() => {
 
       if (state === 'Focused') {
         _focusSecs++;
-        if (typeof AICompanion !== 'undefined') AICompanion.updateFocusMinutes(Math.floor(_focusSecs / 60));
+        if (_hasAI()) AICompanion.updateFocusMinutes(Math.floor(_focusSecs / 60));
         _nofaceSecs = 0;
       } else if (state === 'NoFace') {
         _nofaceSecs++;
