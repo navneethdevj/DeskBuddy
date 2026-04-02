@@ -307,6 +307,15 @@ const Brain = (() => {
       return;
     }
 
+    // Smile reacts instantly regardless of userState debounce — userSmiling is set
+    // directly from blendshapes every 66ms, while userState lags by DEBOUNCE_MS (1s).
+    // Pulling the check here means smiling while technically 'LookingAway' (e.g. while
+    // turning back to screen) still triggers happy without the 1-second wait.
+    if (p.userSmiling && p.facePresent) {
+      _setEmotionWithHold('happy');
+      return;
+    }
+
     const tms = p.timeInStateMs;
     let emotion;
 
@@ -316,8 +325,7 @@ const Brain = (() => {
         // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
         // Sustained attention (20s) triggers curious — "you've been watching me"
-        if (p.userSmiling)              emotion = 'happy';
-        else if (p.userSurprised)       emotion = 'curious';
+        if (p.userSurprised)       emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
               && p.attentionScore > 65) emotion = 'curious';
         else                            emotion = 'focused';
