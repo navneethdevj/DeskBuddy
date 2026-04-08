@@ -10,7 +10,11 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: ['./apps/api/tsconfig.json', './packages/shared/tsconfig.json'],
+    project: [
+      './apps/api/tsconfig.json',
+      './apps/web/tsconfig.json',
+      './packages/shared/tsconfig.json',
+    ],
   },
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',

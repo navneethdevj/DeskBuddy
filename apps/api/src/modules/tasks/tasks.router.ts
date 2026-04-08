@@ -1,12 +1,14 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import type { RequestHandler } from 'express';
 import { requireAuth } from '@api/middleware/auth';
+import { rateLimiter } from '@api/middleware/rateLimiter';
 import { validateBody } from '@api/middleware/validate';
 import { CreateTaskSchema, UpdateTaskSchema } from '@shared/schemas';
 import { TasksService } from './tasks.service';
 
 const router: ExpressRouter = Router({ mergeParams: true });
 const tasksService = new TasksService();
+const apiLimiter = rateLimiter({ windowMs: 60_000, max: 100 });
 
 // GET /api/v1/workspaces/:workspaceId/tasks
 const listTasks: RequestHandler<{ workspaceId: string }> = async (req, res, next): Promise<void> => {
@@ -80,6 +82,7 @@ const deleteTask: RequestHandler<{ workspaceId: string; id: string }> = async (
 };
 
 router.use(requireAuth);
+router.use(apiLimiter);
 router.get('/', listTasks);
 router.post('/', validateBody(CreateTaskSchema), createTask);
 router.get('/:id', getTask);

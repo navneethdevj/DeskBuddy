@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter } from 'express';
 import type { RequestHandler } from 'express';
 import { requireAuth } from '@api/middleware/auth';
 import { rateLimiter } from '@api/middleware/rateLimiter';
+import { csrfProtection } from '@api/middleware/csrf';
 import { AuthService } from './auth.service';
 
 const router: ExpressRouter = Router();
@@ -45,7 +46,7 @@ router.post(
   rateLimiter({ windowMs: 60_000, max: 10 }),
   googleCallback
 );
-router.post('/refresh', rateLimiter({ windowMs: 60_000, max: 20 }), refreshToken);
-router.post('/logout', requireAuth, logout);
+router.post('/refresh', rateLimiter({ windowMs: 60_000, max: 20 }), csrfProtection, refreshToken);
+router.post('/logout', requireAuth, rateLimiter({ windowMs: 60_000, max: 20 }), logout);
 
 export { router as authRouter };

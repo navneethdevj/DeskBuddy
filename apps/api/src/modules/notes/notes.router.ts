@@ -1,12 +1,14 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import type { RequestHandler } from 'express';
 import { requireAuth } from '@api/middleware/auth';
+import { rateLimiter } from '@api/middleware/rateLimiter';
 import { validateBody } from '@api/middleware/validate';
 import { CreateNoteSchema, UpdateNoteSchema } from '@shared/schemas';
 import { NotesService } from './notes.service';
 
 const router: ExpressRouter = Router({ mergeParams: true });
 const notesService = new NotesService();
+const apiLimiter = rateLimiter({ windowMs: 60_000, max: 100 });
 
 // GET /api/v1/workspaces/:workspaceId/notes
 const listNotes: RequestHandler<{ workspaceId: string }> = async (req, res, next): Promise<void> => {
@@ -76,6 +78,7 @@ const deleteNote: RequestHandler<{ workspaceId: string; id: string }> = async (
 };
 
 router.use(requireAuth);
+router.use(apiLimiter);
 router.get('/', listNotes);
 router.post('/', validateBody(CreateNoteSchema), createNote);
 router.get('/:id', getNote);

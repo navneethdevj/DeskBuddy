@@ -1,12 +1,14 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import type { RequestHandler } from 'express';
 import { requireAuth } from '@api/middleware/auth';
+import { rateLimiter } from '@api/middleware/rateLimiter';
 import { validateBody } from '@api/middleware/validate';
 import { CreateWorkspaceSchema, UpdateWorkspaceSchema } from '@shared/schemas';
 import { WorkspacesService } from './workspaces.service';
 
 const router: ExpressRouter = Router();
 const workspacesService = new WorkspacesService();
+const apiLimiter = rateLimiter({ windowMs: 60_000, max: 100 });
 
 // GET /api/v1/workspaces
 const listWorkspaces: RequestHandler = async (req, res, next): Promise<void> => {
@@ -59,6 +61,7 @@ const deleteWorkspace: RequestHandler<{ id: string }> = async (req, res, next): 
 };
 
 router.use(requireAuth);
+router.use(apiLimiter);
 router.get('/', listWorkspaces);
 router.post('/', validateBody(CreateWorkspaceSchema), createWorkspace);
 router.get('/:id', getWorkspace);
