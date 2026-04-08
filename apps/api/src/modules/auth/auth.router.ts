@@ -58,6 +58,6 @@ router.post(
   googleCallback,
 );
 router.post('/refresh', rateLimiter({ windowMs: 60_000, max: 20 }), csrfProtection, refresh);
-router.post('/logout', requireAuth, rateLimiter({ windowMs: 60_000, max: 20 }), logout);
+router.post('/logout', rateLimiter({ windowMs: 60_000, max: 20 }), requireAuth, logout);
 
 export { router as authRouter };

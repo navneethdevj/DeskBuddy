@@ -28,8 +28,8 @@ const updateMe: RequestHandler = async (req, res, next): Promise<void> => {
   }
 };
 
-router.use(requireAuth);
 router.use(apiLimiter);
+router.use(requireAuth);
 router.get('/me', getMe);
 router.patch('/me', updateMe);
 

@@ -81,8 +81,8 @@ const deleteTask: RequestHandler<{ workspaceId: string; id: string }> = async (
   }
 };
 
-router.use(requireAuth);
 router.use(apiLimiter);
+router.use(requireAuth);
 router.get('/', listTasks);
 router.post('/', validateBody(CreateTaskSchema), createTask);
 router.get('/:id', getTask);

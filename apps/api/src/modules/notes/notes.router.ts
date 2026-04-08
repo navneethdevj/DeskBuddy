@@ -77,8 +77,8 @@ const deleteNote: RequestHandler<{ workspaceId: string; id: string }> = async (
   }
 };
 
-router.use(requireAuth);
 router.use(apiLimiter);
+router.use(requireAuth);
 router.get('/', listNotes);
 router.post('/', validateBody(CreateNoteSchema), createNote);
 router.get('/:id', getNote);

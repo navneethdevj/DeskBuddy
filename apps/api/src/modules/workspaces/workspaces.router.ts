@@ -60,8 +60,8 @@ const deleteWorkspace: RequestHandler<{ id: string }> = async (req, res, next): 
   }
 };
 
-router.use(requireAuth);
 router.use(apiLimiter);
+router.use(requireAuth);
 router.get('/', listWorkspaces);
 router.post('/', validateBody(CreateWorkspaceSchema), createWorkspace);
 router.get('/:id', getWorkspace);
