@@ -52,9 +52,9 @@
 const Perception = (() => {
 
   const EVAL_MS           = 66;
-  const DEBOUNCE_MS       = 1000;
-  const SLEEPY_CONFIRM_MS = 3000;
-  const NOFACE_CONFIRM_MS = 3000;
+  const DEBOUNCE_MS       = 350;
+  const SLEEPY_CONFIRM_MS = 1800;
+  const NOFACE_CONFIRM_MS = 1000;
   const LOOKING_AWAY_YAW  = 20;
 
   // From Eyes Position Estimator repo — iris offset beyond this = not looking at camera
@@ -62,14 +62,15 @@ const Perception = (() => {
 
   // From EyeOnTask repo — attention score rise/fall rates
   // Score rises faster when head is forward AND iris is centered (true attention)
-  const ATTN_GAIN_CONTACT = 2.5;  // focused + eye contact
-  const ATTN_GAIN_FOCUSED = 1.0;  // focused, no direct eye contact
-  const ATTN_DECAY        = 0.8;  // distracted or looking away
-  const ATTN_DECAY_NOFACE = 1.6;  // faster decay when face gone entirely
+  const ATTN_GAIN_CONTACT = 3.2;  // focused + eye contact
+  const ATTN_GAIN_FOCUSED = 1.4;  // focused, no direct eye contact
+  const ATTN_DECAY        = 1.2;  // distracted or looking away
+  const ATTN_DECAY_NOFACE = 2.2;  // faster decay when face gone entirely
 
   // From face-api.js expression concept — thresholds for smile and surprise
-  const SMILE_THRESHOLD    = 0.45;
-  const SURPRISE_THRESHOLD = 0.50;
+  // Kept low so mild/natural expressions register reliably
+  const SMILE_THRESHOLD    = 0.26;
+  const SURPRISE_THRESHOLD = 0.32;
 
   // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===
   // https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe

@@ -42,15 +42,15 @@ const Brain = (() => {
   const IDLE_LOOK_MAX_DURATION = 2000;
 
   // Curious trigger: sustained focused attention for this long → curious state
-  const CURIOUS_ATTENTION_MS = 20000;   // 20s focused + high attention → curious
+  const CURIOUS_ATTENTION_MS = 8000;   // 8s focused + high attention → curious
 
-  // Emotion timing thresholds (ms) — from VERIFY spec
-  const LOOKING_AWAY_SUSPICIOUS_MS = 15000;   // 15s → suspicious
-  const LOOKING_AWAY_POUTY_MS      = 50000;   // 50s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 100000;  // 100s → grumpy
-  const NOFACE_SCARED_MS           =  6000;   //  6s → scared
-  const NOFACE_SAD_MS              = 35000;   // 35s → sad
-  const NOFACE_CRYING_MS           = 50000;   // 50s → crying
+  // Emotion timing thresholds (ms) — tuned for snappy, responsive feel
+  const LOOKING_AWAY_SUSPICIOUS_MS =  4000;   //  4s → suspicious
+  const LOOKING_AWAY_POUTY_MS      = 12000;   // 12s → pouty
+  const LOOKING_AWAY_GRUMPY_MS     = 28000;   // 28s → grumpy
+  const NOFACE_SCARED_MS           =  2500;   //  2.5s → scared
+  const NOFACE_SAD_MS              = 12000;   // 12s → sad
+  const NOFACE_CRYING_MS           = 25000;   // 25s → crying
 
   // Tear overlay tuning
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
@@ -247,11 +247,22 @@ const Brain = (() => {
    * Implemented via MediaPipe blendshapes (face-api NOT installed).
    */
   function applyFocusEmotion() {
+    // Smile check is HIGHEST priority — fires regardless of brain state
+    // so the companion always reacts to the user smiling.
+    const p = window.perception;
+    if (window.cameraAvailable && p?.facePresent && p.userSmiling
+        && !overjoyedTimer && !sulkCheckInterval) {
+      if ('happy' !== window._lastEmotion) {
+        window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
+        window._lastEmotion    = 'happy';
+      }
+      Emotion.setState('happy');
+      return;
+    }
+
     if (currentState === 'curious') return;
     // Don't override during overjoyed→sulking→forgiven sequence
     if (overjoyedTimer || sulkCheckInterval) return;
-
-    const p = window.perception;
 
     // No camera available — fall back to original focus meter logic
     if (!window.cameraAvailable || !p) {
@@ -267,15 +278,13 @@ const Brain = (() => {
     switch (p.userState) {
       case 'Focused':
         // face-api concept: react to user expressions
-        // userSmiling from perception.js maps mouthSmile blendshapes (face-api: happy)
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
-        // Both surprise (instant) and sustained attention (20s) trigger curious —
+        // Both surprise (instant) and sustained attention trigger curious —
         // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
-        if (p.userSmiling)              emotion = 'happy';
-        else if (p.userSurprised)       emotion = 'curious';
+        if (p.userSurprised)                       emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
-              && p.attentionScore > 50) emotion = 'curious';
-        else                            emotion = 'focused';
+              && p.attentionScore > 40)             emotion = 'curious';
+        else                                         emotion = 'focused';
         break;
 
       case 'LookingAway':
@@ -546,13 +555,13 @@ const Brain = (() => {
 
   /** Briefly flash a happy expression during idle. */
   function scheduleHappyFlash() {
-    var delay = 4000 + Math.random() * 6000;
+    var delay = 3000 + Math.random() * 5000;
     setTimeout(function () {
       if (currentState !== 'idle') return;
       Emotion.setState('happy');
       setTimeout(function () {
         if (currentState === 'idle') Emotion.setState('idle');
-      }, 400);
+      }, 700);
     }, delay);
   }
 

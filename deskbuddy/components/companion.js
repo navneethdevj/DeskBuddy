@@ -20,8 +20,8 @@ const Companion = (() => {
   const GAZE_MAX_Y = 10;
 
   // Gradient gaze smoothing — prevents instant snap of --gaze-x/--gaze-y
-  // 0.18 at 60fps: 1-(1-0.18)^5 ≈ 63% after 5 frames, 95% after 15 frames (~250ms)
-  const GAZE_GRADIENT_LERP = 0.18;
+  // 0.24 at 60fps: 1-(1-0.24)^5 ≈ 74% after 5 frames (~83ms) — snappy but smooth
+  const GAZE_GRADIENT_LERP = 0.24;
   // Reference distance for proportional gradient shift (pixels from companion center)
   // At this distance gaze gradient reaches its maximum; closer = proportionally less.
   const GAZE_REFERENCE_DIST = 300;
@@ -29,8 +29,8 @@ const Companion = (() => {
   let gazeGradientTargetX  = 0, gazeGradientTargetY  = 0;
 
   // Pupil tracking
-  const PUPIL_MOVEMENT_RADIUS_VMIN = 6;   // max movement radius in vmin (keeps pupil inside the eye)
-  const PUPIL_LERP = 0.15;
+  const PUPIL_MOVEMENT_RADIUS_VMIN = 8;   // max movement radius in vmin (bigger eyes need more range)
+  const PUPIL_LERP = 0.22;
   const PUPIL_DISTANCE_SCALE = 500;
   let pupilCurrentX = 0;
   let pupilCurrentY = 0;
@@ -52,8 +52,16 @@ const Companion = (() => {
     el.innerHTML = `
       <div class="companion-inner">
         <div class="eyes">
-          <div class="eye eye-left"><div class="pupil"></div></div>
-          <div class="eye eye-right"><div class="pupil"></div></div>
+          <div class="eye-wrap">
+            <div class="brow brow-left"></div>
+            <div class="eye eye-left"><div class="pupil"></div></div>
+            <div class="blush blush-left"></div>
+          </div>
+          <div class="eye-wrap">
+            <div class="brow brow-right"></div>
+            <div class="eye eye-right"><div class="pupil"></div></div>
+            <div class="blush blush-right"></div>
+          </div>
         </div>
       </div>
     `;
@@ -212,11 +220,11 @@ const Companion = (() => {
   }
 
   function scheduleBlink() {
-    const delay = 2500 + Math.random() * 2500;
+    const delay = 1800 + Math.random() * 2800;
     setTimeout(() => {
       if (!el) return;
       el.classList.add('blink');
-      var blinkDuration = 150 + Math.random() * 150; // 150–300 ms
+      var blinkDuration = 120 + Math.random() * 120; // 120–240 ms — snappy blink
       setTimeout(() => {
         if (el) el.classList.remove('blink');
       }, blinkDuration);
