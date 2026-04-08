@@ -63,6 +63,8 @@ const Companion = (() => {
             <div class="blush blush-right"></div>
           </div>
         </div>
+        <div class="nose"></div>
+        <div class="mouth"></div>
       </div>
     `;
 

@@ -85,6 +85,10 @@ const Audio = (() => {
       case 'sulking':    _sulkingSigh();       break;
       case 'happy':      _contentCoo();        break;
       case 'focused':    _focusedHum();        break;
+      case 'excited':    _excitedChirp();      break;
+      case 'shy':        _shySqueak();         break;
+      case 'love':       _lovePurr();          break;
+      case 'startled':   _startledGasp();      break;
       case 'idle':
         if (from === 'scared' || from === 'sad' || from === 'crying') {
           _reliefSigh();
@@ -584,6 +588,65 @@ const Audio = (() => {
       _formant(420, 1050, t + 0.04, 0.30, 0.07, {
         wave: 'sine', vibRate: 4.5, vibDepth: 10,
         slideTo: [380, 940], attack: 0.03, release: 0.12
+      });
+    } catch(e) {}
+  }
+
+  // Excited chirp — rapid staccato rising "hee-hee-hee!" full of energy
+  function _excitedChirp() {
+    if (!_ok('excited')) return;
+    try {
+      const t = ctx.currentTime;
+      for (let i = 0; i < 3; i++) {
+        _formant(700 + i * 80, 1900 + i * 100, t + i * 0.10, 0.08, 0.09, {
+          wave: 'triangle', attack: 0.004, release: 0.025,
+          tremRate: 32, tremDepth: 0.03, f3: 3500 + i * 200
+        });
+      }
+      _breath(t + 0.02, 0.05, 0.012, 4000);
+    } catch(e) {}
+  }
+
+  // Shy squeak — tiny barely-audible rising "mm?" — endearingly quiet
+  function _shySqueak() {
+    if (!_ok('shy')) return;
+    try {
+      const t = ctx.currentTime;
+      _formant(480, 1200, t, 0.16, 0.05, {
+        wave: 'sine', vibRate: 6, vibDepth: 8,
+        slideTo: [540, 1380], attack: 0.025, release: 0.08
+      });
+      _breath(t + 0.05, 0.04, 0.006, 3200);
+    } catch(e) {}
+  }
+
+  // Love purr — warm rounded "mmh~" — content and affectionate
+  function _lovePurr() {
+    if (!_ok('love')) return;
+    try {
+      const t = ctx.currentTime;
+      _formant(340, 840, t, 0.22, 0.08, {
+        wave: 'sine', vibRate: 5, vibDepth: 12,
+        slideTo: [400, 980], attack: 0.04, release: 0.10
+      });
+      _formant(460, 1120, t + 0.22, 0.22, 0.09, {
+        wave: 'triangle', vibRate: 5.5, vibDepth: 14,
+        slideTo: [500, 1200], attack: 0.02, release: 0.10,
+        f3: 2600, f3slide: 2800
+      });
+      _breath(t + 0.01, 0.07, 0.010, 2800);
+    } catch(e) {}
+  }
+
+  // Startled gasp — sharp inhale "ah!" — wide-eyed surprise
+  function _startledGasp() {
+    if (!_ok('startled')) return;
+    try {
+      const t = ctx.currentTime;
+      _breath(t, 0.06, 0.025, 3800);
+      _formant(580, 1600, t + 0.03, 0.12, 0.08, {
+        wave: 'triangle', attack: 0.003, release: 0.05,
+        slideTo: [650, 1800]
       });
     } catch(e) {}
   }

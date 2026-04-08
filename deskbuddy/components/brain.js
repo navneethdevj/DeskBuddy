@@ -9,6 +9,9 @@
  *
  * Owns the main requestAnimationFrame loop and coordinates Movement,
  * SpriteAnimator, Companion, Emotion, Particles, and Status modules.
+ *
+ * Idle life system fires spontaneous pet-like behaviors every 14-32s so
+ * the companion never feels like a static program.
  */
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
@@ -56,6 +59,30 @@ const Brain = (() => {
   const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
   const TEAR_RISE_RATE  = 0.40;   // % per second during crying
   const TEAR_DRAIN_RATE = 2.5;    // % per drain tick when stopping
+
+  // ── NEW PERSONALITY CONSTANTS ──────────────────────────────────────────────
+
+  // Excited: rapid typing triggers it
+  const KEYPRESS_WINDOW_MS     = 1400;  // rolling window to measure typing speed
+  const KEYPRESS_EXCITED_COUNT = 7;     // keypresses within window → excited
+  const EXCITED_HOLD_MS        = 3200;  // stays excited this long after last burst
+
+  // Shy: sustained eye contact triggers it
+  const EYE_CONTACT_SHY_MS     = 13000; // 13s continuous direct gaze → shy
+  const SHY_HOLD_MS            = 4500;  // shy lasts this long before resolving
+  const SHY_COOLDOWN_MS        = 20000; // min gap before triggering shy again
+
+  // Love (petting): click near companion triggers it
+  const PET_RADIUS             = 240;   // px from companion centre counts as pet
+  const LOVE_HOLD_MS           = 3000;  // love lasts this long after click
+
+  // Startled: sudden large mouse jerk triggers it
+  const STARTLED_DIST_THRESHOLD = 280;  // px jump in a single mousemove event
+  const STARTLED_HOLD_MS        = 550;  // brief flash
+
+  // Idle life: spontaneous pet-like behaviors
+  const IDLE_LIFE_MIN_WAIT     = 14000; // 14s minimum between behaviors
+  const IDLE_LIFE_MAX_WAIT     = 32000; // 32s maximum
 
   const STATE_LABELS = {
     observe: 'Observing',
@@ -111,6 +138,28 @@ const Brain = (() => {
   // 1500ms covers typical MediaPipe dropout bursts (1–3 frames at 15fps)
   // and prevents eyes from teleporting to center on brief face loss.
   let lastFaceGazeTime = 0;
+
+  // ── NEW PERSONALITY STATE ─────────────────────────────────────────────────
+
+  // Excited — rapid typing detection
+  let _keyPressTimes  = [];      // rolling timestamps of recent keypresses
+  let _excitedUntil   = 0;       // epoch ms when excited state expires
+
+  // Shy — sustained eye contact detection
+  let _eyeContactStart  = 0;     // epoch ms when continuous eye contact began
+  let _shyUntil         = 0;     // epoch ms when shy state expires
+  let _shyCooldownUntil = 0;     // epoch ms after which shy can trigger again
+
+  // Love (petting) — click interaction
+  let _loveUntil = 0;            // epoch ms when love state expires
+
+  // Startled — sudden mouse jerk
+  let _startledUntil = 0;        // epoch ms when startled state expires
+  let _prevMouseX    = -1000;    // previous mousemove X for speed detection
+  let _prevMouseY    = -1000;
+
+  // Idle life timer
+  let _idleLifeTimer = null;
   const FACE_GAZE_HOLD_MS = 1500;
 
   // ===== Activity Helpers =====
@@ -128,10 +177,12 @@ const Brain = (() => {
   function start() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click', _onScreenClick);
     Movement.init();
     enterState('idle');
     tick();
     _startFocusTimer();
+    _startIdleLife();
   }
 
   function stop() {
@@ -241,22 +292,54 @@ const Brain = (() => {
   }
 
   /**
+   * Quietly set an emotion without triggering the emotion-change arc logic.
+   * Used for timed override states (love, startled, excited, shy) so normal
+   * transition side-effects (overjoyed arc, tears, etc.) don't fire.
+   */
+  function _setQuiet(emotion) {
+    if (window._lastEmotion !== emotion) {
+      window._emotionChanged = { from: window._lastEmotion, to: emotion };
+      window._lastEmotion    = emotion;
+    }
+    Emotion.setState(emotion);
+  }
+
+  /**
    * Set emotion based on perception signals.
    * Expression reactions (smile, surprise) use face-api.js concept:
    *   https://github.com/justadudewhohacks/face-api.js
    * Implemented via MediaPipe blendshapes (face-api NOT installed).
+   *
+   * Priority order (highest first):
+   *   love > startled > happy(smile) > excited > shy-hold >
+   *   curious-state guard > overjoyed/sulk guard > shy-trigger > normal
    */
   function applyFocusEmotion() {
-    // Smile check is HIGHEST priority — fires regardless of brain state
-    // so the companion always reacts to the user smiling.
-    const p = window.perception;
+    const p   = window.perception;
+    const now = Date.now();
+
+    // 1. Love hold (petting click) — most intimate, highest priority
+    if (now < _loveUntil) { _setQuiet('love'); return; }
+
+    // 2. Startled hold — brief flash that overrides everything except love
+    if (now < _startledUntil) { _setQuiet('startled'); return; }
+
+    // 3. Smile check — always reacts to user smiling
     if (window.cameraAvailable && p?.facePresent && p.userSmiling
         && !overjoyedTimer && !sulkCheckInterval) {
-      if ('happy' !== window._lastEmotion) {
-        window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
-        window._lastEmotion    = 'happy';
-      }
-      Emotion.setState('happy');
+      _setQuiet('happy');
+      return;
+    }
+
+    // 4. Excited hold — rapid typing energy
+    if (now < _excitedUntil && !overjoyedTimer && !sulkCheckInterval) {
+      _setQuiet('excited');
+      return;
+    }
+
+    // 5. Shy hold — already in shy state
+    if (now < _shyUntil && !overjoyedTimer && !sulkCheckInterval) {
+      _setQuiet('shy');
       return;
     }
 
@@ -284,10 +367,31 @@ const Brain = (() => {
         if (p.userSurprised)                       emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
               && p.attentionScore > 40)             emotion = 'curious';
-        else                                         emotion = 'focused';
+        else {
+          // Shy trigger — sustained eye contact while companion would normally be 'focused'
+          if (p.eyeContact) {
+            if (!_eyeContactStart) _eyeContactStart = now;
+            if ((now - _eyeContactStart) >= EYE_CONTACT_SHY_MS
+                && now >= _shyCooldownUntil) {
+              _shyUntil         = now + SHY_HOLD_MS;
+              _shyCooldownUntil = now + SHY_COOLDOWN_MS;
+              _eyeContactStart  = 0;
+              const shyMsgs = ['...hi.', '*blushes*', 'h-hi there...', '/// ...'];
+              if (Math.random() < 0.7) {
+                showWhisper(shyMsgs[Math.floor(Math.random() * shyMsgs.length)], 4000);
+              }
+              _setQuiet('shy');
+              return;
+            }
+          } else {
+            _eyeContactStart = 0;
+          }
+          emotion = 'focused';
+        }
         break;
 
       case 'LookingAway':
+        _eyeContactStart = 0;
         if      (tms >= LOOKING_AWAY_GRUMPY_MS)     emotion = 'grumpy';
         else if (tms >= LOOKING_AWAY_POUTY_MS)       emotion = 'pouty';
         else if (tms >= LOOKING_AWAY_SUSPICIOUS_MS)  emotion = 'suspicious';
@@ -299,6 +403,7 @@ const Brain = (() => {
         break;
 
       case 'NoFace':
+        _eyeContactStart = 0;
         if      (tms >= NOFACE_CRYING_MS) emotion = 'crying';
         else if (tms >= NOFACE_SAD_MS)    emotion = 'sad';
         else if (tms >= NOFACE_SCARED_MS) emotion = 'scared';
@@ -321,6 +426,12 @@ const Brain = (() => {
         return;
       }
 
+      // Whisper a personality message for notable emotion transitions
+      const whisper = _getWhisperFor(emotion);
+      if (whisper && Math.random() < 0.42) {
+        showWhisper(whisper[Math.floor(Math.random() * whisper.length)], 4000);
+      }
+
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
       // Start tears on crying, stop on any other emotion
@@ -332,6 +443,31 @@ const Brain = (() => {
     }
 
     Emotion.setState(emotion);
+  }
+
+  /**
+   * Return an array of whisper messages for an emotion, or null if none.
+   * These are shown occasionally (42% chance) when the emotion changes.
+   */
+  function _getWhisperFor(emotion) {
+    const map = {
+      curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?'],
+      happy:      ['✨', '~♪', 'hehe~', '*tail wag*'],
+      scared:     ['...!', '*hides*', 'eep!'],
+      sad:        ['...', '*sniffles*', 'come back...', '...please'],
+      crying:     ['*sobbing quietly*', 'please...',  'don\'t go...'],
+      grumpy:     ['hmph.', '*huffs*', '...fine.'],
+      pouty:      ['hmph.', '...rude.', '*crosses arms*'],
+      sulking:    ['*stares at wall*', 'i\'m not upset.', '...'],
+      sleepy:     ['*yawns*', 'zzz...', 'so sleepy...'],
+      suspicious: ['...?', '*narrows eyes*', 'hmm.'],
+      overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*'],
+      excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!'],
+      shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...'],
+      love:       ['♡', '*purrs*', '*nuzzles*', '...♡'],
+      startled:   ['!!', '*jumps*', 'w-what?!'],
+    };
+    return map[emotion] || null;
   }
 
   // ===== Gaze Logic (idle / sleepy states) =====
@@ -566,13 +702,40 @@ const Brain = (() => {
   }
 
   function onMouseMove(e) {
+    const now = Date.now();
     mouseX = e.clientX;
     mouseY = e.clientY;
-    lastMouseMoveTime = Date.now();
+    lastMouseMoveTime = now;
+
+    // Startled: detect a sudden large jump in cursor position
+    if (_prevMouseX >= 0) {
+      const dx = e.clientX - _prevMouseX;
+      const dy = e.clientY - _prevMouseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= STARTLED_DIST_THRESHOLD && now > _startledUntil + 2500) {
+        _startledUntil = now + STARTLED_HOLD_MS;
+        // Whisper 50% of the time
+        if (Math.random() < 0.5) {
+          const msgs = ['!!', '*jumps*', 'w-what?!'];
+          showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
+        }
+      }
+    }
+    _prevMouseX = e.clientX;
+    _prevMouseY = e.clientY;
   }
 
   function onKeyDown() {
     lastKeyTime = Date.now();
+
+    // Excited: rapid typing detection — track rolling keypress timestamps
+    const now = Date.now();
+    _keyPressTimes.push(now);
+    // Keep only presses within the rolling window
+    _keyPressTimes = _keyPressTimes.filter(t => now - t < KEYPRESS_WINDOW_MS);
+    if (_keyPressTimes.length >= KEYPRESS_EXCITED_COUNT) {
+      _excitedUntil = now + EXCITED_HOLD_MS;
+    }
   }
 
   function clamp(value, min, max) {
@@ -717,6 +880,129 @@ const Brain = (() => {
       el.style.opacity = '0';
       setTimeout(_nextWhisper, 900);
     }, durationMs);
+  }
+
+  // ── CLICK-TO-PET INTERACTION ───────────────────────────────────────────────
+  // Clicking near the companion (within PET_RADIUS px of centre) triggers love.
+  function _onScreenClick(e) {
+    const c    = Companion.getCenter();
+    const dx   = e.clientX - c.x;
+    const dy   = e.clientY - c.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < PET_RADIUS) {
+      const now = Date.now();
+      _loveUntil = now + LOVE_HOLD_MS;
+      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡'];
+      if (Math.random() < 0.75) {
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
+      }
+    }
+  }
+
+  // ── IDLE LIFE — spontaneous pet-like behaviors ─────────────────────────────
+  // Fires a random behavior every IDLE_LIFE_MIN_WAIT…MAX_WAIT ms so the
+  // companion never feels like a static program waiting for input.
+
+  function _startIdleLife() {
+    const schedule = () => {
+      const wait = IDLE_LIFE_MIN_WAIT + Math.random() * (IDLE_LIFE_MAX_WAIT - IDLE_LIFE_MIN_WAIT);
+      _idleLifeTimer = setTimeout(() => {
+        _spontaneousBehavior();
+        schedule();
+      }, wait);
+    };
+    schedule();
+  }
+
+  function _spontaneousBehavior() {
+    // Don't interrupt timed or distress states
+    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
+    if (blocked.includes(window._lastEmotion)) return;
+    if (overjoyedTimer || sulkCheckInterval) return;
+
+    // Weighted random selection (sum = 100)
+    const r = Math.random() * 100;
+    if      (r < 28) _doIdleLook();        // look around (28%)
+    else if (r < 48) _doDoubleBlink();     // quick double blink (20%)
+    else if (r < 62) _doHeadTilt();        // cute head tilt (14%)
+    else if (r < 73) _doStretch();         // yawn + stretch (11%)
+    else if (r < 84) _doWhisperCoo();      // murmur something (11%)
+    else if (r < 93) _doWink();            // cheeky wink (9%)
+    else             _doPeek();            // look far away, snap back (7%)
+  }
+
+  /** Look in a random direction then drift back */
+  function _doIdleLook() {
+    const c = Companion.getCenter();
+    const dirs = [
+      { x: c.x - 320, y: c.y + 50  },
+      { x: c.x + 320, y: c.y - 30  },
+      { x: c.x - 200, y: c.y - 180 },
+      { x: c.x + 180, y: c.y + 120 },
+      { x: c.x,       y: c.y - 250 },
+    ];
+    const t = dirs[Math.floor(Math.random() * dirs.length)];
+    Companion.lookAt(t.x, t.y);
+    setTimeout(() => Companion.resetLook(), 1100 + Math.random() * 900);
+  }
+
+  /** Two rapid blinks in a row */
+  function _doDoubleBlink() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('blink');
+    setTimeout(() => {
+      el.classList.remove('blink');
+      setTimeout(() => {
+        el.classList.add('blink');
+        setTimeout(() => el.classList.remove('blink'), 130);
+      }, 190);
+    }, 130);
+  }
+
+  /** Tilt head to one side for a moment */
+  function _doHeadTilt() {
+    const deg = 9 * (Math.random() > 0.5 ? 1 : -1);
+    Companion.setRotation(deg);
+    setTimeout(() => Companion.setRotation(0), 1600 + Math.random() * 600);
+  }
+
+  /** Add stretching class for the stretch animation */
+  function _doStretch() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('stretching');
+    showWhisper('*stretches*', 2200);
+    setTimeout(() => el.classList.remove('stretching'), 1500);
+  }
+
+  /** Murmur a random ambient coo */
+  function _doWhisperCoo() {
+    const coos = [
+      '*tilts head* ...?', '...', '*glances around*', '~ ♪',
+      '*blinks softly*', 'hmm...', '...✦', '*yawns quietly*',
+      '*listens*', '...✧', '(◕‿◕)', '( ˘ω˘ )',
+    ];
+    showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
+  }
+
+  /** Close one eye briefly — cheeky wink */
+  function _doWink() {
+    const el = Companion.getElement();
+    if (!el) return;
+    const cls = Math.random() < 0.5 ? 'wink-left' : 'wink-right';
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 340);
+  }
+
+  /** Look far to the side, snap back — curious peek */
+  function _doPeek() {
+    const c = Companion.getCenter();
+    const side = Math.random() < 0.5 ? -1 : 1;
+    Companion.lookAt(c.x + side * 500, c.y + 60);
+    setTimeout(() => {
+      Companion.resetLook();
+    }, 700 + Math.random() * 400);
   }
 
   return { start, stop, getState, getFocusLevel, showWhisper };
