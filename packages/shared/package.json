@@ -1,0 +1,21 @@
+{
+  "name": "@deskbuddy/shared",
+  "version": "1.0.0",
+  "description": "Shared schemas, types, and constants for DeskBuddy",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  }
+}
