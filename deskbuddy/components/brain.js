@@ -138,9 +138,9 @@ const Brain = (() => {
   let _poolVh        = 0;         // current tear-pool height in vh units
   let _poolDrainInt  = null;      // interval that slowly drains the pool
   const POOL_MAX_VH       = 14;   // max pool fill height
-  const POOL_PER_TEAR_VH  = 0.55; // how much each normal tear adds
-  const POOL_DRAIN_RATE   = 0.25; // vh removed per drain tick
-  const POOL_DRAIN_TICK   = 280;  // ms between drain ticks
+  const POOL_PER_TEAR_VH  = 0.40; // how much each normal tear adds
+  const POOL_DRAIN_RATE   = 0.20; // vh removed per drain tick
+  const POOL_DRAIN_TICK   = 320;  // ms between drain ticks
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -852,7 +852,7 @@ const Brain = (() => {
                parseFloat(dur) * 1000 + 60);
   }
 
-  /** Phase 2 — create one wide .tear-flood block per eye, spanning eye → pool. */
+  /** Phase 2 — create one narrow soft stream per eye, centered under the eye. */
   function _spawnWaterfallBlocks() {
     _removeWaterfallBlocks();
     const eyes = document.querySelectorAll('.eye');
@@ -861,7 +861,8 @@ const Brain = (() => {
       if (!rect.width) return;
       const el = document.createElement('div');
       el.className = 'tear-flood';
-      const floodW = Math.round(rect.width * 0.62);
+      // 30% of eye width — a cute thick stream, not a wide wall
+      const floodW = Math.round(rect.width * 0.30);
       const floodX = rect.left + (rect.width - floodW) / 2;
       const floodY = rect.bottom;
       el.style.left   = floodX + 'px';
@@ -871,8 +872,8 @@ const Brain = (() => {
       document.body.appendChild(el);
       _floodEls.push(el);
     });
-    // Raise the pool continuously while the waterfall is flowing
-    _poolFillInt = setInterval(() => _raiseTearPool(0.22), 350);
+    // Slowly raise the pool while the waterfall is flowing
+    _poolFillInt = setInterval(() => _raiseTearPool(0.10), 700);
   }
 
   /** Remove all active waterfall flood blocks (fade out first). */
@@ -904,15 +905,15 @@ const Brain = (() => {
     if (_poolDrainInt) { clearInterval(_poolDrainInt); _poolDrainInt = null; }
     _cryPhase = 'normal';
     _spawnTear(); // immediate first drop
-    tearInterval = setInterval(_spawnTear, 300 + Math.random() * 160);
-    // Transition to waterfall phase after 8s of sustained crying
+    tearInterval = setInterval(_spawnTear, 450 + Math.random() * 200);
+    // Transition to waterfall phase after 18s of sustained crying
     _cryPhaseTimer = setTimeout(() => {
       _cryPhaseTimer = null;
       _cryPhase = 'waterfall';
       clearInterval(tearInterval);
       tearInterval = null;
       _spawnWaterfallBlocks();
-    }, 8000);
+    }, 18000);
   }
 
   function _stopTears() {
