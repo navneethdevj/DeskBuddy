@@ -87,21 +87,36 @@ const Timer = (() => {
   let _tickCallbacks        = [];  // fn() — called each logical timer-second
   let _stateChangeCallbacks = [];  // fn(newState, oldState) — called on transition
 
-  // ── Public API — stubs ─────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
 
   /**
    * Set up the timer for a session of durationMinutes.
    * Does NOT start ticking — call start() after init().
    */
   function init(durationMinutes) {
-    throw new Error('Not implemented: Timer.init');
+    _stop();
+    _initialSeconds   = durationMinutes * 60;
+    _remainingSeconds = _initialSeconds;
+    _accumulated      = 0;
+    _currentState     = STATE.FOCUSED;
+    _tickMultiplier   = MULTIPLIER[STATE.FOCUSED];
+    _running          = false;
+    _distractionTimer = 0;
+    _criticalTimer    = 0;
+    _recoveryHold     = 0;
+    // Write initial CSS state silently (no callbacks fired)
+    Object.entries(CSS_VARS[STATE.FOCUSED]).forEach(([k, v]) =>
+      document.documentElement.style.setProperty(k, v));
   }
 
   /**
    * Begin the session. Starts both the tick accumulator and the focus poller.
    */
   function start() {
-    throw new Error('Not implemented: Timer.start');
+    if (_running) return;
+    _running = true;
+    _tickInterval      = setInterval(_tick,      100);
+    _focusPollInterval = setInterval(_pollFocus, 500);
   }
 
   /**
@@ -109,14 +124,14 @@ const Timer = (() => {
    * State and remaining time are preserved.
    */
   function pause() {
-    throw new Error('Not implemented: Timer.pause');
+    _stop();
   }
 
   /**
    * Resume from a paused state. Restarts accumulator and focus poller.
    */
   function resume() {
-    throw new Error('Not implemented: Timer.resume');
+    start();
   }
 
   /**
@@ -124,17 +139,23 @@ const Timer = (() => {
    * Clears all intervals and resets every counter.
    */
   function reset() {
-    throw new Error('Not implemented: Timer.reset');
+    _stop();
+    _remainingSeconds = _initialSeconds;
+    _accumulated      = 0;
+    _distractionTimer = 0;
+    _criticalTimer    = 0;
+    _recoveryHold     = 0;
+    _applyState(STATE.FOCUSED);
   }
 
   /** Return the current state string (one of STATE.*). */
   function getState() {
-    throw new Error('Not implemented: Timer.getState');
+    return _currentState;
   }
 
   /** Return remaining time in integer seconds. */
   function getRemainingSeconds() {
-    throw new Error('Not implemented: Timer.getRemainingSeconds');
+    return _remainingSeconds;
   }
 
   /**
@@ -142,7 +163,7 @@ const Timer = (() => {
    * by multiplier — that irregular cadence is intentional).
    */
   function onTick(fn) {
-    throw new Error('Not implemented: Timer.onTick');
+    _tickCallbacks.push(fn);
   }
 
   /**
@@ -150,24 +171,135 @@ const Timer = (() => {
    * Signature: fn(newState, oldState)
    */
   function onStateChange(fn) {
-    throw new Error('Not implemented: Timer.onStateChange');
+    _stateChangeCallbacks.push(fn);
   }
 
-  // ── Private stubs ──────────────────────────────────────────────────────────
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  /** Internal stop — clears intervals, marks not running. */
+  function _stop() {
+    _running = false;
+    if (_tickInterval)      { clearInterval(_tickInterval);      _tickInterval      = null; }
+    if (_focusPollInterval) { clearInterval(_focusPollInterval); _focusPollInterval = null; }
+  }
+
+  /** Fixed 100ms accumulator tick. */
+  function _tick() {
+    if (!_running) return;
+    _accumulated += 100 * _tickMultiplier;
+    if (_accumulated >= 1000) {
+      _accumulated -= 1000;
+      _fireTick();
+    }
+  }
 
   /**
    * _pollFocus — called every 500ms while running.
    *
-   * Reads window.Brain.getFocusLevel() (0–100) and decides whether a state
-   * transition is warranted. Transitions are gated by ENTRY_HOLD seconds of
-   * continuous degradation (downward) or MIN_HOLD_RECOVERY (upward).
+   * Reads Brain.getFocusLevel() (0–100) and the current sensitivity thresholds
+   * (via Brain.getSensitivityThresholds()), then steps state up or down as
+   * warranted.  Each direction is gated by continuous hold timers to prevent
+   * rapid flicker when focus bounces at a boundary.
    *
    * Downward path:  FOCUSED → DRIFTING → DISTRACTED → CRITICAL → FAILED
-   * Recovery path:  FAILED is terminal. CRITICAL → DISTRACTED → DRIFTING → FOCUSED
+   * Recovery path:  FAILED is terminal.
+   *                 CRITICAL → DISTRACTED → DRIFTING → FOCUSED
    *                 Each upward step requires MIN_HOLD_RECOVERY continuous seconds.
    */
   function _pollFocus() {
-    throw new Error('Not implemented: Timer._pollFocus');
+    if (!_running || _currentState === STATE.FAILED) return;
+
+    const level = window.Brain ? Brain.getFocusLevel() : 50;
+    const thr   = (window.Brain?.getSensitivityThresholds?.())
+                  || { drifting: 40, distracted: 35, critical: 20 };
+
+    const HALF = 0.5; // 500ms poll = 0.5s per call
+
+    // ── Already in CRITICAL: count toward FAILED, or recover to DISTRACTED ──
+    if (_currentState === STATE.CRITICAL) {
+      if (level < thr.critical) {
+        _criticalTimer += HALF;
+        _recoveryHold   = 0;
+        _distractionTimer = 0;
+        if (_criticalTimer >= ENTRY_HOLD[STATE.FAILED]) {
+          _applyState(STATE.FAILED);
+          _stop();
+        }
+      } else {
+        _recoveryHold += HALF;
+        _criticalTimer = 0;
+        _distractionTimer = 0;
+        if (_recoveryHold >= MIN_HOLD_RECOVERY) {
+          _applyState(STATE.DISTRACTED);
+          _recoveryHold = 0;
+        }
+      }
+      return;
+    }
+
+    // ── Already in DISTRACTED: deepen to CRITICAL, or recover to DRIFTING ──
+    if (_currentState === STATE.DISTRACTED) {
+      if (level < thr.critical) {
+        _distractionTimer += HALF;
+        _criticalTimer    += HALF;
+        _recoveryHold      = 0;
+        if (_distractionTimer >= ENTRY_HOLD[STATE.CRITICAL]) {
+          _applyState(STATE.CRITICAL);
+          _distractionTimer = 0;
+        }
+      } else if (level < thr.distracted) {
+        // Stable in DISTRACTED range — reset both timers
+        _distractionTimer = 0;
+        _criticalTimer    = 0;
+        _recoveryHold     = 0;
+      } else {
+        _distractionTimer = 0;
+        _criticalTimer    = 0;
+        _recoveryHold    += HALF;
+        if (_recoveryHold >= MIN_HOLD_RECOVERY) {
+          _applyState(STATE.DRIFTING);
+          _recoveryHold = 0;
+        }
+      }
+      return;
+    }
+
+    // ── Already in DRIFTING: deepen to DISTRACTED, or recover to FOCUSED ──
+    if (_currentState === STATE.DRIFTING) {
+      if (level < thr.distracted) {
+        _distractionTimer += HALF;
+        _recoveryHold      = 0;
+        if (_distractionTimer >= ENTRY_HOLD[STATE.DISTRACTED]) {
+          _applyState(STATE.DISTRACTED);
+          _distractionTimer = 0;
+        }
+      } else if (level < thr.drifting) {
+        // Stable in DRIFTING range
+        _distractionTimer = 0;
+        _recoveryHold     = 0;
+      } else {
+        _distractionTimer = 0;
+        _recoveryHold    += HALF;
+        if (_recoveryHold >= MIN_HOLD_RECOVERY) {
+          _applyState(STATE.FOCUSED);
+          _recoveryHold = 0;
+        }
+      }
+      return;
+    }
+
+    // ── FOCUSED: enter DRIFTING if focus drops below drifting threshold ─────
+    if (level < thr.drifting) {
+      _distractionTimer += HALF;
+      _recoveryHold      = 0;
+      if (_distractionTimer >= ENTRY_HOLD[STATE.DRIFTING]) {
+        _applyState(STATE.DRIFTING);
+        _distractionTimer = 0;
+      }
+    } else {
+      _distractionTimer = 0;
+      _recoveryHold     = 0;
+    }
   }
 
   /**
@@ -178,16 +310,23 @@ const Timer = (() => {
    *   2. Write CSS_VARS[newState] to document.documentElement.
    *   3. Fire all _stateChangeCallbacks(newState, oldState).
    *
-   * Must be idempotent: calling with current state is a no-op.
-   * CSS variables are written unconditionally on any real transition so
-   * external CSS animations pick up the change immediately.
+   * Idempotent: calling with the current state is a no-op.
    */
   function _applyState(newState) {
-    throw new Error('Not implemented: Timer._applyState');
+    if (newState === _currentState) return;
+    const oldState  = _currentState;
+    _currentState   = newState;
+    _tickMultiplier = MULTIPLIER[newState];
+    const vars = CSS_VARS[newState];
+    if (vars) {
+      Object.entries(vars).forEach(([k, v]) =>
+        document.documentElement.style.setProperty(k, v));
+    }
+    _stateChangeCallbacks.forEach(fn => { try { fn(newState, oldState); } catch (e) {} });
   }
 
   /**
-   * _fireTick — called each time accumulated ms crosses a 1000ms boundary.
+   * _fireTick — called each time the accumulated ms crosses a 1000ms boundary.
    *
    * Responsibilities:
    *   1. Decrement _remainingSeconds (floor at 0).
@@ -195,7 +334,21 @@ const Timer = (() => {
    *   3. If _remainingSeconds reaches 0 and state is not FAILED, enter FAILED.
    */
   function _fireTick() {
-    throw new Error('Not implemented: Timer._fireTick');
+    _remainingSeconds = Math.max(0, _remainingSeconds - 1);
+    _tickCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
+
+    // Update the timer display element if present
+    const timerEl = document.getElementById('session-timer');
+    if (timerEl) {
+      const m = String(Math.floor(_remainingSeconds / 60)).padStart(2, '0');
+      const s = String(_remainingSeconds % 60).padStart(2, '0');
+      timerEl.textContent = `${m}:${s}`;
+    }
+
+    if (_remainingSeconds <= 0 && _currentState !== STATE.FAILED) {
+      _applyState(STATE.FAILED);
+      _stop();
+    }
   }
 
   // ── Public surface ─────────────────────────────────────────────────────────

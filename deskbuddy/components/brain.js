@@ -84,6 +84,29 @@ const Brain = (() => {
   const IDLE_LIFE_MIN_WAIT     = 14000; // 14s minimum between behaviors
   const IDLE_LIFE_MAX_WAIT     = 32000; // 32s maximum
 
+  // ── CHUNK 5 — new feature constants ───────────────────────────────────────
+
+  // Phone detection: gaze sharply downward = phone-checking posture
+  const PHONE_DETECT_SUSTAIN_MS = 3000; // 3s sustained posture → trigger
+  const PHONE_GAZE_Y_THRESHOLD  = 0.6;  // gazeY above this = looking down
+  const PHONE_GAZE_Y_RESET      = 0.4;  // gazeY below this resets the timer
+  const PHONE_PITCH_THRESHOLD   = 15;   // degrees head pitch forward
+
+  // Study encouragement: reward deep focus
+  const ENCOURAGEMENT_FOCUS_MIN    = 75;       // focusLevel threshold
+  const ENCOURAGEMENT_GAP_MS       = 4 * 60 * 1000; // 4 minutes between encouragements
+
+  // Milestone: celebrate every 5 continuous focused minutes
+  const MILESTONE_INTERVAL_MINUTES = 5;
+  const MILESTONE_MAX_MINUTES      = 25;
+
+  // Sensitivity presets — used by timer.js via Brain.getSensitivityThresholds()
+  const SENSITIVITY_PRESETS = {
+    GENTLE: { drifting: 25, distracted: 15, critical: 10 },
+    NORMAL: { drifting: 40, distracted: 35, critical: 20 },
+    STRICT: { drifting: 55, distracted: 45, critical: 30 },
+  };
+
   const STATE_LABELS = {
     observe: 'Observing',
     curious: 'Curious',
@@ -161,6 +184,28 @@ const Brain = (() => {
   // Idle life timer
   let _idleLifeTimer = null;
   const FACE_GAZE_HOLD_MS = 1500;
+
+  // ── CHUNK 5 — new private state ────────────────────────────────────────────
+
+  // Phone detection
+  let _phoneDetectionEnabled = localStorage.getItem('deskbuddy_phone_detect') !== 'false';
+  let _phoneCheckMs          = 0;    // ms phone posture has been held continuously
+  const _phoneCallbacks      = [];
+
+  // Study encouragement
+  let _lastEncouragementTime = 0;
+
+  // Milestone celebration
+  let _continuousFocusedMs    = 0;
+  let _nextMilestoneMinutes   = MILESTONE_INTERVAL_MINUTES;
+  const _milestoneCallbacks   = [];
+
+  // Welcome-back sequence guards
+  let _welcomeBackSeqId1 = null;
+  let _welcomeBackSeqId2 = null;
+
+  // Sensitivity
+  let _sensitivityLevel = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
 
   // ===== Activity Helpers =====
 
@@ -422,7 +467,7 @@ const Brain = (() => {
                      || window._lastEmotion === 'sad'
                      || window._lastEmotion === 'crying';
       if (wasAbsent && p.facePresent) {
-        _triggerOverjoyed();
+        _welcomeBackSequence();
         return;
       }
 
@@ -589,7 +634,7 @@ const Brain = (() => {
                    || window._lastEmotion === 'crying';
     const returning = (state === 'observe' || state === 'idle')
                    && window.perception?.facePresent;
-    if (wasAbsent && returning) { _triggerOverjoyed(); return; }
+    if (wasAbsent && returning) { _welcomeBackSequence(); return; }
 
     currentState = state;
 
@@ -858,11 +903,142 @@ const Brain = (() => {
       if (fillEl && window.perception) {
         fillEl.style.width = window.perception.attentionScore + '%';
       }
+
+      // ── Phone detection ─────────────────────────────────────────────────
+      if (_phoneDetectionEnabled && window.cameraAvailable) {
+        const p = window.perception;
+        if (p?.facePresent && p.gazeY > PHONE_GAZE_Y_THRESHOLD && p.headPitch > PHONE_PITCH_THRESHOLD) {
+          _phoneCheckMs += 1000;
+          if (_phoneCheckMs >= PHONE_DETECT_SUSTAIN_MS && window._lastEmotion !== 'suspicious') {
+            // Jump straight to suspicious — skip DRIFTING arc
+            window._emotionChanged = { from: window._lastEmotion, to: 'suspicious' };
+            window._lastEmotion    = 'suspicious';
+            Emotion.setState('suspicious');
+            showWhisper('...📱?', 2500);
+            if (window.Sounds) Sounds.play('suspicious_squint');
+            _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
+          }
+        } else if (p?.gazeY < PHONE_GAZE_Y_RESET) {
+          _phoneCheckMs = 0;
+        }
+      }
+
+      // ── Milestone tracking ──────────────────────────────────────────────
+      // Only count when a session is actively running in FOCUSED timer state
+      const timerState   = window.Timer?.getState?.();
+      const sessionState = window.Session?.getCurrentStats?.()?.state;
+      if (timerState === 'FOCUSED' && sessionState === 'ACTIVE') {
+        _continuousFocusedMs += 1000;
+        const minutesMark = Math.floor(_continuousFocusedMs / 60000);
+        if (minutesMark >= _nextMilestoneMinutes && _nextMilestoneMinutes <= MILESTONE_MAX_MINUTES) {
+          const reached = _nextMilestoneMinutes;
+          _nextMilestoneMinutes += MILESTONE_INTERVAL_MINUTES;
+          _fireMilestone(reached);
+        }
+      } else if (timerState && timerState !== 'FOCUSED') {
+        // Any non-FOCUSED timer state resets the streak
+        _continuousFocusedMs  = 0;
+        _nextMilestoneMinutes = MILESTONE_INTERVAL_MINUTES;
+      }
+
     }, 1000);
   }
 
+  // ── CHUNK 5 — new helper functions ────────────────────────────────────────
+
+  /** Fire the milestone callback and companion celebration. */
+  function _fireMilestone(minutesMark) {
+    const whispers = {
+      5:  '5 min streak! ✦',
+      10: '10 minutes! 🔥',
+      15: 'you\'re on fire! ✧',
+      20: '20 min!! incredible',
+      25: '( ˘▽˘)🎉 almost there!',
+    };
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+    if (window.Sounds) Sounds.play('overjoyed_chirp');
+    showWhisper(whispers[minutesMark] || `${minutesMark} min! ✦`, 3000);
+    _milestoneCallbacks.forEach(fn => { try { fn(minutesMark); } catch (e) {} });
+    // Return to focused after 1.5s
+    setTimeout(() => {
+      if (window._lastEmotion === 'overjoyed') {
+        window._lastEmotion = null;
+        enterState('observe');
+      }
+    }, 1500);
+  }
+
+  /** True if study encouragement conditions are all met. */
+  function _isEncouragementEligible() {
+    if (!window.Timer?.getState || window.Timer.getState() !== 'FOCUSED') return false;
+    if (focusLevel < ENCOURAGEMENT_FOCUS_MIN) return false;
+    if ((Date.now() - _lastEncouragementTime) < ENCOURAGEMENT_GAP_MS) return false;
+    const distress = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
+    if (distress.includes(window._lastEmotion)) return false;
+    return true;
+  }
+
+  /** Deliver a study encouragement moment. */
+  function _doStudyEncouragement() {
+    _lastEncouragementTime = Date.now();
+    const msgs = ['✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.'];
+    showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
+    // Look directly at user for 2s, then return
+    const c = Companion.getCenter();
+    Companion.lookAt(c.x, c.y);
+    if (window.Sounds) Sounds.play('happy_coo');
+    setTimeout(() => Companion.resetLook(), 2000);
+  }
+
+  /**
+   * Welcome-back sequence — replaces _triggerOverjoyed call sites.
+   * Plays when face returns after companion was in scared|sad|crying.
+   * t=0ms:    overjoyed + green particles + overjoyed_chirp
+   * t=2000ms: happy + happy_coo
+   * t=4000ms: resume normal behaviour cycle
+   * Guard: cancels if face disappears during the sequence.
+   */
+  function _welcomeBackSequence() {
+    // Cancel any previous welcome-back sequence
+    if (_welcomeBackSeqId1) { clearTimeout(_welcomeBackSeqId1); _welcomeBackSeqId1 = null; }
+    if (_welcomeBackSeqId2) { clearTimeout(_welcomeBackSeqId2); _welcomeBackSeqId2 = null; }
+
+    // Cancel any lingering sulk arc from old overjoyed logic
+    if (overjoyedTimer)    { clearTimeout(overjoyedTimer);    overjoyedTimer    = null; }
+    if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+
+    currentState = 'idle';
+    _stopTears();
+
+    // t=0: overjoyed
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+    if (window.Sounds) Sounds.play('overjoyed_chirp');
+
+    _welcomeBackSeqId1 = setTimeout(() => {
+      _welcomeBackSeqId1 = null;
+      // Guard: abort if face has gone again
+      if (!window.perception?.facePresent) { enterState('idle'); return; }
+
+      // t=2000ms: happy
+      Emotion.setState('happy');
+      window._emotionChanged = { from: 'overjoyed', to: 'happy' };
+      window._lastEmotion    = 'happy';
+      if (window.Sounds) Sounds.play('happy_coo');
+
+      _welcomeBackSeqId2 = setTimeout(() => {
+        _welcomeBackSeqId2 = null;
+        // t=4000ms: resume normal behaviour
+        window._lastEmotion = null;
+        enterState('observe');
+      }, 2000);
+    }, 2000);
+  }
+
   // ── WHISPER TEXT ──────────────────────────────────────────────────────────
-  // Queue-based — messages don't overlap
   function showWhisper(text, durationMs) {
     _whisperQueue.push({ text, durationMs: durationMs || 5000 });
     if (!_whisperBusy) _nextWhisper();
@@ -919,6 +1095,12 @@ const Brain = (() => {
     const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
     if (blocked.includes(window._lastEmotion)) return;
     if (overjoyedTimer || sulkCheckInterval) return;
+
+    // Study encouragement — 8% chance when eligible, pre-empts the main pool
+    if (_isEncouragementEligible() && Math.random() < 0.08) {
+      _doStudyEncouragement();
+      return;
+    }
 
     // Weighted random selection (sum = 100)
     const r = Math.random() * 100;
@@ -1007,5 +1189,44 @@ const Brain = (() => {
     }, 700 + Math.random() * 400);
   }
 
-  return { start, stop, getState, getFocusLevel, showWhisper };
+  // ── CHUNK 5 — new public API ───────────────────────────────────────────────
+
+  /** Enable or disable phone-detection posture heuristic. */
+  function setPhoneDetectionEnabled(bool) {
+    _phoneDetectionEnabled = !!bool;
+    localStorage.setItem('deskbuddy_phone_detect', _phoneDetectionEnabled ? 'true' : 'false');
+  }
+
+  /** Register a callback fired when phone-checking posture is sustained. */
+  function onPhoneDetected(fn) {
+    _phoneCallbacks.push(fn);
+  }
+
+  /** Register a callback fired on each 5-minute focused milestone. fn(minutesMark). */
+  function onMilestone(fn) {
+    _milestoneCallbacks.push(fn);
+  }
+
+  /**
+   * Set the sensitivity level that timer.js uses for focus-level thresholds.
+   * level: 'GENTLE' | 'NORMAL' | 'STRICT'
+   */
+  function setSensitivity(level) {
+    if (!SENSITIVITY_PRESETS[level]) return;
+    _sensitivityLevel = level;
+    localStorage.setItem('deskbuddy_sensitivity', level);
+  }
+
+  /**
+   * Return the current focus-level thresholds used by timer.js.
+   * { drifting: number, distracted: number, critical: number }
+   */
+  function getSensitivityThresholds() {
+    return SENSITIVITY_PRESETS[_sensitivityLevel] || SENSITIVITY_PRESETS['NORMAL'];
+  }
+
+  return { start, stop, getState, getFocusLevel, showWhisper,
+           setPhoneDetectionEnabled, onPhoneDetected,
+           onMilestone,
+           setSensitivity, getSensitivityThresholds };
 })();
