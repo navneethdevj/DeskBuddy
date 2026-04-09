@@ -1,3 +1,13 @@
+/* ===== CSS Custom Property Defaults ===== */
+/* Timer state vars are set dynamically by timer.js on document.documentElement.
+   :root defaults ensure correct rendering before the first Timer.init() call. */
+:root {
+  --timer-color:       white;
+  --timer-glow-color:  transparent;
+  --timer-shake-px:    0px;
+  --timer-pulse-speed: none;
+}
+
 /* ===== Base Reset ===== */
 *, *::before, *::after {
   margin: 0;
@@ -862,6 +872,24 @@ html, body {
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px;
   letter-spacing: 0.5px; color: rgba(255,255,255,0.58);
   opacity: 0.22; pointer-events: none; z-index: 1000;
+}
+
+/* Session timer — uses CSS vars set dynamically by timer.js */
+#session-timer {
+  position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 22px;
+  font-weight: 300; letter-spacing: 2px;
+  color: var(--timer-color, white);
+  text-shadow: 0 0 12px var(--timer-glow-color, transparent);
+  pointer-events: none; z-index: 1000;
+  animation: timerShake var(--timer-pulse-speed, none) ease-in-out infinite;
+}
+@keyframes timerShake {
+  0%, 100% { transform: translateX(-50%) translateX(0); }
+  20%       { transform: translateX(-50%) translateX(calc(-1 * var(--timer-shake-px, 0px))); }
+  40%       { transform: translateX(-50%) translateX(var(--timer-shake-px, 0px)); }
+  60%       { transform: translateX(-50%) translateX(calc(-0.6 * var(--timer-shake-px, 0px))); }
+  80%       { transform: translateX(-50%) translateX(calc(0.4 * var(--timer-shake-px, 0px))); }
 }
 
 /* Attention bar — EyeOnTask concept: continuous engagement score */

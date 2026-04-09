@@ -102,17 +102,20 @@ const Sounds = (() => {
    */
   function play(name) {
     const dispatch = {
-      focused_tick:     _focused_tick,
-      drifting_tick:    _drifting_tick,
-      distracted_tick:  _distracted_tick,
-      stretch_coo:      _stretch_coo,
-      wink_blip:        _wink_blip,
-      session_start:    _session_start,
-      session_complete: _session_complete,
-      session_fail:     _session_fail,
-      refocus:          _refocus,
-      break_start:      _break_start,
-      break_end:        _break_end,
+      focused_tick:       _focused_tick,
+      drifting_tick:      _drifting_tick,
+      distracted_tick:    _distracted_tick,
+      stretch_coo:        _stretch_coo,
+      wink_blip:          _wink_blip,
+      happy_coo:          _happy_coo,
+      overjoyed_chirp:    _overjoyed_chirp,
+      suspicious_squint:  _suspicious_squint,
+      session_start:      _session_start,
+      session_complete:   _session_complete,
+      session_fail:       _session_fail,
+      refocus:            _refocus,
+      break_start:        _break_start,
+      break_end:          _break_end,
     };
     if (dispatch[name]) dispatch[name]();
   }
@@ -252,6 +255,10 @@ const Sounds = (() => {
       lfoG.connect(osc.frequency);
       lfo.start(startTime);
       lfo.stop(startTime + duration + 0.02);
+      lfo.onended = () => {
+        try { lfoG.disconnect(); } catch (_) {}
+        try { lfo.disconnect(); } catch (_) {}
+      };
     }
 
     osc.start(startTime);
@@ -462,6 +469,10 @@ const Sounds = (() => {
       lg.connect(osc1.frequency);
       lg.connect(osc2.frequency);
       lfo.start(time); lfo.stop(time + dur + 0.02);
+      lfo.onended = () => {
+        try { lg.disconnect(); } catch (_) {}
+        try { lfo.disconnect(); } catch (_) {}
+      };
     }
 
     // Tremolo — amplitude flutter for emotional quality
@@ -471,6 +482,10 @@ const Sounds = (() => {
       tLfo.connect(tg);
       tg.connect(master.gain);
       tLfo.start(time); tLfo.stop(time + dur + 0.02);
+      tLfo.onended = () => {
+        try { tg.disconnect(); } catch (_) {}
+        try { tLfo.disconnect(); } catch (_) {}
+      };
     }
 
     // Route through masterGain — not directly to destination
@@ -499,6 +514,11 @@ const Sounds = (() => {
     g.gain.linearRampToValueAtTime(0, time + dur);
 
     src.connect(bp).connect(g).connect(masterGain);
+    src.onended = () => {
+      try { bp.disconnect(); } catch (_) {}
+      try { g.disconnect(); } catch (_) {}
+      try { src.disconnect(); } catch (_) {}
+    };
     src.start(time); src.stop(time + dur + 0.01);
   }
 
@@ -732,6 +752,10 @@ const Sounds = (() => {
       g.gain.linearRampToValueAtTime(0, t + 0.060);
       lfo.start(t); lfo.stop(t + 0.070);
       osc.start(t); osc.stop(t + 0.070);
+      lfo.onended = () => {
+        try { lfoG.disconnect(); } catch(_) {}
+        try { lfo.disconnect(); } catch(_) {}
+      };
       osc.onended = () => {
         try { g.disconnect(); } catch(_) {}
         try { osc.disconnect(); } catch(_) {}
@@ -785,6 +809,10 @@ const Sounds = (() => {
         g.gain.linearRampToValueAtTime(0, t + off + 0.070);
         lfo.start(t + off); lfo.stop(t + off + 0.080);
         osc.start(t + off); osc.stop(t + off + 0.080);
+        lfo.onended = () => {
+          try { lfoG.disconnect(); } catch(_) {}
+          try { lfo.disconnect(); } catch(_) {}
+        };
         osc.onended = () => {
           try { g.disconnect(); } catch(_) {}
           try { osc.disconnect(); } catch(_) {}
@@ -1145,7 +1173,7 @@ const Sounds = (() => {
         attack: 0.015, release: 0.080,
       });
       [osc1, lfo1].forEach(o => { o.start(t); o.stop(t + 0.320); });
-      osc1.onended = () => { try { g1.disconnect(); lfoG1.disconnect(); } catch(_) {} };
+      osc1.onended = () => { try { g1.disconnect(); lfoG1.disconnect(); lfo1.disconnect(); } catch(_) {} };
     } catch (e) {}
   }
 

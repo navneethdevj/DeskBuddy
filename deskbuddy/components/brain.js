@@ -915,7 +915,7 @@ const Brain = (() => {
             window._lastEmotion    = 'suspicious';
             Emotion.setState('suspicious');
             showWhisper('...📱?', 2500);
-            if (window.Sounds) Sounds.play('suspicious_squint');
+            // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
           }
         } else if (p?.gazeY < PHONE_GAZE_Y_RESET) {
@@ -958,7 +958,7 @@ const Brain = (() => {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
-    if (window.Sounds) Sounds.play('overjoyed_chirp');
+    // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
     showWhisper(whispers[minutesMark] || `${minutesMark} min! ✦`, 3000);
     _milestoneCallbacks.forEach(fn => { try { fn(minutesMark); } catch (e) {} });
     // Return to focused after 1.5s
@@ -1016,7 +1016,7 @@ const Brain = (() => {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
-    if (window.Sounds) Sounds.play('overjoyed_chirp');
+    // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
 
     _welcomeBackSeqId1 = setTimeout(() => {
       _welcomeBackSeqId1 = null;
@@ -1027,11 +1027,12 @@ const Brain = (() => {
       Emotion.setState('happy');
       window._emotionChanged = { from: 'overjoyed', to: 'happy' };
       window._lastEmotion    = 'happy';
-      if (window.Sounds) Sounds.play('happy_coo');
+      // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
 
       _welcomeBackSeqId2 = setTimeout(() => {
         _welcomeBackSeqId2 = null;
-        // t=4000ms: resume normal behaviour
+        // t=4000ms: resume normal behaviour (guard if face left during this window)
+        if (!window.perception?.facePresent) { enterState('idle'); return; }
         window._lastEmotion = null;
         enterState('observe');
       }, 2000);

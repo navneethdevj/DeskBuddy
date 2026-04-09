@@ -75,9 +75,18 @@ const Session = (() => {
   }
 
   function _saveToStorage() {
-    try {
+    const _attemptSave = () => {
       localStorage.setItem(_STORAGE_KEY, JSON.stringify(_history));
-    } catch (e) { /* storage full or unavailable */ }
+    };
+    try {
+      _attemptSave();
+    } catch (e) {
+      // Quota exceeded — drop the oldest 10 sessions and retry once
+      if (_history.length > 10) {
+        _history = _history.slice(0, _history.length - 10);
+        try { _attemptSave(); } catch (_) { /* give up silently */ }
+      }
+    }
   }
 
   function _pushSession(session) {
@@ -168,9 +177,10 @@ const Session = (() => {
 
     // ── Terminal: timer FAILED ────────────────────────────────────────────────
     if (newState === TIMER_FAILED) {
-      // oldState === CRITICAL → distraction failure.
-      // Any other oldState   → timer naturally reached 0 → session completed.
-      _endSession(oldState === TIMER_CRITICAL ? 'FAILED' : 'COMPLETED');
+      // If the timer's remaining time reached zero it's a natural expiry → always COMPLETED.
+      // CRITICAL held 45 s with time still on the clock → distraction failure → FAILED.
+      const naturalExpiry = !!(window.Timer && Timer.getRemainingSeconds() === 0);
+      _endSession((naturalExpiry || oldState !== TIMER_CRITICAL) ? 'COMPLETED' : 'FAILED');
     }
   }
 

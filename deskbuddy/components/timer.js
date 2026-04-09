@@ -72,6 +72,10 @@ const Timer = (() => {
   let _currentState     = STATE.FOCUSED;
   let _running          = false;
 
+  // Real-time delta tracking — prevents accumulator drift under CPU load and
+  // tab-sleep jumps (capped at 200ms per tick so a sleeping tab can't jump seconds).
+  let _lastTick = 0;
+
   // Interval handles — cleared on pause/reset to avoid orphaned intervals
   let _tickInterval       = null;  // fixed 100ms accumulator ticker
   let _focusPollInterval  = null;  // 500ms focus level sampler
@@ -115,8 +119,12 @@ const Timer = (() => {
   function start() {
     if (_running) return;
     _running = true;
+    _lastTick = Date.now();
     _tickInterval      = setInterval(_tick,      100);
     _focusPollInterval = setInterval(_pollFocus, 500);
+    // Poll immediately so the correct state is set from the first tick,
+    // not 500ms later (prevents free-focused period when focus is already low).
+    _pollFocus();
   }
 
   /**
@@ -183,10 +191,13 @@ const Timer = (() => {
     if (_focusPollInterval) { clearInterval(_focusPollInterval); _focusPollInterval = null; }
   }
 
-  /** Fixed 100ms accumulator tick. */
+  /** Fixed 100ms accumulator tick — uses real elapsed time with 200ms cap. */
   function _tick() {
     if (!_running) return;
-    _accumulated += 100 * _tickMultiplier;
+    const now   = Date.now();
+    const delta = Math.min(now - _lastTick, 200); // cap prevents tab-sleep jumps
+    _lastTick   = now;
+    _accumulated += delta * _tickMultiplier;
     if (_accumulated >= 1000) {
       _accumulated -= 1000;
       _fireTick();
