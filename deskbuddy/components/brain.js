@@ -973,6 +973,7 @@ const Brain = (() => {
     if (!el) return;
     el.classList.add('stretching');
     showWhisper('*stretches*', 2200);
+    if (window.Sounds) Sounds.play('stretch_coo');
     setTimeout(() => el.classList.remove('stretching'), 1500);
   }
 
@@ -992,6 +993,7 @@ const Brain = (() => {
     if (!el) return;
     const cls = Math.random() < 0.5 ? 'wink-left' : 'wink-right';
     el.classList.add(cls);
+    if (window.Sounds) Sounds.play('wink_blip');
     setTimeout(() => el.classList.remove(cls), 340);
   }
 
