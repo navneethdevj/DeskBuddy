@@ -133,15 +133,14 @@ const Brain = (() => {
   let tearInterval   = null;
   let _cryPhase      = 'normal';  // 'normal' | 'waterfall'
   let _cryPhaseTimer = null;      // schedules the waterfall transition
-  let _activeStreams  = 0;         // count of live .tear-stream elements
+  let _floodEls      = [];        // persistent .tear-flood block elements (one per eye)
+  let _poolFillInt   = null;      // interval that raises pool during waterfall phase
   let _poolVh        = 0;         // current tear-pool height in vh units
   let _poolDrainInt  = null;      // interval that slowly drains the pool
-  const POOL_MAX_VH         = 14;   // max pool fill height
-  const POOL_PER_TEAR_VH    = 0.55; // how much each normal tear adds
-  const POOL_PER_STREAM_VH  = 0.18; // streams add less per-element (they're more frequent)
-  const POOL_DRAIN_RATE     = 0.25; // vh removed per drain tick
-  const POOL_DRAIN_TICK     = 280;  // ms between drain ticks
-  const MAX_ACTIVE_STREAMS  = 24;   // DOM element cap for waterfall phase
+  const POOL_MAX_VH       = 14;   // max pool fill height
+  const POOL_PER_TEAR_VH  = 0.55; // how much each normal tear adds
+  const POOL_DRAIN_RATE   = 0.25; // vh removed per drain tick
+  const POOL_DRAIN_TICK   = 280;  // ms between drain ticks
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -821,20 +820,15 @@ const Brain = (() => {
   }
 
   // ── TEAR DROP SPAWNER ─────────────────────────────────────────────────────
-  // Spawns individual falling teardrop elements anchored to each eye.
-  // Phase 1 ('normal'): individual liquid drops.  Phase 2 ('waterfall'): viscous streams.
+  // Phase 1 ('normal'): spawn individual cartoon drops per eye.
+  // Phase 2 ('waterfall'): handled by persistent _floodEls blocks — no-op here.
   function _spawnTear() {
+    if (_cryPhase === 'waterfall') return;
     const eyes = document.querySelectorAll('.eye');
     eyes.forEach(eye => {
-      if (_cryPhase === 'waterfall') {
-        // Phase 2: 1-2 viscous streams per eye for a dense waterfall
-        const count = Math.random() > 0.45 ? 2 : 1;
-        for (let i = 0; i < count; i++) _spawnTearStream(eye);
-      } else {
-        // Phase 1: single drop per eye; skip occasionally for natural rhythm
-        if (Math.random() > 0.78) return;
-        _spawnTearDrop(eye);
-      }
+      // Skip occasionally for a natural uneven rhythm
+      if (Math.random() > 0.78) return;
+      _spawnTearDrop(eye);
     });
   }
 
@@ -858,31 +852,38 @@ const Brain = (() => {
                parseFloat(dur) * 1000 + 60);
   }
 
-  /** Phase 2 — a viscous stream ribbon that grows from the eye down to the pool. */
-  function _spawnTearStream(eye) {
-    if (_activeStreams >= MAX_ACTIVE_STREAMS) return; // DOM element cap
-    const rect = eye.getBoundingClientRect();
-    if (!rect.width) return;
-    const el = document.createElement('div');
-    el.className = 'tear-stream';
-    // Randomise position across the eye width
-    const startX = rect.left + rect.width * (0.18 + Math.random() * 0.64);
-    const startY = rect.bottom;
-    el.style.left = startX + 'px';
-    el.style.top  = startY + 'px';
-    const fallDist = window.innerHeight - startY;
-    el.style.setProperty('--stream-fall', fallDist + 'px');
-    el.style.setProperty('--stream-width', (5 + Math.random() * 7).toFixed(1) + 'px');
-    // Total animation time: grow phase + fade phase
-    const dur = (0.75 + Math.random() * 0.30).toFixed(2) + 's';
-    el.style.setProperty('--stream-duration', dur);
-    document.body.appendChild(el);
-    _activeStreams++;
-    setTimeout(() => {
-      el.remove();
-      _activeStreams = Math.max(0, _activeStreams - 1);
-      _raiseTearPool(POOL_PER_STREAM_VH);
-    }, parseFloat(dur) * 1000 + 40);
+  /** Phase 2 — create one wide .tear-flood block per eye, spanning eye → pool. */
+  function _spawnWaterfallBlocks() {
+    _removeWaterfallBlocks();
+    const eyes = document.querySelectorAll('.eye');
+    eyes.forEach(eye => {
+      const rect = eye.getBoundingClientRect();
+      if (!rect.width) return;
+      const el = document.createElement('div');
+      el.className = 'tear-flood';
+      const floodW = Math.round(rect.width * 0.62);
+      const floodX = rect.left + (rect.width - floodW) / 2;
+      const floodY = rect.bottom;
+      el.style.left   = floodX + 'px';
+      el.style.top    = floodY + 'px';
+      el.style.width  = floodW + 'px';
+      el.style.height = (window.innerHeight - floodY) + 'px';
+      document.body.appendChild(el);
+      _floodEls.push(el);
+    });
+    // Raise the pool continuously while the waterfall is flowing
+    _poolFillInt = setInterval(() => _raiseTearPool(0.22), 350);
+  }
+
+  /** Remove all active waterfall flood blocks (fade out first). */
+  function _removeWaterfallBlocks() {
+    if (_poolFillInt) { clearInterval(_poolFillInt); _poolFillInt = null; }
+    _floodEls.forEach(el => {
+      el.style.transition = 'opacity 0.4s ease-out';
+      el.style.opacity    = '0';
+      setTimeout(() => el.remove(), 420);
+    });
+    _floodEls = [];
   }
 
   /** Increment the tear pool by the given amount; update the overlay element. */
@@ -909,8 +910,8 @@ const Brain = (() => {
       _cryPhaseTimer = null;
       _cryPhase = 'waterfall';
       clearInterval(tearInterval);
-      _spawnTear(); // immediate burst to kick off the waterfall
-      tearInterval = setInterval(_spawnTear, 95 + Math.random() * 55);
+      tearInterval = null;
+      _spawnWaterfallBlocks();
     }, 8000);
   }
 
@@ -918,8 +919,8 @@ const Brain = (() => {
     if (tearInterval)   { clearInterval(tearInterval);  tearInterval   = null; }
     if (_cryPhaseTimer) { clearTimeout(_cryPhaseTimer); _cryPhaseTimer = null; }
     _cryPhase = 'normal';
-    _activeStreams = 0;
-    // Gradually drain the pool — existing tear/stream DOM nodes self-remove via setTimeout
+    _removeWaterfallBlocks();
+    // Gradually drain the pool
     if (_poolDrainInt) return;
     _poolDrainInt = setInterval(() => {
       if (_poolVh <= 0) {

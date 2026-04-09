@@ -956,7 +956,6 @@ html, body {
 
 /* ── Waterfall phase — one wide block per eye ── */
 /* Created by _spawnWaterfallBlocks() after 8s of sustained crying.  */
-/* A single thick rectangle of animated flowing water, like 😭 emoji. */
 .tear-flood {
   position: fixed;
   /* width/height set inline by JS */
