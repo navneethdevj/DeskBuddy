@@ -1,25 +1,71 @@
 # 👀 DeskBuddy
 
-**A cute animated desktop companion that lives on your screen while you study or work.**
+> **A living desktop companion that watches over you while you study — and actually cares if you drift away.**
 
-DeskBuddy is an Electron desktop-pet application featuring a pair of **glowing watchful eyes** — a tiny animated creature that drifts gently on your screen, blinks, and reacts to your cursor.
+DeskBuddy is an Electron app featuring an expressive animated creature that lives on your screen. It watches you through your webcam, reacts to your emotions, cheers you on during focus sessions, and gets genuinely sad when you disappear for too long.
 
 ![Electron](https://img.shields.io/badge/Electron-34-47848F?logo=electron&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
+## 🌟 What Makes It Special
+
+DeskBuddy isn't just a cute widget — it's a **focus-aware study companion** powered by real-time webcam perception. It can tell when you're looking away, when you're on your phone, when you smile, and when you've been gone too long. The more you work, the more it celebrates with you.
+
+---
+
 ## ✨ Features
 
-| Feature | Description |
+### 🎭 Rich Emotion System
+The companion has **15 distinct expressions** that respond dynamically to what you do:
+
+| Emotion | Triggered by |
 |---------|-------------|
-| 👀 **Glowing Eyes** | Large warm-white gradient eyes — no separate pupil; gaze direction shifts the gradient center |
-| 🧠 **Creature Brain** | Attention-based state machine — observe, curious, idle, followCursor, sleepy |
-| 🎬 **Sprite Animation** | Frame-based idle breathing animation at 4 FPS |
-| 🖱️ **Cursor Interaction** | Eyes follow your cursor and the companion retreats when you get too close |
-| ✨ **Micro Animations** | Blinking, breathing, glow pulsing — the companion is never frozen |
-| 🎯 **Smooth Movement** | Home-area drift with velocity-based curved paths at 60 FPS |
-| 😊 **Emotion System** | Six expressions — idle, curious, focused, sleepy, suspicious, happy |
+| 😊 **Happy** | Smiling at the camera |
+| 👀 **Curious** | Something catching its attention |
+| 😴 **Sleepy** | Low activity, idle state |
+| 😨 **Scared** | You suddenly disappeared |
+| 😢 **Sad** | You've been gone a while |
+| 😭 **Crying** | You've been away too long |
+| 😤 **Grumpy** | You keep looking away |
+| 😒 **Pouty** | You looked away for a bit |
+| 🙄 **Sulking** | Silently protesting your inattention |
+| 🤨 **Suspicious** | Phone detected, or something seems off |
+| 🥰 **Overjoyed** | You came back! Milestone reached! |
+| 🤩 **Excited** | Big moment energy |
+| 😳 **Shy** | You've been staring directly at it |
+| 💕 **Love** | You pet it |
+| 😱 **Startled** | Sudden fast mouse movement |
+
+### 📸 Webcam-Powered Perception
+- Real-time **face detection** and **gaze tracking** via MediaPipe
+- **Smile recognition** — the companion notices when you're happy
+- **Phone detection** — if you tilt your head down and your gaze drops, it gets suspicious
+- **Eye contact detection** — stare at it long enough and it goes shy
+
+### ⏱️ Focus Timer & Sessions
+- Built-in **Pomodoro-style timer** (25 min default)
+- Timer states: `FOCUSED` → `DRIFTING` → `DISTRACTED` → `CRITICAL` → `FAILED`
+- Sessions are tracked and saved to `localStorage` (up to 50 history entries)
+- Break budget: **5 minutes** of look-away time before the session fails
+- Three **sensitivity modes**: Gentle / Normal / Strict
+
+### 🎉 Milestones & Encouragement
+- Every **5 minutes of sustained focus** triggers a celebration
+- Milestone messages escalate all the way to **60 minutes** (`1 HOUR!! 🎉🎉🎉`)
+- Spontaneous encouragement whispers appear when you're deep in focus
+- Study tips and cheers randomly pop up to keep you motivated
+
+### 🐾 Idle Life
+- The companion is never static — it **stretches**, **winks**, **yawns**, and drifts around
+- Spontaneous behaviors fire every few seconds to keep things alive
+- Pet it with your cursor for a love reaction ♡
+
+### 🔊 Spatial Audio
+- Procedurally generated sound effects using the **Web Audio API**
+- Every emotion and interaction has a matching sound cue
+- Master volume control with mute support
 
 ---
 
@@ -28,6 +74,7 @@ DeskBuddy is an Electron desktop-pet application featuring a pair of **glowing w
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) v16 or newer
+- A webcam (required for face tracking and focus detection)
 
 ### Install & Run
 
@@ -39,7 +86,7 @@ npm install
 npm start
 ```
 
-The glowing eyes will appear on a dark background window on your screen.
+DeskBuddy will open as a **frameless, always-on-top window**. Grant camera permission when prompted and your companion will come to life.
 
 ---
 
@@ -47,76 +94,54 @@ The glowing eyes will appear on a dark background window on your screen.
 
 ```
 deskbuddy/
-├── main.js                 # Electron main process (frameless transparent window)
+├── main.js                 # Electron main process — frameless transparent window
 ├── preload.js              # Secure IPC bridge
-├── renderer.js             # Frontend entry point — boots all modules
+├── renderer.js             # Boot orchestrator — wires all modules together
 ├── index.html              # App shell
-├── styles.css              # All styles, expressions, and sprite-frame CSS
+├── styles.css              # All styles, expressions, and animation keyframes
 ├── components/
-│   ├── brain.js            # Creature Brain — attention-based behavior state machine
-│   ├── companion.js        # Companion DOM, position, gradient-based gaze, idle behaviors
-│   ├── spriteAnimator.js   # Frame-based sprite animation engine
-│   ├── movement.js         # Home-area drift with velocity-based curved paths
-│   └── emotion.js          # Expression / emotion state system
+│   ├── brain.js            # 🧠 Core behavior engine — state machine, perception routing
+│   ├── companion.js        # 🐾 DOM, position, gaze, idle micro-behaviors
+│   ├── emotion.js          # 🎭 Expression state — swaps CSS classes
+│   ├── perception.js       # 📸 Webcam face/gaze/smile/surprise detection
+│   ├── timer.js            # ⏱️  Focus timer with distraction state machine
+│   ├── session.js          # 📊 Session tracking — history, breaks, failure logic
+│   ├── sounds.js           # 🔊 Web Audio procedural sound engine
+│   ├── particles.js        # ✨ Particle effects for celebrations
+│   ├── camera.js           # 📷 Camera stream management
+│   ├── movement.js         # 🎯 Smooth drift physics at 60 FPS
+│   └── spriteAnimator.js   # 🎬 CSS frame-based sprite animation
 └── ui/
-    └── status.js           # Status bar text display
+    └── status.js           # Status bar display
 ```
 
-### How It Works
+### Boot Order
 
-1. **Brain** (`brain.js`) runs the main `requestAnimationFrame` loop and manages the attention-based state machine. It cycles through states — `observe`, `curious`, `idle`, `sleepy` — each lasting 2–5 seconds. When the mouse cursor moves nearby, the brain switches to `followCursor`.
+`Sounds → Session → Timer → Companion → SpriteAnimator → Particles → Status → Camera → Perception → Brain`
 
-2. **Movement** (`movement.js`) handles physics. It drifts the companion within a small range (±40 px) of the origin using smooth velocity interpolation with perpendicular curve offsets. Mouse proximity creates a push force.
-
-3. **SpriteAnimator** (`spriteAnimator.js`) cycles CSS frame classes at 4 FPS to create subtle idle breathing animation through small translate and scale transforms.
-
-4. **Companion** (`companion.js`) builds the eye DOM tree, manages position/rotation transforms, provides `lookAt()` / `resetLook()` for gradient-based gaze via CSS custom properties (`--gaze-x`, `--gaze-y`), and runs independent micro-animations like blinking.
-
-5. **Emotion** (`emotion.js`) swaps CSS expression classes on the companion element to change eye shape and style.
+Each module is independent. `renderer.js` wires them together through dedicated wiring functions — no module calls another directly.
 
 ---
 
 ## 🧠 Behavior States
 
-| State | Expression | What Happens |
-|-------|-----------|--------------|
-| `observe` | focused | Drifts gently while eyes slowly scan the environment |
-| `curious` | curious | Eyes widen dramatically; gaze shifts left → right → up → center |
-| `idle` | idle | Relaxed eyes with occasional happy flash |
-| `followCursor` | focused / suspicious | Eyes track the cursor; retreats if cursor is very close |
-| `sleepy` | sleepy | Eyes half-close; no movement |
-
----
-
-## 🎨 Sprite Animation
-
-The sprite system uses CSS class–based placeholder frames (no image assets required).
-
-| Animation | Frames | FPS | Loop | Visual Effect |
-|-----------|--------|-----|------|---------------|
-| `idle` | 3 unique (4 total) | 4 | ✅ | Subtle vertical translate and scale (breathing) |
-
-When real sprite PNGs are added to `assets/`, the animator can be extended to swap `<img>` sources instead of CSS classes.
+| State | Emotion | What the Companion Does |
+|-------|---------|-------------------------|
+| `observe` | focused | Drifts gently, eyes scan the environment |
+| `curious` | curious | Eyes widen, gaze sweeps left → right → up |
+| `idle` | idle | Relaxed, occasional happy flash |
+| `followCursor` | focused / suspicious | Tracks your cursor, retreats if you get too close |
+| `sleepy` | sleepy | Eyes droop, all movement slows |
 
 ---
 
 ## ⚡ Performance
 
-- **Movement loop**: `requestAnimationFrame` at 60 FPS
-- **Sprite frames**: `setInterval` at 4 FPS
-- **DOM updates**: minimal — only `transform`, `classList`, and CSS custom property changes
+- **Main loop**: `requestAnimationFrame` at 60 FPS
+- **Face tracking**: MediaPipe at ~15 FPS via camera polling
+- **DOM updates**: minimal — only `transform`, `classList`, and CSS custom properties
 - **Rendering**: GPU-accelerated via `will-change: transform, filter`
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Real sprite image assets for the companion
-- [ ] Multiple companion characters
-- [ ] Webcam-based focus detection
-- [ ] AI study session tracking
-- [ ] Theme customization
-- [ ] Sound effects
+- **Audio**: zero-cost when muted; Web Audio graph tears down cleanly
 
 ---
 
