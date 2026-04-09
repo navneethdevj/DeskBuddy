@@ -103,11 +103,11 @@ const Brain = (() => {
   };
 
   const STATE_LABELS = {
-    observe: 'Observing',
-    curious: 'Curious',
-    idle: 'Idle',
+    observe:      'Focused',
+    curious:      'Curious',
+    idle:         'Idle — watching over you',
     followCursor: 'Watching You',
-    sleepy: 'Sleepy'
+    sleepy:       'Getting sleepy...'
   };
 
   window._lastEmotion    = null;
@@ -130,7 +130,13 @@ const Brain = (() => {
 
   // Tear overlay state
   // Tear drop spawning
-  let tearInterval = null;
+  let tearInterval  = null;
+  let _poolVh       = 0;       // current tear-pool height in vh units
+  let _poolDrainInt = null;    // interval that slowly drains the pool
+  const POOL_MAX_VH       = 14;   // max pool fill height
+  const POOL_PER_TEAR_VH  = 0.55; // how much each landed tear adds
+  const POOL_DRAIN_RATE   = 0.25; // vh removed per drain tick
+  const POOL_DRAIN_TICK   = 280;  // ms between drain ticks
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -473,6 +479,34 @@ const Brain = (() => {
 
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+
+      // Keep status text in sync with the actual displayed emotion
+      const emotionLabels = {
+        idle:       'Idle',
+        focused:    'Focused',
+        curious:    'Curious',
+        sleepy:     'Sleepy',
+        happy:      'Happy',
+        scared:     'Scared',
+        sad:        'Sad',
+        crying:     'Crying',
+        grumpy:     'Grumpy',
+        pouty:      'Pouty',
+        suspicious: 'Suspicious',
+        sulking:    'Sulking',
+        overjoyed:  'Overjoyed',
+        excited:    'Excited',
+        shy:        'Shy',
+        love:       'Loved',
+        startled:   'Startled',
+      };
+      const eLabel = emotionLabels[emotion] || emotion;
+      if (window.cameraAvailable && p && p.facePresent) {
+        Status.setText(eLabel + ' · Attention ' + p.attentionScore + '%');
+      } else {
+        Status.setText('Status: ' + eLabel);
+      }
+
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
         _startTears();
@@ -783,6 +817,8 @@ const Brain = (() => {
 
   // ── TEAR DROP SPAWNER ─────────────────────────────────────────────────────
   // Spawns individual falling teardrop elements anchored to each eye.
+  // Each tear falls to the actual bottom of the viewport; on landing it
+  // adds to the rising water pool (#tear-overlay).
   function _spawnTear() {
     const eyes = document.querySelectorAll('.eye');
     eyes.forEach(eye => {
@@ -798,24 +834,57 @@ const Brain = (() => {
       const startY = rect.bottom - 2;
       tear.style.left = startX + 'px';
       tear.style.top  = startY + 'px';
+      // Distance from eye bottom to viewport bottom — tear falls exactly here
+      const fallDist = window.innerHeight - startY;
+      tear.style.setProperty('--tear-fall-dist', fallDist + 'px');
       // Vary fall speed slightly per drop for organic feel
-      const dur = (1.3 + Math.random() * 0.7).toFixed(2) + 's';
+      const dur = (1.4 + Math.random() * 0.8).toFixed(2) + 's';
       tear.style.setProperty('--tear-duration', dur);
       document.body.appendChild(tear);
-      // Self-remove after animation completes
-      setTimeout(() => tear.remove(), parseFloat(dur) * 1000 + 100);
+      const durMs = parseFloat(dur) * 1000;
+      // When this tear lands at the bottom, raise the pool a little
+      setTimeout(() => {
+        tear.remove();
+        _raiseTearPool();
+      }, durMs + 50);
     });
+  }
+
+  /** Increment the tear pool by one tear's worth; update the overlay element. */
+  function _raiseTearPool() {
+    _poolVh = Math.min(POOL_MAX_VH, _poolVh + POOL_PER_TEAR_VH);
+    _applyPoolHeight();
+  }
+
+  /** Write the current _poolVh to the DOM element. */
+  function _applyPoolHeight() {
+    const el = document.getElementById('tear-overlay');
+    if (el) el.style.height = _poolVh + 'vh';
   }
 
   function _startTears() {
     if (tearInterval) return;
+    // Stop any in-progress drain
+    if (_poolDrainInt) { clearInterval(_poolDrainInt); _poolDrainInt = null; }
     _spawnTear(); // immediate first drop
     tearInterval = setInterval(_spawnTear, 420 + Math.random() * 200);
   }
 
   function _stopTears() {
     if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
-    // Existing tears self-remove via their own setTimeout — no extra action needed.
+    // Gradually drain the pool — existing tear DOM nodes self-remove via setTimeout
+    if (_poolDrainInt) return;
+    _poolDrainInt = setInterval(() => {
+      if (_poolVh <= 0) {
+        clearInterval(_poolDrainInt);
+        _poolDrainInt = null;
+        _poolVh = 0;
+        _applyPoolHeight();
+        return;
+      }
+      _poolVh = Math.max(0, _poolVh - POOL_DRAIN_RATE);
+      _applyPoolHeight();
+    }, POOL_DRAIN_TICK);
   }
 
   // ── OVERJOYED → SULKING → FORGIVEN sequence ───────────────────────────────
@@ -872,8 +941,49 @@ const Brain = (() => {
   }
 
   // ── FOCUS TIMER ───────────────────────────────────────────────────────────
+  // Color palette for focus timer states (matches timer.js session-timer colors)
+  const _focusTimerColors = {
+    FOCUSED:    { color: 'rgba(200,220,255,0.72)', glow: 'rgba(160,190,255,0.25)', opacity: '0.60' },
+    DRIFTING:   { color: 'rgba(255,200, 80,0.82)', glow: 'rgba(255,180, 40,0.30)', opacity: '0.75' },
+    DISTRACTED: { color: 'rgba(255, 90, 90,0.88)', glow: 'rgba(255, 60, 60,0.35)', opacity: '0.85' },
+    CRITICAL:   { color: 'rgba(255, 60, 60,0.95)', glow: 'rgba(255, 30, 30,0.45)', opacity: '0.95' },
+    FAILED:     { color: 'rgba(140,140,160,0.50)', glow: 'transparent',             opacity: '0.35' },
+  };
+  let _lastFocusTimerState = null;
+  let _ftParticleInt = null;
+
+  /** Spawn one tiny particle near the focus timer element. */
+  function _spawnFocusParticle() {
+    const el = document.getElementById('focus-timer');
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width) return;
+    const p = document.createElement('div');
+    p.className = 'focus-particle';
+    // Position near the timer text — slight random spread
+    const px = rect.left + Math.random() * rect.width;
+    const py = rect.top  + rect.height * 0.5 + (Math.random() - 0.5) * 8;
+    p.style.left = px + 'px';
+    p.style.top  = py + 'px';
+    // Color matches current timer state
+    const timerState = window.Timer?.getState?.() || 'FOCUSED';
+    const palette = { FOCUSED: '160,190,255', DRIFTING: '255,190,70', DISTRACTED: '255,80,80', CRITICAL: '255,50,50', FAILED: '130,130,150' };
+    const rgb = palette[timerState] || '160,190,255';
+    p.style.background = `rgba(${rgb},0.85)`;
+    p.style.boxShadow  = `0 0 4px rgba(${rgb},0.55)`;
+    const dur = (1.0 + Math.random() * 1.2).toFixed(2);
+    p.style.setProperty('--fp-dur', dur + 's');
+    p.style.setProperty('--fp-dx', ((Math.random() - 0.5) * 28) + 'px');
+    p.style.setProperty('--fp-dy', -(10 + Math.random() * 18) + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), parseFloat(dur) * 1000 + 50);
+  }
+
   function _startFocusTimer() {
     if (_timerInt) return;
+    // Start focus-timer particle emitter
+    _ftParticleInt = setInterval(_spawnFocusParticle, 1400 + Math.random() * 600);
+
     _timerInt = setInterval(() => {
       const state = window.perception?.userState || 'NoFace';
 
@@ -894,6 +1004,20 @@ const Brain = (() => {
         const m = String(Math.floor(_focusSecs / 60)).padStart(2, '0');
         const s = String(_focusSecs % 60).padStart(2, '0');
         timerEl.textContent = `focus ${m}:${s}`;
+
+        // Update color to reflect session timer state
+        const timerState = window.Timer?.getState?.() || 'FOCUSED';
+        if (timerState !== _lastFocusTimerState) {
+          _lastFocusTimerState = timerState;
+          const c = _focusTimerColors[timerState] || _focusTimerColors.FOCUSED;
+          timerEl.style.color      = c.color;
+          timerEl.style.opacity    = c.opacity;
+          timerEl.style.textShadow = `0 0 10px ${c.glow}`;
+          // Refresh particle interval speed — faster when distressed
+          if (_ftParticleInt) { clearInterval(_ftParticleInt); _ftParticleInt = null; }
+          const ptRate = timerState === 'FOCUSED' ? 1400 : timerState === 'DRIFTING' ? 900 : 550;
+          _ftParticleInt = setInterval(_spawnFocusParticle, ptRate + Math.random() * 300);
+        }
       }
 
       // Update attention bar from perception
@@ -1168,6 +1292,9 @@ const Brain = (() => {
       '... ♡', '*wiggles*', '*sniffs air*', '(⁀‿⁀)',
       '✨', '*ponders*', 'oh.', '*contentedly blinks*',
       '‧₊˚ ✩', '( •ᴗ• )', '*little squeak*', '꒰ ˶• ༝ •˶ ꒱',
+      '...still here ♡', '*peeks at you*', 'don\'t mind me~',
+      '...you okay?', '*quiet hum*', '( •̀ ω •́ )✧',
+      '*sits nearby*', '...i\'m here.', '~', '*cozy*',
     ];
     showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
   }

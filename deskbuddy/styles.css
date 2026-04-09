@@ -713,20 +713,7 @@ html, body {
   100% { opacity: 0; transform: translate(var(--drift-x, 10px), var(--drift-y, -20px)) scale(0); }
 }
 
-/* ===== Status Bar ===== */
-#status-bar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.35);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  pointer-events: none;
-  z-index: 1000;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
-}
+
 
 /* =====================================================================
    Phase emotions — all eye shapes stay ROUND, all glows stay PASTEL.
@@ -840,37 +827,55 @@ html, body {
   60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
 }
 
-/* Falling tears — spawned as .tear-drop elements by brain.js */
+/* Tear overlay — bottom-of-screen water pool that rises while crying */
 #tear-overlay {
-  display: none; /* legacy element kept to avoid JS errors — not used visually */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 490;
+  overflow: hidden;
+  transition: height 3s ease-in-out;
 }
 #tear-fill {
-  display: none;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    rgba(60, 130, 200, 0.28) 0%,
+    rgba(80, 155, 220, 0.14) 55%,
+    rgba(100, 170, 235, 0.04) 100%
+  );
+  border-radius: 0 0 0 0;
 }
+/* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
 /* Individual teardrop shape — appended to document.body by _startTears() */
 .tear-drop {
   position: fixed;
-  width: 7px;
-  height: 11px;
+  width: 10px;
+  height: 16px;
   border-radius: 55% 55% 65% 45% / 50% 50% 70% 50%;
   background: radial-gradient(ellipse at 40% 30%,
     rgba(160, 215, 255, 0.95) 0%,
     rgba(100, 175, 240, 0.80) 50%,
     rgba(70, 140, 210, 0.55) 100%
   );
-  box-shadow: 0 1px 6px rgba(80, 160, 235, 0.45);
+  box-shadow: 0 1px 8px rgba(80, 160, 235, 0.55);
   pointer-events: none;
   z-index: 500;
   animation: tearFall var(--tear-duration, 1.6s) ease-in forwards;
 }
 
+/* tears fall to the exact bottom of the viewport — distance set per-tear by JS */
 @keyframes tearFall {
-  0%   { transform: translateY(0)    scaleX(1.0)  rotate(0deg);   opacity: 0;    }
-  8%   { opacity: 0.9; }
-  40%  { transform: translateY(28vh) scaleX(0.88) rotate(2deg);   opacity: 0.75; }
-  75%  { transform: translateY(58vh) scaleX(0.76) rotate(-1deg);  opacity: 0.45; }
-  100% { transform: translateY(85vh) scaleX(0.60) rotate(1deg);   opacity: 0;    }
+  0%   { transform: translateY(0)                              scaleX(1.00) rotate(0deg);   opacity: 0;    }
+  7%   { opacity: 0.94; }
+  40%  { transform: translateY(calc(var(--tear-fall-dist) * 0.40)) scaleX(0.90) rotate(2deg);   opacity: 0.82; }
+  75%  { transform: translateY(calc(var(--tear-fall-dist) * 0.78)) scaleX(0.78) rotate(-1deg);  opacity: 0.55; }
+  92%  { transform: translateY(calc(var(--tear-fall-dist) * 0.97)) scaleX(0.70) rotate(1deg);   opacity: 0.22; }
+  100% { transform: translateY(var(--tear-fall-dist))              scaleX(0.65) rotate(0deg);   opacity: 0;    }
 }
 
 /* Micro-shiver for lively moments */
@@ -898,9 +903,9 @@ html, body {
   animation: saccade 0.28s ease-out;
 }
 
-/* Whisper text — sits above the session timer */
+/* Whisper text — sits just above the session timer */
 #whisper-text {
-  position: fixed; bottom: calc(7vmin + 7vmin); left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 16.5vmin; left: 50%; transform: translateX(-50%);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12px;
   color: rgba(255,255,255,0.78); opacity: 0;
   pointer-events: none; text-align: center; white-space: nowrap;
@@ -908,17 +913,9 @@ html, body {
   text-shadow: 0 1px 8px rgba(0,0,0,0.55);
 }
 
-/* Focus timer — sits below session timer */
-#focus-timer {
-  position: fixed; bottom: 2.8vmin; left: 50%; transform: translateX(-50%);
-  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px;
-  letter-spacing: 0.5px; color: rgba(255,255,255,0.58);
-  opacity: 0.22; pointer-events: none; z-index: 1000;
-}
-
 /* Session timer — uses CSS vars set dynamically by timer.js */
 #session-timer {
-  position: fixed; bottom: 7vmin; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 9.5vmin; left: 50%; transform: translateX(-50%);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 5.5vmin;
   font-weight: 200; letter-spacing: 0.18em;
   color: var(--timer-color, white);
@@ -936,9 +933,34 @@ html, body {
   80%       { transform: translateX(-50%) translateX(calc(0.4 * var(--timer-shake-px, 0px))); }
 }
 
-/* Attention bar — EyeOnTask concept: continuous engagement score */
+/* Status bar — sits below session timer */
+#status-bar {
+  position: fixed;
+  bottom: 7vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.40);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 1000;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Focus timer — sits below status bar, above attention bar */
+#focus-timer {
+  position: fixed; bottom: 5vmin; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px;
+  letter-spacing: 0.5px; color: var(--focus-timer-color, rgba(200,220,255,0.62));
+  opacity: var(--focus-timer-opacity, 0.55); pointer-events: none; z-index: 1000;
+  transition: color 1.8s ease, opacity 1s ease;
+  text-shadow: 0 0 8px var(--focus-timer-glow, transparent);
+}
+
+/* Attention bar — thin engagement line at very bottom */
 #attention-bar {
-  position: fixed; bottom: 1vmin; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 2.5vmin; left: 50%; transform: translateX(-50%);
   width: 80px; height: 2px;
   background: rgba(255,255,255,0.08); border-radius: 1px;
   pointer-events: none; z-index: 1000; overflow: hidden;
@@ -947,6 +969,22 @@ html, body {
   height: 100%; width: 50%;
   background: rgba(140,170,255,0.45); border-radius: 1px;
   transition: width 1s ease;
+}
+
+/* Focus timer particles — tiny floating dots around the focus timer */
+.focus-particle {
+  position: fixed;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 999;
+  animation: focusParticleDrift var(--fp-dur, 2s) ease-out forwards;
+}
+@keyframes focusParticleDrift {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  20%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(var(--fp-dx, 0px), var(--fp-dy, -18px)) scale(0); }
 }
 
 /* Enhanced eye border glow — tight inner ring makes eyes look more luminous */
