@@ -68,6 +68,10 @@ const Particles = (() => {
       case 'pouty':      rate = 0.010; break;
       case 'grumpy':     rate = 0.010; break;
       case 'sulking':    rate = 0.006; break;
+      case 'excited':    rate = 0.05;  break;
+      case 'love':       rate = 0.035; break;
+      case 'shy':        rate = 0.012; break;
+      case 'startled':   rate = 0.022; break;
       default:           rate = 0.005; break;
     }
 

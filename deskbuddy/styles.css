@@ -1,3 +1,13 @@
+/* ===== CSS Custom Property Defaults ===== */
+/* Timer state vars are set dynamically by timer.js on document.documentElement.
+   :root defaults ensure correct rendering before the first Timer.init() call. */
+:root {
+  --timer-color:       white;
+  --timer-glow-color:  transparent;
+  --timer-shake-px:    0px;
+  --timer-pulse-speed: none;
+}
+
 /* ===== Base Reset ===== */
 *, *::before, *::after {
   margin: 0;
@@ -123,19 +133,22 @@ html, body {
 
 /* ===== Breathing Animation (enhanced — more alive) ===== */
 @keyframes breathe {
-  0%   { transform: translateY(0) scale(1); }
-  30%  { transform: translateY(-0.5vh) scale(1.004); }
-  50%  { transform: translateY(-0.6vh) scale(1.006); }
-  70%  { transform: translateY(-0.3vh) scale(1.003); }
-  100% { transform: translateY(0) scale(1); }
+  0%   { transform: translateY(0)      scale(1); }
+  25%  { transform: translateY(-0.6vh) scale(1.010); }
+  50%  { transform: translateY(-0.9vh) scale(1.014); }
+  70%  { transform: translateY(-0.5vh) scale(1.009); }
+  85%  { transform: translateY(-0.7vh) scale(1.006); }
+  100% { transform: translateY(0)      scale(1); }
 }
 
 /* Subtle idle sway — makes companion feel alive even when idle */
 @keyframes idleSway {
-  0%, 100% { margin-left: 0; margin-top: 0; }
-  25%      { margin-left: 2px; margin-top: -1px; }
-  50%      { margin-left: -1px; margin-top: 1px; }
-  75%      { margin-left: 1px; margin-top: -2px; }
+  0%   { margin-left: 0;   margin-top: 0; }
+  20%  { margin-left: 4px; margin-top: -2px; }
+  40%  { margin-left: -3px; margin-top: 2px; }
+  60%  { margin-left: 3px; margin-top: -3px; }
+  80%  { margin-left: -2px; margin-top: 1px; }
+  100% { margin-left: 0;   margin-top: 0; }
 }
 
 /* Disable CSS keyframe on companion-inner when sprite system drives frames */
@@ -150,19 +163,27 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8vmin;
+  gap: 6vmin;
   width: 100%;
   height: 100%;
   top: 0;
   left: 0;
 }
 
+/* Each eye + its brow + blush live in a column flex wrapper */
+.eye-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vmin;
+}
+
 /* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
    to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
    focal point so the whole color field follows the gaze direction. */
 .eye {
-  width: 28vmin;
-  height: 33vmin;
+  width: 36vmin;
+  height: 44vmin;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
     #7b8bd8  0%,
@@ -187,12 +208,12 @@ html, body {
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  transition: height 0.4s cubic-bezier(.4, 0, .2, 1),
-              width 0.4s cubic-bezier(.4, 0, .2, 1),
-              border-radius 0.4s cubic-bezier(.4, 0, .2, 1),
-              transform 0.4s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.5s ease,
-              box-shadow 0.4s ease;
+  transition: height 0.22s cubic-bezier(.4, 0, .2, 1),
+              width 0.22s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.22s cubic-bezier(.4, 0, .2, 1),
+              transform 0.22s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.30s ease,
+              box-shadow 0.22s ease;
   box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
               0 0 12vmin rgba(120, 135, 235, 0.15),
               0 0 22vmin rgba(120, 135, 235, 0.06);
@@ -203,17 +224,17 @@ html, body {
 
 /* ===== Expression: Curious (wide-eyed wonder — big adorable eyes) ===== */
 .companion.curious .eye {
-  width: 34vmin;
-  height: 42vmin;
-  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.45),
-              0 0 16vmin rgba(115, 125, 245, 0.16),
-              0 0 26vmin rgba(115, 125, 245, 0.06);
+  width: 42vmin;
+  height: 52vmin;
+  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.55),
+              0 0 18vmin rgba(115, 125, 245, 0.20),
+              0 0 30vmin rgba(115, 125, 245, 0.08);
 }
 
 /* ===== Expression: Focused (determined narrow gaze) ===== */
 .companion.focused .eye {
-  width: 25vmin;
-  height: 22vmin;
+  width: 30vmin;
+  height: 24vmin;
   box-shadow: 0 0 4vmin rgba(110, 130, 225, 0.30),
               0 0 10vmin rgba(110, 130, 225, 0.12),
               0 0 18vmin rgba(110, 130, 225, 0.04);
@@ -230,8 +251,8 @@ html, body {
 
 /* ===== Expression: Suspicious (angular side-eye — skewed) ===== */
 .companion.suspicious .eye {
-  width: 25vmin;
-  height: 13vmin;
+  width: 30vmin;
+  height: 14vmin;
   border-radius: 1vmin 1vmin 50% 50%;
   box-shadow: 0 0 4vmin rgba(115, 120, 240, 0.24),
               0 0 10vmin rgba(115, 120, 240, 0.10);
@@ -245,20 +266,21 @@ html, body {
   transform: skewY(-6deg);
 }
 
-/* ===== Expression: Happy (^_^ joyful squint — warm) ===== */
+/* ===== Expression: Happy (^_^ joyful arc — warm, bright) ===== */
 .companion.happy .eye {
-  height: 11vmin;
-  border-radius: 10vmin 10vmin 2vmin 2vmin;
-  box-shadow: 0 0 6vmin rgba(160, 140, 245, 0.40),
-              0 0 14vmin rgba(160, 140, 245, 0.14),
-              0 0 24vmin rgba(160, 140, 245, 0.05);
+  width: 40vmin;
+  height: 14vmin;
+  border-radius: 12vmin 12vmin 2vmin 2vmin;
+  box-shadow: 0 0 8vmin rgba(160, 140, 245, 0.55),
+              0 0 18vmin rgba(160, 140, 245, 0.22),
+              0 0 30vmin rgba(160, 140, 245, 0.08);
 }
 
 /* ===== Pupil (moves inside eye to track cursor) ===== */
 .pupil {
   position: absolute;
-  width: 12vmin;
-  height: 12vmin;
+  width: 16vmin;
+  height: 16vmin;
   background: radial-gradient(
     circle,
     #5a9ac8  0%,
@@ -274,8 +296,8 @@ html, body {
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -6vmin;
-  margin-left: -6vmin;
+  margin-top: -8vmin;
+  margin-left: -8vmin;
   pointer-events: none;
   will-change: transform;
 }
@@ -283,10 +305,112 @@ html, body {
 /* ===== Blink (cute squish — overrides all expressions) ===== */
 .companion.blink .eyes .eye {
   height: 1.5vmin;
-  width: 30vmin;
+  width: 36vmin;
   border-radius: 50%;
   transition: height 0.1s ease, width 0.1s ease;
 }
+
+/* ===== Eyebrows ===== */
+/* Expressive brows that mirror inner state — transition-driven so they
+   glide smoothly to each emotion shape just like the eyes do. */
+.brow {
+  width: 22vmin;
+  height: 2vmin;
+  background: rgba(125, 135, 215, 0.82);
+  border-radius: 2vmin;
+  flex-shrink: 0;
+  transform-origin: center;
+  will-change: transform, background-color;
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1),
+              width    0.28s cubic-bezier(.4,0,.2,1),
+              background-color 0.28s ease;
+}
+
+/* Default: very slight inward arch — relaxed but alive */
+.brow-left  { transform: rotate(-2deg); }
+.brow-right { transform: rotate(2deg); }
+
+/* Happy — raised + outer ends lift = ^_^ */
+.companion.happy .brow-left,
+.companion.happy .brow-right { width: 24vmin; }
+.companion.happy .brow-left  { transform: translateY(-1.8vmin) rotate(-7deg); }
+.companion.happy .brow-right { transform: translateY(-1.8vmin) rotate(7deg); }
+
+/* Overjoyed — even higher, bolder */
+.companion.overjoyed .brow-left  { transform: translateY(-3vmin) rotate(-9deg); width: 26vmin; }
+.companion.overjoyed .brow-right { transform: translateY(-3vmin) rotate(9deg);  width: 26vmin; }
+
+/* Sad — inner ends droop down = Σ_Σ */
+.companion.sad .brow-left  { transform: translateY(0.6vmin) rotate(7deg); }
+.companion.sad .brow-right { transform: translateY(0.6vmin) rotate(-7deg); }
+
+/* Crying — deeper droop, darker */
+.companion.crying .brow {
+  background: rgba(95, 110, 190, 0.88);
+}
+.companion.crying .brow-left  { transform: translateY(1.2vmin) rotate(10deg); }
+.companion.crying .brow-right { transform: translateY(1.2vmin) rotate(-10deg); }
+
+/* Grumpy — sharp V — thick inner-down scowl */
+.companion.grumpy .brow {
+  background: rgba(210, 90, 80, 0.80);
+  width: 24vmin;
+}
+.companion.grumpy .brow-left  { transform: rotate(14deg); }
+.companion.grumpy .brow-right { transform: rotate(-14deg); }
+
+/* Pouty — mild droop */
+.companion.pouty .brow-left  { transform: rotate(8deg); }
+.companion.pouty .brow-right { transform: rotate(-8deg); }
+
+/* Sulking — droopy + dark */
+.companion.sulking .brow {
+  background: rgba(170, 100, 180, 0.80);
+}
+.companion.sulking .brow-left  { transform: translateY(0.8vmin) rotate(9deg); }
+.companion.sulking .brow-right { transform: translateY(0.8vmin) rotate(-9deg); }
+
+/* Scared — raised high, closer together = worried arc */
+.companion.scared .brow-left  { transform: translateY(-2.2vmin) rotate(-4deg); }
+.companion.scared .brow-right { transform: translateY(-2.2vmin) rotate(4deg); }
+
+/* Curious — both raise, right one slightly more (inquisitive asymmetry) */
+.companion.curious .brow-left  { transform: translateY(-1.8vmin) rotate(-2deg); }
+.companion.curious .brow-right { transform: translateY(-2.4vmin) rotate(1.5deg); }
+
+/* Suspicious — left brow squints down (side-eye frown) */
+.companion.suspicious .brow-left  { transform: translateY(0.4vmin) rotate(6deg); }
+.companion.suspicious .brow-right { transform: rotate(-1deg); }
+
+/* Focused — slight inward furrow */
+.companion.focused .brow-left  { transform: translateY(0.4vmin) rotate(5deg); }
+.companion.focused .brow-right { transform: translateY(0.4vmin) rotate(-5deg); }
+
+/* Sleepy — heavy, relaxed droop */
+.companion.sleepy .brow {
+  opacity: 0.55;
+}
+.companion.sleepy .brow-left  { transform: translateY(0.5vmin) rotate(3deg); }
+.companion.sleepy .brow-right { transform: translateY(0.5vmin) rotate(-3deg); }
+
+/* ===== Blush Cheeks ===== */
+/* Soft rosy ovals that appear under the eyes when the companion is happy
+   or overjoyed — classic anime blush marks, GPU-composited opacity. */
+.blush {
+  width: 16vmin;
+  height: 7vmin;
+  border-radius: 50%;
+  background: rgba(255, 140, 170, 0);
+  flex-shrink: 0;
+  pointer-events: none;
+  will-change: background;
+  transition: background 0.45s ease;
+}
+
+.companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
+.companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.36); }
+.companion.embarrassed .blush { background: rgba(255, 120, 155, 0.30); }
+.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.18); }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {
@@ -555,26 +679,41 @@ html, body {
   box-shadow: 0 0 3px rgba(205, 138, 192, 0.3);
 }
 
+.particle-excited {
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 230, 120, 0.95);
+  box-shadow: 0 0 8px rgba(255, 225, 110, 0.75);
+}
+
+.particle-love {
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 140, 180, 0.90);
+  box-shadow: 0 0 7px rgba(255, 120, 165, 0.65);
+}
+
+.particle-shy {
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 160, 200, 0.65);
+  box-shadow: 0 0 4px rgba(255, 140, 185, 0.40);
+}
+
+.particle-startled {
+  width: 3px;
+  height: 3px;
+  background: rgba(200, 220, 255, 0.80);
+  box-shadow: 0 0 6px rgba(185, 208, 255, 0.55);
+}
+
 @keyframes particleFade {
   0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
   20%  { opacity: 1; }
   100% { opacity: 0; transform: translate(var(--drift-x, 10px), var(--drift-y, -20px)) scale(0); }
 }
 
-/* ===== Status Bar ===== */
-#status-bar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.35);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  pointer-events: none;
-  z-index: 1000;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
-}
+
 
 /* =====================================================================
    Phase emotions — all eye shapes stay ROUND, all glows stay PASTEL.
@@ -583,7 +722,7 @@ html, body {
 
 /* SCARED — wide eyes, cold pale blue glow */
 .companion.scared .eye {
-  width: 32vmin; height: 40vmin;
+  width: 40vmin; height: 50vmin;
   box-shadow:
     0 0 2vmin rgba(195,218,255,0.92),
     0 0 5vmin rgba(195,218,255,0.52),
@@ -597,7 +736,7 @@ html, body {
 
 /* SAD — drooping lids, soft blue */
 .companion.sad .eye {
-  width: 27vmin; height: 20vmin;
+  width: 32vmin; height: 24vmin;
   border-radius: 50% 50% 42% 42% / 50% 50% 56% 56%;
   box-shadow:
     0 0 2vmin rgba(100,145,210,0.88),
@@ -612,7 +751,7 @@ html, body {
 
 /* CRYING — heavier droop, dimmer */
 .companion.crying .eye {
-  width: 25vmin; height: 16vmin;
+  width: 30vmin; height: 18vmin;
   border-radius: 50% 50% 38% 38% / 50% 50% 58% 58%;
   opacity: 0.78;
   box-shadow:
@@ -627,7 +766,7 @@ html, body {
 
 /* POUTY — soft droop, peachy warm */
 .companion.pouty .eye {
-  width: 25vmin; height: 20vmin;
+  width: 30vmin; height: 24vmin;
   border-radius: 50% 50% 46% 46% / 50% 50% 58% 58%;
   box-shadow:
     0 0 2vmin rgba(255,188,118,0.88),
@@ -642,7 +781,7 @@ html, body {
 
 /* GRUMPY — narrowed but ROUND. Think grumpy hamster, never angular. */
 .companion.grumpy .eye {
-  width: 24vmin; height: 13vmin;
+  width: 28vmin; height: 15vmin;
   border-radius: 40% 40% 50% 50% / 45% 45% 55% 55%;
   box-shadow:
     0 0 2vmin rgba(255,138,128,0.90),
@@ -657,7 +796,7 @@ html, body {
 
 /* OVERJOYED — largest eyes, brightest glow. Maximum cuteness. */
 .companion.overjoyed .eye {
-  width: 36vmin; height: 46vmin;
+  width: 44vmin; height: 56vmin;
   box-shadow:
     0 0 2vmin rgba(255,240,198,0.98),
     0 0 8vmin rgba(255,240,198,0.62),
@@ -672,7 +811,7 @@ html, body {
 
 /* SULKING — narrow AND droopy simultaneously. Angry + heartbroken. */
 .companion.sulking .eye {
-  width: 24vmin; height: 14vmin;
+  width: 28vmin; height: 16vmin;
   border-radius: 38% 38% 48% 48% / 44% 44% 56% 56%;
   box-shadow:
     0 0 2vmin rgba(205,138,192,0.88),
@@ -688,46 +827,140 @@ html, body {
   60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
 }
 
-/* Tear overlay */
+/* Tear overlay — bottom-of-screen water pool that rises while crying */
 #tear-overlay {
-  position: fixed; inset: 0; pointer-events: none;
-  z-index: 50; overflow: hidden; display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 490;
+  overflow: hidden;
+  transition: height 3s ease-in-out;
 }
 #tear-fill {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
-  background: linear-gradient(to top, rgba(70,148,200,0.28) 0%, rgba(90,165,215,0.16) 55%, transparent 100%);
-  border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px;
-  animation: tearWave 4s ease-in-out infinite;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    rgba(60, 130, 200, 0.28) 0%,
+    rgba(80, 155, 220, 0.14) 55%,
+    rgba(100, 170, 235, 0.04) 100%
+  );
+  border-radius: 0 0 0 0;
 }
-@keyframes tearWave {
-  0%   { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
-  25%  { border-top-left-radius: 40% 8px;  border-top-right-radius: 70% 14px; }
-  50%  { border-top-left-radius: 55% 11px; border-top-right-radius: 50% 9px;  }
-  75%  { border-top-left-radius: 70% 14px; border-top-right-radius: 45% 8px;  }
-  100% { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
+/* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
+
+/* Individual teardrop shape — appended to document.body by _startTears() */
+.tear-drop {
+  position: fixed;
+  width: 10px;
+  height: 16px;
+  border-radius: 55% 55% 65% 45% / 50% 50% 70% 50%;
+  background: radial-gradient(ellipse at 40% 30%,
+    rgba(160, 215, 255, 0.95) 0%,
+    rgba(100, 175, 240, 0.80) 50%,
+    rgba(70, 140, 210, 0.55) 100%
+  );
+  box-shadow: 0 1px 8px rgba(80, 160, 235, 0.55);
+  pointer-events: none;
+  z-index: 500;
+  animation: tearFall var(--tear-duration, 1.6s) ease-in forwards;
 }
 
-/* Whisper text */
+/* tears fall to the exact bottom of the viewport — distance set per-tear by JS */
+@keyframes tearFall {
+  0%   { transform: translateY(0)                              scaleX(1.00) rotate(0deg);   opacity: 0;    }
+  7%   { opacity: 0.94; }
+  40%  { transform: translateY(calc(var(--tear-fall-dist) * 0.40)) scaleX(0.90) rotate(2deg);   opacity: 0.82; }
+  75%  { transform: translateY(calc(var(--tear-fall-dist) * 0.78)) scaleX(0.78) rotate(-1deg);  opacity: 0.55; }
+  92%  { transform: translateY(calc(var(--tear-fall-dist) * 0.97)) scaleX(0.70) rotate(1deg);   opacity: 0.22; }
+  100% { transform: translateY(var(--tear-fall-dist))              scaleX(0.65) rotate(0deg);   opacity: 0;    }
+}
+
+/* Micro-shiver for lively moments */
+@keyframes microShiver {
+  0%,100% { transform: rotate(0deg) translateX(0); }
+  20%     { transform: rotate(-1.2deg) translateX(-2px); }
+  40%     { transform: rotate(1.5deg)  translateX(2px); }
+  60%     { transform: rotate(-0.8deg) translateX(-1px); }
+  80%     { transform: rotate(1.0deg)  translateX(1px); }
+}
+.companion.shiver .companion-inner {
+  animation: microShiver 0.38s ease-in-out;
+}
+
+/* Pupil micro-saccade — faint rapid flick */
+@keyframes saccade {
+  0%,100% { transform: translate(-50%, -50%); }
+  30%     { transform: translate(calc(-50% + 4px), calc(-50% - 2px)); }
+  60%     { transform: translate(calc(-50% - 3px), calc(-50% + 2px)); }
+}
+.companion.saccade .pupil {
+  top: 50%; left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  animation: saccade 0.28s ease-out;
+}
+
+/* Whisper text — sits just above the session timer */
 #whisper-text {
-  position: fixed; bottom: 58px; left: 50%; transform: translateX(-50%);
-  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px;
+  position: fixed; bottom: 16.5vmin; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12px;
   color: rgba(255,255,255,0.78); opacity: 0;
   pointer-events: none; text-align: center; white-space: nowrap;
   z-index: 1001; transition: opacity 0.7s ease;
   text-shadow: 0 1px 8px rgba(0,0,0,0.55);
 }
 
-/* Focus timer */
-#focus-timer {
-  position: fixed; bottom: 38px; left: 50%; transform: translateX(-50%);
-  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px;
-  letter-spacing: 0.5px; color: rgba(255,255,255,0.58);
-  opacity: 0.22; pointer-events: none; z-index: 1000;
+/* Session timer — uses CSS vars set dynamically by timer.js */
+#session-timer {
+  position: fixed; bottom: 9.5vmin; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 5.5vmin;
+  font-weight: 200; letter-spacing: 0.18em;
+  color: var(--timer-color, white);
+  text-shadow:
+    0 0 18px var(--timer-glow-color, rgba(255,255,255,0.15)),
+    0 0 40px var(--timer-glow-color, transparent);
+  pointer-events: none; z-index: 1000;
+  animation: timerShake var(--timer-pulse-speed, none) ease-in-out infinite;
+}
+@keyframes timerShake {
+  0%, 100% { transform: translateX(-50%) translateX(0); }
+  20%       { transform: translateX(-50%) translateX(calc(-1 * var(--timer-shake-px, 0px))); }
+  40%       { transform: translateX(-50%) translateX(var(--timer-shake-px, 0px)); }
+  60%       { transform: translateX(-50%) translateX(calc(-0.6 * var(--timer-shake-px, 0px))); }
+  80%       { transform: translateX(-50%) translateX(calc(0.4 * var(--timer-shake-px, 0px))); }
 }
 
-/* Attention bar — EyeOnTask concept: continuous engagement score */
+/* Status bar — sits below session timer */
+#status-bar {
+  position: fixed;
+  bottom: 7vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.40);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 1000;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Focus timer — sits below status bar, above attention bar */
+#focus-timer {
+  position: fixed; bottom: 5vmin; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px;
+  letter-spacing: 0.5px; color: var(--focus-timer-color, rgba(200,220,255,0.62));
+  opacity: var(--focus-timer-opacity, 0.55); pointer-events: none; z-index: 1000;
+  transition: color 1.8s ease, opacity 1s ease;
+  text-shadow: 0 0 8px var(--focus-timer-glow, transparent);
+}
+
+/* Attention bar — thin engagement line at very bottom */
 #attention-bar {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 2.5vmin; left: 50%; transform: translateX(-50%);
   width: 80px; height: 2px;
   background: rgba(255,255,255,0.08); border-radius: 1px;
   pointer-events: none; z-index: 1000; overflow: hidden;
@@ -738,12 +971,404 @@ html, body {
   transition: width 1s ease;
 }
 
+/* Focus timer particles — tiny floating dots around the focus timer */
+.focus-particle {
+  position: fixed;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 999;
+  animation: focusParticleDrift var(--fp-dur, 2s) ease-out forwards;
+}
+@keyframes focusParticleDrift {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  20%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(var(--fp-dx, 0px), var(--fp-dy, -18px)) scale(0); }
+}
+
 /* Enhanced eye border glow — tight inner ring makes eyes look more luminous */
 .eye {
   box-shadow:
-    0 0 2vmin rgba(160,175,255,0.92),
-    0 0 5vmin rgba(140,155,245,0.65),
-    0 0 12vmin rgba(120,135,235,0.35),
-    0 0 24vmin rgba(120,135,235,0.15),
-    0 0 40vmin rgba(120,135,235,0.06) !important;
+    0 0 2vmin rgba(160,175,255,0.95),
+    0 0 6vmin rgba(140,155,245,0.70),
+    0 0 14vmin rgba(120,135,235,0.40),
+    0 0 28vmin rgba(120,135,235,0.18),
+    0 0 48vmin rgba(120,135,235,0.07) !important;
 }
+
+/* =====================================================================
+   NOSE — tiny inverted-triangle button nose (cat / anime style)
+   Lives inside .companion-inner, absolutely placed below the eye center.
+   ===================================================================== */
+.nose {
+  position: absolute;
+  top: calc(50% + 25vmin);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 1.1vmin solid transparent;
+  border-right: 1.1vmin solid transparent;
+  border-top: 1.4vmin solid rgba(150, 155, 230, 0.48);
+  pointer-events: none;
+  transition: border-top-color 0.35s ease, opacity 0.35s ease;
+  will-change: opacity;
+}
+
+/* Nose tint per mood */
+.companion.happy .nose,
+.companion.overjoyed .nose  { border-top-color: rgba(200, 165, 235, 0.60); }
+.companion.love .nose       { border-top-color: rgba(255, 140, 185, 0.70); }
+.companion.excited .nose    { border-top-color: rgba(255, 215, 115, 0.72); }
+.companion.shy .nose        { border-top-color: rgba(255, 155, 200, 0.65); }
+.companion.sad .nose,
+.companion.crying .nose     { border-top-color: rgba(100, 130, 205, 0.60); }
+.companion.scared .nose,
+.companion.startled .nose   { border-top-color: rgba(195, 218, 255, 0.65); }
+.companion.grumpy .nose     { border-top-color: rgba(255, 138, 128, 0.58); }
+.companion.sleepy .nose     { opacity: 0.40; }
+
+/* =====================================================================
+   MOUTH — small arc that morphs per emotion.
+   All sides of the border are defined (some transparent) so CSS
+   transitions interpolate cleanly.  border-radius flip (smile ↔ frown)
+   creates a smooth morphing effect.
+   ===================================================================== */
+.mouth {
+  position: absolute;
+  top: calc(50% + 31vmin);
+  left: 50%;
+  width: 8vmin;
+  height: 4vmin;
+  transform: translateX(-50%);
+  /* Neutral: gentle smile arc */
+  border: 0.28vmin solid transparent;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(145, 155, 225, 0.52);
+  border-left-color:   rgba(145, 155, 225, 0.22);
+  border-right-color:  rgba(145, 155, 225, 0.22);
+  background: transparent;
+  transition: width               0.32s cubic-bezier(.4,0,.2,1),
+              height              0.32s cubic-bezier(.4,0,.2,1),
+              border-radius       0.32s cubic-bezier(.4,0,.2,1),
+              border-bottom-color 0.32s ease,
+              border-top-color    0.32s ease,
+              border-left-color   0.32s ease,
+              border-right-color  0.32s ease,
+              border-width        0.32s ease,
+              opacity             0.32s ease;
+  pointer-events: none;
+  will-change: border-radius, width, height;
+}
+
+/* Happy / Overjoyed — wide joyful smile */
+.companion.happy .mouth,
+.companion.overjoyed .mouth {
+  width: 13vmin; height: 5.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(200, 170, 255, 0.88);
+  border-left-color:   rgba(200, 170, 255, 0.48);
+  border-right-color:  rgba(200, 170, 255, 0.48);
+  border-top-color:    transparent;
+  border-width: 0.38vmin;
+}
+
+/* Love — warm wide smile */
+.companion.love .mouth {
+  width: 12vmin; height: 5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 138, 180, 0.92);
+  border-left-color:   rgba(255, 125, 168, 0.52);
+  border-right-color:  rgba(255, 125, 168, 0.52);
+  border-top-color:    transparent;
+  border-width: 0.38vmin;
+}
+
+/* Excited — big open grin */
+.companion.excited .mouth {
+  width: 11vmin; height: 5.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 220, 120, 0.92);
+  border-left-color:   rgba(255, 210, 100, 0.58);
+  border-right-color:  rgba(255, 210, 100, 0.58);
+  border-top-color:    transparent;
+  border-width: 0.42vmin;
+}
+
+/* Shy — tiny barely-there, slightly upturned */
+.companion.shy .mouth {
+  width: 5vmin; height: 2.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 155, 200, 0.55);
+  border-left-color:   rgba(255, 145, 190, 0.25);
+  border-right-color:  rgba(255, 145, 190, 0.25);
+  border-top-color:    transparent;
+  opacity: 0.6;
+}
+
+/* Sad — drooping frown */
+.companion.sad .mouth {
+  width: 8vmin; height: 3.5vmin;
+  border-radius: 50% 50% 0 0;
+  border-top-color:    rgba(100, 130, 205, 0.68);
+  border-left-color:   rgba(100, 130, 205, 0.35);
+  border-right-color:  rgba(100, 130, 205, 0.35);
+  border-bottom-color: transparent;
+}
+
+/* Crying — deeper frown */
+.companion.crying .mouth {
+  width: 7vmin; height: 3vmin;
+  border-radius: 50% 50% 0 0;
+  border-top-color:    rgba(80, 110, 190, 0.72);
+  border-left-color:   rgba(80, 110, 190, 0.38);
+  border-right-color:  rgba(80, 110, 190, 0.38);
+  border-bottom-color: transparent;
+}
+
+/* Scared / Startled — small round "O" gasp */
+.companion.scared .mouth,
+.companion.startled .mouth {
+  width: 3.5vmin; height: 3.5vmin;
+  border-radius: 50%;
+  border-bottom-color: rgba(195, 218, 255, 0.72);
+  border-top-color:    rgba(195, 218, 255, 0.72);
+  border-left-color:   rgba(195, 218, 255, 0.50);
+  border-right-color:  rgba(195, 218, 255, 0.50);
+}
+
+/* Grumpy — flat sullen line */
+.companion.grumpy .mouth {
+  width: 7vmin; height: 1vmin;
+  border-radius: 1vmin;
+  border-bottom-color: rgba(255, 138, 128, 0.68);
+  border-left-color:   transparent;
+  border-right-color:  transparent;
+  border-top-color:    transparent;
+}
+
+/* Pouty / Sulking — mild pout frown */
+.companion.pouty .mouth,
+.companion.sulking .mouth {
+  width: 7vmin; height: 2.5vmin;
+  border-radius: 50% 50% 0 0;
+  border-top-color:    rgba(255, 188, 118, 0.58);
+  border-left-color:   rgba(255, 188, 118, 0.28);
+  border-right-color:  rgba(255, 188, 118, 0.28);
+  border-bottom-color: transparent;
+}
+
+/* Suspicious — slightly off-center, slight downturn */
+.companion.suspicious .mouth {
+  width: 7vmin; height: 2vmin;
+  border-radius: 50% 50% 0 0;
+  border-top-color:    rgba(115, 120, 240, 0.48);
+  border-left-color:   rgba(115, 120, 240, 0.22);
+  border-right-color:  rgba(115, 120, 240, 0.22);
+  border-bottom-color: transparent;
+  transform: translateX(calc(-50% + 1vmin));
+}
+
+/* Curious — slightly parted, wondering */
+.companion.curious .mouth {
+  width: 6.5vmin; height: 3.5vmin;
+  border-radius: 0 0 40% 40%;
+  border-bottom-color: rgba(115, 125, 245, 0.58);
+  border-left-color:   rgba(115, 125, 245, 0.28);
+  border-right-color:  rgba(115, 125, 245, 0.28);
+  border-top-color:    transparent;
+}
+
+/* Sleepy — barely visible, relaxed neutral */
+.companion.sleepy .mouth {
+  width: 6vmin;
+  opacity: 0.28;
+}
+
+/* Focused — small determined line */
+.companion.focused .mouth {
+  width: 6vmin; height: 2.5vmin;
+  border-bottom-color: rgba(110, 130, 225, 0.45);
+  border-left-color:   rgba(110, 130, 225, 0.18);
+  border-right-color:  rgba(110, 130, 225, 0.18);
+}
+
+/* Forgiven — soft grateful smile */
+.companion.forgiven .mouth {
+  width: 10vmin; height: 4.5vmin;
+  border-bottom-color: rgba(200, 165, 235, 0.75);
+  border-left-color:   rgba(200, 165, 235, 0.38);
+  border-right-color:  rgba(200, 165, 235, 0.38);
+  border-top-color:    transparent;
+}
+
+/* =====================================================================
+   EYEBROW ADDITIONS — new emotion brows
+   ===================================================================== */
+.companion.excited .brow-left  { transform: translateY(-2.8vmin) rotate(-6deg); }
+.companion.excited .brow-right { transform: translateY(-2.8vmin) rotate(6deg);  }
+
+.companion.shy .brow-left  { transform: translateY(0.3vmin) rotate(3deg); }
+.companion.shy .brow-right { transform: translateY(-0.8vmin) rotate(-4deg); }
+
+.companion.love .brow-left  { transform: translateY(-1.5vmin) rotate(-6deg); }
+.companion.love .brow-right { transform: translateY(-1.5vmin) rotate(6deg);  }
+
+.companion.startled .brow-left  { transform: translateY(-3.2vmin) rotate(-5deg); }
+.companion.startled .brow-right { transform: translateY(-3.2vmin) rotate(5deg);  }
+
+/* =====================================================================
+   BLUSH ADDITIONS — new emotion blush
+   ===================================================================== */
+.companion.shy .blush     { background: rgba(255, 118, 162, 0.30); }
+.companion.love .blush    { background: rgba(255, 130, 172, 0.40); }
+.companion.excited .blush { background: rgba(255, 200, 120, 0.18); }
+
+/* =====================================================================
+   NEW EMOTION EYE SHAPES
+   ===================================================================== */
+
+/* EXCITED — extra wide, brightly glowing like a kid on sugar */
+.companion.excited .eye {
+  width: 42vmin; height: 48vmin;
+  box-shadow:
+    0 0 4vmin rgba(255,230,130,0.98),
+    0 0 10vmin rgba(255,220,110,0.70),
+    0 0 22vmin rgba(255,210, 90,0.35),
+    0 0 40vmin rgba(255,200, 75,0.14);
+}
+.companion.excited { animation: glowExcited 0.7s ease-in-out infinite, idleSway 4s ease-in-out infinite; }
+@keyframes glowExcited {
+  0%,100% { filter: drop-shadow(0 0 9vmin rgba(255,228,120,0.68)) drop-shadow(0 0 24vmin rgba(255,215,100,0.26)); }
+  50%     { filter: drop-shadow(0 0 18vmin rgba(255,238,145,0.92)) drop-shadow(0 0 40vmin rgba(255,225,120,0.38)); }
+}
+
+/* SHY — slightly smaller, soft averted downward droop */
+.companion.shy .eye {
+  width: 34vmin; height: 32vmin;
+  border-radius: 50% 50% 46% 46% / 46% 46% 54% 54%;
+  box-shadow:
+    0 0 3vmin rgba(255,142,198,0.72),
+    0 0 9vmin rgba(255,122,178,0.28),
+    0 0 18vmin rgba(255,105,162,0.10);
+}
+.companion.shy { animation: glowShy 2.8s ease-in-out infinite, idleSway 9s ease-in-out infinite; }
+@keyframes glowShy {
+  0%,100% { filter: drop-shadow(0 0 4vmin rgba(255,142,198,0.36)) drop-shadow(0 0 12vmin rgba(255,120,175,0.12)); }
+  50%     { filter: drop-shadow(0 0 8vmin rgba(255,158,210,0.52)) drop-shadow(0 0 20vmin rgba(255,135,185,0.18)); }
+}
+/* Shy eyes look slightly away — asymmetric lean */
+.companion.shy .eye-left  { transform: translateX(-2vmin) translateY(1.5vmin); }
+.companion.shy .eye-right { transform: translateX( 2vmin) translateY(1.5vmin); }
+
+/* LOVE — warm round glow, radiant and soft */
+.companion.love .eye {
+  width: 40vmin; height: 42vmin;
+  border-radius: 50%;
+  box-shadow:
+    0 0 4vmin rgba(255,138,180,0.92),
+    0 0 12vmin rgba(255,118,160,0.52),
+    0 0 24vmin rgba(255, 98,145,0.22),
+    0 0 40vmin rgba(255, 80,130,0.08);
+}
+.companion.love { animation: glowLove 1.4s ease-in-out infinite, idleSway 6s ease-in-out infinite; }
+@keyframes glowLove {
+  0%,100% { filter: drop-shadow(0 0 8vmin rgba(255,138,180,0.58)) drop-shadow(0 0 22vmin rgba(255,118,160,0.22)); }
+  50%     { filter: drop-shadow(0 0 16vmin rgba(255,158,198,0.82)) drop-shadow(0 0 38vmin rgba(255,135,172,0.32)); }
+}
+
+/* STARTLED — near-scared extra-wide flash, cold blue-white */
+.companion.startled .eye {
+  width: 44vmin; height: 54vmin;
+  box-shadow:
+    0 0 3vmin rgba(200,220,255,0.98),
+    0 0 8vmin rgba(185,210,255,0.65),
+    0 0 18vmin rgba(175,200,255,0.28);
+}
+.companion.startled { animation: glowStartled 0.25s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
+@keyframes glowStartled {
+  0%,100% { filter: drop-shadow(0 0 8vmin rgba(200,220,255,0.68)) drop-shadow(0 0 20vmin rgba(185,210,255,0.26)); }
+  50%     { filter: drop-shadow(0 0 18vmin rgba(215,232,255,0.95)) drop-shadow(0 0 36vmin rgba(198,218,255,0.40)); }
+}
+
+/* =====================================================================
+   NEW EMOTION BODY ANIMATIONS
+   ===================================================================== */
+
+/* Excited — rapid bounce with energy */
+.companion.excited .companion-inner {
+  animation: excitedBounce 0.55s ease-in-out infinite;
+}
+@keyframes excitedBounce {
+  0%,100% { transform: translateY(0) scale(1) rotate(0deg); }
+  18%     { transform: translateY(-1.6vh) scale(1.022) rotate(0.6deg); }
+  36%     { transform: translateY(-0.4vh) scale(0.990) rotate(-0.4deg); }
+  54%     { transform: translateY(-1.2vh) scale(1.015) rotate(0.4deg); }
+  72%     { transform: translateY(-0.2vh) scale(0.995) rotate(-0.2deg); }
+  90%     { transform: translateY(-0.8vh) scale(1.008); }
+}
+
+/* Shy — gentle recoil, small and self-conscious */
+.companion.shy .companion-inner {
+  animation: shyRecoil 3.2s ease-in-out infinite;
+}
+@keyframes shyRecoil {
+  0%,100% { transform: translateY(0.2vh) scale(0.96) rotate(0deg); }
+  40%     { transform: translateY(0.5vh) scale(0.955) rotate(-0.4deg); }
+  70%     { transform: translateY(0.3vh) scale(0.960) rotate(0.2deg); }
+}
+
+/* Love — warm slow pulse */
+.companion.love .companion-inner {
+  animation: lovePulse 1.3s ease-in-out infinite;
+}
+@keyframes lovePulse {
+  0%,100% { transform: scale(1) translateY(0); }
+  35%     { transform: scale(1.04) translateY(-0.5vh); }
+  65%     { transform: scale(0.988) translateY(0.1vh); }
+}
+
+/* Startled — single sharp jolt (forwards not infinite) */
+.companion.startled .companion-inner {
+  animation: startledJolt 0.45s cubic-bezier(.2,.8,.4,1) forwards;
+}
+@keyframes startledJolt {
+  0%   { transform: scale(0.92) translateY(0.4vh); }
+  25%  { transform: scale(1.06) translateY(-0.8vh) rotate(0.6deg); }
+  55%  { transform: scale(0.97) translateY(0.2vh) rotate(-0.3deg); }
+  80%  { transform: scale(1.01) translateY(-0.1vh); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+/* =====================================================================
+   WINK HELPER — closes one eye for a single wink
+   ===================================================================== */
+.companion.wink-left .eye-left {
+  height: 2.5vmin !important;
+  border-radius: 50% !important;
+  transition: height 0.08s ease, border-radius 0.08s ease !important;
+}
+.companion.wink-right .eye-right {
+  height: 2.5vmin !important;
+  border-radius: 50% !important;
+  transition: height 0.08s ease, border-radius 0.08s ease !important;
+}
+
+/* =====================================================================
+   STRETCH HELPER — companion stretches upward briefly
+   ===================================================================== */
+.companion.stretching .companion-inner {
+  animation: stretchYawn 1.4s cubic-bezier(.4,0,.2,1) forwards !important;
+}
+@keyframes stretchYawn {
+  0%   { transform: scale(1,1) translateY(0); }
+  25%  { transform: scale(0.96, 1.05) translateY(-0.8vh); }
+  55%  { transform: scale(1.04, 0.96) translateY(0.5vh); }
+  80%  { transform: scale(0.99, 1.02) translateY(-0.2vh); }
+  100% { transform: scale(1,1) translateY(0); }
+}
+
+/* =====================================================================
+   (breathe keyframe defined earlier, near top of file)
+   ===================================================================== */

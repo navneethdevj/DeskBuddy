@@ -6,7 +6,12 @@ const Emotion = (() => {
   const STATES = [
     'idle', 'curious', 'focused', 'sleepy', 'suspicious', 'happy',
     'scared', 'sad', 'crying', 'pouty', 'grumpy', 'overjoyed',
-    'sulking', 'embarrassed', 'forgiven'
+    'sulking', 'embarrassed', 'forgiven',
+    // Personality-driven emotions — triggered by user interactions
+    'excited',   // rapid typing / high energy input
+    'shy',       // prolonged direct eye contact
+    'love',      // click-to-pet interaction
+    'startled',  // sudden large mouse jerk
   ];
   let currentState = null;
   let element = null;

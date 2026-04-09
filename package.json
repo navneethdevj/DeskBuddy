@@ -1,10 +1,17 @@
 {
-  "name": "deskbuddy",
+  "name": "deskbuddy-root",
   "version": "1.0.0",
-  "description": "Cute animated AI study companion that lives on your screen",
-  "main": "deskbuddy/main.js",
+  "private": true,
+  "description": "DeskBuddy — monorepo root",
   "scripts": {
-    "start": "electron deskbuddy/main.js"
+    "start": "electron deskbuddy/main.js",
+    "dev:api": "pnpm --filter @deskbuddy/api dev",
+    "dev:web": "pnpm --filter @deskbuddy/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test:coverage"
   },
   "keywords": [
     "electron",
@@ -14,7 +21,11 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "electron": "^34.2.0"
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "electron": "^34.2.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.3"

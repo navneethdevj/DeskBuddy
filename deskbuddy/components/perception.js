@@ -52,9 +52,9 @@
 const Perception = (() => {
 
   const EVAL_MS           = 66;
-  const DEBOUNCE_MS       = 1000;
-  const SLEEPY_CONFIRM_MS = 3000;
-  const NOFACE_CONFIRM_MS = 3000;
+  const DEBOUNCE_MS       = 350;
+  const SLEEPY_CONFIRM_MS = 1800;
+  const NOFACE_CONFIRM_MS = 1000;
   const LOOKING_AWAY_YAW  = 20;
 
   // From Eyes Position Estimator repo — iris offset beyond this = not looking at camera
@@ -62,14 +62,21 @@ const Perception = (() => {
 
   // From EyeOnTask repo — attention score rise/fall rates
   // Score rises faster when head is forward AND iris is centered (true attention)
-  const ATTN_GAIN_CONTACT = 2.5;  // focused + eye contact
-  const ATTN_GAIN_FOCUSED = 1.0;  // focused, no direct eye contact
-  const ATTN_DECAY        = 0.8;  // distracted or looking away
-  const ATTN_DECAY_NOFACE = 1.6;  // faster decay when face gone entirely
+  const ATTN_GAIN_CONTACT = 3.2;  // focused + eye contact
+  const ATTN_GAIN_FOCUSED = 1.4;  // focused, no direct eye contact
+  const ATTN_DECAY        = 1.2;  // distracted or looking away
+  const ATTN_DECAY_NOFACE = 2.2;  // faster decay when face gone entirely
 
   // From face-api.js expression concept — thresholds for smile and surprise
-  const SMILE_THRESHOLD    = 0.45;
-  const SURPRISE_THRESHOLD = 0.50;
+  // Calibrated to avoid false positives from natural mouth movements / speech
+  const SMILE_THRESHOLD    = 0.42;
+  const SURPRISE_THRESHOLD = 0.40;
+
+  // Smile + surprise confirmation — require N consecutive eval frames above
+  // threshold before setting the flag. Prevents single-frame noise from
+  // triggering emotions. At EVAL_MS=66ms, 3 frames ≈ 200ms sustained expression.
+  const SMILE_CONFIRM_FRAMES    = 3;
+  const SURPRISE_CONFIRM_FRAMES = 2;
 
   // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===
   // https://github.com/Asadullah-Dal17/Eyes-Position-Estimator-Mediapipe
@@ -139,6 +146,10 @@ const Perception = (() => {
   let prevNoseX = null, prevNoseY = null;
   let attentionScore = 50;
 
+  // Smile / surprise confirmation counters — prevent single-frame noise triggers
+  let _smileConfirmCount    = 0;
+  let _surpriseConfirmCount = 0;
+
   // Initialize immediately so consumers never see undefined
   window.perception = {
     facePresent: false, headYaw: 0, headPitch: 0,
@@ -169,6 +180,8 @@ const Perception = (() => {
   function _handleNoFace(dt, now) {
     nofaceMs += dt;
     sleepyMs  = 0;
+    _smileConfirmCount    = 0;
+    _surpriseConfirmCount = 0;
     prevNoseX = null; prevNoseY = null;
     // Only reset filters after prolonged absence — brief dropouts keep
     // smooth state so re-acquisition doesn't cause a position jump.
@@ -230,6 +243,14 @@ const Perception = (() => {
     const smileScore    = (_bs(bs,'mouthSmileLeft') + _bs(bs,'mouthSmileRight')) / 2;
     const surpriseScore = _bs(bs,'jawOpen')*0.6 + _bs(bs,'eyeWideLeft')*0.2 + _bs(bs,'eyeWideRight')*0.2;
 
+    // Confirmation counters: expression must persist for N consecutive frames
+    // to avoid single-frame noise (speech, yawn, brief muscle movement) triggering emotions.
+    // Counters climb when above threshold, reset instantly when below.
+    _smileConfirmCount    = smileScore    > SMILE_THRESHOLD    ? Math.min(_smileConfirmCount    + 1, SMILE_CONFIRM_FRAMES)    : 0;
+    _surpriseConfirmCount = surpriseScore > SURPRISE_THRESHOLD ? Math.min(_surpriseConfirmCount + 1, SURPRISE_CONFIRM_FRAMES) : 0;
+    const userSmiling   = _smileConfirmCount    >= SMILE_CONFIRM_FRAMES;
+    const userSurprised = _surpriseConfirmCount >= SURPRISE_CONFIRM_FRAMES;
+
     // Face center from nose tip (landmark 4)
     const nose = lm[4];
     const rawFaceX = nose?.x ?? 0.5;
@@ -284,8 +305,8 @@ const Perception = (() => {
       facePresent: true, headYaw: yaw, headPitch: pitch,
       gazeX: correctedGazeX, gazeY: correctedGazeY, eyeContact, eyeContactScore,
       eyeOpenness, smileScore, surpriseScore,
-      userSmiling:   smileScore    > SMILE_THRESHOLD,
-      userSurprised: surpriseScore > SURPRISE_THRESHOLD,
+      userSmiling,
+      userSurprised,
       faceX, faceY, headMovement,
       attentionScore: Math.round(attentionScore)
     });
