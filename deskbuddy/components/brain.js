@@ -133,7 +133,7 @@ const Brain = (() => {
   let _poolVh        = 0;         // current tear-pool height in vh units
   let _poolDrainInt  = null;      // interval that slowly drains the pool
   const POOL_MAX_VH       = 14;   // max pool fill height
-  const POOL_PER_TEAR_VH  = 0.40; // how much each normal tear adds
+  const POOL_PER_TEAR_VH  = 0.22; // how much each normal tear adds
   const POOL_DRAIN_RATE   = 0.20; // vh removed per drain tick
   const POOL_DRAIN_TICK   = 320;  // ms between drain ticks
 
@@ -182,7 +182,7 @@ const Brain = (() => {
 
   // Idle life timer
   let _idleLifeTimer = null;
-  const FACE_GAZE_HOLD_MS = 1500;
+  const FACE_GAZE_HOLD_MS = 500;
 
   // ── CHUNK 5 — new private state ────────────────────────────────────────────
 
@@ -193,6 +193,9 @@ const Brain = (() => {
 
   // Study encouragement
   let _lastEncouragementTime = 0;
+
+  // Sleepy-user nudge — rate-limit wake-up whispers to avoid spam
+  let _lastSleepyNudge = 0;
 
   // Milestone celebration
   let _continuousFocusedMs    = 0;
@@ -331,7 +334,18 @@ const Brain = (() => {
     if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
 
     if (!mouseActive && !keyActive) {
-      focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+      // When the camera confirms the user is facing forward with eyes open,
+      // slowly build focus instead of decaying — covers physical book reading
+      // and any screen activity that doesn't involve keyboard/mouse input.
+      const p = window.perception;
+      const cameraFocused = window.cameraAvailable && p?.facePresent
+                         && p.userState === 'Focused' && p.attentionScore > 35;
+      if (cameraFocused) {
+        // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+        focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+      } else {
+        focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+      }
     }
   }
 
@@ -445,7 +459,19 @@ const Brain = (() => {
         break;
 
       case 'Sleepy':
-        emotion = 'sleepy';
+        // Companion stays wide-awake and motivates the user — don't mirror sleepiness
+        emotion = 'curious';
+        if ((now - _lastSleepyNudge) >= 30000) {
+          _lastSleepyNudge = now;
+          const wakeUpMsgs = [
+            'hey, don\'t sleep!', '*nudges you*', 'stay awake! 💪',
+            'you can do it!', '*waves paw*', 'almost there, keep going!',
+            'zzz? no no no!', '...hey!', '*pokes*', 'need a break?',
+          ];
+          if (Math.random() < 0.65) {
+            showWhisper(wakeUpMsgs[Math.floor(Math.random() * wakeUpMsgs.length)], 4000);
+          }
+        }
         break;
 
       case 'NoFace':
@@ -761,7 +787,7 @@ const Brain = (() => {
     const p = window.perception;
     if (p) {
       if (p.userState === 'NoFace')  { enterState('idle');    return; }
-      if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
+      if (p.userState === 'Sleepy')  { enterState('observe'); return; } // stay alert, motivate user
       if (p.userState === 'Focused'
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
        && p.attentionScore > 50)     { enterState('curious'); return; }

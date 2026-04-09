@@ -835,37 +835,39 @@ html, body {
   pointer-events: none;
   z-index: 490;
   overflow: hidden;
-  /* Gentle soft rise like liquid slowly pooling */
-  transition: height 2.5s ease-out;
+  /* Slow, heavy rise — liquid pooling gradually */
+  transition: height 5s ease-out;
 }
 
 #tear-fill {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 100%;
-  /* Soft semi-transparent baby-blue water */
-  background-color: rgba(122, 205, 245, 0.35);
+  /* Very transparent liquid — more like shallow water than solid color */
+  background-color: rgba(122, 205, 245, 0.15);
   background-image:
-    /* Diagonal shimmer band that sweeps slowly across the water */
+    /* Barely-visible shimmer band — much more subtle */
     linear-gradient(
       108deg,
       transparent              0%,
       transparent             34%,
-      rgba(255,255,255,0.12)  44%,
-      rgba(255,255,255,0.12)  56%,
+      rgba(255,255,255,0.05)  44%,
+      rgba(255,255,255,0.05)  56%,
       transparent             66%,
       transparent            100%
     ),
-    /* Depth gradient — lighter pastels top to bottom */
+    /* Depth gradient — very pale, like clear shallow water */
     linear-gradient(
       to top,
-      rgba(72, 168, 230, 0.45) 0%,
-      rgba(100, 195, 245, 0.30) 35%,
-      rgba(140, 218, 255, 0.16) 68%,
-      rgba(180, 235, 255, 0.04) 100%
+      rgba(72, 168, 230, 0.22) 0%,
+      rgba(100, 195, 245, 0.13) 35%,
+      rgba(140, 218, 255, 0.06) 68%,
+      rgba(180, 235, 255, 0.01) 100%
     );
   background-size: 260% 100%, 100% 100%;
-  animation: poolShimmer 7s ease-in-out infinite alternate;
+  /* Frosted-glass refractive quality — gives liquid depth */
+  backdrop-filter: blur(1.5px);
+  animation: poolShimmer 20s ease-in-out infinite alternate;
 }
 
 /* Wavy water surface — an ellipse that peeks above the fill top.
@@ -878,12 +880,12 @@ html, body {
   left: -6%;
   width: 112%;
   height: 22px;
-  background: rgba(130, 210, 250, 0.45);
+  background: rgba(130, 210, 250, 0.22);
   border-radius: 50%;
   animation: waterSurface 3.2s ease-in-out infinite;
 }
 
-/* Soft light glint drifting along the surface */
+/* Soft light glint drifting along the surface — very subtle */
 #tear-fill::after {
   content: '';
   position: absolute;
@@ -891,10 +893,10 @@ html, body {
   left: 8%;
   width: 28%;
   height: 5px;
-  background: rgba(220, 245, 255, 0.35);
+  background: rgba(220, 245, 255, 0.18);
   border-radius: 0 0 50% 50%;
   filter: blur(2px);
-  animation: surfaceGlint 4.5s ease-in-out infinite;
+  animation: surfaceGlint 9s ease-in-out infinite;
 }
 
 /* Shimmer band sweeps left → right */
@@ -923,8 +925,8 @@ html, body {
   position: fixed;
   width: 13px;
   height: 21px;
-  /* Flat top, very round bottom — classic anime/cartoon teardrop */
-  border-radius: 48% 48% 50% 50% / 22% 22% 78% 78%;
+  /* Pointy top, round body — classic anime/cartoon teardrop (point at tail, ball at front) */
+  border-radius: 50% 50% 50% 50% / 78% 78% 22% 22%;
   /* Semi-transparent pastel sky-blue — cute and glassy */
   background: rgba(158, 223, 247, 0.50);
   box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.06);
@@ -934,12 +936,13 @@ html, body {
   animation: tearFall var(--tear-duration, 1.4s) ease-in forwards;
 }
 
-/* White shine dot — cartoon gloss */
+/* White shine dot — on the round body (lower portion) */
 .tear-drop::before {
   content: '';
   position: absolute;
-  top: 12%;
+  bottom: 22%;
   right: 16%;
+  top: auto;
   width: 30%;
   height: 22%;
   border-radius: 50%;
