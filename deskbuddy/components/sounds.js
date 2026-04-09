@@ -51,6 +51,13 @@ const Sounds = (() => {
     startled_gasp:    1200,
     stretch_coo:      3000,
     wink_blip:        1200,
+    // Session lifecycle sounds — no cooldown (explicit, infrequent, never spam)
+    session_start:    0,
+    session_complete: 0,
+    session_fail:     0,
+    refocus:          0,
+    break_start:      0,
+    break_end:        0,
     // Polling-triggered sounds
     giggle:            800,
     surprise:          800,
@@ -95,11 +102,17 @@ const Sounds = (() => {
    */
   function play(name) {
     const dispatch = {
-      focused_tick:    _focused_tick,
-      drifting_tick:   _drifting_tick,
-      distracted_tick: _distracted_tick,
-      stretch_coo:     _stretch_coo,
-      wink_blip:       _wink_blip,
+      focused_tick:     _focused_tick,
+      drifting_tick:    _drifting_tick,
+      distracted_tick:  _distracted_tick,
+      stretch_coo:      _stretch_coo,
+      wink_blip:        _wink_blip,
+      session_start:    _session_start,
+      session_complete: _session_complete,
+      session_fail:     _session_fail,
+      refocus:          _refocus,
+      break_start:      _break_start,
+      break_end:        _break_end,
     };
     if (dispatch[name]) dispatch[name]();
   }
@@ -126,8 +139,8 @@ const Sounds = (() => {
     // Resume suspended context — browser may suspend after inactivity
     if (ctx.state === 'suspended') { ctx.resume(); return false; }
     const now = Date.now();
-    const ms  = COOLDOWN[type] || 800;
-    if (cooldowns[type] && now - cooldowns[type] < ms) return false;
+    const ms  = (COOLDOWN[type] !== undefined) ? COOLDOWN[type] : 800;
+    if (ms > 0 && cooldowns[type] && now - cooldowns[type] < ms) return false;
     cooldowns[type] = now;
     return true;
   }
@@ -1012,6 +1025,177 @@ const Sounds = (() => {
         try { g.disconnect(); } catch(_) {}
         try { osc.disconnect(); } catch(_) {}
       };
+    } catch (e) {}
+  }
+
+  // ── SESSION SOUNDS ─────────────────────────────────────────────────────────
+  // These are lifecycle signals, not emotional expressions. Character is cleaner
+  // and more deliberate than emotion sounds — precise tones, no breathiness.
+  // All have COOLDOWN=0 because they are infrequent and must always play.
+
+  /**
+   * SESSION_START — "alright, let's do this — I'm here with you"
+   * Clean two-step ascending signal. Shimmer on note 2.
+   * Axes: 440→660 Hz / sine / A+D then A+S+R / shimmer on note 2 peak
+   */
+  function _session_start() {
+    if (!_ok('session_start')) return;
+    try {
+      const t = ctx.currentTime;
+      // Note 1: sine 440 Hz, 200ms. Attack 20ms, decay 180ms.
+      _osc('sine', 440, t, 0.200, 0.07, {
+        attack: 0.020, decay: 0.180, sustain: 0,
+      });
+      // [100ms gap]
+      // Note 2: sine 660 Hz, 300ms. Attack 15ms, sustain 150ms, release 135ms.
+      _osc('sine', 660, t + 0.300, 0.300, 0.07, {
+        attack: 0.015, release: 0.135,
+      });
+      // Shimmer: triangle 1320 Hz, starts at note 2 peak (~15ms in), 150ms, gain 0.03
+      _osc('triangle', 1320, t + 0.315, 0.150, 0.03, {
+        attack: 0.005, decay: 0.145, sustain: 0,
+      });
+    } catch (e) {}
+  }
+
+  /**
+   * SESSION_COMPLETE — "you did it!! I'm so proud!"
+   * Triumphant ascending three-note cascade with sparkle at peak.
+   * Axes: 440→550→660 Hz / sine / staggered cascade / vibrato + double sparkle on note 3
+   */
+  function _session_complete() {
+    if (!_ok('session_complete')) return;
+    try {
+      const t = ctx.currentTime;
+      // Note 1: sine 440 Hz, 180ms. t=0
+      _osc('sine', 440, t, 0.180, 0.075, {
+        attack: 0.010, release: 0.080,
+      });
+      // Note 2: sine 550 Hz, 180ms. t=150ms
+      _osc('sine', 550, t + 0.150, 0.180, 0.075, {
+        attack: 0.010, release: 0.080,
+      });
+      // Note 3: sine 660 Hz, 350ms. t=300ms. Vibrato: 7Hz, depth 12Hz.
+      _osc('sine', 660, t + 0.300, 0.350, 0.09, {
+        attack: 0.010, release: 0.120,
+        vibRate: 7, vibDepth: 12,
+      });
+      // Sparkle at note 3 peak: 1320 Hz + 1650 Hz, 80ms each, gain 0.025
+      _osc('triangle', 1320, t + 0.310, 0.080, 0.025, {
+        attack: 0.005, decay: 0.075, sustain: 0,
+      });
+      _osc('triangle', 1650, t + 0.310, 0.080, 0.025, {
+        attack: 0.005, decay: 0.075, sustain: 0,
+      });
+    } catch (e) {}
+  }
+
+  /**
+   * SESSION_FAIL — "we didn't make it. It's okay. Try again."
+   * Descending, soft, forgiving. Not harsh — user already feels bad.
+   * Axes: 330→220 Hz / triangle / two-note A+S+R / lowpass both + sad vibrato on note 2
+   */
+  function _session_fail() {
+    if (!_ok('session_fail')) return;
+    try {
+      const t = ctx.currentTime;
+      // Note 1: triangle 330 Hz, 300ms. Attack 40ms, sustain 160ms, release 100ms.
+      _osc('triangle', 330, t, 0.300, 0.065, {
+        attack: 0.040, release: 0.100,
+        filter: { type: 'lowpass', frequency: 1000, Q: 1.0 },
+      });
+      // [150ms gap]
+      // Note 2: triangle 220 Hz, 400ms. Attack 30ms, sustain 200ms, release 170ms.
+      // Vibrato 3.5Hz, depth 7Hz (sad)
+      _osc('triangle', 220, t + 0.450, 0.400, 0.065, {
+        attack: 0.030, release: 0.170,
+        vibRate: 3.5, vibDepth: 7,
+        filter: { type: 'lowpass', frequency: 1000, Q: 1.0 },
+      });
+    } catch (e) {}
+  }
+
+  /**
+   * REFOCUS — "oh good, you're back. I knew you would."
+   * Sunrise after clouds — warm ascending glide with vibrato fading in.
+   * Axes: 320→480 Hz / sine / 300ms glide + harmonic overlay / vibrato ramps IN from start
+   */
+  function _refocus() {
+    if (!_ok('refocus')) return;
+    try {
+      const t = ctx.currentTime;
+      // Main: sine 320→480 Hz over 300ms. Attack 30ms, release 80ms.
+      // Vibrato fades IN: lfoGain ramps 0→8 over the full 300ms
+      const osc1  = new OscillatorNode(ctx, { type: 'sine', frequency: 320 });
+      const g1    = new GainNode(ctx, { gain: 0 });
+      const lfo1  = new OscillatorNode(ctx, { type: 'sine', frequency: 5 });
+      const lfoG1 = new GainNode(ctx, { gain: 0 });
+      lfo1.connect(lfoG1); lfoG1.connect(osc1.frequency);
+      lfoG1.gain.setValueAtTime(0, t);
+      lfoG1.gain.linearRampToValueAtTime(8, t + 0.300);
+      osc1.frequency.setValueAtTime(320, t);
+      osc1.frequency.exponentialRampToValueAtTime(480, t + 0.300);
+      g1.gain.setValueAtTime(0, t);
+      g1.gain.linearRampToValueAtTime(0.07, t + 0.030);
+      g1.gain.setValueAtTime(0.07, t + 0.220);
+      g1.gain.linearRampToValueAtTime(0, t + 0.300);
+      osc1.connect(g1); g1.connect(masterGain);
+      // Harmonic: sine 640 Hz, 200ms, starts at 100ms of main, gain 0.035
+      _osc('sine', 640, t + 0.100, 0.200, 0.035, {
+        attack: 0.015, release: 0.080,
+      });
+      [osc1, lfo1].forEach(o => { o.start(t); o.stop(t + 0.320); });
+      osc1.onended = () => { try { g1.disconnect(); lfoG1.disconnect(); } catch(_) {} };
+    } catch (e) {}
+  }
+
+  /**
+   * BREAK_START — "okay, rest. I'll wait."
+   * Single descending note — permission to stop, calm.
+   * Axes: 520→380 Hz / sine / 250ms / vibrato gently enters at tail only
+   */
+  function _break_start() {
+    if (!_ok('break_start')) return;
+    try {
+      const t = ctx.currentTime;
+      // Sine 520→380 Hz over 250ms. Vibrato kicks in at 150ms (tail only).
+      const osc  = new OscillatorNode(ctx, { type: 'sine', frequency: 520 });
+      const g    = new GainNode(ctx, { gain: 0 });
+      const lfo  = new OscillatorNode(ctx, { type: 'sine', frequency: 4 });
+      const lfoG = new GainNode(ctx, { gain: 0 });
+      lfo.connect(lfoG); lfoG.connect(osc.frequency);
+      lfoG.gain.setValueAtTime(0, t + 0.150);
+      lfoG.gain.linearRampToValueAtTime(5, t + 0.250);
+      osc.frequency.setValueAtTime(520, t);
+      osc.frequency.exponentialRampToValueAtTime(380, t + 0.250);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.025);
+      g.gain.setValueAtTime(0.06, t + 0.025);
+      g.gain.linearRampToValueAtTime(0, t + 0.250);
+      osc.connect(g); g.connect(masterGain);
+      [osc, lfo].forEach(o => { o.start(t); o.stop(t + 0.270); });
+      osc.onended = () => { try { g.disconnect(); lfoG.disconnect(); } catch(_) {} };
+    } catch (e) {}
+  }
+
+  /**
+   * BREAK_END — "ready when you are — soft nudge back"
+   * Two gentle ascending steps. Not urgent, just present.
+   * Axes: 400→520 Hz / sine / two-note A+D then A+S+R / no modulation
+   */
+  function _break_end() {
+    if (!_ok('break_end')) return;
+    try {
+      const t = ctx.currentTime;
+      // Note 1: sine 400 Hz, 160ms. Attack 15ms, decay 145ms.
+      _osc('sine', 400, t, 0.160, 0.065, {
+        attack: 0.015, decay: 0.145, sustain: 0,
+      });
+      // [80ms gap]
+      // Note 2: sine 520 Hz, 220ms. Attack 12ms, sustain 120ms, release 88ms.
+      _osc('sine', 520, t + 0.240, 0.220, 0.065, {
+        attack: 0.012, release: 0.088,
+      });
     } catch (e) {}
   }
 
