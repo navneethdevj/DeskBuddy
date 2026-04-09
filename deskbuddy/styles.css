@@ -851,31 +851,73 @@ html, body {
 }
 /* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
-/* Individual teardrop shape — appended to document.body by _startTears() */
+/* Individual teardrop shape — Phase 1 (normal tears) — appended by _spawnTearDrop() */
 .tear-drop {
   position: fixed;
-  width: 10px;
-  height: 16px;
-  border-radius: 55% 55% 65% 45% / 50% 50% 70% 50%;
-  background: radial-gradient(ellipse at 40% 30%,
-    rgba(160, 215, 255, 0.95) 0%,
-    rgba(100, 175, 240, 0.80) 50%,
-    rgba(70, 140, 210, 0.55) 100%
+  width: 7px;
+  height: 18px;
+  /* Classic teardrop: rounded bottom, slightly pinched top */
+  border-radius: 50% 50% 54% 46% / 28% 28% 72% 72%;
+  background: linear-gradient(
+    175deg,
+    rgba(200, 235, 255, 0.98) 0%,
+    rgba(115, 185, 248, 0.92) 45%,
+    rgba(75,  148, 222, 0.78) 100%
   );
-  box-shadow: 0 1px 8px rgba(80, 160, 235, 0.55);
+  box-shadow:
+    inset 1px 1px 3px rgba(255, 255, 255, 0.60),
+    0 2px 8px rgba(70, 145, 228, 0.45);
   pointer-events: none;
   z-index: 500;
-  animation: tearFall var(--tear-duration, 1.6s) ease-in forwards;
+  /* Gravity-like easing: slow release, fast fall */
+  animation: tearFall var(--tear-duration, 1.3s) cubic-bezier(0.42, 0, 0.96, 0.56) forwards;
 }
 
-/* tears fall to the exact bottom of the viewport — distance set per-tear by JS */
+/* Tear falls straight down, elongating under gravity, splatters at impact */
 @keyframes tearFall {
-  0%   { transform: translateY(0)                              scaleX(1.00) rotate(0deg);   opacity: 0;    }
-  7%   { opacity: 0.94; }
-  40%  { transform: translateY(calc(var(--tear-fall-dist) * 0.40)) scaleX(0.90) rotate(2deg);   opacity: 0.82; }
-  75%  { transform: translateY(calc(var(--tear-fall-dist) * 0.78)) scaleX(0.78) rotate(-1deg);  opacity: 0.55; }
-  92%  { transform: translateY(calc(var(--tear-fall-dist) * 0.97)) scaleX(0.70) rotate(1deg);   opacity: 0.22; }
-  100% { transform: translateY(var(--tear-fall-dist))              scaleX(0.65) rotate(0deg);   opacity: 0;    }
+  0%   { transform: translateY(0)                                    scaleY(0.65) scaleX(1.12); opacity: 0;    }
+  5%   {                                                                                          opacity: 1;    }
+  25%  { transform: translateY(calc(var(--tear-fall-dist) * 0.20))  scaleY(1.05) scaleX(0.96); opacity: 0.97; }
+  58%  { transform: translateY(calc(var(--tear-fall-dist) * 0.56))  scaleY(1.20) scaleX(0.88); opacity: 0.95; }
+  88%  { transform: translateY(calc(var(--tear-fall-dist) * 0.90))  scaleY(1.36) scaleX(0.82); opacity: 0.93; }
+  96%  { transform: translateY(calc(var(--tear-fall-dist) * 0.99))  scaleY(0.28) scaleX(2.40); opacity: 0.70; }
+  100% { transform: translateY(var(--tear-fall-dist))                scaleY(0.05) scaleX(3.20); opacity: 0;    }
+}
+
+/* ── Waterfall phase — viscous streams growing from each eye ── */
+/* Appended by _spawnTearStream() after 8s of sustained crying   */
+.tear-stream {
+  position: fixed;
+  width: var(--stream-width, 8px);
+  height: var(--stream-fall, 200px);
+  transform-origin: top center;
+  border-radius: 3px 3px 5px 5px;
+  /* Transparent at origin (eye), opaque through the body, dissolves at pool */
+  background: linear-gradient(
+    to bottom,
+    rgba(155, 215, 255, 0.00)  0%,
+    rgba(120, 192, 252, 0.86)  7%,
+    rgba(90,  168, 240, 0.80) 50%,
+    rgba(75,  152, 228, 0.76) 82%,
+    rgba(55,  130, 210, 0.00) 100%
+  );
+  pointer-events: none;
+  z-index: 500;
+  /* Single animation: grow with viscous easing then fade — encoded in keyframe spacing */
+  animation: streamFlow var(--stream-duration, 0.9s) linear forwards;
+}
+
+/* Stream grows from the eye downward (transform-origin: top).
+   Keyframe positions encode slow-start/fast-finish viscous acceleration.
+   After reaching full height the stream fades, leaving the pool filled. */
+@keyframes streamFlow {
+  0%    { transform: scaleY(0.00); opacity: 0;    }
+  3%    {                           opacity: 0.88; }
+  18%   { transform: scaleY(0.06); }
+  34%   { transform: scaleY(0.22); }
+  52%   { transform: scaleY(0.58); }
+  65%   { transform: scaleY(1.00); opacity: 0.82; }
+  100%  { transform: scaleY(1.00); opacity: 0;    }
 }
 
 /* Micro-shiver for lively moments */
