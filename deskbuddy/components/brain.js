@@ -128,13 +128,8 @@ const Brain = (() => {
   let idleLookActive = false;
   let nextIdleLookTime = 0;
 
-  // Tear overlay state
   // Tear drop spawning
   let tearInterval   = null;
-  let _cryPhase      = 'normal';  // 'normal' | 'waterfall'
-  let _cryPhaseTimer = null;      // schedules the waterfall transition
-  let _floodEls      = [];        // persistent .tear-flood block elements (one per eye)
-  let _poolFillInt   = null;      // interval that raises pool during waterfall phase
   let _poolVh        = 0;         // current tear-pool height in vh units
   let _poolDrainInt  = null;      // interval that slowly drains the pool
   const POOL_MAX_VH       = 14;   // max pool fill height
@@ -820,10 +815,7 @@ const Brain = (() => {
   }
 
   // ── TEAR DROP SPAWNER ─────────────────────────────────────────────────────
-  // Phase 1 ('normal'): spawn individual cartoon drops per eye.
-  // Phase 2 ('waterfall'): handled by persistent _floodEls blocks — no-op here.
   function _spawnTear() {
-    if (_cryPhase === 'waterfall') return;
     const eyes = document.querySelectorAll('.eye');
     eyes.forEach(eye => {
       // Skip occasionally for a natural uneven rhythm
@@ -832,7 +824,7 @@ const Brain = (() => {
     });
   }
 
-  /** Phase 1 — a single liquid teardrop that falls straight down. */
+  /** A single liquid teardrop that falls straight down from the given eye. */
   function _spawnTearDrop(eye) {
     const rect = eye.getBoundingClientRect();
     if (!rect.width) return;
@@ -852,41 +844,6 @@ const Brain = (() => {
                parseFloat(dur) * 1000 + 60);
   }
 
-  /** Phase 2 — create one narrow soft stream per eye, centered under the eye. */
-  function _spawnWaterfallBlocks() {
-    _removeWaterfallBlocks();
-    const eyes = document.querySelectorAll('.eye');
-    eyes.forEach(eye => {
-      const rect = eye.getBoundingClientRect();
-      if (!rect.width) return;
-      const el = document.createElement('div');
-      el.className = 'tear-flood';
-      // 30% of eye width — a cute thick stream, not a wide wall
-      const floodW = Math.round(rect.width * 0.30);
-      const floodX = rect.left + (rect.width - floodW) / 2;
-      const floodY = rect.bottom;
-      el.style.left   = floodX + 'px';
-      el.style.top    = floodY + 'px';
-      el.style.width  = floodW + 'px';
-      el.style.height = (window.innerHeight - floodY) + 'px';
-      document.body.appendChild(el);
-      _floodEls.push(el);
-    });
-    // Slowly raise the pool while the waterfall is flowing
-    _poolFillInt = setInterval(() => _raiseTearPool(0.10), 700);
-  }
-
-  /** Remove all active waterfall flood blocks (fade out first). */
-  function _removeWaterfallBlocks() {
-    if (_poolFillInt) { clearInterval(_poolFillInt); _poolFillInt = null; }
-    _floodEls.forEach(el => {
-      el.style.transition = 'opacity 0.4s ease-out';
-      el.style.opacity    = '0';
-      setTimeout(() => el.remove(), 420);
-    });
-    _floodEls = [];
-  }
-
   /** Increment the tear pool by the given amount; update the overlay element. */
   function _raiseTearPool(increment) {
     _poolVh = Math.min(POOL_MAX_VH, _poolVh + increment);
@@ -903,24 +860,12 @@ const Brain = (() => {
     if (tearInterval) return;
     // Stop any in-progress drain
     if (_poolDrainInt) { clearInterval(_poolDrainInt); _poolDrainInt = null; }
-    _cryPhase = 'normal';
     _spawnTear(); // immediate first drop
     tearInterval = setInterval(_spawnTear, 450 + Math.random() * 200);
-    // Transition to waterfall phase after 18s of sustained crying
-    _cryPhaseTimer = setTimeout(() => {
-      _cryPhaseTimer = null;
-      _cryPhase = 'waterfall';
-      clearInterval(tearInterval);
-      tearInterval = null;
-      _spawnWaterfallBlocks();
-    }, 18000);
   }
 
   function _stopTears() {
-    if (tearInterval)   { clearInterval(tearInterval);  tearInterval   = null; }
-    if (_cryPhaseTimer) { clearTimeout(_cryPhaseTimer); _cryPhaseTimer = null; }
-    _cryPhase = 'normal';
-    _removeWaterfallBlocks();
+    if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
     // Gradually drain the pool
     if (_poolDrainInt) return;
     _poolDrainInt = setInterval(() => {

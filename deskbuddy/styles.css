@@ -843,26 +843,26 @@ html, body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 100%;
-  /* Soft baby-blue water: lighter and cuter than before */
-  background-color: rgba(122, 205, 245, 0.62);
+  /* Soft semi-transparent baby-blue water */
+  background-color: rgba(122, 205, 245, 0.35);
   background-image:
     /* Diagonal shimmer band that sweeps slowly across the water */
     linear-gradient(
       108deg,
       transparent              0%,
       transparent             34%,
-      rgba(255,255,255,0.18)  44%,
-      rgba(255,255,255,0.18)  56%,
+      rgba(255,255,255,0.12)  44%,
+      rgba(255,255,255,0.12)  56%,
       transparent             66%,
       transparent            100%
     ),
     /* Depth gradient — lighter pastels top to bottom */
     linear-gradient(
       to top,
-      rgba(72, 168, 230, 0.78) 0%,
-      rgba(100, 195, 245, 0.58) 35%,
-      rgba(140, 218, 255, 0.34) 68%,
-      rgba(180, 235, 255, 0.10) 100%
+      rgba(72, 168, 230, 0.45) 0%,
+      rgba(100, 195, 245, 0.30) 35%,
+      rgba(140, 218, 255, 0.16) 68%,
+      rgba(180, 235, 255, 0.04) 100%
     );
   background-size: 260% 100%, 100% 100%;
   animation: poolShimmer 7s ease-in-out infinite alternate;
@@ -878,7 +878,7 @@ html, body {
   left: -6%;
   width: 112%;
   height: 22px;
-  background: rgba(130, 210, 250, 0.80);
+  background: rgba(130, 210, 250, 0.45);
   border-radius: 50%;
   animation: waterSurface 3.2s ease-in-out infinite;
 }
@@ -891,7 +891,7 @@ html, body {
   left: 8%;
   width: 28%;
   height: 5px;
-  background: rgba(220, 245, 255, 0.65);
+  background: rgba(220, 245, 255, 0.35);
   border-radius: 0 0 50% 50%;
   filter: blur(2px);
   animation: surfaceGlint 4.5s ease-in-out infinite;
@@ -912,22 +912,22 @@ html, body {
 
 /* Glint drifts and breathes */
 @keyframes surfaceGlint {
-  0%,100% { opacity: 0.50; left:  8%; width: 28%; }
-  50%     { opacity: 0.78; left: 14%; width: 38%; }
+  0%,100% { opacity: 0.28; left:  8%; width: 28%; }
+  50%     { opacity: 0.45; left: 14%; width: 38%; }
 }
 
 /* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
-/* Individual teardrop shape — Phase 1 (cartoony drops) — appended by _spawnTearDrop() */
+/* Individual teardrop shape — cartoony drops — appended by _spawnTearDrop() */
 .tear-drop {
   position: fixed;
   width: 13px;
   height: 21px;
   /* Flat top, very round bottom — classic anime/cartoon teardrop */
   border-radius: 48% 48% 50% 50% / 22% 22% 78% 78%;
-  /* Soft pastel sky-blue — cute, not harsh */
-  background: #9edff7;
-  box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.09);
+  /* Semi-transparent pastel sky-blue — cute and glassy */
+  background: rgba(158, 223, 247, 0.50);
+  box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.06);
   overflow: hidden;
   pointer-events: none;
   z-index: 500;
@@ -943,68 +943,15 @@ html, body {
   width: 30%;
   height: 22%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.80);
+  background: rgba(255, 255, 255, 0.70);
 }
 
-/* Cartoon tear: straight fall, stays fully solid, fades only at the very end */
+/* Cartoon tear: straight fall, stays mostly solid, fades at the very end */
 @keyframes tearFall {
   0%   { transform: translateY(0);                                   opacity: 0;   }
-  8%   {                                                              opacity: 1;   }
-  80%  { transform: translateY(calc(var(--tear-fall-dist) * 0.84));  opacity: 1;   }
-  100% { transform: translateY(var(--tear-fall-dist));               opacity: 0.1; }
-}
-
-/* ── Waterfall phase — one soft stream per eye ── */
-/* Created by _spawnWaterfallBlocks() after 18s of sustained crying. */
-.tear-flood {
-  position: fixed;
-  /* width/height set inline by JS; narrower to look like a cute thick stream */
-  /* Rounded bottom so the stream ends softly like a teardrop shape */
-  border-radius: 3px 3px 50% 50% / 3px 3px 12px 12px;
-  background-color: #9edff7;
-  /* Soft lazy horizontal bands scrolling down — gentle water flow */
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.32)  0px,
-    rgba(255, 255, 255, 0.32)  3px,
-    transparent                3px,
-    transparent               20px,
-    rgba(255, 255, 255, 0.14) 20px,
-    rgba(255, 255, 255, 0.14) 23px,
-    transparent               23px,
-    transparent               40px
-  );
-  background-size: 100% 40px;
-  /* Left and right edges fade so it blends into the eye shape */
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent  0%,
-    black       18%,
-    black       82%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent  0%,
-    black       18%,
-    black       82%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 500;
-  animation:
-    waterFlow   1.4s linear   infinite,
-    floodFadeIn 0.6s ease-out both;
-}
-
-/* Scroll the stripe pattern downward to simulate lazy flowing water */
-@keyframes waterFlow {
-  to { background-position: 0 40px; }
-}
-
-@keyframes floodFadeIn {
-  from { opacity: 0; transform: scaleY(0.85); transform-origin: top center; }
-  to   { opacity: 1; transform: scaleY(1.00); transform-origin: top center; }
+  8%   {                                                              opacity: 0.7; }
+  80%  { transform: translateY(calc(var(--tear-fall-dist) * 0.84));  opacity: 0.6; }
+  100% { transform: translateY(var(--tear-fall-dist));               opacity: 0;   }
 }
 
 /* Micro-shiver for lively moments */
