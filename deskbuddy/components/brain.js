@@ -420,7 +420,9 @@ const Brain = (() => {
               _shyUntil         = now + SHY_HOLD_MS;
               _shyCooldownUntil = now + SHY_COOLDOWN_MS;
               _eyeContactStart  = 0;
-              const shyMsgs = ['...hi.', '*blushes*', 'h-hi there...', '/// ...'];
+              const shyMsgs = ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
+                               '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
+                               'h-hello...', '(*ノωノ)'];
               if (Math.random() < 0.7) {
                 showWhisper(shyMsgs[Math.floor(Math.random() * shyMsgs.length)], 4000);
               }
@@ -523,21 +525,51 @@ const Brain = (() => {
    */
   function _getWhisperFor(emotion) {
     const map = {
-      curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?'],
-      happy:      ['✨', '~♪', 'hehe~', '*tail wag*'],
-      scared:     ['...!', '*hides*', 'eep!'],
-      sad:        ['...', '*sniffles*', 'come back...', '...please'],
-      crying:     ['*sobbing quietly*', 'please...',  'don\'t go...'],
-      grumpy:     ['hmph.', '*huffs*', '...fine.'],
-      pouty:      ['hmph.', '...rude.', '*crosses arms*'],
-      sulking:    ['*stares at wall*', 'i\'m not upset.', '...'],
-      sleepy:     ['*yawns*', 'zzz...', 'so sleepy...'],
-      suspicious: ['...?', '*narrows eyes*', 'hmm.'],
-      overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*'],
-      excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!'],
-      shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...'],
-      love:       ['♡', '*purrs*', '*nuzzles*', '...♡'],
-      startled:   ['!!', '*jumps*', 'w-what?!'],
+      curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?',
+                   'ooh?', '*squints curiously*', 'wait...', '...interesting.',
+                   '*perks up*', 'tell me more~'],
+      happy:      ['✨', '~♪', 'hehe~', '*tail wag*',
+                   ':)', '*bounces*', 'yay~', '(*^▽^*)',
+                   'this is nice~', '♪ la la~'],
+      scared:     ['...!', '*hides*', 'eep!',
+                   '*clings to corner*', 'too scary...', 'w-wait...',
+                   '*shaking*', 'i don\'t like this...', 'please no.'],
+      sad:        ['...', '*sniffles*', 'come back...', '...please',
+                   '*hugs knees*', 'i miss you...', 'don\'t leave.',
+                   'it\'s so quiet...', '(╥_╥)', '*wipes eyes*'],
+      crying:     ['*sobbing quietly*', 'please...',  'don\'t go...',
+                   'come back...', '*tears*', 'i can\'t stop...',
+                   'why...', '*hiccups*', 'it\'s too much...'],
+      grumpy:     ['hmph.', '*huffs*', '...fine.',
+                   'whatever.', '*tail flick*', 'don\'t talk to me.',
+                   '...annoying.', '*looks away*', 'i\'m fine. (i\'m not)'],
+      pouty:      ['hmph.', '...rude.', '*crosses arms*',
+                   'that\'s not fair.', '*pouts*', 'you owe me.',
+                   '...i\'m pouting.', '*sulk*', 'apologize first.'],
+      sulking:    ['*stares at wall*', 'i\'m not upset.', '...',
+                   'don\'t look at me.', '*ignoring you*', 'totally fine.',
+                   '...........', '*turns away*', 'just leave me alone.'],
+      sleepy:     ['*yawns*', 'zzz...', 'so sleepy...',
+                   '*heavy eyelids*', 'five more minutes...', '...mmh.',
+                   '*dozes off*', 'can\'t... keep... eyes... open...', 'zZz~'],
+      suspicious: ['...?', '*narrows eyes*', 'hmm.',
+                   'something\'s off.', '*watches carefully*', 'i see you.',
+                   '...sus.', '*squint*', 'explain.', 'not sure about this.'],
+      overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*',
+                   'YAAAY!!', '*happy spinning*', 'i missed you so much!!',
+                   'eeeee!!', '(≧▽≦)/', '*cannot contain excitement*'],
+      excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!',
+                   'omg omg omg', '*bouncing off walls*', 'THIS IS AMAZING',
+                   '(*≧▽≦)', 'so excited!!', 'LETSGOOO!!'],
+      shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
+                   '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
+                   'h-hello...', '(*ノωノ)'],
+      love:       ['♡', '*purrs*', '*nuzzles*', '...♡',
+                   'i like you~', '*rubs head on you*', 'stay forever.',
+                   '♡♡♡', '*happy purr*', 'you\'re warm~'],
+      startled:   ['!!', '*jumps*', 'w-what?!',
+                   'AH!', '*startled floof*', 'you scared me!!',
+                   '(*o*)!', 'don\'t do that!!', 'my heart...'],
     };
     return map[emotion] || null;
   }
@@ -788,7 +820,9 @@ const Brain = (() => {
         _startledUntil = now + STARTLED_HOLD_MS;
         // Whisper 50% of the time
         if (Math.random() < 0.5) {
-          const msgs = ['!!', '*jumps*', 'w-what?!'];
+          const msgs = ['!!', '*jumps*', 'w-what?!',
+                        'AH!', '*startled floof*', 'you scared me!!',
+                        '(*o*)!', 'don\'t do that!!'];
           showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
         }
       }
@@ -1070,6 +1104,13 @@ const Brain = (() => {
       15: 'you\'re on fire! ✧',
       20: '20 min!! incredible',
       25: '( ˘▽˘)🎉 almost there!',
+      30: '30 whole minutes!! 🌟',
+      35: 'legendary focus ✦✦',
+      40: '40 min! unstoppable!',
+      45: 'nearly an hour!! 🔥🔥',
+      50: 'wow... just wow. ✧',
+      55: 'you\'re amazing. keep it up!',
+      60: '1 HOUR!! 🎉🎉🎉',
     };
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
@@ -1099,7 +1140,11 @@ const Brain = (() => {
   /** Deliver a study encouragement moment. */
   function _doStudyEncouragement() {
     _lastEncouragementTime = Date.now();
-    const msgs = ['✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.'];
+    const msgs = [
+      '✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.',
+      'i believe in you~', 'stay strong!', '*cheers for you*', 'almost there!',
+      'you\'ve got this ♡', '...i\'m rooting for you.', 'don\'t stop now!',
+    ];
     showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
     // Look directly at user for 2s, then return
     const c = Companion.getCenter();
@@ -1185,7 +1230,9 @@ const Brain = (() => {
     if (dist < PET_RADIUS) {
       const now = Date.now();
       _loveUntil = now + LOVE_HOLD_MS;
-      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡'];
+      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡',
+                    'i like you~', '*rubs head on you*', 'stay forever.',
+                    '♡♡♡', '*happy purr*'];
       if (Math.random() < 0.75) {
         showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
       }
