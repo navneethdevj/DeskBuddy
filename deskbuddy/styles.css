@@ -835,20 +835,87 @@ html, body {
   pointer-events: none;
   z-index: 490;
   overflow: hidden;
-  transition: height 3s ease-in-out;
+  /* Faster fill feels more like liquid surging in */
+  transition: height 1.6s ease-out;
 }
+
 #tear-fill {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 100%;
-  background: linear-gradient(
-    to top,
-    rgba(60, 130, 200, 0.28) 0%,
-    rgba(80, 155, 220, 0.14) 55%,
-    rgba(100, 170, 235, 0.04) 100%
-  );
-  border-radius: 0 0 0 0;
+  /* Water depth: dense blue at the floor, lightens toward the surface */
+  background-color: rgba(50, 120, 195, 0.72);
+  background-image:
+    /* Diagonal shimmer band that sweeps slowly across the water */
+    linear-gradient(
+      108deg,
+      transparent          0%,
+      transparent         32%,
+      rgba(255,255,255,0.14) 42%,
+      rgba(255,255,255,0.14) 58%,
+      transparent         68%,
+      transparent        100%
+    ),
+    /* Depth gradient */
+    linear-gradient(
+      to top,
+      rgba(28,  88, 168, 0.88) 0%,
+      rgba(52, 128, 205, 0.72) 30%,
+      rgba(76, 158, 228, 0.48) 65%,
+      rgba(110,185, 248, 0.16) 100%
+    );
+  background-size: 260% 100%, 100% 100%;
+  animation: poolShimmer 5s ease-in-out infinite alternate;
 }
+
+/* Wavy water surface — an ellipse that peeks above the fill top.
+   overflow:hidden on #tear-overlay clips the upper half, leaving
+   a smooth rounded wave edge at the waterline. */
+#tear-fill::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: -6%;
+  width: 112%;
+  height: 22px;
+  background: rgba(88, 162, 228, 0.78);
+  border-radius: 50%;
+  animation: waterSurface 2.4s ease-in-out infinite;
+}
+
+/* Soft light glint drifting along the surface */
+#tear-fill::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 8%;
+  width: 28%;
+  height: 5px;
+  background: rgba(210, 240, 255, 0.60);
+  border-radius: 0 0 50% 50%;
+  filter: blur(2px);
+  animation: surfaceGlint 3.6s ease-in-out infinite;
+}
+
+/* Shimmer band sweeps left → right */
+@keyframes poolShimmer {
+  0%   { background-position: -60% 0, 0 0; }
+  100% { background-position: 160% 0, 0 0; }
+}
+
+/* Water surface bobs and distorts slightly like a real liquid */
+@keyframes waterSurface {
+  0%,100% { transform: scaleX(1.00) translateY(0px);   border-radius: 50%; }
+  28%     { transform: scaleX(1.04) translateY(-3px);  border-radius: 48% 52% 50% 50%; }
+  62%     { transform: scaleX(0.97) translateY( 2px);  border-radius: 52% 48% 50% 50%; }
+}
+
+/* Glint drifts and breathes */
+@keyframes surfaceGlint {
+  0%,100% { opacity: 0.55; left:  8%; width: 28%; }
+  50%     { opacity: 0.82; left: 14%; width: 38%; }
+}
+
 /* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
 /* Individual teardrop shape — Phase 1 (cartoony drops) — appended by _spawnTearDrop() */
