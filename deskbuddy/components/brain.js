@@ -133,6 +133,7 @@ const Brain = (() => {
   let tearInterval   = null;
   let _cryPhase      = 'normal';  // 'normal' | 'waterfall'
   let _cryPhaseTimer = null;      // schedules the waterfall transition
+  let _activeStreams  = 0;         // count of live .tear-stream elements
   let _poolVh        = 0;         // current tear-pool height in vh units
   let _poolDrainInt  = null;      // interval that slowly drains the pool
   const POOL_MAX_VH         = 14;   // max pool fill height
@@ -140,6 +141,7 @@ const Brain = (() => {
   const POOL_PER_STREAM_VH  = 0.18; // streams add less per-element (they're more frequent)
   const POOL_DRAIN_RATE     = 0.25; // vh removed per drain tick
   const POOL_DRAIN_TICK     = 280;  // ms between drain ticks
+  const MAX_ACTIVE_STREAMS  = 24;   // DOM element cap for waterfall phase
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -858,6 +860,7 @@ const Brain = (() => {
 
   /** Phase 2 — a viscous stream ribbon that grows from the eye down to the pool. */
   function _spawnTearStream(eye) {
+    if (_activeStreams >= MAX_ACTIVE_STREAMS) return; // DOM element cap
     const rect = eye.getBoundingClientRect();
     if (!rect.width) return;
     const el = document.createElement('div');
@@ -874,8 +877,12 @@ const Brain = (() => {
     const dur = (0.75 + Math.random() * 0.30).toFixed(2) + 's';
     el.style.setProperty('--stream-duration', dur);
     document.body.appendChild(el);
-    setTimeout(() => { el.remove(); _raiseTearPool(POOL_PER_STREAM_VH); },
-               parseFloat(dur) * 1000 + 40);
+    _activeStreams++;
+    setTimeout(() => {
+      el.remove();
+      _activeStreams = Math.max(0, _activeStreams - 1);
+      _raiseTearPool(POOL_PER_STREAM_VH);
+    }, parseFloat(dur) * 1000 + 40);
   }
 
   /** Increment the tear pool by the given amount; update the overlay element. */
@@ -911,6 +918,7 @@ const Brain = (() => {
     if (tearInterval)   { clearInterval(tearInterval);  tearInterval   = null; }
     if (_cryPhaseTimer) { clearTimeout(_cryPhaseTimer); _cryPhaseTimer = null; }
     _cryPhase = 'normal';
+    _activeStreams = 0;
     // Gradually drain the pool — existing tear/stream DOM nodes self-remove via setTimeout
     if (_poolDrainInt) return;
     _poolDrainInt = setInterval(() => {
