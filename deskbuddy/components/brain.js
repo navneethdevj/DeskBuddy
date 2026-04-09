@@ -55,11 +55,6 @@ const Brain = (() => {
   const NOFACE_SAD_MS              = 12000;   // 12s → sad
   const NOFACE_CRYING_MS           = 25000;   // 25s → crying
 
-  // Tear overlay tuning
-  const MAX_TEAR_HEIGHT = 65;     // max % height of tear fill
-  const TEAR_RISE_RATE  = 0.40;   // % per second during crying
-  const TEAR_DRAIN_RATE = 2.5;    // % per drain tick when stopping
-
   // ── NEW PERSONALITY CONSTANTS ──────────────────────────────────────────────
 
   // Excited: rapid typing triggers it
@@ -81,8 +76,8 @@ const Brain = (() => {
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
-  const IDLE_LIFE_MIN_WAIT     = 14000; // 14s minimum between behaviors
-  const IDLE_LIFE_MAX_WAIT     = 32000; // 32s maximum
+  const IDLE_LIFE_MIN_WAIT     = 10000; // 10s minimum between behaviors
+  const IDLE_LIFE_MAX_WAIT     = 22000; // 22s maximum
 
   // ── CHUNK 5 — new feature constants ───────────────────────────────────────
 
@@ -134,9 +129,8 @@ const Brain = (() => {
   let nextIdleLookTime = 0;
 
   // Tear overlay state
-  let tearHeight   = 0;
+  // Tear drop spawning
   let tearInterval = null;
-  let tearDraining = false;
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -482,8 +476,8 @@ const Brain = (() => {
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
         _startTears();
-      } else if (tearInterval || tearHeight > 0) {
-        if (!tearDraining) _stopTears();
+      } else if (tearInterval) {
+        _stopTears();
       }
     }
 
@@ -787,37 +781,41 @@ const Brain = (() => {
     return Math.max(min, Math.min(max, value));
   }
 
-  // ── TEAR OVERLAY ──────────────────────────────────────────────────────────
-  // Water rises during crying, drains fast when user returns
+  // ── TEAR DROP SPAWNER ─────────────────────────────────────────────────────
+  // Spawns individual falling teardrop elements anchored to each eye.
+  function _spawnTear() {
+    const eyes = document.querySelectorAll('.eye');
+    eyes.forEach(eye => {
+      // Randomise: not every eye drops a tear every interval
+      if (Math.random() > 0.72) return;
+      const rect = eye.getBoundingClientRect();
+      if (!rect.width) return; // not rendered yet
+      const tear = document.createElement('div');
+      tear.className = 'tear-drop';
+      // Random horizontal position within inner 60% of eye width
+      const startX = rect.left + rect.width * (0.22 + Math.random() * 0.56);
+      // Start just below the bottom edge of the eye
+      const startY = rect.bottom - 2;
+      tear.style.left = startX + 'px';
+      tear.style.top  = startY + 'px';
+      // Vary fall speed slightly per drop for organic feel
+      const dur = (1.3 + Math.random() * 0.7).toFixed(2) + 's';
+      tear.style.setProperty('--tear-duration', dur);
+      document.body.appendChild(tear);
+      // Self-remove after animation completes
+      setTimeout(() => tear.remove(), parseFloat(dur) * 1000 + 100);
+    });
+  }
+
   function _startTears() {
-    const overlay = document.getElementById('tear-overlay');
-    const fill    = document.getElementById('tear-fill');
-    if (!overlay || !fill) return;
-    overlay.style.display = 'block';
     if (tearInterval) return;
-    tearInterval = setInterval(() => {
-      if (tearHeight < MAX_TEAR_HEIGHT) {
-        tearHeight = Math.min(MAX_TEAR_HEIGHT, tearHeight + TEAR_RISE_RATE);
-        fill.style.height = tearHeight + '%';
-      }
-    }, 1000);
+    _spawnTear(); // immediate first drop
+    tearInterval = setInterval(_spawnTear, 420 + Math.random() * 200);
   }
 
   function _stopTears() {
     if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
-    const fill    = document.getElementById('tear-fill');
-    const overlay = document.getElementById('tear-overlay');
-    if (!fill || !overlay) return;
-    tearDraining = true;
-    const drain = setInterval(() => {
-      tearHeight = Math.max(0, tearHeight - TEAR_DRAIN_RATE);
-      fill.style.height = tearHeight + '%';
-      if (tearHeight <= 0) {
-        clearInterval(drain);
-        overlay.style.display = 'none';
-        tearDraining = false;
-      }
-    }, 80);
+    // Existing tears self-remove via their own setTimeout — no extra action needed.
   }
 
   // ── OVERJOYED → SULKING → FORGIVEN sequence ───────────────────────────────
@@ -1105,13 +1103,14 @@ const Brain = (() => {
 
     // Weighted random selection (sum = 100)
     const r = Math.random() * 100;
-    if      (r < 28) _doIdleLook();        // look around (28%)
-    else if (r < 48) _doDoubleBlink();     // quick double blink (20%)
-    else if (r < 62) _doHeadTilt();        // cute head tilt (14%)
-    else if (r < 73) _doStretch();         // yawn + stretch (11%)
-    else if (r < 84) _doWhisperCoo();      // murmur something (11%)
-    else if (r < 93) _doWink();            // cheeky wink (9%)
-    else             _doPeek();            // look far away, snap back (7%)
+    if      (r < 26) _doIdleLook();        // look around (26%)
+    else if (r < 44) _doDoubleBlink();     // quick double blink (18%)
+    else if (r < 57) _doHeadTilt();        // cute head tilt (13%)
+    else if (r < 67) _doStretch();         // yawn + stretch (10%)
+    else if (r < 78) _doWhisperCoo();      // murmur something (11%)
+    else if (r < 87) _doWink();            // cheeky wink (9%)
+    else if (r < 94) _doPeek();            // look far away, snap back (7%)
+    else             _doShiver();          // tiny excited shiver (6%)
   }
 
   /** Look in a random direction then drift back */
@@ -1166,8 +1165,19 @@ const Brain = (() => {
       '*tilts head* ...?', '...', '*glances around*', '~ ♪',
       '*blinks softly*', 'hmm...', '...✦', '*yawns quietly*',
       '*listens*', '...✧', '(◕‿◕)', '( ˘ω˘ )',
+      '... ♡', '*wiggles*', '*sniffs air*', '(⁀‿⁀)',
+      '✨', '*ponders*', 'oh.', '*contentedly blinks*',
+      '‧₊˚ ✩', '( •ᴗ• )', '*little squeak*', '꒰ ˶• ༝ •˶ ꒱',
     ];
     showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
+  }
+
+  /** Tiny body shiver — brief excited wobble */
+  function _doShiver() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('shiver');
+    setTimeout(() => el.classList.remove('shiver'), 420);
   }
 
   /** Close one eye briefly — cheeky wink */

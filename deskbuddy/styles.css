@@ -133,19 +133,22 @@ html, body {
 
 /* ===== Breathing Animation (enhanced — more alive) ===== */
 @keyframes breathe {
-  0%   { transform: translateY(0) scale(1); }
-  30%  { transform: translateY(-0.5vh) scale(1.004); }
-  50%  { transform: translateY(-0.6vh) scale(1.006); }
-  70%  { transform: translateY(-0.3vh) scale(1.003); }
-  100% { transform: translateY(0) scale(1); }
+  0%   { transform: translateY(0)      scale(1); }
+  25%  { transform: translateY(-0.6vh) scale(1.010); }
+  50%  { transform: translateY(-0.9vh) scale(1.014); }
+  70%  { transform: translateY(-0.5vh) scale(1.009); }
+  85%  { transform: translateY(-0.7vh) scale(1.006); }
+  100% { transform: translateY(0)      scale(1); }
 }
 
 /* Subtle idle sway — makes companion feel alive even when idle */
 @keyframes idleSway {
-  0%, 100% { margin-left: 0; margin-top: 0; }
-  25%      { margin-left: 2px; margin-top: -1px; }
-  50%      { margin-left: -1px; margin-top: 1px; }
-  75%      { margin-left: 1px; margin-top: -2px; }
+  0%   { margin-left: 0;   margin-top: 0; }
+  20%  { margin-left: 4px; margin-top: -2px; }
+  40%  { margin-left: -3px; margin-top: 2px; }
+  60%  { margin-left: 3px; margin-top: -3px; }
+  80%  { margin-left: -2px; margin-top: 1px; }
+  100% { margin-left: 0;   margin-top: 0; }
 }
 
 /* Disable CSS keyframe on companion-inner when sprite system drives frames */
@@ -837,38 +840,77 @@ html, body {
   60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
 }
 
-/* Tear overlay */
+/* Falling tears — spawned as .tear-drop elements by brain.js */
 #tear-overlay {
-  position: fixed; inset: 0; pointer-events: none;
-  z-index: 50; overflow: hidden; display: none;
+  display: none; /* legacy element kept to avoid JS errors — not used visually */
 }
 #tear-fill {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
-  background: linear-gradient(to top, rgba(70,148,200,0.28) 0%, rgba(90,165,215,0.16) 55%, transparent 100%);
-  border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px;
-  animation: tearWave 4s ease-in-out infinite;
-}
-@keyframes tearWave {
-  0%   { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
-  25%  { border-top-left-radius: 40% 8px;  border-top-right-radius: 70% 14px; }
-  50%  { border-top-left-radius: 55% 11px; border-top-right-radius: 50% 9px;  }
-  75%  { border-top-left-radius: 70% 14px; border-top-right-radius: 45% 8px;  }
-  100% { border-top-left-radius: 60% 12px; border-top-right-radius: 60% 12px; }
+  display: none;
 }
 
-/* Whisper text */
+/* Individual teardrop shape — appended to document.body by _startTears() */
+.tear-drop {
+  position: fixed;
+  width: 7px;
+  height: 11px;
+  border-radius: 55% 55% 65% 45% / 50% 50% 70% 50%;
+  background: radial-gradient(ellipse at 40% 30%,
+    rgba(160, 215, 255, 0.95) 0%,
+    rgba(100, 175, 240, 0.80) 50%,
+    rgba(70, 140, 210, 0.55) 100%
+  );
+  box-shadow: 0 1px 6px rgba(80, 160, 235, 0.45);
+  pointer-events: none;
+  z-index: 500;
+  animation: tearFall var(--tear-duration, 1.6s) ease-in forwards;
+}
+
+@keyframes tearFall {
+  0%   { transform: translateY(0)    scaleX(1.0)  rotate(0deg);   opacity: 0;    }
+  8%   { opacity: 0.9; }
+  40%  { transform: translateY(28vh) scaleX(0.88) rotate(2deg);   opacity: 0.75; }
+  75%  { transform: translateY(58vh) scaleX(0.76) rotate(-1deg);  opacity: 0.45; }
+  100% { transform: translateY(85vh) scaleX(0.60) rotate(1deg);   opacity: 0;    }
+}
+
+/* Micro-shiver for lively moments */
+@keyframes microShiver {
+  0%,100% { transform: rotate(0deg) translateX(0); }
+  20%     { transform: rotate(-1.2deg) translateX(-2px); }
+  40%     { transform: rotate(1.5deg)  translateX(2px); }
+  60%     { transform: rotate(-0.8deg) translateX(-1px); }
+  80%     { transform: rotate(1.0deg)  translateX(1px); }
+}
+.companion.shiver .companion-inner {
+  animation: microShiver 0.38s ease-in-out;
+}
+
+/* Pupil micro-saccade — faint rapid flick */
+@keyframes saccade {
+  0%,100% { transform: translate(-50%, -50%); }
+  30%     { transform: translate(calc(-50% + 4px), calc(-50% - 2px)); }
+  60%     { transform: translate(calc(-50% - 3px), calc(-50% + 2px)); }
+}
+.companion.saccade .pupil {
+  top: 50%; left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  animation: saccade 0.28s ease-out;
+}
+
+/* Whisper text — sits above the session timer */
 #whisper-text {
-  position: fixed; bottom: 58px; left: 50%; transform: translateX(-50%);
-  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11px;
+  position: fixed; bottom: calc(7vmin + 7vmin); left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12px;
   color: rgba(255,255,255,0.78); opacity: 0;
   pointer-events: none; text-align: center; white-space: nowrap;
   z-index: 1001; transition: opacity 0.7s ease;
   text-shadow: 0 1px 8px rgba(0,0,0,0.55);
 }
 
-/* Focus timer */
+/* Focus timer — sits below session timer */
 #focus-timer {
-  position: fixed; bottom: 38px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 2.8vmin; left: 50%; transform: translateX(-50%);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px;
   letter-spacing: 0.5px; color: rgba(255,255,255,0.58);
   opacity: 0.22; pointer-events: none; z-index: 1000;
@@ -876,11 +918,13 @@ html, body {
 
 /* Session timer — uses CSS vars set dynamically by timer.js */
 #session-timer {
-  position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
-  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 22px;
-  font-weight: 300; letter-spacing: 2px;
+  position: fixed; bottom: 7vmin; left: 50%; transform: translateX(-50%);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 5.5vmin;
+  font-weight: 200; letter-spacing: 0.18em;
   color: var(--timer-color, white);
-  text-shadow: 0 0 12px var(--timer-glow-color, transparent);
+  text-shadow:
+    0 0 18px var(--timer-glow-color, rgba(255,255,255,0.15)),
+    0 0 40px var(--timer-glow-color, transparent);
   pointer-events: none; z-index: 1000;
   animation: timerShake var(--timer-pulse-speed, none) ease-in-out infinite;
 }
@@ -894,7 +938,7 @@ html, body {
 
 /* Attention bar — EyeOnTask concept: continuous engagement score */
 #attention-bar {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 1vmin; left: 50%; transform: translateX(-50%);
   width: 80px; height: 2px;
   background: rgba(255,255,255,0.08); border-radius: 1px;
   pointer-events: none; z-index: 1000; overflow: hidden;
@@ -1288,13 +1332,5 @@ html, body {
 }
 
 /* =====================================================================
-   ENHANCED BREATHE — deeper more life-like rhythm
+   (breathe keyframe defined earlier, near top of file)
    ===================================================================== */
-@keyframes breathe {
-  0%   { transform: translateY(0)     scale(1); }
-  20%  { transform: translateY(-0.4vh) scale(1.004); }
-  45%  { transform: translateY(-0.7vh) scale(1.008); }
-  65%  { transform: translateY(-0.3vh) scale(1.005); }
-  85%  { transform: translateY(-0.5vh) scale(1.003); }
-  100% { transform: translateY(0)     scale(1); }
-}
