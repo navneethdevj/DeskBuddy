@@ -105,26 +105,24 @@ function _doSnapToCorner() {
 // ── Window factory ────────────────────────────────────────────────────────────
 
 function createWindow() {
-  const preset = store.get('windowPreset', DEFAULT_PRESET);
-  const dim    = _getDim(preset);
-  const pos    = _loadPos(dim);
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width:         dim,
-    height:        dim,
-    x:             pos.x,
-    y:             pos.y,
+    width:         sw,
+    height:        sh,
+    x:             0,
+    y:             0,
     minWidth:      150,
     minHeight:     150,
-    maxWidth:      320,
-    maxHeight:     320,
-    resizable:     true,
+    maxWidth:      sw,
+    maxHeight:     sh,
+    resizable:     false,
     frame:         false,
     transparent:   true,
-    alwaysOnTop:   true,
+    alwaysOnTop:   false,
     hasShadow:     true,
-    roundedCorners: true,
-    skipTaskbar:   true,
+    roundedCorners: false,
+    skipTaskbar:   false,
     backgroundColor: '#00000000',
     show:          false,   // shown only after content loads — prevents white flash
     ...(process.platform === 'darwin' ? { vibrancy: 'hud' } : {}),
@@ -144,7 +142,6 @@ function createWindow() {
   // Show only after the renderer has finished painting — no white flash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    mainWindow.webContents.send('window-ready', { preset, dim });
   });
 
   // Persist position every time the user moves the window; debounce snap

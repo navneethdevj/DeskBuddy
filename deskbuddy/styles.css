@@ -930,13 +930,13 @@ html, body {
 /* Individual teardrop shape — cartoony drops — appended by _spawnTearDrop() */
 .tear-drop {
   position: fixed;
-  width: 13px;
-  height: 21px;
+  width: 26px;
+  height: 42px;
   /* Pointy top, round body — classic anime/cartoon teardrop (point at tail, ball at front) */
   border-radius: 50% 50% 50% 50% / 78% 78% 22% 22%;
   /* Semi-transparent pastel sky-blue — cute and glassy */
   background: rgba(158, 223, 247, 0.50);
-  box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: inset -4px -8px 0 rgba(0, 0, 0, 0.06);
   overflow: hidden;
   pointer-events: none;
   z-index: 500;

@@ -43,9 +43,9 @@
   // 9. Brain loop
   Brain.start();
 
-  // The companion is always in compact-overlay mode — apply the class once,
-  // at startup, before any wiring so CSS transitions don't flash.
-  document.body.classList.add('pip-mode');
+  // The companion starts in full-screen mode on launch.
+  // The user can switch to compact PiP overlay via the collapse button.
+  document.body.classList.add('full-mode');
 
   // 10. Wire cross-module communication
   _wireUI();
@@ -248,7 +248,7 @@
   // A toggle button (or Ctrl/Cmd+Shift+P) switches between compact and full.
   // The window is always interactive in PiP mode — no click-through.
 
-  let _isFullMode = false;
+  let _isFullMode = true;  // starts in full-screen
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
 
