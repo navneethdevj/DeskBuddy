@@ -264,8 +264,8 @@
   function _snapToCorner(x, y) {
     const screenWidth  = screen.width;
     const screenHeight = screen.height;
-    const windowWidth  = 280;  // must match PIP_SIZE.width in main.js
-    const windowHeight = 240;  // must match PIP_SIZE.height in main.js
+    const windowWidth  = 200;  // must match PIP_SIZE.width in main.js
+    const windowHeight = 200;  // must match PIP_SIZE.height in main.js
     const margin = 20;
     const corners = [
       { x: margin,                       y: margin                        },  // top-left

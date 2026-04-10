@@ -6,7 +6,7 @@ let mainWindow;
 
 // ── PiP size / position persistence ─────────────────────────────────────────
 
-const PIP_SIZE = { width: 280, height: 240 };
+const PIP_SIZE = { width: 200, height: 200 };
 
 function _pipPositionFile() {
   return path.join(app.getPath('userData'), 'pip-position.json');

@@ -1454,7 +1454,7 @@ html, body {
 
 /* =====================================================================
    PICTURE-IN-PICTURE MODE
-   Applied via body.pip-mode when the user shrinks DeskBuddy to 280×240.
+   Applied via body.pip-mode when the user shrinks DeskBuddy to 200×200.
    Everything except the companion eyes and the mini-timer is hidden.
    All animations (breathe, glow, emotion, breathing-mode) keep running
    — they simply scale with the smaller viewport (vmin/vw/vh units
