@@ -6,7 +6,7 @@ let mainWindow;
 
 // ── PiP size / position persistence ─────────────────────────────────────────
 
-const PIP_SIZE = { width: 120, height: 120 };
+const PIP_SIZE = { width: 280, height: 240 };
 
 function _pipPositionFile() {
   return path.join(app.getPath('userData'), 'pip-position.json');
@@ -53,20 +53,17 @@ function createWindow() {
 ipcMain.on('enter-pip', () => {
   if (!mainWindow) return;
   const pos = _loadPipPosition();
-  mainWindow.setResizable(true);
-  mainWindow.setSize(PIP_SIZE.width, PIP_SIZE.height);
-  mainWindow.setPosition(pos.x, pos.y);
-  mainWindow.setResizable(false);
+  // setBounds is atomic (size + position in one call) — avoids the momentary
+  // oversized-window flash that setResizable(true)+setSize()+setResizable(false)
+  // can produce on some platforms.
+  mainWindow.setBounds({ x: pos.x, y: pos.y, width: PIP_SIZE.width, height: PIP_SIZE.height }, false);
   mainWindow.webContents.send('pip-entered');
 });
 
 ipcMain.on('exit-pip', () => {
   if (!mainWindow) return;
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  mainWindow.setResizable(true);
-  mainWindow.setSize(width, height);
-  mainWindow.setPosition(0, 0);
-  mainWindow.setResizable(false);
+  mainWindow.setBounds({ x: 0, y: 0, width, height }, false);
   mainWindow.webContents.send('pip-exited');
 });
 

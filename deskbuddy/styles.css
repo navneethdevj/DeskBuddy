@@ -1454,10 +1454,11 @@ html, body {
 
 /* =====================================================================
    PICTURE-IN-PICTURE MODE
-   Applied via body.pip-mode when the user shrinks DeskBuddy to 120×120.
+   Applied via body.pip-mode when the user shrinks DeskBuddy to 280×240.
    Everything except the companion eyes and the mini-timer is hidden.
    All animations (breathe, glow, emotion, breathing-mode) keep running
-   — they are simply scaled down to the 120px viewport.
+   — they simply scale with the smaller viewport (vmin/vw/vh units
+   automatically adapt to whichever size the Electron window is set to).
    ===================================================================== */
 
 /* PiP collapse button — visible in full mode only */
@@ -1512,40 +1513,29 @@ body.pip-mode #pip-collapse-btn { display: none; }
 /* Show expand button only in PiP */
 body.pip-mode #pip-expand-btn { display: block; }
 
-/* Companion fills the 120×120 PiP window */
+/* Clip any overflow so nothing bleeds outside the PiP window.
+   The companion and #world already use 100% / 100vw / 100vh so they
+   naturally fill whatever size the Electron window is — no hardcoded px. */
 body.pip-mode #world {
-  width: 120px;
-  height: 120px;
   overflow: hidden;
 }
 
-body.pip-mode .companion {
-  width: 120px;
-  height: 120px;
-  transform: scale(1);
-  transform-origin: center center;
-}
-
-body.pip-mode .companion .companion-inner {
-  transform-origin: center center;
-}
-
-/* Eyes scale down proportionally — vmin units auto-shrink with the 120px viewport */
+/* Eyes gap slightly tighter in PiP */
 body.pip-mode .eyes {
-  gap: 2vmin;
+  gap: 3vmin;
 }
 
-/* Mini timer — tiny digits in bottom-right corner of PiP window */
+/* Mini timer — sits at the bottom-center of the PiP window, clearly readable */
 body.pip-mode #session-timer {
   position: fixed;
-  bottom: 3px;
-  right: 4px;
-  left: auto;
-  transform: none;
-  font-size: 9px;
-  letter-spacing: 0.05em;
-  opacity: 0.75;
-  text-shadow: none;
+  bottom: 6px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  opacity: 0.82;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   z-index: 1001;
   animation: none;
