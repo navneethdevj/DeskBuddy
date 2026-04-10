@@ -10,6 +10,11 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- PiP expand button — only visible when in PiP mode; click to return to full -->
+  <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⤢</button>
+  <!-- PiP collapse button — only visible in full mode; click to enter PiP -->
+  <button id="pip-collapse-btn" title="Picture-in-Picture (Ctrl+Shift+P)">⤡</button>
+
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
   <video id="camera-feed" autoplay playsinline muted

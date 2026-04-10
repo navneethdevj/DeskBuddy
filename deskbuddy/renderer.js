@@ -49,6 +49,7 @@
   _wireTimerToCompanion();
   _wireBrainToSounds();
   _wireSessionToUI();
+  _wirePip();
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.
@@ -235,5 +236,130 @@
   function _setVisible(id, visible) {
     const el = document.getElementById(id);
     if (el) el.style.display = visible ? '' : 'none';
+  }
+
+  // ── PiP (Picture-in-Picture) ──────────────────────────────────────────────
+  // Purely a visual/window mode: shrinks to 120×120 overlay so the user can
+  // work in another app while the companion keeps watching.
+  // Timer, Brain, Perception, Sounds — all continue unchanged.
+
+  let _isPipMode = false;
+
+  function _enterPip() {
+    if (_isPipMode) return;
+    _isPipMode = true;
+    document.body.classList.add('pip-mode');
+    if (window.electronAPI) window.electronAPI.enterPip();
+    _enablePipDrag();
+  }
+
+  function _exitPip() {
+    if (!_isPipMode) return;
+    _isPipMode = false;
+    document.body.classList.remove('pip-mode');
+    if (window.electronAPI) window.electronAPI.exitPip();
+  }
+
+  // Snap window to the nearest corner after a drag, with a 20px margin.
+  function _snapToCorner(x, y) {
+    const sW = screen.width;
+    const sH = screen.height;
+    const wW = 120;
+    const wH = 120;
+    const margin = 20;
+    const corners = [
+      { x: margin,          y: margin           },   // top-left
+      { x: sW - wW - margin, y: margin           },   // top-right
+      { x: margin,          y: sH - wH - margin  },   // bottom-left
+      { x: sW - wW - margin, y: sH - wH - margin  },  // bottom-right
+    ];
+    const best = corners.reduce((nearest, corner) => {
+      const d = Math.hypot(corner.x - x, corner.y - y);
+      return d < nearest.dist ? { ...corner, dist: d } : nearest;
+    }, { ...corners[0], dist: Infinity });
+    return { x: best.x, y: best.y };
+  }
+
+  function _enablePipDrag() {
+    const el = document.getElementById('world');
+    if (!el) return;
+    let isDragging  = false;
+    let dragStart   = { x: 0, y: 0 };
+    let winStart    = { x: 0, y: 0 };
+    // Read the last-known stored position from localStorage as window origin
+    const stored = JSON.parse(localStorage.getItem('deskbuddy_pip_pos') || 'null');
+    winStart = stored || { x: 40, y: 40 };
+
+    function onMouseDown(e) {
+      if (!_isPipMode) return;
+      isDragging = true;
+      dragStart  = { x: e.screenX, y: e.screenY };
+      // current window position at drag start
+      const s = JSON.parse(localStorage.getItem('deskbuddy_pip_pos') || 'null');
+      winStart = s || { x: 40, y: 40 };
+      e.preventDefault();
+    }
+
+    function onMouseMove(e) {
+      if (!isDragging || !_isPipMode) return;
+      const dx = e.screenX - dragStart.x;
+      const dy = e.screenY - dragStart.y;
+      const newX = winStart.x + dx;
+      const newY = winStart.y + dy;
+      if (window.electronAPI) window.electronAPI.savePipPosition({ x: newX, y: newY });
+    }
+
+    function onMouseUp(e) {
+      if (!isDragging) return;
+      isDragging = false;
+      const dx = e.screenX - dragStart.x;
+      const dy = e.screenY - dragStart.y;
+      const rawX = winStart.x + dx;
+      const rawY = winStart.y + dy;
+      const snapped = _snapToCorner(rawX, rawY);
+      localStorage.setItem('deskbuddy_pip_pos', JSON.stringify(snapped));
+      if (window.electronAPI) window.electronAPI.savePipPosition(snapped);
+    }
+
+    el.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+
+  function _wirePip() {
+    // Keyboard shortcut: Ctrl/Cmd + Shift + P
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        _isPipMode ? _exitPip() : _enterPip();
+      }
+    });
+
+    // Collapse button (full mode → PiP)
+    const collapseBtn = document.getElementById('pip-collapse-btn');
+    if (collapseBtn) collapseBtn.addEventListener('click', () => _enterPip());
+
+    // Expand button (PiP → full mode)
+    const expandBtn = document.getElementById('pip-expand-btn');
+    if (expandBtn) expandBtn.addEventListener('click', () => _exitPip());
+
+    // Double-click companion in PiP → exit PiP
+    const worldEl = document.getElementById('world');
+    if (worldEl) {
+      worldEl.addEventListener('dblclick', () => {
+        if (_isPipMode) _exitPip();
+      });
+    }
+
+    // IPC confirmation callbacks (from main process after window resize)
+    if (window.electronAPI) {
+      window.electronAPI.onPipEntered(() => {
+        // Restore saved position into localStorage for next drag session
+        // (position was already applied by main.js from its persisted file)
+      });
+      window.electronAPI.onPipExited(() => {
+        // Full-mode restored — nothing extra needed in renderer
+      });
+    }
   }
 })();

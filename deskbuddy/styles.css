@@ -1451,3 +1451,102 @@ html, body {
 /* =====================================================================
    (breathe keyframe defined earlier, near top of file)
    ===================================================================== */
+
+/* =====================================================================
+   PICTURE-IN-PICTURE MODE
+   Applied via body.pip-mode when the user shrinks DeskBuddy to 120×120.
+   Everything except the companion eyes and the mini-timer is hidden.
+   All animations (breathe, glow, emotion, breathing-mode) keep running
+   — they are simply scaled down to the 120px viewport.
+   ===================================================================== */
+
+/* PiP collapse button — visible in full mode only */
+#pip-collapse-btn {
+  display: block;
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 2px 4px;
+  transition: opacity 0.2s ease;
+}
+#pip-collapse-btn:hover { color: rgba(255, 255, 255, 0.8); }
+
+/* PiP expand button — hidden in full mode, shown in PiP mode */
+#pip-expand-btn {
+  display: none;
+  position: fixed;
+  top: 2px;
+  right: 2px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.50);
+  font-size: 10px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 1px 3px;
+}
+#pip-expand-btn:hover { color: rgba(255, 255, 255, 0.85); }
+
+/* ── PiP mode body rules ─────────────────────────────────────────── */
+body.pip-mode {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Hide non-essential UI in PiP */
+body.pip-mode #status-bar,
+body.pip-mode #whisper-text,
+body.pip-mode #focus-timer,
+body.pip-mode #attention-bar,
+body.pip-mode #tear-overlay,
+body.pip-mode #pip-collapse-btn { display: none; }
+
+/* Show expand button only in PiP */
+body.pip-mode #pip-expand-btn { display: block; }
+
+/* Companion fills the 120×120 PiP window */
+body.pip-mode #world {
+  width: 120px;
+  height: 120px;
+  overflow: hidden;
+}
+
+body.pip-mode .companion {
+  width: 120px;
+  height: 120px;
+  transform: scale(1);
+  transform-origin: center center;
+}
+
+body.pip-mode .companion .companion-inner {
+  transform-origin: center center;
+}
+
+/* Eyes scale down proportionally — vmin units auto-shrink with the 120px viewport */
+body.pip-mode .eyes {
+  gap: 2vmin;
+}
+
+/* Mini timer — tiny digits in bottom-right corner of PiP window */
+body.pip-mode #session-timer {
+  position: fixed;
+  bottom: 3px;
+  right: 4px;
+  left: auto;
+  transform: none;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+  text-shadow: none;
+  pointer-events: none;
+  z-index: 1001;
+  animation: none;
+}

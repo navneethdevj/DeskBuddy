@@ -1,14 +1,38 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs   = require('fs');
 
 let mainWindow;
 
+// ── PiP size / position persistence ─────────────────────────────────────────
+
+const PIP_SIZE = { width: 120, height: 120 };
+
+function _pipPositionFile() {
+  return path.join(app.getPath('userData'), 'pip-position.json');
+}
+
+function _loadPipPosition() {
+  try {
+    const raw = fs.readFileSync(_pipPositionFile(), 'utf8');
+    const pos = JSON.parse(raw);
+    if (typeof pos.x === 'number' && typeof pos.y === 'number') return pos;
+  } catch (_) { /* first run or corrupt — use default */ }
+  return { x: 40, y: 40 };
+}
+
+function _savePipPosition(pos) {
+  try { fs.writeFileSync(_pipPositionFile(), JSON.stringify(pos)); } catch (_) { /* ignore */ }
+}
+
+// ── Window factory ──────────────────────────────────────────────────────────
+
 function createWindow() {
-  const { screen } = require('electron');
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
     width, height,
+    x: 0, y: 0,
     frame: false, transparent: false, alwaysOnTop: true,
     resizable: false, skipTaskbar: false, backgroundColor: '#111111',
     webPreferences: {
@@ -23,6 +47,35 @@ function createWindow() {
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.on('closed', () => { mainWindow = null; });
 }
+
+// ── IPC: PiP mode ────────────────────────────────────────────────────────────
+
+ipcMain.on('enter-pip', () => {
+  if (!mainWindow) return;
+  const pos = _loadPipPosition();
+  mainWindow.setResizable(true);
+  mainWindow.setSize(PIP_SIZE.width, PIP_SIZE.height);
+  mainWindow.setPosition(pos.x, pos.y);
+  mainWindow.setResizable(false);
+  mainWindow.webContents.send('pip-entered');
+});
+
+ipcMain.on('exit-pip', () => {
+  if (!mainWindow) return;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  mainWindow.setResizable(true);
+  mainWindow.setSize(width, height);
+  mainWindow.setPosition(0, 0);
+  mainWindow.setResizable(false);
+  mainWindow.webContents.send('pip-exited');
+});
+
+ipcMain.on('save-pip-position', (_event, pos) => {
+  if (mainWindow) mainWindow.setPosition(pos.x, pos.y);
+  _savePipPosition(pos);
+});
+
+// ── App lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
   // Electron 34 requires BOTH handlers. setPermissionCheckHandler runs
