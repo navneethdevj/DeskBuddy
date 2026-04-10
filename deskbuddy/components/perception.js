@@ -52,7 +52,7 @@
 const Perception = (() => {
 
   const EVAL_MS           = 66;
-  const DEBOUNCE_MS       = 350;
+  const DEBOUNCE_MS       = 150;
   const SLEEPY_CONFIRM_MS = 1800;
   const NOFACE_CONFIRM_MS = 1000;
   const LOOKING_AWAY_YAW  = 20;
