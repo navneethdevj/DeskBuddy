@@ -27,6 +27,13 @@ export const registerSocketHandlers = (io: SocketServer, socket: Socket): void =
   socket.on(SOCKET_EVENTS.LEAVE_WORKSPACE, async (workspaceId: unknown) => {
     if (typeof workspaceId !== 'string') return;
     try {
+      // §5.3 — verify the user is actually a member before broadcasting
+      // USER_LEFT.  Without this check any authenticated user could spoof
+      // presence events for workspaces they never joined.
+      const member = await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId, workspaceId } },
+      });
+      if (!member) return; // silently ignore — not a member of this workspace
       await socket.leave(workspaceId);
       io.to(workspaceId).emit(SOCKET_EVENTS.USER_LEFT, { userId, workspaceId });
       logger.info({ userId, workspaceId }, 'User left workspace room');

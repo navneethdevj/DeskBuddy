@@ -13,6 +13,21 @@ import { notesRouter } from '@api/modules/notes/notes.router';
 
 const app: Application = express();
 
+// §5.6 — Security response headers (helmet-equivalent, no extra dependency).
+// Applied before any route handler so every response carries these headers.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
+  res.setHeader('X-XSS-Protection', '0'); // disable legacy buggy browser filter
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (config.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
+
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
