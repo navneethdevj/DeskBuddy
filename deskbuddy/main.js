@@ -10,7 +10,13 @@ class Store {
   constructor() {
     this._file = path.join(app.getPath('userData'), 'deskbuddy-store.json');
     this._data = {};
-    try { this._data = JSON.parse(fs.readFileSync(this._file, 'utf8')); } catch (_) {}
+    try {
+      this._data = JSON.parse(fs.readFileSync(this._file, 'utf8'));
+    } catch (err) {
+      // ENOENT on first run is expected; any other error is logged and we
+      // start with an empty store (safe fallback — defaults will be used).
+      if (err.code !== 'ENOENT') console.error('[Store] load error:', err.message);
+    }
   }
   get(key, defaultValue) {
     return Object.prototype.hasOwnProperty.call(this._data, key)
@@ -18,7 +24,11 @@ class Store {
   }
   set(key, value) {
     this._data[key] = value;
-    try { fs.writeFileSync(this._file, JSON.stringify(this._data)); } catch (_) {}
+    try { fs.writeFileSync(this._file, JSON.stringify(this._data)); } catch (err) {
+      // Non-fatal — position/size will revert to defaults on next launch
+      // if the write failed (e.g. disk full, permissions).
+      console.error('[Store] write error:', err.message);
+    }
   }
 }
 
@@ -78,10 +88,13 @@ function _doSnapToCorner() {
     { x: m,          y: sh - w - m },   // bottom-left
     { x: sw - w - m, y: sh - w - m },   // bottom-right
   ];
+  // Reduce over all corners, starting with null so the first comparison is
+  // always a real distance check rather than a meaningless Infinity seed.
   const best = corners.reduce((nearest, c) => {
     const d = Math.hypot(c.x - curX, c.y - curY);
-    return d < nearest.dist ? { ...c, dist: d } : nearest;
-  }, { ...corners[0], dist: Infinity });
+    if (!nearest || d < nearest.dist) return { x: c.x, y: c.y, dist: d };
+    return nearest;
+  }, null);
   const safeX = Math.max(0, Math.min(best.x, sw - w));
   const safeY = Math.max(0, Math.min(best.y, sh - w));
   // animate: true is honoured on macOS; silently ignored elsewhere
