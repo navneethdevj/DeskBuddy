@@ -10,6 +10,11 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Compact mode: click to expand to full-screen -->
+  <button id="compact-expand-btn" title="Full screen (Ctrl+Shift+P)">⛶</button>
+  <!-- Full-screen mode: click to return to compact overlay -->
+  <button id="full-collapse-btn" title="Compact overlay (Ctrl+Shift+P)">⤡</button>
+
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
   <video id="camera-feed" autoplay playsinline muted

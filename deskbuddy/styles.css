@@ -19,8 +19,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #111111;
+  background: transparent;   /* window is always transparent; #world paints the bg */
   user-select: none;
+  -webkit-user-select: none; /* prevent accidental text selection during drag */
   cursor: default;
 }
 
@@ -28,6 +29,10 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
+  /* Draggable region — the entire companion body moves the window.
+     Interactive child elements override this with -webkit-app-region: no-drag. */
+  -webkit-app-region: drag;
+  overflow: hidden;
 }
 
 /* ===== Companion Container (fills viewport) ===== */
@@ -37,6 +42,8 @@ html, body {
   height: 100vh;
   will-change: transform, filter;
   animation: glowIdle 4s ease-in-out infinite, idleSway 7s ease-in-out infinite;
+  /* Companion is interactive (pet / click reactions) — must not be a drag region. */
+  -webkit-app-region: no-drag;
 }
 
 .companion-inner {
@@ -920,41 +927,55 @@ html, body {
 
 /* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
-/* Individual teardrop shape — cartoony drops — appended by _spawnTearDrop() */
+/* Individual teardrop shape — cartoony drops — appended by _spawnTearDrop().
+   Size in vmin so it scales with the window / eye (eye = 36vmin wide). */
 .tear-drop {
   position: fixed;
-  width: 13px;
-  height: 21px;
-  /* Pointy top, round body — classic anime/cartoon teardrop (point at tail, ball at front) */
+  width: 3vmin;
+  height: 5vmin;
+  /* Pointy top, round body — classic anime/cartoon teardrop */
   border-radius: 50% 50% 50% 50% / 78% 78% 22% 22%;
-  /* Semi-transparent pastel sky-blue — cute and glassy */
-  background: rgba(158, 223, 247, 0.50);
-  box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.06);
+  /* Watery: mostly transparent, subtle cool-blue tint */
+  background: linear-gradient(
+    160deg,
+    rgba(190, 230, 252, 0.32) 0%,
+    rgba(110, 190, 240, 0.22) 60%,
+    rgba(70,  160, 225, 0.16) 100%
+  );
+  box-shadow:
+    inset -0.2vmin -0.4vmin 0     rgba(0, 0, 0, 0.03),
+    inset  0.1vmin  0.1vmin 0.4vmin rgba(255, 255, 255, 0.14);
   overflow: hidden;
   pointer-events: none;
   z-index: 500;
-  animation: tearFall var(--tear-duration, 1.4s) ease-in forwards;
+  /* Gravity fall — accelerates naturally, no slow start */
+  animation: tearFall var(--tear-duration, 1.2s) ease-in forwards;
 }
 
-/* White shine dot — on the round body (lower portion) */
+/* Subtle shine on the belly — small and dim */
 .tear-drop::before {
   content: '';
   position: absolute;
-  bottom: 22%;
+  bottom: 24%;
   right: 16%;
   top: auto;
-  width: 30%;
-  height: 22%;
+  width: 28%;
+  height: 20%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.70);
+  background: rgba(255, 255, 255, 0.30);
 }
 
-/* Cartoon tear: straight fall, stays mostly solid, fades at the very end */
+/* Remove secondary glint — keeping it simple and watery */
+.tear-drop::after {
+  content: none;
+}
+
+/* Straight gravity fall — no lateral wobble, just a slight squeeze at peak speed */
 @keyframes tearFall {
-  0%   { transform: translateY(0);                                   opacity: 0;   }
-  8%   {                                                              opacity: 0.7; }
-  80%  { transform: translateY(calc(var(--tear-fall-dist) * 0.84));  opacity: 0.6; }
-  100% { transform: translateY(var(--tear-fall-dist));               opacity: 0;   }
+  0%   { transform: translateY(0)                                    scaleX(1.0); opacity: 0;    }
+  6%   { transform: translateY(0)                                    scaleX(1.0); opacity: 0.60; }
+  55%  { transform: translateY(calc(var(--tear-fall-dist) * 0.50))   scaleX(0.93); opacity: 0.45; }
+  100% { transform: translateY(var(--tear-fall-dist))                scaleX(1.0); opacity: 0;   }
 }
 
 /* Micro-shiver for lively moments */
@@ -1451,3 +1472,161 @@ html, body {
 /* =====================================================================
    (breathe keyframe defined earlier, near top of file)
    ===================================================================== */
+
+/* =====================================================================
+   COMPACT OVERLAY MODE  (body.pip-mode — applied at startup by default)
+   The companion lives as a small floating window.
+   Only the face and size controls are shown; session UI is hidden.
+   Animations keep running — vmin/vw/vh scale with the window size.
+
+   FULL-SCREEN MODE  (body.full-mode — toggled via button / Ctrl+Shift+P)
+   Expands to the full work area, reveals all session/timer UI.
+   ===================================================================== */
+
+/* ── Mode toggle buttons ───────────────────────────────────────────── */
+
+/* Compact → full: small pill at top-right of the compact window */
+#compact-expand-btn {
+  display: none;                    /* hidden by default; shown in pip-mode */
+  position: fixed;
+  top: 5px;
+  right: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 3px 5px;
+  -webkit-app-region: no-drag;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+#compact-expand-btn:hover {
+  background: rgba(120, 135, 235, 0.28);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Full → compact: small pill at top-right of the full window */
+#full-collapse-btn {
+  display: none;                    /* hidden by default; shown in full-mode */
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 3px 7px;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+#full-collapse-btn:hover {
+  background: rgba(120, 135, 235, 0.18);
+  border-color: rgba(120, 135, 235, 0.45);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ── Compact body ──────────────────────────────────────────────────── */
+body.pip-mode {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Show compact-only controls, hide full-mode controls */
+body.pip-mode #compact-expand-btn { display: block; }
+
+/* Hide full-mode button and non-essential UI in compact */
+body.pip-mode #full-collapse-btn,
+body.pip-mode #status-bar,
+body.pip-mode #whisper-text,
+body.pip-mode #focus-timer,
+body.pip-mode #attention-bar,
+body.pip-mode #tear-overlay { display: none; }
+
+/* Floating bubble appearance.
+   Semi-transparent so macOS vibrancy / Windows acrylic shows through subtly. */
+body.pip-mode #world {
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 45% 40%, rgba(28, 22, 56, 0.88) 0%, rgba(10, 10, 22, 0.92) 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(120, 135, 235, 0.38),
+    0 0 14px  rgba(120, 135, 235, 0.22),
+    0 0 34px  rgba(100, 100, 200, 0.12),
+    inset 0 0 18px rgba(120, 135, 235, 0.06);
+  animation: pipBorderPulse 3.5s ease-in-out infinite;
+}
+
+@keyframes pipBorderPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(120, 135, 235, 0.38),
+      0 0 14px  rgba(120, 135, 235, 0.22),
+      0 0 34px  rgba(100, 100, 200, 0.12),
+      inset 0 0 18px rgba(120, 135, 235, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(150, 165, 255, 0.55),
+      0 0 20px  rgba(140, 155, 255, 0.32),
+      0 0 50px  rgba(110, 110, 220, 0.18),
+      inset 0 0 24px rgba(140, 155, 255, 0.10);
+  }
+}
+
+/* PiP window is draggable: companion body acts as the drag handle.
+   Interactive children (eye-wraps, expand button) stay as no-drag so
+   clicks still register on them. */
+body.pip-mode .companion    { -webkit-app-region: drag; }
+body.pip-mode .eye-wrap,
+body.pip-mode #compact-expand-btn { -webkit-app-region: no-drag; }
+
+/* Eyes gap slightly tighter in compact window */
+body.pip-mode .eyes {
+  gap: 3vmin;
+}
+
+/* Mini timer — bottom-center, readable at all preset sizes */
+body.pip-mode #session-timer {
+  position: fixed;
+  bottom: 7px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  opacity: 0.78;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(120, 135, 235, 0.4);
+  pointer-events: none;
+  -webkit-user-select: none;
+  z-index: 1001;
+  animation: none;
+}
+
+/* ── Full-screen mode ─────────────────────────────────────────────── */
+body.full-mode {
+  background: #111111;
+  overflow: hidden;
+}
+
+/* Show full-mode collapse button, hide compact controls */
+body.full-mode #full-collapse-btn  { display: block; }
+body.full-mode #compact-expand-btn { display: none;  }
+
+/* Full mode #world: no rounded corners, no glow ring, fills screen */
+body.full-mode #world {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  -webkit-app-region: no-drag; /* full mode uses normal mouse interaction */
+}
+
+/* In full mode, restore the companion to its default drag-free state */
+body.full-mode .companion {
+  -webkit-app-region: no-drag;
+}

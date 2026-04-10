@@ -43,12 +43,17 @@
   // 9. Brain loop
   Brain.start();
 
+  // The companion starts in full-screen mode on launch.
+  // The user can switch to compact PiP overlay via the collapse button.
+  document.body.classList.add('full-mode');
+
   // 10. Wire cross-module communication
   _wireUI();
   _wireTimerToSounds();
   _wireTimerToCompanion();
   _wireBrainToSounds();
   _wireSessionToUI();
+  _wireWindowControls();
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.
@@ -235,5 +240,61 @@
   function _setVisible(id, visible) {
     const el = document.getElementById(id);
     if (el) el.style.display = visible ? '' : 'none';
+  }
+
+
+  // ── Compact window — mode toggle ────────────────────────────────────────
+  // The companion starts as a small floating overlay (PiP mode).
+  // A toggle button (or Ctrl/Cmd+Shift+P) switches between compact and full.
+  // The window is always interactive in PiP mode — no click-through.
+
+  let _isFullMode = true;  // starts in full-screen
+
+  // ── Mode toggle ───────────────────────────────────────────────────────────
+
+  function _enterFullMode() {
+    if (_isFullMode) return;
+    _isFullMode = true;
+    document.body.classList.remove('pip-mode');
+    document.body.classList.add('full-mode');
+    if (window.electronAPI) window.electronAPI.enterFullMode();
+  }
+
+  function _exitFullMode() {
+    if (!_isFullMode) return;
+    _isFullMode = false;
+    document.body.classList.remove('full-mode');
+    document.body.classList.add('pip-mode');
+    if (window.electronAPI) window.electronAPI.exitFullMode();
+  }
+
+  function _wireWindowControls() {
+    // Keyboard shortcut: Ctrl/Cmd + Shift + P → toggle compact / full
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        _isFullMode ? _exitFullMode() : _enterFullMode();
+      }
+    });
+
+    // Toggle buttons
+    const expandBtn   = document.getElementById('compact-expand-btn');
+    const collapseBtn = document.getElementById('full-collapse-btn');
+    if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
+    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullMode());
+
+    // Sync mode state when main reports transitions (covers IPC-initiated toggles).
+    if (window.electronAPI) {
+      window.electronAPI.onFullModeEntered(() => {
+        _isFullMode = true;
+        document.body.classList.remove('pip-mode');
+        document.body.classList.add('full-mode');
+      });
+      window.electronAPI.onFullModeExited(() => {
+        _isFullMode = false;
+        document.body.classList.remove('full-mode');
+        document.body.classList.add('pip-mode');
+      });
+    }
   }
 })();

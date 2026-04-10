@@ -75,7 +75,7 @@ const Perception = (() => {
   // Smile + surprise confirmation — require N consecutive eval frames above
   // threshold before setting the flag. Prevents single-frame noise from
   // triggering emotions. At EVAL_MS=66ms, 3 frames ≈ 200ms sustained expression.
-  const SMILE_CONFIRM_FRAMES    = 3;
+  const SMILE_CONFIRM_FRAMES    = 2;
   const SURPRISE_CONFIRM_FRAMES = 2;
 
   // === EAR (Eye Aspect Ratio) — Eyes-Position-Estimator approach ===
@@ -243,11 +243,11 @@ const Perception = (() => {
     const smileScore    = (_bs(bs,'mouthSmileLeft') + _bs(bs,'mouthSmileRight')) / 2;
     const surpriseScore = _bs(bs,'jawOpen')*0.6 + _bs(bs,'eyeWideLeft')*0.2 + _bs(bs,'eyeWideRight')*0.2;
 
-    // Confirmation counters: expression must persist for N consecutive frames
-    // to avoid single-frame noise (speech, yawn, brief muscle movement) triggering emotions.
-    // Counters climb when above threshold, reset instantly when below.
-    _smileConfirmCount    = smileScore    > SMILE_THRESHOLD    ? Math.min(_smileConfirmCount    + 1, SMILE_CONFIRM_FRAMES)    : 0;
-    _surpriseConfirmCount = surpriseScore > SURPRISE_THRESHOLD ? Math.min(_surpriseConfirmCount + 1, SURPRISE_CONFIRM_FRAMES) : 0;
+    // Symmetric decay: counter climbs when above threshold, falls when below.
+    // Enter: 2 frames above = ~132ms. Exit: 2 frames below = ~132ms hold.
+    // Prevents both false-positive flicker AND lingering after smile ends.
+    _smileConfirmCount    = smileScore    > SMILE_THRESHOLD    ? Math.min(_smileConfirmCount    + 1, SMILE_CONFIRM_FRAMES)    : Math.max(0, _smileConfirmCount    - 1);
+    _surpriseConfirmCount = surpriseScore > SURPRISE_THRESHOLD ? Math.min(_surpriseConfirmCount + 1, SURPRISE_CONFIRM_FRAMES) : Math.max(0, _surpriseConfirmCount - 1);
     const userSmiling   = _smileConfirmCount    >= SMILE_CONFIRM_FRAMES;
     const userSurprised = _surpriseConfirmCount >= SURPRISE_CONFIRM_FRAMES;
 

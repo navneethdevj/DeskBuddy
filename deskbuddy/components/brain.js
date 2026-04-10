@@ -897,7 +897,7 @@ const Brain = (() => {
     el.style.top  = startY + 'px';
     const fallDist = window.innerHeight - startY;
     el.style.setProperty('--tear-fall-dist', fallDist + 'px');
-    const dur = (1.0 + Math.random() * 0.55).toFixed(2) + 's';
+    const dur = (1.0 + Math.random() * 0.40).toFixed(2) + 's';
     el.style.setProperty('--tear-duration', dur);
     document.body.appendChild(el);
     setTimeout(() => { el.remove(); _raiseTearPool(POOL_PER_TEAR_VH); },
@@ -1094,7 +1094,11 @@ const Brain = (() => {
             // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
           }
-        } else if (p?.gazeY < PHONE_GAZE_Y_RESET) {
+        } else if (!p || !p.facePresent || p.gazeY < PHONE_GAZE_Y_RESET) {
+          // Reset when there is no perception data, face is absent, or gaze
+          // returns above the reset threshold. Without the facePresent guard the
+          // counter would hold its value across face-dropout periods and trigger
+          // spuriously on the next detection frame.
           _phoneCheckMs = 0;
         }
       }
