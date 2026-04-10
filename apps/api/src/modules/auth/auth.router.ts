@@ -1,9 +1,7 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import type { RequestHandler } from 'express';
-import { z } from 'zod';
 import { requireAuth } from '@api/middleware/auth';
 import { rateLimiter } from '@api/middleware/rateLimiter';
-import { validateBody } from '@api/middleware/validate';
 import { csrfProtection } from '@api/middleware/csrf';
 import config from '@api/config';
 import { AuthService } from './auth.service';
@@ -19,14 +17,6 @@ const cookieOptions = {
   sameSite: 'strict' as const,
   maxAge: REFRESH_COOKIE_MAX_AGE_MS,
 };
-
-// §5.4 — validate that the code looks like a real OAuth authorization code
-// before we forward it to Google's token endpoint (prevents amplification).
-const OAUTH_CODE_MIN_LENGTH = 10;
-const OAUTH_CODE_MAX_LENGTH = 512;
-const GoogleCallbackSchema = z.object({
-  code: z.string().min(OAUTH_CODE_MIN_LENGTH).max(OAUTH_CODE_MAX_LENGTH),
-});
 
 // POST /api/v1/auth/google/callback
 const googleCallback: RequestHandler = async (req, res, next): Promise<void> => {
@@ -65,7 +55,6 @@ const logout: RequestHandler = async (req, res, next): Promise<void> => {
 router.post(
   '/google/callback',
   rateLimiter({ windowMs: 60_000, max: 10 }),
-  validateBody(GoogleCallbackSchema),
   googleCallback,
 );
 router.post('/refresh', rateLimiter({ windowMs: 60_000, max: 20 }), csrfProtection, refresh);

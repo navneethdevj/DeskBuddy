@@ -2,7 +2,7 @@ import { prisma as defaultPrisma } from '@api/db/prisma';
 import { HttpError } from '@api/utils/httpError';
 import { toUserDTO } from '@api/utils/mappers';
 import type { UserDTO } from '@shared/types';
-import type { UpdateUserInput } from '@shared/schemas';
+import type { UpdateUserInput } from './users.types';
 
 export class UsersService {
   constructor(private readonly db = defaultPrisma) {}

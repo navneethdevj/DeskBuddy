@@ -15,13 +15,5 @@ export const CreateUserSchema = z.object({
   avatarUrl: z.string().url().optional(),
 });
 
-// §5.2 / §7.1 — explicit update schema with URL validation so callers cannot
-// set avatarUrl to a javascript: or data: URI.
-export const UpdateUserSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  avatarUrl: z.string().url().startsWith('https://').optional(),
-});
-
 export type User = z.infer<typeof UserSchema>;
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
-export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;

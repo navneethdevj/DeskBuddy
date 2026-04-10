@@ -33,11 +33,7 @@ interface GoogleUserInfo {
 }
 
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
-// §5.5 — two Redis keys per session:
-//   rt:{opaqueToken} → userId   (lookup on refresh — opaque token is the only cookie value)
-//   rtu:{userId}     → opaqueToken  (lookup on logout — no scan needed)
-const REFRESH_KEY_PREFIX      = 'rt:';   // forward:  token → userId
-const USER_REFRESH_KEY_PREFIX = 'rtu:';  // reverse:  userId → token
+const REFRESH_KEY_PREFIX = 'rt:';
 
 export class AuthService {
   constructor(
@@ -93,21 +89,16 @@ export class AuthService {
 
     // 4. Issue access + refresh tokens
     const accessToken = this._signAccessToken(user.id, user.email);
-    // §5.5 — cookie carries only the opaque token (userId no longer exposed).
-    // Redis stores the reverse mapping so refresh and logout can both operate
-    // without embedding the userId in the cookie value.
     const opaqueToken = crypto.randomBytes(32).toString('hex');
+    const refreshToken = `${user.id}:${opaqueToken}`;
 
     const redis = await this.getRedisClient();
-    await redis.set(`${REFRESH_KEY_PREFIX}${opaqueToken}`, user.id, {
-      EX: REFRESH_TTL_SECONDS,
-    });
-    await redis.set(`${USER_REFRESH_KEY_PREFIX}${user.id}`, opaqueToken, {
+    await redis.set(`${REFRESH_KEY_PREFIX}${user.id}`, opaqueToken, {
       EX: REFRESH_TTL_SECONDS,
     });
 
     logger.info({ userId: user.id }, 'User authenticated via Google');
-    return { accessToken, refreshToken: opaqueToken, user: toUserDTO(user) };
+    return { accessToken, refreshToken, user: toUserDTO(user) };
   }
 
   async refreshAccessToken(
@@ -117,56 +108,40 @@ export class AuthService {
       throw new HttpError(401, 'Refresh token missing', 'UNAUTHORIZED');
     }
 
-    // §5.5 — cookie is now just the opaque token; no userId prefix to parse.
-    const opaqueToken = providedToken;
+    const colonIdx = providedToken.indexOf(':');
+    if (colonIdx === -1) {
+      throw new HttpError(401, 'Invalid refresh token format', 'UNAUTHORIZED');
+    }
+
+    const userId = providedToken.slice(0, colonIdx);
+    const opaqueToken = providedToken.slice(colonIdx + 1);
 
     const redis = await this.getRedisClient();
-    // Forward lookup: rt:{opaqueToken} → userId
-    const userId = await redis.get(`${REFRESH_KEY_PREFIX}${opaqueToken}`);
-    if (!userId) {
+    const stored = await redis.get(`${REFRESH_KEY_PREFIX}${userId}`);
+    if (!stored || stored !== opaqueToken) {
       throw new HttpError(401, 'Invalid or expired refresh token', 'UNAUTHORIZED');
     }
 
     const user = await this.db.user.findUnique({ where: { id: userId } });
     if (!user) {
-      // Clean up both keys so the orphaned token can't be retried.
-      await redis.del(
-        `${REFRESH_KEY_PREFIX}${opaqueToken}`,
-        `${USER_REFRESH_KEY_PREFIX}${userId}`,
-      );
+      await redis.del(`${REFRESH_KEY_PREFIX}${userId}`);
       throw new HttpError(401, 'User not found', 'UNAUTHORIZED');
     }
 
-    // Rotate: delete old entries, issue a fresh opaque token.
+    // Rotate: issue new opaque token, replace in Redis
     const newOpaqueToken = crypto.randomBytes(32).toString('hex');
-    await redis.del(
-      `${REFRESH_KEY_PREFIX}${opaqueToken}`,
-      `${USER_REFRESH_KEY_PREFIX}${userId}`,
-    );
-    await redis.set(`${REFRESH_KEY_PREFIX}${newOpaqueToken}`, user.id, {
-      EX: REFRESH_TTL_SECONDS,
-    });
-    await redis.set(`${USER_REFRESH_KEY_PREFIX}${user.id}`, newOpaqueToken, {
+    const newRefreshToken = `${userId}:${newOpaqueToken}`;
+    await redis.set(`${REFRESH_KEY_PREFIX}${userId}`, newOpaqueToken, {
       EX: REFRESH_TTL_SECONDS,
     });
 
     const accessToken = this._signAccessToken(user.id, user.email);
-    return { accessToken, refreshToken: newOpaqueToken };
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
   async logout(userId: string): Promise<void> {
     const redis = await this.getRedisClient();
-    // §5.5 — reverse lookup: rtu:{userId} → opaqueToken, then delete both keys.
-    const opaqueToken = await redis.get(`${USER_REFRESH_KEY_PREFIX}${userId}`);
-    if (opaqueToken) {
-      await redis.del(
-        `${REFRESH_KEY_PREFIX}${opaqueToken}`,
-        `${USER_REFRESH_KEY_PREFIX}${userId}`,
-      );
-    } else {
-      // Defensive: clean up the reverse key even if the forward key is gone.
-      await redis.del(`${USER_REFRESH_KEY_PREFIX}${userId}`);
-    }
+    await redis.del(`${REFRESH_KEY_PREFIX}${userId}`);
     logger.info({ userId }, 'User logged out');
   }
 

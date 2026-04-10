@@ -32,17 +32,7 @@ const Camera = (() => {
       console.log('[Camera] Starting webcam…');
       await _startWebcam();
       console.log('[Camera] Webcam started — initializing MediaPipe…');
-      try {
-        await _initLandmarker();
-      } catch (err) {
-        // §4.3 — _startWebcam succeeded but _initLandmarker threw: the stream
-        // is still open so the camera LED stays on.  Stop it explicitly here.
-        if (videoEl && videoEl.srcObject) {
-          videoEl.srcObject.getTracks().forEach(t => t.stop());
-          videoEl.srcObject = null;
-        }
-        throw err;
-      }
+      await _initLandmarker();
       window.cameraAvailable = true;
       running = true;
       requestAnimationFrame(_loop);

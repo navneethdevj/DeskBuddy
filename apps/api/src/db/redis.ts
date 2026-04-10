@@ -19,35 +19,13 @@ export type RedisGetter = () => Promise<RedisOps>;
 
 let _client: RedisClient | null = null;
 
-function _createAndConnect(): RedisClient {
-  const client = createClient({ url: config.REDIS_URL });
-  client.on('error', (err: unknown) => logger.error({ err }, 'Redis client error'));
-  return client;
-}
-
-// §5.9 — Reconnect when the stored client is no longer ready (e.g. after a
-// Redis restart).  We destroy the stale client before creating a new one so
-// there is never more than one connection attempt in flight.
 export const getRedis: RedisGetter = async (): Promise<RedisOps> => {
-  if (_client && _client.isReady) {
-    return _client as unknown as RedisOps;
+  if (!_client) {
+    _client = createClient({ url: config.REDIS_URL });
+    _client.on('error', (err: unknown) => logger.error({ err }, 'Redis client error'));
+    await _client.connect();
+    logger.info('Redis connected');
   }
-
-  if (_client) {
-    try { await _client.quit(); } catch (err: unknown) {
-      // 'already closed' errors are benign; log anything else for observability
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('closed') && !msg.includes('destroyed')) {
-        logger.warn({ err }, 'Redis quit error during reconnect cleanup');
-      }
-    }
-    _client = null;
-  }
-
-  _client = _createAndConnect();
-  await _client.connect();
-  logger.info('Redis connected');
-
   return _client as unknown as RedisOps;
 };
 

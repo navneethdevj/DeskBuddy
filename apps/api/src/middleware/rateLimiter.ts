@@ -14,10 +14,6 @@ export const rateLimiter = ({ windowMs, max }: RateLimiterOptions): RequestHandl
     const record = requestCounts.get(key);
 
     if (!record || now > record.resetAt) {
-      // §5.1 — Delete the old entry before creating a new one so the Map
-      // never accumulates unbounded entries for IPs that only visit once
-      // per window.  (delete is a no-op when key is absent.)
-      requestCounts.delete(key);
       requestCounts.set(key, { count: 1, resetAt: now + windowMs });
       next();
       return;

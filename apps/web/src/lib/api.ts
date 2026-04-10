@@ -22,14 +22,8 @@ const subscribeTokenRefresh = (cb: (token: string) => void): void => {
 };
 
 const onRefreshed = (token: string): void => {
-  // §6.1 — snapshot and clear the list *before* iterating so that a callback
-  // that throws synchronously cannot prevent the remaining callbacks from
-  // being called, and cannot cause the same subscriber to run twice.
-  const subs = refreshSubscribers;
+  refreshSubscribers.forEach((cb) => cb(token));
   refreshSubscribers = [];
-  for (const cb of subs) {
-    try { cb(token); } catch { /* individual callback errors must not abort others */ }
-  }
 };
 
 api.interceptors.response.use(
