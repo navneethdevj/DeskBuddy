@@ -24,6 +24,7 @@ const Sounds = (() => {
   let ready       = false;
   let _muted      = false;
   let _savedGain  = 0.7;
+  let _timeGainMult = 1.0;  // time-of-day gain modifier (0.8 at NIGHT)
 
   const cooldowns = {};
 
@@ -122,7 +123,7 @@ const Sounds = (() => {
 
   function setVolume(v) {
     _savedGain = Math.max(0, Math.min(1, v));
-    if (masterGain && !_muted) masterGain.gain.value = _savedGain;
+    if (masterGain && !_muted) masterGain.gain.value = _savedGain * _timeGainMult;
   }
 
   function mute() {
@@ -132,7 +133,16 @@ const Sounds = (() => {
 
   function unmute() {
     _muted = false;
-    if (masterGain) masterGain.gain.value = _savedGain;
+    if (masterGain) masterGain.gain.value = _savedGain * _timeGainMult;
+  }
+
+  /**
+   * setNightGainMult(m) — called by Brain.applyTimePeriod().
+   * m = 0.8 for NIGHT (quieter late-night environment), 1.0 for all others.
+   */
+  function setNightGainMult(m) {
+    _timeGainMult = Math.max(0, Math.min(1, m));
+    if (masterGain && !_muted) masterGain.gain.value = _savedGain * _timeGainMult;
   }
 
   // ── Guard ──────────────────────────────────────────────────────────────────
@@ -1454,6 +1464,6 @@ const Sounds = (() => {
 
   // ── Public surface ─────────────────────────────────────────────────────────
 
-  return { init, play, setVolume, mute, unmute };
+  return { init, play, setVolume, mute, unmute, setNightGainMult };
 
 })();
