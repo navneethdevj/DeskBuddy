@@ -253,6 +253,25 @@ const Session = (() => {
 
     _setState(STATE.ACTIVE);
     if (window.Sounds) Sounds.play('session_start');
+
+    // ── Time-of-day awareness ──────────────────────────────────────────────
+    if (window.Brain) {
+      const period = Brain.getTimePeriod();
+      Brain.applyTimePeriod(period);
+      if (window.Soundscape) Soundscape.setTimeTint(period);
+
+      if (period === 'NIGHT') {
+        Brain.trackNightSession();
+        Brain.checkNightWhisper();
+      } else {
+        Brain.resetNightSessions();
+      }
+
+      if (period === 'MORNING') {
+        // Small delay so session_start sound plays first
+        setTimeout(() => Brain.doMorningGreeting(), 600);
+      }
+    }
   }
 
   /**
