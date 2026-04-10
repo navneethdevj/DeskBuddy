@@ -585,47 +585,55 @@ const Sounds = (() => {
   // Each function targets one emotional truth identifiable by ear alone.
   // All source gain nodes ≤ 0.12. All route through masterGain.
 
-  // Giggle — warm bubbly three-syllable "hehehe~" (triggered by userSmiling)
+  // Giggle — crystalline three-bell laugh cascade (triggered by userSmiling)
+  // Three ascending bell-chimes with sparkle overtones — like tiny fairy bells.
   function _giggle() {
     if (!_ok('giggle')) return;
     try {
       const t = ctx.currentTime;
-      _formant(620, 1700, t, 0.09, 0.09, {
-        wave: 'triangle', attack: 0.004, release: 0.03,
-        tremRate: 26, tremDepth: 0.025, f3: 3200,
+      // Airy breath onset — tiny gasp of delight
+      _breath(t, 0.040, 0.008, 4200);
+      // Bell 1: 980 Hz / sine / 75ms AD — clean bright ping
+      _osc('sine', 980, t, 0.075, 0.08, { attack: 0.003, decay: 0.072, sustain: 0 });
+      // Sparkle at 2× (1960 Hz) for bell 1
+      _osc('triangle', 1960, t + 0.003, 0.050, 0.025, { attack: 0.003, decay: 0.047, sustain: 0 });
+      // Bell 2: 1180 Hz / sine / 80ms at +110ms
+      _osc('sine', 1180, t + 0.110, 0.080, 0.085, { attack: 0.003, decay: 0.077, sustain: 0 });
+      // Sparkle at 2× (2360 Hz) for bell 2
+      _osc('triangle', 2360, t + 0.113, 0.055, 0.022, { attack: 0.003, decay: 0.052, sustain: 0 });
+      // Bell 3: 1440 Hz / sine / 120ms at +220ms — vibrato twinkle
+      _osc('sine', 1440, t + 0.220, 0.120, 0.09, {
+        attack: 0.003, decay: 0.117, sustain: 0,
+        vibRate: 12, vibDepth: 18,
       });
-      _formant(720, 1900, t + 0.11, 0.10, 0.10, {
-        wave: 'triangle', attack: 0.004, release: 0.04,
-        tremRate: 28, tremDepth: 0.025, f3: 3400,
-      });
-      _formant(800, 2100, t + 0.22, 0.13, 0.11, {
-        wave: 'triangle', attack: 0.005, release: 0.05,
-        tremRate: 30, tremDepth: 0.03, vibRate: 10, vibDepth: 8, f3: 3600,
-      });
-      _breath(t + 0.05, 0.04, 0.015, 3500);
-      _breath(t + 0.16, 0.04, 0.012, 3800);
+      // Double shimmer on bell 3 peak — maximum sparkle
+      _osc('triangle', 2880, t + 0.223, 0.080, 0.020, { attack: 0.003, decay: 0.077, sustain: 0 });
     } catch (e) {}
   }
 
   /**
-   * HAPPY_COO — warm reunion, small creature greeting you.
-   * Two distinct notes with an 80ms gap — not a glide.
-   * Axes: 480→640 Hz / sine / two separate AD envelopes / vibrato on note 2 only
+   * HAPPY_COO — warm bell-chime greeting with crystal shimmer.
+   * Two distinct bell tones, each followed by a sparkle overtone — like a fairy saying hello.
+   * Axes: 720→960 Hz / sine / two AD envelopes / shimmer at 2× on each
    */
   function _happy_coo() {
     if (!_ok('happy_coo')) return;
     try {
       const t = ctx.currentTime;
-      // Note 1: 480 Hz, 120ms — attack 15ms, decay 105ms
-      _osc('sine', 480, t, 0.120, 0.08, {
-        attack: 0.015, decay: 0.105, sustain: 0,
+      // Airy breath onset — tiny gasp of recognition
+      _breath(t, 0.025, 0.007, 4000);
+      // Bell 1: 720 Hz sine, 140ms — warm chime note
+      _osc('sine', 720, t + 0.008, 0.140, 0.08, { attack: 0.008, decay: 0.132, sustain: 0 });
+      // Sparkle at 2× for bell 1
+      _osc('triangle', 1440, t + 0.012, 0.080, 0.022, { attack: 0.004, decay: 0.076, sustain: 0 });
+      // [60ms gap]
+      // Bell 2: 960 Hz sine, 180ms — ascending with vibrato twinkle
+      _osc('sine', 960, t + 0.208, 0.180, 0.08, {
+        attack: 0.006, decay: 0.174, sustain: 0,
+        vibRate: 7, vibDepth: 10,
       });
-      // [80ms silence]
-      // Note 2: 640 Hz, 160ms — attack 10ms, decay 150ms, vibrato 6Hz/8Hz
-      _osc('sine', 640, t + 0.200, 0.160, 0.08, {
-        attack: 0.010, decay: 0.150, sustain: 0,
-        vibRate: 6, vibDepth: 8,
-      });
+      // Sparkle at 2× for bell 2
+      _osc('triangle', 1920, t + 0.212, 0.100, 0.020, { attack: 0.004, decay: 0.096, sustain: 0 });
     } catch (e) {}
   }
 
@@ -831,53 +839,60 @@ const Sounds = (() => {
   }
 
   /**
-   * OVERJOYED_CHIRP — can't contain happiness — YOU'RE BACK!
-   * Triple ascending cascade (staggered overlaps). NOT a chord or glide.
-   * Axes: 520→860 Hz / sine / cascade overlap timing / sparkle layer on note 3
+   * OVERJOYED_CHIRP — fairy joy cascade — can't contain happiness — YOU'RE BACK!
+   * Five ascending chime tones in rapid succession, each with a shimmer overtone.
+   * Final note holds with vibrato. Extra sparkle at 3/2× the last pitch.
+   * Axes: 640→1480 Hz / sine / staggered cascade / shimmer at 2× each / final twinkle
    */
   function _overjoyed_chirp() {
     if (!_ok('overjoyed_chirp')) return;
     try {
       const t = ctx.currentTime;
-      // Note 1: 520 Hz, 90ms at t=0
-      _osc('sine', 520, t, 0.090, 0.08, {
-        attack: 0.004, decay: 0.086, sustain: 0,
+      const pitches = [640, 800, 980, 1200, 1480];
+      const offsets = [0, 0.055, 0.112, 0.172, 0.236];
+      pitches.forEach((freq, i) => {
+        const o   = offsets[i];
+        const dur = i === 4 ? 0.160 : 0.070;
+        const opts = i === 4
+          ? { attack: 0.003, decay: dur - 0.003, sustain: 0, vibRate: 10, vibDepth: 14 }
+          : { attack: 0.003, decay: dur - 0.003, sustain: 0 };
+        _osc('sine', freq, t + o, dur, 0.08, opts);
+        // Shimmer at 2× for each chime (progressively brighter)
+        const shimGain = 0.012 + i * 0.004;
+        _osc('triangle', freq * 2, t + o + 0.003, dur * 0.7, shimGain, {
+          attack: 0.003, decay: dur * 0.7 - 0.003, sustain: 0,
+        });
       });
-      // Note 2: 680 Hz, 90ms at t=70ms — overlaps note 1
-      _osc('sine', 680, t + 0.070, 0.090, 0.08, {
-        attack: 0.004, decay: 0.086, sustain: 0,
+      // Final sparkle at 3/2× last pitch — ultimate twinkle
+      _osc('triangle', 2220, t + 0.246, 0.090, 0.018, {
+        attack: 0.003, decay: 0.087, sustain: 0,
       });
-      // Note 3: 860 Hz, 130ms at t=145ms — vibrato + sparkle
-      _osc('sine', 860, t + 0.145, 0.130, 0.09, {
-        attack: 0.004, decay: 0.126, sustain: 0,
-        vibRate: 8, vibDepth: 15,
-      });
-      // Sparkle: triangle 1720 Hz at note 3 start, 60ms, gain 0.02
-      _osc('triangle', 1720, t + 0.145, 0.060, 0.02, {
-        attack: 0.004, decay: 0.056, sustain: 0,
-      });
+      // Airy breath of delight at the peak
+      _breath(t + 0.236, 0.060, 0.008, 4500);
     } catch (e) {}
   }
 
   /**
-   * EXCITED_CHIRP — rapid energy, can't sit still — go go go!
-   * Two same-level pips (not ascending cascade) with high-rate shimmer on pip 2.
-   * Axes: 740→800 Hz / triangle / 55ms each, 35ms gap / 25Hz shimmer (jiggly)
+   * EXCITED_CHIRP — energetic fairy double pip — rapid energy, can't sit still!
+   * Two bright bell-pips with crystal shimmer overtones. Fast vibrato on pip 2.
+   * Axes: 1100→1320 Hz / triangle / 55–65ms / shimmer at 2× each / 22Hz wobble on pip 2
    */
   function _excited_chirp() {
     if (!_ok('excited_chirp')) return;
     try {
       const t = ctx.currentTime;
-      // Pip 1: 740 Hz, 55ms
-      _osc('triangle', 740, t, 0.055, 0.06, {
-        attack: 0.003, decay: 0.052, sustain: 0,
+      // Pip 1: 1100 Hz triangle, 55ms — bright clean ping
+      _osc('triangle', 1100, t, 0.055, 0.065, { attack: 0.003, decay: 0.052, sustain: 0 });
+      // Shimmer at 2× for pip 1
+      _osc('sine', 2200, t + 0.003, 0.040, 0.018, { attack: 0.003, decay: 0.037, sustain: 0 });
+      // [30ms gap]
+      // Pip 2: 1320 Hz triangle, 65ms — shimmer + fast wobble (jittery delight)
+      _osc('triangle', 1320, t + 0.085, 0.065, 0.065, {
+        attack: 0.003, decay: 0.062, sustain: 0,
+        vibRate: 22, vibDepth: 22,
       });
-      // [35ms gap]
-      // Pip 2: 800 Hz, 55ms + ±20Hz shimmer at 25Hz
-      _osc('triangle', 800, t + 0.090, 0.055, 0.06, {
-        attack: 0.003, decay: 0.052, sustain: 0,
-        vibRate: 25, vibDepth: 20,
-      });
+      // Shimmer at 2× for pip 2
+      _osc('sine', 2640, t + 0.088, 0.045, 0.016, { attack: 0.003, decay: 0.042, sustain: 0 });
     } catch (e) {}
   }
 
@@ -1321,26 +1336,28 @@ const Sounds = (() => {
     } catch (e) {}
   }
 
-  // User returned — excited joyful multi-note greeting
+  // User returned — ascending fairy chime trio with sparkle and breath of delight
   function _welcomeBack() {
     if (!_ok('welcomeBack')) return;
     try {
       const t = ctx.currentTime;
-      _breath(t, 0.04, 0.015, 3500);
-      _formant(460, 1200, t + 0.02, 0.10, 0.09, {
-        wave: 'triangle', attack: 0.005, release: 0.04,
-        slideTo: [540, 1400], f3: 2600,
+      // Airy breath of surprise and joy
+      _breath(t, 0.040, 0.012, 4000);
+      // Chime 1: 640 Hz, 90ms
+      _osc('sine', 640, t + 0.020, 0.090, 0.08, { attack: 0.005, decay: 0.085, sustain: 0 });
+      _osc('triangle', 1280, t + 0.023, 0.060, 0.022, { attack: 0.004, decay: 0.056, sustain: 0 });
+      // Chime 2: 840 Hz, 100ms at +130ms
+      _osc('sine', 840, t + 0.130, 0.100, 0.085, { attack: 0.005, decay: 0.095, sustain: 0 });
+      _osc('triangle', 1680, t + 0.133, 0.070, 0.024, { attack: 0.004, decay: 0.066, sustain: 0 });
+      // Chime 3: 1080 Hz, 160ms at +245ms — vibrato + double sparkle
+      _osc('sine', 1080, t + 0.245, 0.160, 0.09, {
+        attack: 0.005, decay: 0.155, sustain: 0,
+        vibRate: 8, vibDepth: 14,
       });
-      _formant(600, 1550, t + 0.13, 0.11, 0.10, {
-        wave: 'triangle', attack: 0.005, release: 0.05,
-        vibRate: 7, vibDepth: 12, f3: 2900,
-      });
-      _formant(720, 1850, t + 0.25, 0.16, 0.11, {
-        wave: 'triangle', attack: 0.005, release: 0.07,
-        vibRate: 8, vibDepth: 15, f3: 3200,
-        slideTo: [760, 1950],
-      });
-      _breath(t + 0.14, 0.03, 0.012, 3800);
+      _osc('triangle', 2160, t + 0.248, 0.100, 0.020, { attack: 0.004, decay: 0.096, sustain: 0 });
+      _osc('triangle', 3240, t + 0.252, 0.070, 0.012, { attack: 0.004, decay: 0.066, sustain: 0 });
+      // Second breath at the peak — fairy-dust texture
+      _breath(t + 0.250, 0.050, 0.008, 4800);
     } catch (e) {}
   }
 
