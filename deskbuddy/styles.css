@@ -1454,11 +1454,10 @@ html, body {
 
 /* =====================================================================
    PICTURE-IN-PICTURE MODE
-   Applied via body.pip-mode when the user shrinks DeskBuddy to 200×200.
-   Everything except the companion eyes and the mini-timer is hidden.
-   All animations (breathe, glow, emotion, breathing-mode) keep running
-   — they simply scale with the smaller viewport (vmin/vw/vh units
-   automatically adapt to whichever size the Electron window is set to).
+   Applied via body.pip-mode when the user shrinks DeskBuddy to a small
+   floating overlay. Everything except the companion eyes and mini-timer
+   is hidden. All animations (breathe, glow, emotion) keep running —
+   vmin/vw/vh units scale automatically with the Electron window size.
    ===================================================================== */
 
 /* PiP collapse button — visible in full mode only */
@@ -1467,38 +1466,84 @@ html, body {
   position: fixed;
   top: 8px;
   right: 8px;
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
   cursor: pointer;
   z-index: 2000;
   line-height: 1;
-  padding: 2px 4px;
-  transition: opacity 0.2s ease;
+  padding: 3px 6px;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
-#pip-collapse-btn:hover { color: rgba(255, 255, 255, 0.8); }
+#pip-collapse-btn:hover {
+  background: rgba(120, 135, 235, 0.18);
+  border-color: rgba(120, 135, 235, 0.45);
+  color: rgba(255, 255, 255, 0.9);
+}
 
 /* PiP expand button — hidden in full mode, shown in PiP mode */
 #pip-expand-btn {
   display: none;
   position: fixed;
-  top: 2px;
-  right: 2px;
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.50);
-  font-size: 10px;
+  top: 5px;
+  right: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
   cursor: pointer;
   z-index: 2000;
   line-height: 1;
-  padding: 1px 3px;
+  padding: 3px 5px;
+  transition: background 0.18s ease, color 0.18s ease;
 }
-#pip-expand-btn:hover { color: rgba(255, 255, 255, 0.85); }
+#pip-expand-btn:hover {
+  background: rgba(120, 135, 235, 0.25);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Size control strip — hidden in full mode, shown in PiP mode */
+#pip-size-controls {
+  display: none;
+  position: fixed;
+  bottom: 6px;
+  left: 5px;
+  z-index: 2000;
+  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.pip-size-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 2px 5px;
+  line-height: 1.4;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.pip-size-btn:hover {
+  background: rgba(120, 135, 235, 0.22);
+  border-color: rgba(120, 135, 235, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+}
+.pip-size-btn.active {
+  background: rgba(120, 135, 235, 0.35);
+  border-color: rgba(140, 155, 255, 0.65);
+  color: rgba(255, 255, 255, 0.95);
+}
 
 /* ── PiP mode body rules ─────────────────────────────────────────── */
 body.pip-mode {
-  background: transparent;
+  background: #0d0d18;
   overflow: hidden;
 }
 
@@ -1510,14 +1555,38 @@ body.pip-mode #attention-bar,
 body.pip-mode #tear-overlay,
 body.pip-mode #pip-collapse-btn { display: none; }
 
-/* Show expand button only in PiP */
-body.pip-mode #pip-expand-btn { display: block; }
+/* Show PiP controls */
+body.pip-mode #pip-expand-btn    { display: block; }
+body.pip-mode #pip-size-controls { display: flex; }
 
-/* Clip any overflow so nothing bleeds outside the PiP window.
-   The companion and #world already use 100% / 100vw / 100vh so they
-   naturally fill whatever size the Electron window is — no hardcoded px. */
+/* Clip any overflow and apply the floating-bubble visual. */
 body.pip-mode #world {
   overflow: hidden;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 45% 40%, rgba(28, 22, 56, 0.96) 0%, rgba(10, 10, 22, 0.98) 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(120, 135, 235, 0.38),
+    0 0 14px  rgba(120, 135, 235, 0.22),
+    0 0 34px  rgba(100, 100, 200, 0.12),
+    inset 0 0 18px rgba(120, 135, 235, 0.06);
+  animation: pipBorderPulse 3.5s ease-in-out infinite;
+}
+
+@keyframes pipBorderPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(120, 135, 235, 0.38),
+      0 0 14px  rgba(120, 135, 235, 0.22),
+      0 0 34px  rgba(100, 100, 200, 0.12),
+      inset 0 0 18px rgba(120, 135, 235, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(150, 165, 255, 0.55),
+      0 0 20px  rgba(140, 155, 255, 0.32),
+      0 0 50px  rgba(110, 110, 220, 0.18),
+      inset 0 0 24px rgba(140, 155, 255, 0.10);
+  }
 }
 
 /* Eyes gap slightly tighter in PiP */
@@ -1528,14 +1597,14 @@ body.pip-mode .eyes {
 /* Mini timer — sits at the bottom-center of the PiP window, clearly readable */
 body.pip-mode #session-timer {
   position: fixed;
-  bottom: 6px;
+  bottom: 7px;
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.12em;
-  opacity: 0.82;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  opacity: 0.78;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(120, 135, 235, 0.4);
   pointer-events: none;
   z-index: 1001;
   animation: none;

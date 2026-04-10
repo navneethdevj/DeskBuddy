@@ -239,7 +239,7 @@
   }
 
   // ── PiP (Picture-in-Picture) ──────────────────────────────────────────────
-  // Purely a visual/window mode: shrinks to 200×200 overlay so the user can
+  // Purely a visual/window mode: shrinks to a small overlay so the user can
   // work in another app while the companion keeps watching.
   // Timer, Brain, Perception, Sounds — all continue unchanged.
 
@@ -248,10 +248,17 @@
   // lifetime so that enter/exit/enter cycles don't accumulate duplicate handlers.
   let _pipDragSetUp = false;
 
+  // Mirrors the current pixel dimension sent from main.js on pip-entered /
+  // pip-resized. Used to calculate correct snap corners and position clamping.
+  const PIP_SIZES   = { small: 160, medium: 200, large: 260 };
+  let   _pipDim     = PIP_SIZES.medium;
+  let   _pipSizeName = 'medium';
+
   function _enterPip() {
     if (_isPipMode) return;
     _isPipMode = true;
     document.body.classList.add('pip-mode');
+    document.body.setAttribute('data-pip-size', _pipSizeName);
     if (window.electronAPI) window.electronAPI.enterPip();
     _enablePipDrag();
   }
@@ -260,29 +267,46 @@
     if (!_isPipMode) return;
     _isPipMode = false;
     document.body.classList.remove('pip-mode');
+    document.body.removeAttribute('data-pip-size');
     if (window.electronAPI) window.electronAPI.exitPip();
+  }
+
+  function _applyPipSize(sizeName) {
+    if (!PIP_SIZES[sizeName]) return;
+    _pipSizeName = sizeName;
+    _pipDim = PIP_SIZES[sizeName];
+    // Update active button highlight
+    document.querySelectorAll('.pip-size-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.size === sizeName);
+    });
+    document.body.setAttribute('data-pip-size', sizeName);
+    if (window.electronAPI) window.electronAPI.setPipSize(sizeName);
   }
 
   // Snap window to the nearest corner after a drag, with a 20px margin.
   // Use availWidth/availHeight (work area) so the window never snaps under
   // the OS taskbar or dock.
   function _snapToCorner(x, y) {
-    const screenWidth  = screen.availWidth;
-    const screenHeight = screen.availHeight;
-    const windowWidth  = 200;  // must match PIP_SIZE.width in main.js
-    const windowHeight = 200;  // must match PIP_SIZE.height in main.js
+    const sw  = screen.availWidth;
+    const sh  = screen.availHeight;
+    const dim = _pipDim;
     const margin = 20;
     const corners = [
-      { x: margin,                       y: margin                        },  // top-left
-      { x: screenWidth - windowWidth - margin, y: margin                  },  // top-right
-      { x: margin,                       y: screenHeight - windowHeight - margin },  // bottom-left
-      { x: screenWidth - windowWidth - margin, y: screenHeight - windowHeight - margin },  // bottom-right
+      { x: margin,              y: margin              },  // top-left
+      { x: sw - dim - margin,   y: margin              },  // top-right
+      { x: margin,              y: sh - dim - margin   },  // bottom-left
+      { x: sw - dim - margin,   y: sh - dim - margin   },  // bottom-right
     ];
     const best = corners.reduce((nearest, corner) => {
       const d = Math.hypot(corner.x - x, corner.y - y);
       return d < nearest.dist ? { ...corner, dist: d } : nearest;
     }, { ...corners[0], dist: Infinity });
-    return { x: best.x, y: best.y };
+    // Clamp to valid screen area before returning so the window can never
+    // be snapped off-screen regardless of screen.availWidth accuracy.
+    return {
+      x: Math.max(0, Math.min(best.x, sw - dim)),
+      y: Math.max(0, Math.min(best.y, sh - dim)),
+    };
   }
 
   function _enablePipDrag() {
@@ -313,6 +337,8 @@
 
     function onMouseDown(e) {
       if (!_isPipMode) return;
+      // Ignore clicks on the control buttons so they don't start a drag
+      if (e.target.closest('#pip-expand-btn, #pip-size-controls')) return;
       isDragging = true;
       dragStart  = { x: e.screenX, y: e.screenY };
       // current window position at drag start
@@ -324,9 +350,13 @@
       if (!isDragging || !_isPipMode) return;
       const dx = e.screenX - dragStart.x;
       const dy = e.screenY - dragStart.y;
-      const newX = winStart.x + dx;
-      const newY = winStart.y + dy;
-      if (window.electronAPI) window.electronAPI.savePipPosition({ x: newX, y: newY });
+      // Clamp during live drag so window never goes off-screen mid-move.
+      const raw = { x: winStart.x + dx, y: winStart.y + dy };
+      const clamped = {
+        x: Math.max(0, Math.min(raw.x, screen.availWidth  - _pipDim)),
+        y: Math.max(0, Math.min(raw.y, screen.availHeight - _pipDim)),
+      };
+      if (window.electronAPI) window.electronAPI.savePipPosition(clamped);
     }
 
     function onMouseUp(e) {
@@ -363,11 +393,22 @@
     const expandBtn = document.getElementById('pip-expand-btn');
     if (expandBtn) expandBtn.addEventListener('click', () => _exitPip());
 
+    // Size buttons — S / M / L
+    document.querySelectorAll('.pip-size-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (_isPipMode) _applyPipSize(btn.dataset.size);
+      });
+    });
+    // Mark the default size button active
+    const defaultSizeBtn = document.querySelector(`.pip-size-btn[data-size="${_pipSizeName}"]`);
+    if (defaultSizeBtn) defaultSizeBtn.classList.add('active');
+
     // Double-click companion in PiP → exit PiP
     const worldEl = document.getElementById('world');
     if (worldEl) {
-      worldEl.addEventListener('dblclick', () => {
-        if (_isPipMode) _exitPip();
+      worldEl.addEventListener('dblclick', (e) => {
+        if (_isPipMode && !e.target.closest('#pip-expand-btn, #pip-size-controls')) _exitPip();
       });
     }
 
@@ -376,11 +417,22 @@
     // main.js JSON file provides cross-session persistence. Both are kept in
     // sync via savePipPosition so they never diverge.
     if (window.electronAPI) {
-      window.electronAPI.onPipEntered(() => {
-        // Window has been resized to PiP — no additional renderer work needed.
+      window.electronAPI.onPipEntered((data) => {
+        // Sync local dim tracker with what main reported
+        if (data && data.size) _pipDim = data.size;
       });
       window.electronAPI.onPipExited(() => {
         // Window has been restored to full — no additional renderer work needed.
+      });
+      window.electronAPI.onPipResized((data) => {
+        if (data && data.size) _pipDim = data.size;
+        // Re-read current position into localStorage after resize so the next
+        // drag origin is correct.
+        if (window.electronAPI) {
+          // The main process has already moved+sized the window; persist pos.
+          const stored = localStorage.getItem('deskbuddy_pip_pos');
+          if (stored) window.electronAPI.savePipPosition(JSON.parse(stored));
+        }
       });
     }
   }

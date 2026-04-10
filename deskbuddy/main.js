@@ -6,23 +6,37 @@ let mainWindow;
 
 // ── PiP size / position persistence ─────────────────────────────────────────
 
-const PIP_SIZE = { width: 200, height: 200 };
+const PIP_SIZES = { small: 160, medium: 200, large: 260 };
+let _currentPipDim  = PIP_SIZES.medium;  // active pixel dimension (square)
+let _currentPipSize = 'medium';           // size name, kept in sync with _currentPipDim
 
-function _pipPositionFile() {
+function _pipStateFile() {
   return path.join(app.getPath('userData'), 'pip-position.json');
 }
 
-function _loadPipPosition() {
+function _loadPipState() {
   try {
-    const raw = fs.readFileSync(_pipPositionFile(), 'utf8');
-    const pos = JSON.parse(raw);
-    if (typeof pos.x === 'number' && typeof pos.y === 'number') return pos;
+    const raw = fs.readFileSync(_pipStateFile(), 'utf8');
+    const s = JSON.parse(raw);
+    const pos = (typeof s.x === 'number' && typeof s.y === 'number') ? s : { x: 40, y: 40 };
+    if (PIP_SIZES[s.size]) { _currentPipDim = PIP_SIZES[s.size]; _currentPipSize = s.size; }
+    return pos;
   } catch (_) { /* first run or corrupt — use default */ }
   return { x: 40, y: 40 };
 }
 
-function _savePipPosition(pos) {
-  try { fs.writeFileSync(_pipPositionFile(), JSON.stringify(pos)); } catch (_) { /* ignore */ }
+function _savePipState(pos, size) {
+  const entry = { x: Math.round(pos.x), y: Math.round(pos.y), size: size || _currentPipSize };
+  try { fs.writeFileSync(_pipStateFile(), JSON.stringify(entry)); } catch (_) { /* ignore */ }
+}
+
+/** Clamp x/y so the PiP window never extends beyond the work area. */
+function _clampToWorkArea(x, y, dim) {
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  return {
+    x: Math.max(0, Math.min(Math.round(x), sw - dim)),
+    y: Math.max(0, Math.min(Math.round(y), sh - dim)),
+  };
 }
 
 // ── Window factory ──────────────────────────────────────────────────────────
@@ -52,12 +66,13 @@ function createWindow() {
 
 ipcMain.on('enter-pip', () => {
   if (!mainWindow) return;
-  const pos = _loadPipPosition();
+  const pos = _loadPipState();
+  const safe = _clampToWorkArea(pos.x, pos.y, _currentPipDim);
   // setBounds is atomic (size + position in one call) — avoids the momentary
   // oversized-window flash that setResizable(true)+setSize()+setResizable(false)
   // can produce on some platforms.
-  mainWindow.setBounds({ x: pos.x, y: pos.y, width: PIP_SIZE.width, height: PIP_SIZE.height }, false);
-  mainWindow.webContents.send('pip-entered');
+  mainWindow.setBounds({ x: safe.x, y: safe.y, width: _currentPipDim, height: _currentPipDim }, false);
+  mainWindow.webContents.send('pip-entered', { size: _currentPipDim });
 });
 
 ipcMain.on('exit-pip', () => {
@@ -67,12 +82,27 @@ ipcMain.on('exit-pip', () => {
   mainWindow.webContents.send('pip-exited');
 });
 
+// Called every frame during drag and once on drop. Using setBounds (not
+// setPosition) guarantees the window size stays locked at _currentPipDim
+// so it never drifts on platforms where repeated setPosition can resize.
 ipcMain.on('save-pip-position', (_event, pos) => {
   if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number'
            || !isFinite(pos.x) || !isFinite(pos.y)) return;
-  const safePos = { x: Math.round(pos.x), y: Math.round(pos.y) };
-  if (mainWindow) mainWindow.setPosition(safePos.x, safePos.y);
-  _savePipPosition(safePos);
+  const safe = _clampToWorkArea(pos.x, pos.y, _currentPipDim);
+  if (mainWindow) mainWindow.setBounds({ x: safe.x, y: safe.y, width: _currentPipDim, height: _currentPipDim }, false);
+  _savePipState(safe);
+});
+
+ipcMain.on('set-pip-size', (_event, sizeName) => {
+  if (!PIP_SIZES[sizeName]) return;
+  _currentPipDim  = PIP_SIZES[sizeName];
+  _currentPipSize = sizeName;
+  if (!mainWindow) return;
+  const [curX, curY] = mainWindow.getPosition();
+  const safe = _clampToWorkArea(curX, curY, _currentPipDim);
+  mainWindow.setBounds({ x: safe.x, y: safe.y, width: _currentPipDim, height: _currentPipDim }, false);
+  mainWindow.webContents.send('pip-resized', { size: _currentPipDim });
+  _savePipState(safe, sizeName);
 });
 
 // ── App lifecycle ────────────────────────────────────────────────────────────

@@ -14,6 +14,12 @@
   <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⤢</button>
   <!-- PiP collapse button — only visible in full mode; click to enter PiP -->
   <button id="pip-collapse-btn" title="Picture-in-Picture (Ctrl+Shift+P)">⤡</button>
+  <!-- PiP size controls — only visible in PiP mode -->
+  <div id="pip-size-controls">
+    <button id="pip-size-small"  class="pip-size-btn" data-size="small"  title="Small">S</button>
+    <button id="pip-size-medium" class="pip-size-btn" data-size="medium" title="Medium">M</button>
+    <button id="pip-size-large"  class="pip-size-btn" data-size="large"  title="Large">L</button>
+  </div>
 
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
