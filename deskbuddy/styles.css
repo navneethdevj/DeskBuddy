@@ -1460,15 +1460,66 @@ html, body {
    ===================================================================== */
 
 /* =====================================================================
-   COMPACT OVERLAY MODE  (body.pip-mode — applied at startup, always active)
-   The companion lives as a small floating window at all times.
-   Only the face and size controls are shown; all session UI is hidden.
-   Animations keep running — vmin/vw/vh scale with window size automatically.
+   COMPACT OVERLAY MODE  (body.pip-mode — applied at startup by default)
+   The companion lives as a small floating window.
+   Only the face and size controls are shown; session UI is hidden.
+   Animations keep running — vmin/vw/vh scale with the window size.
+
+   FULL-SCREEN MODE  (body.full-mode — toggled via button / Ctrl+Shift+P)
+   Expands to the full work area, reveals all session/timer UI.
    ===================================================================== */
+
+/* ── Mode toggle buttons ───────────────────────────────────────────── */
+
+/* Compact → full: small pill at top-right of the compact window */
+#compact-expand-btn {
+  display: none;                    /* hidden by default; shown in pip-mode */
+  position: fixed;
+  top: 5px;
+  right: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 3px 5px;
+  -webkit-app-region: no-drag;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+#compact-expand-btn:hover {
+  background: rgba(120, 135, 235, 0.28);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Full → compact: small pill at top-right of the full window */
+#full-collapse-btn {
+  display: none;                    /* hidden by default; shown in full-mode */
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 2000;
+  line-height: 1;
+  padding: 3px 7px;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+#full-collapse-btn:hover {
+  background: rgba(120, 135, 235, 0.18);
+  border-color: rgba(120, 135, 235, 0.45);
+  color: rgba(255, 255, 255, 0.9);
+}
 
 /* ── Size preset controls ──────────────────────────────────────────── */
 #pip-size-controls {
-  display: flex;
+  display: none;                    /* shown only in compact mode */
   position: fixed;
   bottom: 6px;
   left: 5px;
@@ -1511,14 +1562,19 @@ body.pip-mode {
   overflow: hidden;
 }
 
-/* Hide non-essential UI in compact mode */
+/* Show compact-only controls, hide full-mode controls */
+body.pip-mode #compact-expand-btn { display: block; }
+body.pip-mode #pip-size-controls  { display: flex;  }
+
+/* Hide full-mode button and non-essential UI in compact */
+body.pip-mode #full-collapse-btn,
 body.pip-mode #status-bar,
 body.pip-mode #whisper-text,
 body.pip-mode #focus-timer,
 body.pip-mode #attention-bar,
 body.pip-mode #tear-overlay { display: none; }
 
-/* Floating bubble appearance for the companion container.
+/* Floating bubble appearance.
    Semi-transparent so macOS vibrancy / Windows acrylic shows through subtly. */
 body.pip-mode #world {
   border-radius: 20px;
@@ -1568,4 +1624,29 @@ body.pip-mode #session-timer {
   -webkit-user-select: none;
   z-index: 1001;
   animation: none;
+}
+
+/* ── Full-screen mode ─────────────────────────────────────────────── */
+body.full-mode {
+  background: #111111;
+  overflow: hidden;
+}
+
+/* Show full-mode collapse button, hide compact controls */
+body.full-mode #full-collapse-btn { display: block; }
+body.full-mode #compact-expand-btn,
+body.full-mode #pip-size-controls  { display: none; }
+
+/* Full mode #world: no rounded corners, no glow ring, fills screen */
+body.full-mode #world {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  -webkit-app-region: no-drag; /* full mode uses normal mouse interaction */
+}
+
+/* In full mode, restore the companion to its default drag-free state */
+body.full-mode .companion {
+  -webkit-app-region: no-drag;
 }

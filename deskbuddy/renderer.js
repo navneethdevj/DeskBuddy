@@ -243,14 +243,41 @@
   }
 
 
-  // ── Compact window — size presets + mouse pass-through ────────────────────
-  // The companion always runs as a small floating overlay (no full-screen mode).
-  // S / M / L buttons resize the Electron window via IPC.
-  // When the cursor is not over the window, mouse events pass through so the
-  // companion never blocks clicks on apps behind it.
+  // ── Compact window — size presets + mode toggle + mouse pass-through ─────
+  // The companion starts as a small floating overlay.  A toggle button
+  // (and Ctrl/Cmd+Shift+P) switches between compact and full-screen mode.
+  // S / M / L buttons resize the compact window via IPC.
+  // In compact mode, clicks pass through the window when the cursor is away.
 
   const SIZE_PRESETS = { S: 150, M: 200, L: 270 };
-  let _currentPreset = 'M';
+  let _currentPreset  = 'M';
+  let _isFullMode     = false;
+
+  // ── Mode toggle ───────────────────────────────────────────────────────────
+
+  function _enterFullMode() {
+    if (_isFullMode) return;
+    _isFullMode = true;
+    document.body.classList.remove('pip-mode');
+    document.body.classList.add('full-mode');
+    // Full mode is always interactive — kill pass-through immediately.
+    if (window.electronAPI) {
+      window.electronAPI.setIgnoreMouseEvents(false);
+      window.electronAPI.enterFullMode();
+    }
+  }
+
+  function _exitFullMode() {
+    if (!_isFullMode) return;
+    _isFullMode = false;
+    document.body.classList.remove('full-mode');
+    document.body.classList.add('pip-mode');
+    if (window.electronAPI) window.electronAPI.exitFullMode();
+    // Re-enable pass-through for compact mode.
+    _setupMousePassThrough();
+  }
+
+  // ── Size presets (compact mode only) ─────────────────────────────────────
 
   function _applySize(preset) {
     if (!SIZE_PRESETS[preset]) return;
@@ -265,43 +292,38 @@
     });
   }
 
-  // ── Mouse pass-through ────────────────────────────────────────────────────
+  // ── Mouse pass-through (compact mode only) ────────────────────────────────
   // Default: clicks pass through the window so the companion is non-intrusive.
   // As soon as the cursor enters the window area (mousemove fires even with
   // { forward: true } active), we re-enable interactions for dragging / buttons.
 
   function _setupMousePassThrough() {
-    if (!window.electronAPI) return;
-
-    // Start in pass-through mode — companion is just observing.
+    if (!window.electronAPI || _isFullMode) return;
     window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-
-    // Cursor is inside the window → enable full interaction.
-    document.addEventListener('mousemove', () => {
-      window.electronAPI.setIgnoreMouseEvents(false);
-    }, { passive: true });
-
-    // Cursor left the window → restore pass-through.
-    document.addEventListener('mouseleave', () => {
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    });
   }
 
   function _wireWindowControls() {
-    // Keyboard shortcut: Ctrl/Cmd + Shift + S / M / L
+    // Keyboard shortcut: Ctrl/Cmd + Shift + P → toggle compact / full
     window.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
-        if (e.key === 'S') { e.preventDefault(); _applySize('S'); }
-        if (e.key === 'M') { e.preventDefault(); _applySize('M'); }
-        if (e.key === 'L') { e.preventDefault(); _applySize('L'); }
+        if (e.key === 'P') { e.preventDefault(); _isFullMode ? _exitFullMode() : _enterFullMode(); }
+        if (e.key === 'S') { e.preventDefault(); if (!_isFullMode) _applySize('S'); }
+        if (e.key === 'M') { e.preventDefault(); if (!_isFullMode) _applySize('M'); }
+        if (e.key === 'L') { e.preventDefault(); if (!_isFullMode) _applySize('L'); }
       }
     });
+
+    // Toggle buttons
+    const expandBtn   = document.getElementById('compact-expand-btn');
+    const collapseBtn = document.getElementById('full-collapse-btn');
+    if (expandBtn)   expandBtn.addEventListener('click',   () => _enterFullMode());
+    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullMode());
 
     // S / M / L click handlers
     document.querySelectorAll('.pip-size-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        _applySize(btn.dataset.size);
+        if (!_isFullMode) _applySize(btn.dataset.size);
       });
     });
 
@@ -309,22 +331,40 @@
     // (covers initial load and OS drag-handle resize).
     if (window.electronAPI) {
       window.electronAPI.onWindowReady((data) => {
-        if (data && data.preset) {
-          _currentPreset = data.preset;
-          _markActiveSizeBtn(data.preset);
-        }
+        if (data && data.preset) { _currentPreset = data.preset; _markActiveSizeBtn(data.preset); }
       });
       window.electronAPI.onWindowResized((data) => {
-        if (data && data.preset) {
-          _currentPreset = data.preset;
-          _markActiveSizeBtn(data.preset);
-        }
+        if (data && data.preset) { _currentPreset = data.preset; _markActiveSizeBtn(data.preset); }
+      });
+      window.electronAPI.onFullModeEntered(() => {
+        _isFullMode = true;
+        document.body.classList.remove('pip-mode');
+        document.body.classList.add('full-mode');
+      });
+      window.electronAPI.onFullModeExited(() => {
+        _isFullMode = false;
+        document.body.classList.remove('full-mode');
+        document.body.classList.add('pip-mode');
+        _setupMousePassThrough();
       });
     }
 
     // Mark the default preset button while waiting for onWindowReady.
     _markActiveSizeBtn(_currentPreset);
 
+    // Mouse pass-through — mousemove enables interaction, mouseleave restores it.
+    // These listeners stay registered permanently; _setupMousePassThrough() is
+    // called to (re)activate the pass-through state whenever compact mode starts.
+    document.addEventListener('mousemove', () => {
+      if (!_isFullMode && window.electronAPI)
+        window.electronAPI.setIgnoreMouseEvents(false);
+    }, { passive: true });
+    document.addEventListener('mouseleave', () => {
+      if (!_isFullMode && window.electronAPI)
+        window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+    });
+
+    // Start in compact pass-through mode.
     _setupMousePassThrough();
   }
 })();

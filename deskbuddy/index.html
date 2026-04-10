@@ -10,7 +10,11 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
-  <!-- Size preset controls — S / M / L resize the companion window -->
+  <!-- Compact mode: click to expand to full-screen -->
+  <button id="compact-expand-btn" title="Full screen (Ctrl+Shift+P)">⛶</button>
+  <!-- Full-screen mode: click to return to compact overlay -->
+  <button id="full-collapse-btn" title="Compact overlay (Ctrl+Shift+P)">⤡</button>
+  <!-- Size preset controls — only usable in compact mode -->
   <div id="pip-size-controls">
     <button id="pip-size-small"  class="pip-size-btn" data-size="S" title="Small (150px)">S</button>
     <button id="pip-size-medium" class="pip-size-btn" data-size="M" title="Medium (200px)">M</button>

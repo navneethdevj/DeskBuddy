@@ -179,6 +179,34 @@ ipcMain.on('set-ignore-mouse-events', (_event, ignore, options) => {
   if (mainWindow) mainWindow.setIgnoreMouseEvents(!!ignore, options || {});
 });
 
+ipcMain.on('enter-full-mode', () => {
+  if (!mainWindow) return;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  // Remove size constraints that only make sense for the compact overlay.
+  mainWindow.setMinimumSize(150, 150);
+  mainWindow.setMaximumSize(width, height);
+  mainWindow.setResizable(false);
+  mainWindow.setBounds({ x: 0, y: 0, width, height }, process.platform === 'darwin');
+  mainWindow.setSkipTaskbar(false);
+  // Full mode is always interactive — cancel any pass-through.
+  mainWindow.setIgnoreMouseEvents(false);
+  mainWindow.webContents.send('full-mode-entered');
+});
+
+ipcMain.on('exit-full-mode', () => {
+  if (!mainWindow) return;
+  const preset = store.get('windowPreset', DEFAULT_PRESET);
+  const dim    = _getDim(preset);
+  const pos    = _loadPos(dim);
+  // Restore compact constraints.
+  mainWindow.setMinimumSize(150, 150);
+  mainWindow.setMaximumSize(320, 320);
+  mainWindow.setResizable(true);
+  mainWindow.setBounds({ x: pos.x, y: pos.y, width: dim, height: dim }, process.platform === 'darwin');
+  mainWindow.setSkipTaskbar(true);
+  mainWindow.webContents.send('full-mode-exited');
+});
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {

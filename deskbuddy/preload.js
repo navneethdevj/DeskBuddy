@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore, options) =>
     ipcRenderer.send('set-ignore-mouse-events', ignore, options),
 
+  // Toggle between compact overlay and full-screen mode.
+  enterFullMode: () => ipcRenderer.send('enter-full-mode'),
+  exitFullMode:  () => ipcRenderer.send('exit-full-mode'),
+
   // Fired by main after the window is shown (ready-to-show).
   onWindowReady: (fn) => {
     const handler = (_event, ...args) => fn(...args);
@@ -29,5 +33,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event, ...args) => fn(...args);
     ipcRenderer.on('window-resized', handler);
     return () => ipcRenderer.removeListener('window-resized', handler);
+  },
+
+  onFullModeEntered: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('full-mode-entered', handler);
+    return () => ipcRenderer.removeListener('full-mode-entered', handler);
+  },
+  onFullModeExited: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('full-mode-exited', handler);
+    return () => ipcRenderer.removeListener('full-mode-exited', handler);
   },
 });
