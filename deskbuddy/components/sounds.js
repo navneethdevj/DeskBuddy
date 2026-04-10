@@ -633,39 +633,25 @@ const Sounds = (() => {
   }
 
   /**
-   * HAPPY_COO — detuned-pair music-box greeting with full harmonic shimmer.
-   * Each bell is a chorus pair (±4 Hz) + 2× and 3× overtones — magical warmth.
-   * Axes: 716+724 Hz → 956+964 Hz / sine pairs / AD envelopes / 2× and 3× sparkle
+   * HAPPY_COO — warm upward vocal coo triggered by smile detection.
+   * Axes: 490→700 Hz sine glide / detuned body layer / bright uptick tail
    */
   function _happy_coo() {
     if (!_ok('happy_coo')) return;
     try {
       const t = ctx.currentTime;
-      // Airy breath onset — tiny gasp of recognition
-      _breath(t, 0.022, 0.007, 4000);
-
-      // Bell 1: chorus pair 716+724 Hz, 135ms — warm music-box chime
-      _osc('sine', 716, t + 0.006, 0.135, 0.055, { attack: 0.004, decay: 0.131, sustain: 0 });
-      _osc('sine', 724, t + 0.006, 0.135, 0.050, { attack: 0.004, decay: 0.131, sustain: 0 });
-      // 2× shimmer
-      _osc('triangle', 1440, t + 0.008, 0.085, 0.022, { attack: 0.003, decay: 0.082, sustain: 0 });
-      // 3× shimmer — high fairy-dust sparkle
-      _osc('triangle', 2160, t + 0.010, 0.060, 0.012, { attack: 0.003, decay: 0.057, sustain: 0 });
-
-      // [55ms gap]
-      // Bell 2: chorus pair 956+964 Hz, 175ms — ascending with flutter vibrato
-      _osc('sine', 956, t + 0.200, 0.175, 0.055, {
-        attack: 0.004, decay: 0.171, sustain: 0, vibRate: 8, vibDepth: 9,
+      // Warm upward vocal coo — main sine glide: 490→700 Hz, 190ms
+      _osc('sine', 490, t, 0.190, 0.072, {
+        attack: 0.018, decay: 0.172, sustain: 0, slideTo: 700,
       });
-      _osc('sine', 964, t + 0.200, 0.175, 0.050, {
-        attack: 0.004, decay: 0.171, sustain: 0, vibRate: 8, vibDepth: 11,
+      // Body layer — slightly detuned sine (+6 Hz) for natural warmth
+      _osc('sine', 496, t + 0.005, 0.185, 0.038, {
+        attack: 0.020, decay: 0.165, sustain: 0, slideTo: 706,
       });
-      // 2× shimmer on bell 2
-      _osc('triangle', 1920, t + 0.203, 0.115, 0.022, { attack: 0.003, decay: 0.112, sustain: 0 });
-      // 3× shimmer — glitter peak
-      _osc('triangle', 2880, t + 0.205, 0.080, 0.012, { attack: 0.003, decay: 0.077, sustain: 0 });
-      // Breath under bell 2 peak
-      _breath(t + 0.210, 0.040, 0.007, 4600);
+      // Playful uptick — bright little pip at the end (220ms after onset)
+      _osc('sine', 760, t + 0.220, 0.100, 0.048, {
+        attack: 0.010, decay: 0.090, sustain: 0, slideTo: 920,
+      });
     } catch (e) {}
   }
 

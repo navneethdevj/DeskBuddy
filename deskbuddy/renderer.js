@@ -14,9 +14,6 @@
   // 1. Audio context — register gesture listeners so AudioContext can resume
   Sounds.init();
 
-  // 1b. Soundscape — ambient background drone (time-of-day aware)
-  Soundscape.init();
-
   // 2. Session — load localStorage history
   Session.init();
 
