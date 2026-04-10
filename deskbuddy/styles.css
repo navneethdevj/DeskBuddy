@@ -19,8 +19,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #111111;
+  background: transparent;   /* window is always transparent; #world paints the bg */
   user-select: none;
+  -webkit-user-select: none; /* prevent accidental text selection during drag */
   cursor: default;
 }
 
@@ -28,6 +29,10 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
+  /* Draggable region — the entire companion body moves the window.
+     Interactive child elements override this with -webkit-app-region: no-drag. */
+  -webkit-app-region: drag;
+  overflow: hidden;
 }
 
 /* ===== Companion Container (fills viewport) ===== */
@@ -37,6 +42,8 @@ html, body {
   height: 100vh;
   will-change: transform, filter;
   animation: glowIdle 4s ease-in-out infinite, idleSway 7s ease-in-out infinite;
+  /* Companion is interactive (pet / click reactions) — must not be a drag region. */
+  -webkit-app-region: no-drag;
 }
 
 .companion-inner {
@@ -1453,61 +1460,15 @@ html, body {
    ===================================================================== */
 
 /* =====================================================================
-   PICTURE-IN-PICTURE MODE
-   Applied via body.pip-mode when the user shrinks DeskBuddy to a small
-   floating overlay. Everything except the companion eyes and mini-timer
-   is hidden. All animations (breathe, glow, emotion) keep running —
-   vmin/vw/vh units scale automatically with the Electron window size.
+   COMPACT OVERLAY MODE  (body.pip-mode — applied at startup, always active)
+   The companion lives as a small floating window at all times.
+   Only the face and size controls are shown; all session UI is hidden.
+   Animations keep running — vmin/vw/vh scale with window size automatically.
    ===================================================================== */
 
-/* PiP collapse button — visible in full mode only */
-#pip-collapse-btn {
-  display: block;
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
-  cursor: pointer;
-  z-index: 2000;
-  line-height: 1;
-  padding: 3px 6px;
-  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-}
-#pip-collapse-btn:hover {
-  background: rgba(120, 135, 235, 0.18);
-  border-color: rgba(120, 135, 235, 0.45);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-/* PiP expand button — hidden in full mode, shown in PiP mode */
-#pip-expand-btn {
-  display: none;
-  position: fixed;
-  top: 5px;
-  right: 5px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 5px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  cursor: pointer;
-  z-index: 2000;
-  line-height: 1;
-  padding: 3px 5px;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-#pip-expand-btn:hover {
-  background: rgba(120, 135, 235, 0.25);
-  color: rgba(255, 255, 255, 0.95);
-}
-
-/* Size control strip — hidden in full mode, shown in PiP mode */
+/* ── Size preset controls ──────────────────────────────────────────── */
 #pip-size-controls {
-  display: none;
+  display: flex;
   position: fixed;
   bottom: 6px;
   left: 5px;
@@ -1515,6 +1476,8 @@ html, body {
   gap: 3px;
   flex-direction: row;
   align-items: center;
+  /* Button strip is interactive — must not be a drag region */
+  -webkit-app-region: no-drag;
 }
 
 .pip-size-btn {
@@ -1529,6 +1492,7 @@ html, body {
   padding: 2px 5px;
   line-height: 1.4;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  -webkit-user-select: none;
 }
 .pip-size-btn:hover {
   background: rgba(120, 135, 235, 0.22);
@@ -1541,29 +1505,24 @@ html, body {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* ── PiP mode body rules ─────────────────────────────────────────── */
+/* ── Compact body ──────────────────────────────────────────────────── */
 body.pip-mode {
-  background: #0d0d18;
+  background: transparent;
   overflow: hidden;
 }
 
-/* Hide non-essential UI in PiP */
+/* Hide non-essential UI in compact mode */
 body.pip-mode #status-bar,
 body.pip-mode #whisper-text,
 body.pip-mode #focus-timer,
 body.pip-mode #attention-bar,
-body.pip-mode #tear-overlay,
-body.pip-mode #pip-collapse-btn { display: none; }
+body.pip-mode #tear-overlay { display: none; }
 
-/* Show PiP controls */
-body.pip-mode #pip-expand-btn    { display: block; }
-body.pip-mode #pip-size-controls { display: flex; }
-
-/* Clip any overflow and apply the floating-bubble visual. */
+/* Floating bubble appearance for the companion container.
+   Semi-transparent so macOS vibrancy / Windows acrylic shows through subtly. */
 body.pip-mode #world {
-  overflow: hidden;
   border-radius: 20px;
-  background: radial-gradient(ellipse at 45% 40%, rgba(28, 22, 56, 0.96) 0%, rgba(10, 10, 22, 0.98) 100%);
+  background: radial-gradient(ellipse at 45% 40%, rgba(28, 22, 56, 0.88) 0%, rgba(10, 10, 22, 0.92) 100%);
   box-shadow:
     0 0 0 1.5px rgba(120, 135, 235, 0.38),
     0 0 14px  rgba(120, 135, 235, 0.22),
@@ -1589,12 +1548,12 @@ body.pip-mode #world {
   }
 }
 
-/* Eyes gap slightly tighter in PiP */
+/* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
   gap: 3vmin;
 }
 
-/* Mini timer — sits at the bottom-center of the PiP window, clearly readable */
+/* Mini timer — bottom-center, readable at all preset sizes */
 body.pip-mode #session-timer {
   position: fixed;
   bottom: 7px;
@@ -1606,6 +1565,7 @@ body.pip-mode #session-timer {
   opacity: 0.78;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(120, 135, 235, 0.4);
   pointer-events: none;
+  -webkit-user-select: none;
   z-index: 1001;
   animation: none;
 }

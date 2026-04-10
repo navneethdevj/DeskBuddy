@@ -1,31 +1,33 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Safe bridge between Electron and renderer.
-// Only named functions are exposed — raw ipcRenderer is never passed through.
+// Safe IPC bridge — only named functions are exposed.
+// Raw ipcRenderer is never passed to the renderer.
+
 contextBridge.exposeInMainWorld('deskbuddy', {
-  platform: process.platform
+  platform: process.platform,
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  enterPip:        ()         => ipcRenderer.send('enter-pip'),
-  exitPip:         ()         => ipcRenderer.send('exit-pip'),
-  savePipPosition: (pos)      => ipcRenderer.send('save-pip-position', pos),
-  setPipSize:      (sizeName) => ipcRenderer.send('set-pip-size', sizeName),
+  // Send S / M / L resize request to main process.
+  resizeWindow: (preset) => ipcRenderer.send('resize-window', preset),
 
-  // Returns a cleanup function so callers can remove the listener when done.
-  onPipEntered: (fn) => {
+  // Toggle OS-level mouse pass-through.
+  // ignore=true + { forward: true } → clicks pass through, mousemove still reaches renderer.
+  // ignore=false → normal interactive mode.
+  setIgnoreMouseEvents: (ignore, options) =>
+    ipcRenderer.send('set-ignore-mouse-events', ignore, options),
+
+  // Fired by main after the window is shown (ready-to-show).
+  onWindowReady: (fn) => {
     const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('pip-entered', handler);
-    return () => ipcRenderer.removeListener('pip-entered', handler);
+    ipcRenderer.on('window-ready', handler);
+    return () => ipcRenderer.removeListener('window-ready', handler);
   },
-  onPipExited: (fn) => {
+
+  // Fired whenever the window is resized (preset buttons or OS drag handle).
+  onWindowResized: (fn) => {
     const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('pip-exited', handler);
-    return () => ipcRenderer.removeListener('pip-exited', handler);
-  },
-  onPipResized: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('pip-resized', handler);
-    return () => ipcRenderer.removeListener('pip-resized', handler);
+    ipcRenderer.on('window-resized', handler);
+    return () => ipcRenderer.removeListener('window-resized', handler);
   },
 });
