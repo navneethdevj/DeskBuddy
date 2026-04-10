@@ -262,16 +262,16 @@
 
   // Snap window to the nearest corner after a drag, with a 20px margin.
   function _snapToCorner(x, y) {
-    const sW = screen.width;
-    const sH = screen.height;
-    const wW = 120;
-    const wH = 120;
+    const screenWidth  = screen.width;
+    const screenHeight = screen.height;
+    const windowWidth  = 120;  // must match PIP_SIZE.width in main.js
+    const windowHeight = 120;  // must match PIP_SIZE.height in main.js
     const margin = 20;
     const corners = [
-      { x: margin,          y: margin           },   // top-left
-      { x: sW - wW - margin, y: margin           },   // top-right
-      { x: margin,          y: sH - wH - margin  },   // bottom-left
-      { x: sW - wW - margin, y: sH - wH - margin  },  // bottom-right
+      { x: margin,                       y: margin                        },  // top-left
+      { x: screenWidth - windowWidth - margin, y: margin                  },  // top-right
+      { x: margin,                       y: screenHeight - windowHeight - margin },  // bottom-left
+      { x: screenWidth - windowWidth - margin, y: screenHeight - windowHeight - margin },  // bottom-right
     ];
     const best = corners.reduce((nearest, corner) => {
       const d = Math.hypot(corner.x - x, corner.y - y);
@@ -351,14 +351,16 @@
       });
     }
 
-    // IPC confirmation callbacks (from main process after window resize)
+    // IPC confirmation callbacks (from main process after window resize).
+    // localStorage tracks the drag-origin for the current render session;
+    // main.js JSON file provides cross-session persistence. Both are kept in
+    // sync via savePipPosition so they never diverge.
     if (window.electronAPI) {
       window.electronAPI.onPipEntered(() => {
-        // Restore saved position into localStorage for next drag session
-        // (position was already applied by main.js from its persisted file)
+        // Window has been resized to PiP — no additional renderer work needed.
       });
       window.electronAPI.onPipExited(() => {
-        // Full-mode restored — nothing extra needed in renderer
+        // Window has been restored to full — no additional renderer work needed.
       });
     }
   }

@@ -7,9 +7,19 @@ contextBridge.exposeInMainWorld('deskbuddy', {
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  enterPip:        ()      => ipcRenderer.send('enter-pip'),
-  exitPip:         ()      => ipcRenderer.send('exit-pip'),
-  savePipPosition: (pos)   => ipcRenderer.send('save-pip-position', pos),
-  onPipEntered:    (fn)    => ipcRenderer.on('pip-entered', fn),
-  onPipExited:     (fn)    => ipcRenderer.on('pip-exited',  fn),
+  enterPip:        ()    => ipcRenderer.send('enter-pip'),
+  exitPip:         ()    => ipcRenderer.send('exit-pip'),
+  savePipPosition: (pos) => ipcRenderer.send('save-pip-position', pos),
+
+  // Returns a cleanup function so callers can remove the listener when done.
+  onPipEntered: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('pip-entered', handler);
+    return () => ipcRenderer.removeListener('pip-entered', handler);
+  },
+  onPipExited: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('pip-exited', handler);
+    return () => ipcRenderer.removeListener('pip-exited', handler);
+  },
 });
