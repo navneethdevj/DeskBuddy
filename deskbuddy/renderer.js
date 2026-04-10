@@ -250,9 +250,10 @@
 
   // Mirrors the current pixel dimension sent from main.js on pip-entered /
   // pip-resized. Used to calculate correct snap corners and position clamping.
-  const PIP_SIZES   = { small: 160, medium: 200, large: 260 };
-  let   _pipDim     = PIP_SIZES.medium;
-  let   _pipSizeName = 'medium';
+  const PIP_SIZES      = { small: 160, medium: 200, large: 260 };
+  const PIP_SNAP_MARGIN = 20;  // px gap between snapped window edge and screen edge
+  let   _pipDim        = PIP_SIZES.medium;
+  let   _pipSizeName   = 'medium';
 
   function _enterPip() {
     if (_isPipMode) return;
@@ -290,12 +291,12 @@
     const sw  = screen.availWidth;
     const sh  = screen.availHeight;
     const dim = _pipDim;
-    const margin = 20;
+    const m   = PIP_SNAP_MARGIN;
     const corners = [
-      { x: margin,              y: margin              },  // top-left
-      { x: sw - dim - margin,   y: margin              },  // top-right
-      { x: margin,              y: sh - dim - margin   },  // bottom-left
-      { x: sw - dim - margin,   y: sh - dim - margin   },  // bottom-right
+      { x: m,            y: m            },  // top-left
+      { x: sw - dim - m, y: m            },  // top-right
+      { x: m,            y: sh - dim - m },  // bottom-left
+      { x: sw - dim - m, y: sh - dim - m },  // bottom-right
     ];
     const best = corners.reduce((nearest, corner) => {
       const d = Math.hypot(corner.x - x, corner.y - y);
