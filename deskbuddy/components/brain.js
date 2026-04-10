@@ -128,15 +128,14 @@ const Brain = (() => {
   let idleLookActive = false;
   let nextIdleLookTime = 0;
 
-  // Tear overlay state
   // Tear drop spawning
-  let tearInterval  = null;
-  let _poolVh       = 0;       // current tear-pool height in vh units
-  let _poolDrainInt = null;    // interval that slowly drains the pool
+  let tearInterval   = null;
+  let _poolVh        = 0;         // current tear-pool height in vh units
+  let _poolDrainInt  = null;      // interval that slowly drains the pool
   const POOL_MAX_VH       = 14;   // max pool fill height
-  const POOL_PER_TEAR_VH  = 0.55; // how much each landed tear adds
-  const POOL_DRAIN_RATE   = 0.25; // vh removed per drain tick
-  const POOL_DRAIN_TICK   = 280;  // ms between drain ticks
+  const POOL_PER_TEAR_VH  = 0.22; // how much each normal tear adds
+  const POOL_DRAIN_RATE   = 0.20; // vh removed per drain tick
+  const POOL_DRAIN_TICK   = 320;  // ms between drain ticks
 
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
@@ -183,7 +182,7 @@ const Brain = (() => {
 
   // Idle life timer
   let _idleLifeTimer = null;
-  const FACE_GAZE_HOLD_MS = 1500;
+  const FACE_GAZE_HOLD_MS = 500;
 
   // ── CHUNK 5 — new private state ────────────────────────────────────────────
 
@@ -194,6 +193,9 @@ const Brain = (() => {
 
   // Study encouragement
   let _lastEncouragementTime = 0;
+
+  // Sleepy-user nudge — rate-limit wake-up whispers to avoid spam
+  let _lastSleepyNudge = 0;
 
   // Milestone celebration
   let _continuousFocusedMs    = 0;
@@ -332,7 +334,18 @@ const Brain = (() => {
     if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
 
     if (!mouseActive && !keyActive) {
-      focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+      // When the camera confirms the user is facing forward with eyes open,
+      // slowly build focus instead of decaying — covers physical book reading
+      // and any screen activity that doesn't involve keyboard/mouse input.
+      const p = window.perception;
+      const cameraFocused = window.cameraAvailable && p?.facePresent
+                         && p.userState === 'Focused' && p.attentionScore > 35;
+      if (cameraFocused) {
+        // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+        focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+      } else {
+        focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+      }
     }
   }
 
@@ -421,7 +434,9 @@ const Brain = (() => {
               _shyUntil         = now + SHY_HOLD_MS;
               _shyCooldownUntil = now + SHY_COOLDOWN_MS;
               _eyeContactStart  = 0;
-              const shyMsgs = ['...hi.', '*blushes*', 'h-hi there...', '/// ...'];
+              const shyMsgs = ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
+                               '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
+                               'h-hello...', '(*ノωノ)'];
               if (Math.random() < 0.7) {
                 showWhisper(shyMsgs[Math.floor(Math.random() * shyMsgs.length)], 4000);
               }
@@ -444,7 +459,19 @@ const Brain = (() => {
         break;
 
       case 'Sleepy':
-        emotion = 'sleepy';
+        // Companion stays wide-awake and motivates the user — don't mirror sleepiness
+        emotion = 'curious';
+        if ((now - _lastSleepyNudge) >= 30000) {
+          _lastSleepyNudge = now;
+          const wakeUpMsgs = [
+            'hey, don\'t sleep!', '*nudges you*', 'stay awake! 💪',
+            'you can do it!', '*waves paw*', 'almost there, keep going!',
+            'zzz? no no no!', '...hey!', '*pokes*', 'need a break?',
+          ];
+          if (Math.random() < 0.65) {
+            showWhisper(wakeUpMsgs[Math.floor(Math.random() * wakeUpMsgs.length)], 4000);
+          }
+        }
         break;
 
       case 'NoFace':
@@ -524,21 +551,51 @@ const Brain = (() => {
    */
   function _getWhisperFor(emotion) {
     const map = {
-      curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?'],
-      happy:      ['✨', '~♪', 'hehe~', '*tail wag*'],
-      scared:     ['...!', '*hides*', 'eep!'],
-      sad:        ['...', '*sniffles*', 'come back...', '...please'],
-      crying:     ['*sobbing quietly*', 'please...',  'don\'t go...'],
-      grumpy:     ['hmph.', '*huffs*', '...fine.'],
-      pouty:      ['hmph.', '...rude.', '*crosses arms*'],
-      sulking:    ['*stares at wall*', 'i\'m not upset.', '...'],
-      sleepy:     ['*yawns*', 'zzz...', 'so sleepy...'],
-      suspicious: ['...?', '*narrows eyes*', 'hmm.'],
-      overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*'],
-      excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!'],
-      shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...'],
-      love:       ['♡', '*purrs*', '*nuzzles*', '...♡'],
-      startled:   ['!!', '*jumps*', 'w-what?!'],
+      curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?',
+                   'ooh?', '*squints curiously*', 'wait...', '...interesting.',
+                   '*perks up*', 'tell me more~'],
+      happy:      ['✨', '~♪', 'hehe~', '*tail wag*',
+                   ':)', '*bounces*', 'yay~', '(*^▽^*)',
+                   'this is nice~', '♪ la la~'],
+      scared:     ['...!', '*hides*', 'eep!',
+                   '*clings to corner*', 'too scary...', 'w-wait...',
+                   '*shaking*', 'i don\'t like this...', 'please no.'],
+      sad:        ['...', '*sniffles*', 'come back...', '...please',
+                   '*hugs knees*', 'i miss you...', 'don\'t leave.',
+                   'it\'s so quiet...', '(╥_╥)', '*wipes eyes*'],
+      crying:     ['*sobbing quietly*', 'please...',  'don\'t go...',
+                   'come back...', '*tears*', 'i can\'t stop...',
+                   'why...', '*hiccups*', 'it\'s too much...'],
+      grumpy:     ['hmph.', '*huffs*', '...fine.',
+                   'whatever.', '*tail flick*', 'don\'t talk to me.',
+                   '...annoying.', '*looks away*', 'i\'m fine. (i\'m not)'],
+      pouty:      ['hmph.', '...rude.', '*crosses arms*',
+                   'that\'s not fair.', '*pouts*', 'you owe me.',
+                   '...i\'m pouting.', '*sulk*', 'apologize first.'],
+      sulking:    ['*stares at wall*', 'i\'m not upset.', '...',
+                   'don\'t look at me.', '*ignoring you*', 'totally fine.',
+                   '...........', '*turns away*', 'just leave me alone.'],
+      sleepy:     ['*yawns*', 'zzz...', 'so sleepy...',
+                   '*heavy eyelids*', 'five more minutes...', '...mmh.',
+                   '*dozes off*', 'can\'t... keep... eyes... open...', 'zZz~'],
+      suspicious: ['...?', '*narrows eyes*', 'hmm.',
+                   'something\'s off.', '*watches carefully*', 'i see you.',
+                   '...sus.', '*squint*', 'explain.', 'not sure about this.'],
+      overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*',
+                   'YAAAY!!', '*happy spinning*', 'i missed you so much!!',
+                   'eeeee!!', '(≧▽≦)/', '*cannot contain excitement*'],
+      excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!',
+                   'omg omg omg', '*bouncing off walls*', 'THIS IS AMAZING',
+                   '(*≧▽≦)', 'so excited!!', 'LETSGOOO!!'],
+      shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
+                   '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
+                   'h-hello...', '(*ノωノ)'],
+      love:       ['♡', '*purrs*', '*nuzzles*', '...♡',
+                   'i like you~', '*rubs head on you*', 'stay forever.',
+                   '♡♡♡', '*happy purr*', 'you\'re warm~'],
+      startled:   ['!!', '*jumps*', 'w-what?!',
+                   'AH!', '*startled floof*', 'you scared me!!',
+                   '(*o*)!', 'don\'t do that!!', 'my heart...'],
     };
     return map[emotion] || null;
   }
@@ -730,7 +787,7 @@ const Brain = (() => {
     const p = window.perception;
     if (p) {
       if (p.userState === 'NoFace')  { enterState('idle');    return; }
-      if (p.userState === 'Sleepy')  { enterState('sleepy');  return; }
+      if (p.userState === 'Sleepy')  { enterState('observe'); return; } // stay alert, motivate user
       if (p.userState === 'Focused'
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
        && p.attentionScore > 50)     { enterState('curious'); return; }
@@ -789,7 +846,9 @@ const Brain = (() => {
         _startledUntil = now + STARTLED_HOLD_MS;
         // Whisper 50% of the time
         if (Math.random() < 0.5) {
-          const msgs = ['!!', '*jumps*', 'w-what?!'];
+          const msgs = ['!!', '*jumps*', 'w-what?!',
+                        'AH!', '*startled floof*', 'you scared me!!',
+                        '(*o*)!', 'don\'t do that!!'];
           showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
         }
       }
@@ -816,43 +875,38 @@ const Brain = (() => {
   }
 
   // ── TEAR DROP SPAWNER ─────────────────────────────────────────────────────
-  // Spawns individual falling teardrop elements anchored to each eye.
-  // Each tear falls to the actual bottom of the viewport; on landing it
-  // adds to the rising water pool (#tear-overlay).
   function _spawnTear() {
     const eyes = document.querySelectorAll('.eye');
     eyes.forEach(eye => {
-      // Randomise: not every eye drops a tear every interval
-      if (Math.random() > 0.72) return;
-      const rect = eye.getBoundingClientRect();
-      if (!rect.width) return; // not rendered yet
-      const tear = document.createElement('div');
-      tear.className = 'tear-drop';
-      // Random horizontal position within inner 60% of eye width
-      const startX = rect.left + rect.width * (0.22 + Math.random() * 0.56);
-      // Start just below the bottom edge of the eye
-      const startY = rect.bottom - 2;
-      tear.style.left = startX + 'px';
-      tear.style.top  = startY + 'px';
-      // Distance from eye bottom to viewport bottom — tear falls exactly here
-      const fallDist = window.innerHeight - startY;
-      tear.style.setProperty('--tear-fall-dist', fallDist + 'px');
-      // Vary fall speed slightly per drop for organic feel
-      const dur = (1.4 + Math.random() * 0.8).toFixed(2) + 's';
-      tear.style.setProperty('--tear-duration', dur);
-      document.body.appendChild(tear);
-      const durMs = parseFloat(dur) * 1000;
-      // When this tear lands at the bottom, raise the pool a little
-      setTimeout(() => {
-        tear.remove();
-        _raiseTearPool();
-      }, durMs + 50);
+      // Skip occasionally for a natural uneven rhythm
+      if (Math.random() > 0.78) return;
+      _spawnTearDrop(eye);
     });
   }
 
-  /** Increment the tear pool by one tear's worth; update the overlay element. */
-  function _raiseTearPool() {
-    _poolVh = Math.min(POOL_MAX_VH, _poolVh + POOL_PER_TEAR_VH);
+  /** A single liquid teardrop that falls straight down from the given eye. */
+  function _spawnTearDrop(eye) {
+    const rect = eye.getBoundingClientRect();
+    if (!rect.width) return;
+    const el = document.createElement('div');
+    el.className = 'tear-drop';
+    // Position within the inner 50% of the eye width
+    const startX = rect.left + rect.width * (0.28 + Math.random() * 0.44);
+    const startY = rect.bottom - 2;
+    el.style.left = startX + 'px';
+    el.style.top  = startY + 'px';
+    const fallDist = window.innerHeight - startY;
+    el.style.setProperty('--tear-fall-dist', fallDist + 'px');
+    const dur = (1.0 + Math.random() * 0.55).toFixed(2) + 's';
+    el.style.setProperty('--tear-duration', dur);
+    document.body.appendChild(el);
+    setTimeout(() => { el.remove(); _raiseTearPool(POOL_PER_TEAR_VH); },
+               parseFloat(dur) * 1000 + 60);
+  }
+
+  /** Increment the tear pool by the given amount; update the overlay element. */
+  function _raiseTearPool(increment) {
+    _poolVh = Math.min(POOL_MAX_VH, _poolVh + increment);
     _applyPoolHeight();
   }
 
@@ -867,12 +921,12 @@ const Brain = (() => {
     // Stop any in-progress drain
     if (_poolDrainInt) { clearInterval(_poolDrainInt); _poolDrainInt = null; }
     _spawnTear(); // immediate first drop
-    tearInterval = setInterval(_spawnTear, 420 + Math.random() * 200);
+    tearInterval = setInterval(_spawnTear, 450 + Math.random() * 200);
   }
 
   function _stopTears() {
     if (tearInterval) { clearInterval(tearInterval); tearInterval = null; }
-    // Gradually drain the pool — existing tear DOM nodes self-remove via setTimeout
+    // Gradually drain the pool
     if (_poolDrainInt) return;
     _poolDrainInt = setInterval(() => {
       if (_poolVh <= 0) {
@@ -1076,6 +1130,13 @@ const Brain = (() => {
       15: 'you\'re on fire! ✧',
       20: '20 min!! incredible',
       25: '( ˘▽˘)🎉 almost there!',
+      30: '30 whole minutes!! 🌟',
+      35: 'legendary focus ✦✦',
+      40: '40 min! unstoppable!',
+      45: 'nearly an hour!! 🔥🔥',
+      50: 'wow... just wow. ✧',
+      55: 'you\'re amazing. keep it up!',
+      60: '1 HOUR!! 🎉🎉🎉',
     };
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
@@ -1105,7 +1166,11 @@ const Brain = (() => {
   /** Deliver a study encouragement moment. */
   function _doStudyEncouragement() {
     _lastEncouragementTime = Date.now();
-    const msgs = ['✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.'];
+    const msgs = [
+      '✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.',
+      'i believe in you~', 'stay strong!', '*cheers for you*', 'almost there!',
+      'you\'ve got this ♡', '...i\'m rooting for you.', 'don\'t stop now!',
+    ];
     showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
     // Look directly at user for 2s, then return
     const c = Companion.getCenter();
@@ -1191,7 +1256,9 @@ const Brain = (() => {
     if (dist < PET_RADIUS) {
       const now = Date.now();
       _loveUntil = now + LOVE_HOLD_MS;
-      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡'];
+      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡',
+                    'i like you~', '*rubs head on you*', 'stay forever.',
+                    '♡♡♡', '*happy purr*'];
       if (Math.random() < 0.75) {
         showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
       }

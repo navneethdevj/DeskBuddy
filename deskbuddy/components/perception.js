@@ -272,9 +272,15 @@ const Perception = (() => {
     const faceY = filterFaceY.filter(rawFaceY, tSec);
 
     // Sleepy accumulator — uses fused openness (blendshape + EAR)
-    // EAR-based threshold catches drooping eyelids that blendshapes sometimes miss
-    const sleepyThreshold = earAvg < EAR_SLEEPY_THRESHOLD ? 0.35 : 0.25;
-    eyeOpenness < sleepyThreshold ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
+    // When head is pitched down (reading posture), EAR naturally drops from
+    // eye angle rather than true drowsiness — suppress accumulation in that case.
+    const isReadingPosture = pitch > 10;
+    if (!isReadingPosture) {
+      const sleepyThreshold = earAvg < EAR_SLEEPY_THRESHOLD ? 0.35 : 0.25;
+      eyeOpenness < sleepyThreshold ? (sleepyMs += dt) : (sleepyMs = Math.max(0, sleepyMs - dt * 0.5));
+    } else {
+      sleepyMs = Math.max(0, sleepyMs - dt * 0.5);
+    }
 
     // ── ATTENTION SCORE (EyeOnTask logic) ────────────────────────────────────
     // Key insight from EyeOnTask: true attention requires BOTH head forward AND eye contact.

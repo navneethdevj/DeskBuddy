@@ -835,47 +835,126 @@ html, body {
   pointer-events: none;
   z-index: 490;
   overflow: hidden;
-  transition: height 3s ease-in-out;
+  /* Slow, heavy rise — liquid pooling gradually */
+  transition: height 5s ease-out;
 }
+
 #tear-fill {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 100%;
-  background: linear-gradient(
-    to top,
-    rgba(60, 130, 200, 0.28) 0%,
-    rgba(80, 155, 220, 0.14) 55%,
-    rgba(100, 170, 235, 0.04) 100%
-  );
-  border-radius: 0 0 0 0;
+  /* Very transparent liquid — more like shallow water than solid color */
+  background-color: rgba(122, 205, 245, 0.15);
+  background-image:
+    /* Barely-visible shimmer band — much more subtle */
+    linear-gradient(
+      108deg,
+      transparent              0%,
+      transparent             34%,
+      rgba(255,255,255,0.05)  44%,
+      rgba(255,255,255,0.05)  56%,
+      transparent             66%,
+      transparent            100%
+    ),
+    /* Depth gradient — very pale, like clear shallow water */
+    linear-gradient(
+      to top,
+      rgba(72, 168, 230, 0.22) 0%,
+      rgba(100, 195, 245, 0.13) 35%,
+      rgba(140, 218, 255, 0.06) 68%,
+      rgba(180, 235, 255, 0.01) 100%
+    );
+  background-size: 260% 100%, 100% 100%;
+  /* Frosted-glass refractive quality — gives liquid depth */
+  backdrop-filter: blur(1.5px);
+  animation: poolShimmer 20s ease-in-out infinite alternate;
 }
+
+/* Wavy water surface — an ellipse that peeks above the fill top.
+   overflow:hidden on #tear-overlay clips the upper half, leaving
+   a smooth rounded wave edge at the waterline. */
+#tear-fill::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: -6%;
+  width: 112%;
+  height: 22px;
+  background: rgba(130, 210, 250, 0.22);
+  border-radius: 50%;
+  animation: waterSurface 3.2s ease-in-out infinite;
+}
+
+/* Soft light glint drifting along the surface — very subtle */
+#tear-fill::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 8%;
+  width: 28%;
+  height: 5px;
+  background: rgba(220, 245, 255, 0.18);
+  border-radius: 0 0 50% 50%;
+  filter: blur(2px);
+  animation: surfaceGlint 9s ease-in-out infinite;
+}
+
+/* Shimmer band sweeps left → right */
+@keyframes poolShimmer {
+  0%   { background-position: -60% 0, 0 0; }
+  100% { background-position: 160% 0, 0 0; }
+}
+
+/* Water surface bobs gently */
+@keyframes waterSurface {
+  0%,100% { transform: scaleX(1.00) translateY(0px);   border-radius: 50%; }
+  28%     { transform: scaleX(1.03) translateY(-3px);  border-radius: 48% 52% 50% 50%; }
+  62%     { transform: scaleX(0.98) translateY( 2px);  border-radius: 52% 48% 50% 50%; }
+}
+
+/* Glint drifts and breathes */
+@keyframes surfaceGlint {
+  0%,100% { opacity: 0.28; left:  8%; width: 28%; }
+  50%     { opacity: 0.45; left: 14%; width: 38%; }
+}
+
 /* #tear-overlay height is controlled directly by JS — rises as tears accumulate */
 
-/* Individual teardrop shape — appended to document.body by _startTears() */
+/* Individual teardrop shape — cartoony drops — appended by _spawnTearDrop() */
 .tear-drop {
   position: fixed;
-  width: 10px;
-  height: 16px;
-  border-radius: 55% 55% 65% 45% / 50% 50% 70% 50%;
-  background: radial-gradient(ellipse at 40% 30%,
-    rgba(160, 215, 255, 0.95) 0%,
-    rgba(100, 175, 240, 0.80) 50%,
-    rgba(70, 140, 210, 0.55) 100%
-  );
-  box-shadow: 0 1px 8px rgba(80, 160, 235, 0.55);
+  width: 13px;
+  height: 21px;
+  /* Pointy top, round body — classic anime/cartoon teardrop (point at tail, ball at front) */
+  border-radius: 50% 50% 50% 50% / 78% 78% 22% 22%;
+  /* Semi-transparent pastel sky-blue — cute and glassy */
+  background: rgba(158, 223, 247, 0.50);
+  box-shadow: inset -2px -4px 0 rgba(0, 0, 0, 0.06);
+  overflow: hidden;
   pointer-events: none;
   z-index: 500;
-  animation: tearFall var(--tear-duration, 1.6s) ease-in forwards;
+  animation: tearFall var(--tear-duration, 1.4s) ease-in forwards;
 }
 
-/* tears fall to the exact bottom of the viewport — distance set per-tear by JS */
+/* White shine dot — on the round body (lower portion) */
+.tear-drop::before {
+  content: '';
+  position: absolute;
+  bottom: 22%;
+  right: 16%;
+  top: auto;
+  width: 30%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.70);
+}
+
+/* Cartoon tear: straight fall, stays mostly solid, fades at the very end */
 @keyframes tearFall {
-  0%   { transform: translateY(0)                              scaleX(1.00) rotate(0deg);   opacity: 0;    }
-  7%   { opacity: 0.94; }
-  40%  { transform: translateY(calc(var(--tear-fall-dist) * 0.40)) scaleX(0.90) rotate(2deg);   opacity: 0.82; }
-  75%  { transform: translateY(calc(var(--tear-fall-dist) * 0.78)) scaleX(0.78) rotate(-1deg);  opacity: 0.55; }
-  92%  { transform: translateY(calc(var(--tear-fall-dist) * 0.97)) scaleX(0.70) rotate(1deg);   opacity: 0.22; }
-  100% { transform: translateY(var(--tear-fall-dist))              scaleX(0.65) rotate(0deg);   opacity: 0;    }
+  0%   { transform: translateY(0);                                   opacity: 0;   }
+  8%   {                                                              opacity: 0.7; }
+  80%  { transform: translateY(calc(var(--tear-fall-dist) * 0.84));  opacity: 0.6; }
+  100% { transform: translateY(var(--tear-fall-dist));               opacity: 0;   }
 }
 
 /* Micro-shiver for lively moments */
