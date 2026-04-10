@@ -1517,45 +1517,6 @@ html, body {
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* ── Size preset controls ──────────────────────────────────────────── */
-#pip-size-controls {
-  display: none;                    /* shown only in compact mode */
-  position: fixed;
-  bottom: 6px;
-  left: 5px;
-  z-index: 2000;
-  gap: 3px;
-  flex-direction: row;
-  align-items: center;
-  /* Button strip is interactive — must not be a drag region */
-  -webkit-app-region: no-drag;
-}
-
-.pip-size-btn {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  padding: 2px 5px;
-  line-height: 1.4;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  -webkit-user-select: none;
-}
-.pip-size-btn:hover {
-  background: rgba(120, 135, 235, 0.22);
-  border-color: rgba(120, 135, 235, 0.5);
-  color: rgba(255, 255, 255, 0.9);
-}
-.pip-size-btn.active {
-  background: rgba(120, 135, 235, 0.35);
-  border-color: rgba(140, 155, 255, 0.65);
-  color: rgba(255, 255, 255, 0.95);
-}
-
 /* ── Compact body ──────────────────────────────────────────────────── */
 body.pip-mode {
   background: transparent;
@@ -1564,7 +1525,6 @@ body.pip-mode {
 
 /* Show compact-only controls, hide full-mode controls */
 body.pip-mode #compact-expand-btn { display: block; }
-body.pip-mode #pip-size-controls  { display: flex;  }
 
 /* Hide full-mode button and non-essential UI in compact */
 body.pip-mode #full-collapse-btn,
@@ -1604,6 +1564,13 @@ body.pip-mode #world {
   }
 }
 
+/* PiP window is draggable: companion body acts as the drag handle.
+   Interactive children (eye-wraps, expand button) stay as no-drag so
+   clicks still register on them. */
+body.pip-mode .companion    { -webkit-app-region: drag; }
+body.pip-mode .eye-wrap,
+body.pip-mode #compact-expand-btn { -webkit-app-region: no-drag; }
+
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
   gap: 3vmin;
@@ -1633,9 +1600,8 @@ body.full-mode {
 }
 
 /* Show full-mode collapse button, hide compact controls */
-body.full-mode #full-collapse-btn { display: block; }
-body.full-mode #compact-expand-btn,
-body.full-mode #pip-size-controls  { display: none; }
+body.full-mode #full-collapse-btn  { display: block; }
+body.full-mode #compact-expand-btn { display: none;  }
 
 /* Full mode #world: no rounded corners, no glow ring, fills screen */
 body.full-mode #world {

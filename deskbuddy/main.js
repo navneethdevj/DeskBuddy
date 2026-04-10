@@ -82,15 +82,15 @@ function _doSnapToCorner() {
   const [w]          = mainWindow.getSize();
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
   const m = SNAP_MARGIN;
-  const corners = [
-    { x: m,          y: m          },   // top-left
-    { x: sw - w - m, y: m          },   // top-right
-    { x: m,          y: sh - w - m },   // bottom-left
-    { x: sw - w - m, y: sh - w - m },   // bottom-right
+  const zones = [
+    { x: m,                    y: m          },   // top-left
+    { x: Math.round((sw-w)/2), y: m          },   // top-center
+    { x: sw - w - m,           y: m          },   // top-right
+    { x: m,                    y: sh - w - m },   // bottom-left
+    { x: sw - w - m,           y: sh - w - m },   // bottom-right
   ];
-  // Reduce over all corners, starting with null so the first comparison is
-  // always a real distance check rather than a meaningless Infinity seed.
-  const best = corners.reduce((nearest, c) => {
+  // Pick the nearest snap zone.
+  const best = zones.reduce((nearest, c) => {
     const d = Math.hypot(c.x - curX, c.y - curY);
     if (!nearest || d < nearest.dist) return { x: c.x, y: c.y, dist: d };
     return nearest;
@@ -201,7 +201,8 @@ ipcMain.on('enter-full-mode', () => {
   mainWindow.setResizable(false);
   mainWindow.setBounds({ x: 0, y: 0, width, height }, process.platform === 'darwin');
   mainWindow.setSkipTaskbar(false);
-  // Full mode is always interactive — cancel any pass-through.
+  // Full mode is not always-on-top and is always interactive.
+  mainWindow.setAlwaysOnTop(false);
   mainWindow.setIgnoreMouseEvents(false);
   mainWindow.webContents.send('full-mode-entered');
 });
@@ -211,12 +212,13 @@ ipcMain.on('exit-full-mode', () => {
   const preset = store.get('windowPreset', DEFAULT_PRESET);
   const dim    = _getDim(preset);
   const pos    = _loadPos(dim);
-  // Restore compact constraints.
+  // Restore compact constraints and always-on-top.
   mainWindow.setMinimumSize(150, 150);
   mainWindow.setMaximumSize(320, 320);
   mainWindow.setResizable(true);
   mainWindow.setBounds({ x: pos.x, y: pos.y, width: dim, height: dim }, process.platform === 'darwin');
   mainWindow.setSkipTaskbar(true);
+  mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.webContents.send('full-mode-exited');
 });
 

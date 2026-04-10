@@ -243,15 +243,12 @@
   }
 
 
-  // ── Compact window — size presets + mode toggle + mouse pass-through ─────
-  // The companion starts as a small floating overlay.  A toggle button
-  // (and Ctrl/Cmd+Shift+P) switches between compact and full-screen mode.
-  // S / M / L buttons resize the compact window via IPC.
-  // In compact mode, clicks pass through the window when the cursor is away.
+  // ── Compact window — mode toggle ────────────────────────────────────────
+  // The companion starts as a small floating overlay (PiP mode).
+  // A toggle button (or Ctrl/Cmd+Shift+P) switches between compact and full.
+  // The window is always interactive in PiP mode — no click-through.
 
-  const SIZE_PRESETS = { S: 150, M: 200, L: 270 };
-  let _currentPreset  = 'M';
-  let _isFullMode     = false;
+  let _isFullMode = false;
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
 
@@ -260,11 +257,7 @@
     _isFullMode = true;
     document.body.classList.remove('pip-mode');
     document.body.classList.add('full-mode');
-    // Full mode is always interactive — kill pass-through immediately.
-    if (window.electronAPI) {
-      window.electronAPI.setIgnoreMouseEvents(false);
-      window.electronAPI.enterFullMode();
-    }
+    if (window.electronAPI) window.electronAPI.enterFullMode();
   }
 
   function _exitFullMode() {
@@ -273,69 +266,25 @@
     document.body.classList.remove('full-mode');
     document.body.classList.add('pip-mode');
     if (window.electronAPI) window.electronAPI.exitFullMode();
-    // Re-enable pass-through for compact mode.
-    _setupMousePassThrough();
-  }
-
-  // ── Size presets (compact mode only) ─────────────────────────────────────
-
-  function _applySize(preset) {
-    if (!SIZE_PRESETS[preset]) return;
-    _currentPreset = preset;
-    _markActiveSizeBtn(preset);
-    if (window.electronAPI) window.electronAPI.resizeWindow(preset);
-  }
-
-  function _markActiveSizeBtn(preset) {
-    document.querySelectorAll('.pip-size-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.size === preset);
-    });
-  }
-
-  // ── Mouse pass-through (compact mode only) ────────────────────────────────
-  // Default: clicks pass through the window so the companion is non-intrusive.
-  // As soon as the cursor enters the window area (mousemove fires even with
-  // { forward: true } active), we re-enable interactions for dragging / buttons.
-
-  function _setupMousePassThrough() {
-    if (!window.electronAPI || _isFullMode) return;
-    window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
   }
 
   function _wireWindowControls() {
     // Keyboard shortcut: Ctrl/Cmd + Shift + P → toggle compact / full
     window.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
-        if (e.key === 'P') { e.preventDefault(); _isFullMode ? _exitFullMode() : _enterFullMode(); }
-        if (e.key === 'S') { e.preventDefault(); if (!_isFullMode) _applySize('S'); }
-        if (e.key === 'M') { e.preventDefault(); if (!_isFullMode) _applySize('M'); }
-        if (e.key === 'L') { e.preventDefault(); if (!_isFullMode) _applySize('L'); }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        _isFullMode ? _exitFullMode() : _enterFullMode();
       }
     });
 
     // Toggle buttons
     const expandBtn   = document.getElementById('compact-expand-btn');
     const collapseBtn = document.getElementById('full-collapse-btn');
-    if (expandBtn)   expandBtn.addEventListener('click',   () => _enterFullMode());
+    if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
     if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullMode());
 
-    // S / M / L click handlers
-    document.querySelectorAll('.pip-size-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (!_isFullMode) _applySize(btn.dataset.size);
-      });
-    });
-
-    // Sync active-button state when main reports the current size
-    // (covers initial load and OS drag-handle resize).
+    // Sync mode state when main reports transitions (covers IPC-initiated toggles).
     if (window.electronAPI) {
-      window.electronAPI.onWindowReady((data) => {
-        if (data && data.preset) { _currentPreset = data.preset; _markActiveSizeBtn(data.preset); }
-      });
-      window.electronAPI.onWindowResized((data) => {
-        if (data && data.preset) { _currentPreset = data.preset; _markActiveSizeBtn(data.preset); }
-      });
       window.electronAPI.onFullModeEntered(() => {
         _isFullMode = true;
         document.body.classList.remove('pip-mode');
@@ -345,26 +294,7 @@
         _isFullMode = false;
         document.body.classList.remove('full-mode');
         document.body.classList.add('pip-mode');
-        _setupMousePassThrough();
       });
     }
-
-    // Mark the default preset button while waiting for onWindowReady.
-    _markActiveSizeBtn(_currentPreset);
-
-    // Mouse pass-through — mousemove enables interaction, mouseleave restores it.
-    // These listeners stay registered permanently; _setupMousePassThrough() is
-    // called to (re)activate the pass-through state whenever compact mode starts.
-    document.addEventListener('mousemove', () => {
-      if (!_isFullMode && window.electronAPI)
-        window.electronAPI.setIgnoreMouseEvents(false);
-    }, { passive: true });
-    document.addEventListener('mouseleave', () => {
-      if (!_isFullMode && window.electronAPI)
-        window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    });
-
-    // Start in compact pass-through mode.
-    _setupMousePassThrough();
   }
 })();
