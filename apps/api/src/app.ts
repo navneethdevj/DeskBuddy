@@ -34,8 +34,13 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 // CSRF check for all state-mutating requests (POST/PUT/PATCH/DELETE).
-// Bearer-token-protected routes are inherently CSRF-safe, but applying this
-// globally prevents CodeQL warnings and adds defence-in-depth.
+// All API routes that perform mutations are protected by one of two mechanisms:
+//  1. Bearer JWT in the Authorization header — inherently CSRF-safe because
+//     cross-origin requests cannot set custom Authorization headers.
+//  2. Cookie-based refresh (/auth/refresh) — explicitly guarded by the
+//     csrfProtection middleware that validates the Origin header.
+// Applying csrfProtection globally here provides defence-in-depth and ensures
+// any future cookie-based route is covered without extra configuration.
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (SAFE_METHODS.has(req.method)) return next();

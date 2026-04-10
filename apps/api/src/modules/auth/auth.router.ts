@@ -22,8 +22,10 @@ const cookieOptions = {
 
 // §5.4 — validate that the code looks like a real OAuth authorization code
 // before we forward it to Google's token endpoint (prevents amplification).
+const OAUTH_CODE_MIN_LENGTH = 10;
+const OAUTH_CODE_MAX_LENGTH = 512;
 const GoogleCallbackSchema = z.object({
-  code: z.string().min(10).max(512),
+  code: z.string().min(OAUTH_CODE_MIN_LENGTH).max(OAUTH_CODE_MAX_LENGTH),
 });
 
 // POST /api/v1/auth/google/callback

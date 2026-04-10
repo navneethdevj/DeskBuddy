@@ -34,7 +34,13 @@ export const getRedis: RedisGetter = async (): Promise<RedisOps> => {
   }
 
   if (_client) {
-    try { await _client.quit(); } catch { /* already closed — ignore */ }
+    try { await _client.quit(); } catch (err: unknown) {
+      // 'already closed' errors are benign; log anything else for observability
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('closed') && !msg.includes('destroyed')) {
+        logger.warn({ err }, 'Redis quit error during reconnect cleanup');
+      }
+    }
     _client = null;
   }
 
