@@ -897,7 +897,7 @@ const Brain = (() => {
     el.style.top  = startY + 'px';
     const fallDist = window.innerHeight - startY;
     el.style.setProperty('--tear-fall-dist', fallDist + 'px');
-    const dur = (1.5 + Math.random() * 0.70).toFixed(2) + 's';
+    const dur = (1.0 + Math.random() * 0.40).toFixed(2) + 's';
     el.style.setProperty('--tear-duration', dur);
     document.body.appendChild(el);
     setTimeout(() => { el.remove(); _raiseTearPool(POOL_PER_TEAR_VH); },

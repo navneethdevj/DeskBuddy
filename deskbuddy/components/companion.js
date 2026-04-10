@@ -21,7 +21,7 @@ const Companion = (() => {
 
   // Gradient gaze smoothing — prevents instant snap of --gaze-x/--gaze-y
   // 0.32 at 60fps: 1-(1-0.32)^5 ≈ 85% after 5 frames (~83ms) — more responsive
-  const GAZE_GRADIENT_LERP = 0.40;
+  const GAZE_GRADIENT_LERP = 0.32;
   // Reference distance for proportional gradient shift (pixels from companion center)
   // At this distance gaze gradient reaches its maximum; closer = proportionally less.
   const GAZE_REFERENCE_DIST = 300;
@@ -30,7 +30,7 @@ const Companion = (() => {
 
   // Pupil tracking
   const PUPIL_MOVEMENT_RADIUS_VMIN = 8;   // max movement radius in vmin (bigger eyes need more range)
-  const PUPIL_LERP = 0.36;
+  const PUPIL_LERP = 0.30;
   const PUPIL_DISTANCE_SCALE = 500;
   let pupilCurrentX = 0;
   let pupilCurrentY = 0;

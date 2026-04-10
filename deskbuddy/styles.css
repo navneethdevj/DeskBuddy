@@ -215,12 +215,12 @@ html, body {
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  transition: height 0.14s cubic-bezier(.4, 0, .2, 1),
-              width 0.14s cubic-bezier(.4, 0, .2, 1),
-              border-radius 0.14s cubic-bezier(.4, 0, .2, 1),
-              transform 0.14s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.18s ease,
-              box-shadow 0.14s ease;
+  transition: height 0.22s cubic-bezier(.4, 0, .2, 1),
+              width 0.22s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.22s cubic-bezier(.4, 0, .2, 1),
+              transform 0.22s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.30s ease,
+              box-shadow 0.22s ease;
   box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
               0 0 12vmin rgba(120, 135, 235, 0.15),
               0 0 22vmin rgba(120, 135, 235, 0.06);
@@ -328,8 +328,8 @@ html, body {
   flex-shrink: 0;
   transform-origin: center;
   will-change: transform, background-color;
-  transition: transform 0.16s cubic-bezier(.4,0,.2,1),
-              width    0.16s cubic-bezier(.4,0,.2,1),
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1),
+              width    0.28s cubic-bezier(.4,0,.2,1),
               background-color 0.28s ease;
 }
 
@@ -411,7 +411,7 @@ html, body {
   flex-shrink: 0;
   pointer-events: none;
   will-change: background;
-  transition: background 0.25s ease;
+  transition: background 0.45s ease;
 }
 
 .companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
@@ -935,57 +935,47 @@ html, body {
   height: 5vmin;
   /* Pointy top, round body — classic anime/cartoon teardrop */
   border-radius: 50% 50% 50% 50% / 78% 78% 22% 22%;
-  /* Watery: semi-transparent cool blue with inner depth */
+  /* Watery: mostly transparent, subtle cool-blue tint */
   background: linear-gradient(
     160deg,
-    rgba(200, 238, 255, 0.72) 0%,
-    rgba(110, 195, 245, 0.58) 55%,
-    rgba(70,  165, 230, 0.45) 100%
+    rgba(190, 230, 252, 0.32) 0%,
+    rgba(110, 190, 240, 0.22) 60%,
+    rgba(70,  160, 225, 0.16) 100%
   );
   box-shadow:
-    inset -0.35vmin -0.7vmin 0     rgba(0, 0, 0, 0.04),
-    inset  0.2vmin   0.2vmin 0.6vmin rgba(255, 255, 255, 0.38),
-    0 0 0.6vmin rgba(90, 185, 240, 0.28);
+    inset -0.2vmin -0.4vmin 0     rgba(0, 0, 0, 0.03),
+    inset  0.1vmin  0.1vmin 0.4vmin rgba(255, 255, 255, 0.14);
   overflow: hidden;
   pointer-events: none;
   z-index: 500;
-  /* Viscous easing: slow start (surface tension holds), accelerates, slight decel */
-  animation: tearFall var(--tear-duration, 1.8s) cubic-bezier(0.18, 0.04, 0.72, 1) forwards;
+  /* Gravity fall — accelerates naturally, no slow start */
+  animation: tearFall var(--tear-duration, 1.2s) ease-in forwards;
 }
 
-/* Primary shine — large highlight on the round belly */
+/* Subtle shine on the belly — small and dim */
 .tear-drop::before {
   content: '';
   position: absolute;
   bottom: 24%;
-  right: 14%;
+  right: 16%;
   top: auto;
-  width: 32%;
-  height: 24%;
+  width: 28%;
+  height: 20%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.30);
 }
 
-/* Secondary micro-glint — upper-left corner for glass depth */
+/* Remove secondary glint — keeping it simple and watery */
 .tear-drop::after {
-  content: '';
-  position: absolute;
-  top: 14%;
-  left: 18%;
-  width: 18%;
-  height: 14%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.50);
+  content: none;
 }
 
-/* Viscous tear fall — slight wobble (surface tension oscillation) + stretch */
+/* Straight gravity fall — no lateral wobble, just a slight squeeze at peak speed */
 @keyframes tearFall {
-  0%   { transform: translateY(0)                                        translateX(0)      scaleX(1);    opacity: 0;   }
-  6%   { transform: translateY(0)                                        translateX(0)      scaleX(1);    opacity: 0.82; }
-  28%  { transform: translateY(calc(var(--tear-fall-dist) * 0.18))       translateX(-0.4vmin) scaleX(0.90); opacity: 0.88; }
-  52%  { transform: translateY(calc(var(--tear-fall-dist) * 0.46))       translateX(0.5vmin)  scaleX(1.07); opacity: 0.78; }
-  74%  { transform: translateY(calc(var(--tear-fall-dist) * 0.72))       translateX(-0.2vmin) scaleX(0.96); opacity: 0.58; }
-  100% { transform: translateY(var(--tear-fall-dist))                    translateX(0)      scaleX(1);    opacity: 0;   }
+  0%   { transform: translateY(0)                                    scaleX(1.0); opacity: 0;    }
+  6%   { transform: translateY(0)                                    scaleX(1.0); opacity: 0.60; }
+  55%  { transform: translateY(calc(var(--tear-fall-dist) * 0.50))   scaleX(0.93); opacity: 0.45; }
+  100% { transform: translateY(var(--tear-fall-dist))                scaleX(1.0); opacity: 0;   }
 }
 
 /* Micro-shiver for lively moments */
@@ -1159,15 +1149,15 @@ html, body {
   border-left-color:   rgba(145, 155, 225, 0.22);
   border-right-color:  rgba(145, 155, 225, 0.22);
   background: transparent;
-  transition: width               0.18s cubic-bezier(.4,0,.2,1),
-              height              0.18s cubic-bezier(.4,0,.2,1),
-              border-radius       0.18s cubic-bezier(.4,0,.2,1),
-              border-bottom-color 0.18s ease,
-              border-top-color    0.18s ease,
-              border-left-color   0.18s ease,
-              border-right-color  0.18s ease,
-              border-width        0.18s ease,
-              opacity             0.18s ease;
+  transition: width               0.32s cubic-bezier(.4,0,.2,1),
+              height              0.32s cubic-bezier(.4,0,.2,1),
+              border-radius       0.32s cubic-bezier(.4,0,.2,1),
+              border-bottom-color 0.32s ease,
+              border-top-color    0.32s ease,
+              border-left-color   0.32s ease,
+              border-right-color  0.32s ease,
+              border-width        0.32s ease,
+              opacity             0.32s ease;
   pointer-events: none;
   will-change: border-radius, width, height;
 }
