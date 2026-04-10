@@ -50,11 +50,19 @@ const Camera = (() => {
       video: { width: 640, height: 480, facingMode: 'user' }, audio: false
     });
     videoEl.srcObject = stream;
-    await new Promise((resolve, reject) => {
-      videoEl.addEventListener('loadeddata', resolve, { once: true });
-      videoEl.addEventListener('error',      reject,  { once: true });
-      setTimeout(() => reject(new Error('Video element did not fire loadeddata within 10 s')), VIDEO_TIMEOUT);
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        videoEl.addEventListener('loadeddata', resolve, { once: true });
+        videoEl.addEventListener('error',      reject,  { once: true });
+        setTimeout(() => reject(new Error('Video element did not fire loadeddata within 10 s')), VIDEO_TIMEOUT);
+      });
+    } catch (err) {
+      // Camera stream must be stopped explicitly; otherwise the camera LED
+      // stays on even though the app will operate in no-camera fallback mode.
+      stream.getTracks().forEach(t => t.stop());
+      videoEl.srcObject = null;
+      throw err;
+    }
     console.log('[Camera] Video ready — readyState=%d, %dx%d',
       videoEl.readyState, videoEl.videoWidth, videoEl.videoHeight);
   }

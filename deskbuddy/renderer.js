@@ -239,11 +239,14 @@
   }
 
   // ── PiP (Picture-in-Picture) ──────────────────────────────────────────────
-  // Purely a visual/window mode: shrinks to 120×120 overlay so the user can
+  // Purely a visual/window mode: shrinks to 200×200 overlay so the user can
   // work in another app while the companion keeps watching.
   // Timer, Brain, Perception, Sounds — all continue unchanged.
 
   let _isPipMode = false;
+  // Guard: ensure drag listeners are registered only once for the window
+  // lifetime so that enter/exit/enter cycles don't accumulate duplicate handlers.
+  let _pipDragSetUp = false;
 
   function _enterPip() {
     if (_isPipMode) return;
@@ -261,9 +264,11 @@
   }
 
   // Snap window to the nearest corner after a drag, with a 20px margin.
+  // Use availWidth/availHeight (work area) so the window never snaps under
+  // the OS taskbar or dock.
   function _snapToCorner(x, y) {
-    const screenWidth  = screen.width;
-    const screenHeight = screen.height;
+    const screenWidth  = screen.availWidth;
+    const screenHeight = screen.availHeight;
     const windowWidth  = 200;  // must match PIP_SIZE.width in main.js
     const windowHeight = 200;  // must match PIP_SIZE.height in main.js
     const margin = 20;
@@ -281,22 +286,37 @@
   }
 
   function _enablePipDrag() {
+    // Only register listeners once. Handlers already check _isPipMode so they
+    // are dormant when PiP is inactive — re-registering on every entry would
+    // accumulate duplicate handlers causing double IPC calls and double snaps.
+    if (_pipDragSetUp) return;
+    _pipDragSetUp = true;
+
     const el = document.getElementById('world');
     if (!el) return;
     let isDragging  = false;
     let dragStart   = { x: 0, y: 0 };
     let winStart    = { x: 0, y: 0 };
+
+    /** Parse and validate a stored PiP position from localStorage. Returns null on invalid data. */
+    function _loadStoredPos() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('deskbuddy_pip_pos') || 'null');
+        if (raw && typeof raw.x === 'number' && typeof raw.y === 'number'
+                && isFinite(raw.x) && isFinite(raw.y)) return raw;
+      } catch (_) {}
+      return null;
+    }
+
     // Read the last-known stored position from localStorage as window origin
-    const stored = JSON.parse(localStorage.getItem('deskbuddy_pip_pos') || 'null');
-    winStart = stored || { x: 40, y: 40 };
+    winStart = _loadStoredPos() || { x: 40, y: 40 };
 
     function onMouseDown(e) {
       if (!_isPipMode) return;
       isDragging = true;
       dragStart  = { x: e.screenX, y: e.screenY };
       // current window position at drag start
-      const s = JSON.parse(localStorage.getItem('deskbuddy_pip_pos') || 'null');
-      winStart = s || { x: 40, y: 40 };
+      winStart = _loadStoredPos() || { x: 40, y: 40 };
       e.preventDefault();
     }
 

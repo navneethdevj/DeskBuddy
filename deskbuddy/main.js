@@ -68,8 +68,11 @@ ipcMain.on('exit-pip', () => {
 });
 
 ipcMain.on('save-pip-position', (_event, pos) => {
-  if (mainWindow) mainWindow.setPosition(pos.x, pos.y);
-  _savePipPosition(pos);
+  if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number'
+           || !isFinite(pos.x) || !isFinite(pos.y)) return;
+  const safePos = { x: Math.round(pos.x), y: Math.round(pos.y) };
+  if (mainWindow) mainWindow.setPosition(safePos.x, safePos.y);
+  _savePipPosition(safePos);
 });
 
 // ── App lifecycle ────────────────────────────────────────────────────────────
@@ -87,7 +90,11 @@ app.whenReady().then(() => {
   createWindow();
 });
 
-app.on('window-all-closed', () => { app.quit(); });
+app.on('window-all-closed', () => {
+  // On macOS, applications keep their process alive after all windows close
+  // (user quits explicitly with Cmd+Q). Match that convention here.
+  if (process.platform !== 'darwin') app.quit();
+});
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

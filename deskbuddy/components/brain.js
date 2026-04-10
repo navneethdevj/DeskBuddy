@@ -1094,7 +1094,11 @@ const Brain = (() => {
             // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
           }
-        } else if (p?.gazeY < PHONE_GAZE_Y_RESET) {
+        } else if (!p || !p.facePresent || p.gazeY < PHONE_GAZE_Y_RESET) {
+          // Reset when there is no perception data, face is absent, or gaze
+          // returns above the reset threshold. Without the facePresent guard the
+          // counter would hold its value across face-dropout periods and trigger
+          // spuriously on the next detection frame.
           _phoneCheckMs = 0;
         }
       }
