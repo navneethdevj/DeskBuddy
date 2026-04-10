@@ -585,55 +585,77 @@ const Sounds = (() => {
   // Each function targets one emotional truth identifiable by ear alone.
   // All source gain nodes ≤ 0.12. All route through masterGain.
 
-  // Giggle — crystalline three-bell laugh cascade (triggered by userSmiling)
-  // Three ascending bell-chimes with sparkle overtones — like tiny fairy bells.
+  // Giggle — detuned-pair fairy bell cascade (triggered by userSmiling).
+  // Each bell is a chorus pair (±4 Hz apart) — creates magical shimmer beating.
+  // 2× and 3× overtones on each bell. Flutter vibrato on the final bell.
   function _giggle() {
     if (!_ok('giggle')) return;
     try {
       const t = ctx.currentTime;
-      // Airy breath onset — tiny gasp of delight
-      _breath(t, 0.040, 0.008, 4200);
-      // Bell 1: 980 Hz / sine / 75ms AD — clean bright ping
-      _osc('sine', 980, t, 0.075, 0.08, { attack: 0.003, decay: 0.072, sustain: 0 });
-      // Sparkle at 2× (1960 Hz) for bell 1
-      _osc('triangle', 1960, t + 0.003, 0.050, 0.025, { attack: 0.003, decay: 0.047, sustain: 0 });
-      // Bell 2: 1180 Hz / sine / 80ms at +110ms
-      _osc('sine', 1180, t + 0.110, 0.080, 0.085, { attack: 0.003, decay: 0.077, sustain: 0 });
-      // Sparkle at 2× (2360 Hz) for bell 2
-      _osc('triangle', 2360, t + 0.113, 0.055, 0.022, { attack: 0.003, decay: 0.052, sustain: 0 });
-      // Bell 3: 1440 Hz / sine / 120ms at +220ms — vibrato twinkle
-      _osc('sine', 1440, t + 0.220, 0.120, 0.09, {
-        attack: 0.003, decay: 0.117, sustain: 0,
-        vibRate: 12, vibDepth: 18,
+      // Airy breath — tiny gasp of pure delight
+      _breath(t, 0.030, 0.008, 4500);
+
+      // Bell 1: chorus pair 976+984 Hz — music-box ping, 70ms
+      _osc('sine', 976, t, 0.070, 0.055, { attack: 0.002, decay: 0.068, sustain: 0 });
+      _osc('sine', 984, t, 0.070, 0.050, { attack: 0.002, decay: 0.068, sustain: 0 });
+      _osc('triangle', 1960, t + 0.002, 0.048, 0.022, { attack: 0.002, decay: 0.046, sustain: 0 });
+      _osc('triangle', 2940, t + 0.004, 0.032, 0.010, { attack: 0.002, decay: 0.030, sustain: 0 });
+
+      // Bell 2: chorus pair 1176+1184 Hz at +105ms — slightly brighter
+      _osc('sine', 1176, t + 0.105, 0.075, 0.055, { attack: 0.002, decay: 0.073, sustain: 0 });
+      _osc('sine', 1184, t + 0.105, 0.075, 0.050, { attack: 0.002, decay: 0.073, sustain: 0 });
+      _osc('triangle', 2360, t + 0.107, 0.052, 0.022, { attack: 0.002, decay: 0.050, sustain: 0 });
+      _osc('triangle', 3540, t + 0.109, 0.034, 0.010, { attack: 0.002, decay: 0.032, sustain: 0 });
+      _breath(t + 0.108, 0.028, 0.006, 4200);
+
+      // Bell 3: chorus pair 1434+1446 Hz at +210ms — 13Hz flutter vibrato, 110ms
+      _osc('sine', 1434, t + 0.210, 0.110, 0.055, {
+        attack: 0.002, decay: 0.108, sustain: 0, vibRate: 13, vibDepth: 12,
       });
-      // Double shimmer on bell 3 peak — maximum sparkle
-      _osc('triangle', 2880, t + 0.223, 0.080, 0.020, { attack: 0.003, decay: 0.077, sustain: 0 });
+      _osc('sine', 1446, t + 0.210, 0.110, 0.050, {
+        attack: 0.002, decay: 0.108, sustain: 0, vibRate: 13, vibDepth: 15,
+      });
+      _osc('triangle', 2880, t + 0.212, 0.078, 0.022, { attack: 0.002, decay: 0.076, sustain: 0 });
+      // 3× shimmer — fairy-dust glitter at the very top
+      _osc('triangle', 4320, t + 0.215, 0.050, 0.010, { attack: 0.002, decay: 0.048, sustain: 0 });
+      _breath(t + 0.212, 0.050, 0.008, 4800);
     } catch (e) {}
   }
 
   /**
-   * HAPPY_COO — warm bell-chime greeting with crystal shimmer.
-   * Two distinct bell tones, each followed by a sparkle overtone — like a fairy saying hello.
-   * Axes: 720→960 Hz / sine / two AD envelopes / shimmer at 2× on each
+   * HAPPY_COO — detuned-pair music-box greeting with full harmonic shimmer.
+   * Each bell is a chorus pair (±4 Hz) + 2× and 3× overtones — magical warmth.
+   * Axes: 716+724 Hz → 956+964 Hz / sine pairs / AD envelopes / 2× and 3× sparkle
    */
   function _happy_coo() {
     if (!_ok('happy_coo')) return;
     try {
       const t = ctx.currentTime;
       // Airy breath onset — tiny gasp of recognition
-      _breath(t, 0.025, 0.007, 4000);
-      // Bell 1: 720 Hz sine, 140ms — warm chime note
-      _osc('sine', 720, t + 0.008, 0.140, 0.08, { attack: 0.008, decay: 0.132, sustain: 0 });
-      // Sparkle at 2× for bell 1
-      _osc('triangle', 1440, t + 0.012, 0.080, 0.022, { attack: 0.004, decay: 0.076, sustain: 0 });
-      // [60ms gap]
-      // Bell 2: 960 Hz sine, 180ms — ascending with vibrato twinkle
-      _osc('sine', 960, t + 0.208, 0.180, 0.08, {
-        attack: 0.006, decay: 0.174, sustain: 0,
-        vibRate: 7, vibDepth: 10,
+      _breath(t, 0.022, 0.007, 4000);
+
+      // Bell 1: chorus pair 716+724 Hz, 135ms — warm music-box chime
+      _osc('sine', 716, t + 0.006, 0.135, 0.055, { attack: 0.004, decay: 0.131, sustain: 0 });
+      _osc('sine', 724, t + 0.006, 0.135, 0.050, { attack: 0.004, decay: 0.131, sustain: 0 });
+      // 2× shimmer
+      _osc('triangle', 1440, t + 0.008, 0.085, 0.022, { attack: 0.003, decay: 0.082, sustain: 0 });
+      // 3× shimmer — high fairy-dust sparkle
+      _osc('triangle', 2160, t + 0.010, 0.060, 0.012, { attack: 0.003, decay: 0.057, sustain: 0 });
+
+      // [55ms gap]
+      // Bell 2: chorus pair 956+964 Hz, 175ms — ascending with flutter vibrato
+      _osc('sine', 956, t + 0.200, 0.175, 0.055, {
+        attack: 0.004, decay: 0.171, sustain: 0, vibRate: 8, vibDepth: 9,
       });
-      // Sparkle at 2× for bell 2
-      _osc('triangle', 1920, t + 0.212, 0.100, 0.020, { attack: 0.004, decay: 0.096, sustain: 0 });
+      _osc('sine', 964, t + 0.200, 0.175, 0.050, {
+        attack: 0.004, decay: 0.171, sustain: 0, vibRate: 8, vibDepth: 11,
+      });
+      // 2× shimmer on bell 2
+      _osc('triangle', 1920, t + 0.203, 0.115, 0.022, { attack: 0.003, decay: 0.112, sustain: 0 });
+      // 3× shimmer — glitter peak
+      _osc('triangle', 2880, t + 0.205, 0.080, 0.012, { attack: 0.003, decay: 0.077, sustain: 0 });
+      // Breath under bell 2 peak
+      _breath(t + 0.210, 0.040, 0.007, 4600);
     } catch (e) {}
   }
 
@@ -839,60 +861,80 @@ const Sounds = (() => {
   }
 
   /**
-   * OVERJOYED_CHIRP — fairy joy cascade — can't contain happiness — YOU'RE BACK!
-   * Five ascending chime tones in rapid succession, each with a shimmer overtone.
-   * Final note holds with vibrato. Extra sparkle at 3/2× the last pitch.
-   * Axes: 640→1480 Hz / sine / staggered cascade / shimmer at 2× each / final twinkle
+   * OVERJOYED_CHIRP — detuned-pair fairy glitter shower — can't contain happiness!
+   * Five ascending chorus-pair chimes, each with 2× shimmer. Top two also get 3× shimmer.
+   * Ends with a fairy trill (rapid high alternating pips) — pure "wheee!" energy.
+   * Axes: 636+644→1474+1482 Hz / sine pairs / cascade / 2× each, 3× top two / trill ending
    */
   function _overjoyed_chirp() {
     if (!_ok('overjoyed_chirp')) return;
     try {
       const t = ctx.currentTime;
-      const pitches = [640, 800, 980, 1200, 1480];
-      const offsets = [0, 0.055, 0.112, 0.172, 0.236];
-      pitches.forEach((freq, i) => {
-        const o   = offsets[i];
-        const dur = i === 4 ? 0.160 : 0.070;
-        const opts = i === 4
-          ? { attack: 0.003, decay: dur - 0.003, sustain: 0, vibRate: 10, vibDepth: 14 }
-          : { attack: 0.003, decay: dur - 0.003, sustain: 0 };
-        _osc('sine', freq, t + o, dur, 0.08, opts);
-        // Shimmer at 2× for each chime (progressively brighter)
-        const shimGain = 0.012 + i * 0.004;
-        _osc('triangle', freq * 2, t + o + 0.003, dur * 0.7, shimGain, {
-          attack: 0.003, decay: dur * 0.7 - 0.003, sustain: 0,
+      // Five ascending chorus pairs (base frequencies, +8 Hz detuned partner each)
+      const bases   = [636, 796, 976, 1196, 1474];
+      const offsets = [0, 0.052, 0.107, 0.165, 0.228];
+      bases.forEach((freq, i) => {
+        const o      = offsets[i];
+        const dur    = i === 4 ? 0.150 : 0.065;
+        const isLast = i === 4;
+        const opts1  = isLast
+          ? { attack: 0.002, decay: dur - 0.002, sustain: 0, vibRate: 11, vibDepth: 13 }
+          : { attack: 0.002, decay: dur - 0.002, sustain: 0 };
+        const opts2  = isLast
+          ? { attack: 0.002, decay: dur - 0.002, sustain: 0, vibRate: 11, vibDepth: 16 }
+          : { attack: 0.002, decay: dur - 0.002, sustain: 0 };
+        // Chorus pair
+        _osc('sine', freq,     t + o, dur, 0.055, opts1);
+        _osc('sine', freq + 8, t + o, dur, 0.050, opts2);
+        // 2× shimmer (progressively brighter up the cascade)
+        const shimGain = 0.010 + i * 0.004;
+        _osc('triangle', freq * 2, t + o + 0.002, dur * 0.65, shimGain, {
+          attack: 0.002, decay: dur * 0.65 - 0.002, sustain: 0,
         });
+        // 3× shimmer on top two chimes — fairy-dust glitter at the peak
+        if (i >= 3) {
+          _osc('triangle', freq * 3, t + o + 0.003, dur * 0.45, 0.010, {
+            attack: 0.002, decay: dur * 0.45 - 0.002, sustain: 0,
+          });
+        }
       });
-      // Final sparkle at 3/2× last pitch — ultimate twinkle
-      _osc('triangle', 2220, t + 0.246, 0.090, 0.018, {
-        attack: 0.003, decay: 0.087, sustain: 0,
-      });
-      // Airy breath of delight at the peak
-      _breath(t + 0.236, 0.060, 0.008, 4500);
+      // Breath of pure delight at the cascade peak
+      _breath(t + 0.228, 0.060, 0.009, 4800);
+      // Fairy trill — rapid "wheee!": three quick alternating high pips
+      _osc('sine', 1800, t + 0.390, 0.032, 0.042, { attack: 0.002, decay: 0.030, sustain: 0 });
+      _osc('sine', 2160, t + 0.426, 0.032, 0.042, { attack: 0.002, decay: 0.030, sustain: 0 });
+      _osc('sine', 1800, t + 0.462, 0.032, 0.038, { attack: 0.002, decay: 0.030, sustain: 0 });
+      _osc('sine', 2160, t + 0.498, 0.038, 0.034, { attack: 0.002, decay: 0.036, sustain: 0 });
     } catch (e) {}
   }
 
   /**
-   * EXCITED_CHIRP — energetic fairy double pip — rapid energy, can't sit still!
-   * Two bright bell-pips with crystal shimmer overtones. Fast vibrato on pip 2.
-   * Axes: 1100→1320 Hz / triangle / 55–65ms / shimmer at 2× each / 22Hz wobble on pip 2
+   * EXCITED_CHIRP — three-pip detuned fairy burst — rapid energy, can't sit still!
+   * Two chorus-pair pips + a third exclamation pip at the top. Fast flutter vibrato.
+   * Axes: 1096+1104 → 1314+1326 → 1700 Hz / triangle pairs / 2× shimmer each
    */
   function _excited_chirp() {
     if (!_ok('excited_chirp')) return;
     try {
       const t = ctx.currentTime;
-      // Pip 1: 1100 Hz triangle, 55ms — bright clean ping
-      _osc('triangle', 1100, t, 0.055, 0.065, { attack: 0.003, decay: 0.052, sustain: 0 });
-      // Shimmer at 2× for pip 1
-      _osc('sine', 2200, t + 0.003, 0.040, 0.018, { attack: 0.003, decay: 0.037, sustain: 0 });
-      // [30ms gap]
-      // Pip 2: 1320 Hz triangle, 65ms — shimmer + fast wobble (jittery delight)
-      _osc('triangle', 1320, t + 0.085, 0.065, 0.065, {
-        attack: 0.003, decay: 0.062, sustain: 0,
-        vibRate: 22, vibDepth: 22,
+      // Pip 1: chorus pair 1096+1104 Hz, 50ms — bright spring ping
+      _osc('triangle', 1096, t, 0.050, 0.052, { attack: 0.002, decay: 0.048, sustain: 0 });
+      _osc('triangle', 1104, t, 0.050, 0.048, { attack: 0.002, decay: 0.048, sustain: 0 });
+      _osc('sine', 2200, t + 0.002, 0.036, 0.018, { attack: 0.002, decay: 0.034, sustain: 0 });
+
+      // [28ms gap]
+      // Pip 2: chorus pair 1314+1326 Hz, 60ms — jittery 22Hz flutter
+      _osc('triangle', 1314, t + 0.078, 0.060, 0.052, {
+        attack: 0.002, decay: 0.058, sustain: 0, vibRate: 22, vibDepth: 20,
       });
-      // Shimmer at 2× for pip 2
-      _osc('sine', 2640, t + 0.088, 0.045, 0.016, { attack: 0.003, decay: 0.042, sustain: 0 });
+      _osc('triangle', 1326, t + 0.078, 0.060, 0.048, {
+        attack: 0.002, decay: 0.058, sustain: 0, vibRate: 22, vibDepth: 24,
+      });
+      _osc('sine', 2640, t + 0.080, 0.044, 0.016, { attack: 0.002, decay: 0.042, sustain: 0 });
+
+      // Pip 3: exclamation high pip 1700 Hz — surprised fairy delight
+      _osc('sine', 1700, t + 0.150, 0.040, 0.042, { attack: 0.002, decay: 0.038, sustain: 0 });
+      _osc('triangle', 3400, t + 0.152, 0.028, 0.012, { attack: 0.002, decay: 0.026, sustain: 0 });
     } catch (e) {}
   }
 
@@ -964,6 +1006,26 @@ const Sounds = (() => {
       mix.connect(masterGain);
 
       oscR.connect(gR); osc2.connect(g2); osc3.connect(g3);
+
+      // Crystal shimmer: 1320 Hz sine fades in after 200ms — fairy-dust texture on the purr
+      const oscS  = new OscillatorNode(ctx, { type: 'sine', frequency: 1320 });
+      const gS    = new GainNode(ctx, { gain: 0 });
+      oscS.connect(gS); gS.connect(masterGain);
+      gS.gain.setValueAtTime(0, t + 0.200);
+      gS.gain.linearRampToValueAtTime(0.015, t + 0.380);
+      gS.gain.linearRampToValueAtTime(0, t + dur);
+      oscS.start(t + 0.180); oscS.stop(t + dur + 0.02);
+      oscS.onended = () => { try { gS.disconnect(); } catch(_) {} };
+      // High shimmer: 1980 Hz for extra glitter sparkle
+      const oscH  = new OscillatorNode(ctx, { type: 'sine', frequency: 1980 });
+      const gH    = new GainNode(ctx, { gain: 0 });
+      oscH.connect(gH); gH.connect(masterGain);
+      gH.gain.setValueAtTime(0, t + 0.250);
+      gH.gain.linearRampToValueAtTime(0.010, t + 0.420);
+      gH.gain.linearRampToValueAtTime(0, t + dur);
+      oscH.start(t + 0.230); oscH.stop(t + dur + 0.02);
+      oscH.onended = () => { try { gH.disconnect(); } catch(_) {} };
+
       [oscR, osc2, osc3, vib, trem].forEach(o => { o.start(t); o.stop(t + dur + 0.02); });
       oscR.onended = () => {
         try { mix.disconnect(); gR.disconnect(); g2.disconnect(); g3.disconnect(); } catch(_) {}
@@ -1336,28 +1398,44 @@ const Sounds = (() => {
     } catch (e) {}
   }
 
-  // User returned — ascending fairy chime trio with sparkle and breath of delight
+  // User returned — detuned-pair fairy greeting cascade with full shimmer stack and trill.
+  // Three ascending chorus-pair chimes, stacked 2×+3× overtones, ends with ascending trill.
   function _welcomeBack() {
     if (!_ok('welcomeBack')) return;
     try {
       const t = ctx.currentTime;
-      // Airy breath of surprise and joy
-      _breath(t, 0.040, 0.012, 4000);
-      // Chime 1: 640 Hz, 90ms
-      _osc('sine', 640, t + 0.020, 0.090, 0.08, { attack: 0.005, decay: 0.085, sustain: 0 });
-      _osc('triangle', 1280, t + 0.023, 0.060, 0.022, { attack: 0.004, decay: 0.056, sustain: 0 });
-      // Chime 2: 840 Hz, 100ms at +130ms
-      _osc('sine', 840, t + 0.130, 0.100, 0.085, { attack: 0.005, decay: 0.095, sustain: 0 });
-      _osc('triangle', 1680, t + 0.133, 0.070, 0.024, { attack: 0.004, decay: 0.066, sustain: 0 });
-      // Chime 3: 1080 Hz, 160ms at +245ms — vibrato + double sparkle
-      _osc('sine', 1080, t + 0.245, 0.160, 0.09, {
-        attack: 0.005, decay: 0.155, sustain: 0,
-        vibRate: 8, vibDepth: 14,
+      // Airy gasp of joy
+      _breath(t, 0.032, 0.012, 4200);
+
+      // Chime 1: chorus pair 636+644 Hz, 90ms
+      _osc('sine', 636, t + 0.018, 0.090, 0.055, { attack: 0.004, decay: 0.086, sustain: 0 });
+      _osc('sine', 644, t + 0.018, 0.090, 0.050, { attack: 0.004, decay: 0.086, sustain: 0 });
+      _osc('triangle', 1280, t + 0.020, 0.062, 0.022, { attack: 0.003, decay: 0.059, sustain: 0 });
+      _osc('triangle', 1920, t + 0.022, 0.042, 0.012, { attack: 0.003, decay: 0.039, sustain: 0 });
+
+      // Chime 2: chorus pair 836+844 Hz, 100ms at +125ms
+      _osc('sine', 836, t + 0.125, 0.100, 0.055, { attack: 0.004, decay: 0.096, sustain: 0 });
+      _osc('sine', 844, t + 0.125, 0.100, 0.050, { attack: 0.004, decay: 0.096, sustain: 0 });
+      _osc('triangle', 1680, t + 0.127, 0.070, 0.022, { attack: 0.003, decay: 0.067, sustain: 0 });
+      _osc('triangle', 2520, t + 0.129, 0.048, 0.012, { attack: 0.003, decay: 0.045, sustain: 0 });
+      _breath(t + 0.130, 0.028, 0.007, 4500);
+
+      // Chime 3: chorus pair 1076+1084 Hz, 155ms at +240ms — flutter vibrato + full shimmer
+      _osc('sine', 1076, t + 0.240, 0.155, 0.055, {
+        attack: 0.004, decay: 0.151, sustain: 0, vibRate: 9, vibDepth: 13,
       });
-      _osc('triangle', 2160, t + 0.248, 0.100, 0.020, { attack: 0.004, decay: 0.096, sustain: 0 });
-      _osc('triangle', 3240, t + 0.252, 0.070, 0.012, { attack: 0.004, decay: 0.066, sustain: 0 });
-      // Second breath at the peak — fairy-dust texture
-      _breath(t + 0.250, 0.050, 0.008, 4800);
+      _osc('sine', 1084, t + 0.240, 0.155, 0.050, {
+        attack: 0.004, decay: 0.151, sustain: 0, vibRate: 9, vibDepth: 16,
+      });
+      _osc('triangle', 2160, t + 0.242, 0.108, 0.022, { attack: 0.003, decay: 0.105, sustain: 0 });
+      _osc('triangle', 3240, t + 0.244, 0.075, 0.014, { attack: 0.003, decay: 0.072, sustain: 0 });
+      // Sparkle breath at the peak
+      _breath(t + 0.246, 0.055, 0.009, 5000);
+
+      // Ascending fairy trill — "yay you're back!" three glitter pips
+      _osc('sine', 1680, t + 0.410, 0.030, 0.038, { attack: 0.002, decay: 0.028, sustain: 0 });
+      _osc('sine', 2016, t + 0.444, 0.030, 0.035, { attack: 0.002, decay: 0.028, sustain: 0 });
+      _osc('sine', 2400, t + 0.478, 0.036, 0.030, { attack: 0.002, decay: 0.034, sustain: 0 });
     } catch (e) {}
   }
 
