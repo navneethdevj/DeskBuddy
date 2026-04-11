@@ -2283,23 +2283,17 @@ body.full-mode #sp-trigger { display: block; }
 body.pip-mode  #sp-trigger { display: none !important; }
 
 /* ── Session sidebar icon — floating glass button on right edge ─────── */
-/*
-   A small squircle (28×28 px) that floats at the vertical centre of the
-   right edge.  Uses the same iOS glass recipe as the panel cards.
-   State ring around it changes colour with the timer state so the user
-   always has a focus-at-a-glance reading even when the panel is hidden.
-*/
 #sp-icon {
   position: fixed;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;        /* squircle — matches iOS icon radius */
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;        /* squircle */
   z-index: 2495;
   cursor: pointer;
-  display: none;              /* full-mode only */
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -2314,65 +2308,92 @@ body.pip-mode  #sp-trigger { display: none !important; }
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   border-right: 1px solid rgba(0, 0, 0, 0.14);
   border-bottom: 1px solid rgba(0, 0, 0, 0.20);
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.45),
-    0 0 0 0.5px rgba(255, 255, 255, 0.07) inset;
 
-  /* Smooth transitions */
+  /* Transitions for hidden state + hover; animation handles idle pulse */
   transition:
     opacity       0.30s ease,
     transform     0.30s cubic-bezier(0.32, 0.72, 0, 1),
-    box-shadow    0.22s ease,
-    border-color  0.22s ease;
+    box-shadow    0.22s ease;
 
-  animation: spIconIdle 3.8s ease-in-out infinite;
+  animation: spIconBreath 3.6s ease-in-out infinite;
 }
 body.full-mode #sp-icon { display: flex; }
 body.pip-mode  #sp-icon { display: none !important; }
 
-/* Gentle breathing pulse so the icon subtly hints at interactivity */
-@keyframes spIconIdle {
+/*
+   spIconBreath — three-layer pulse:
+   1. Box-shadow glow dims → brightens (periwinkle halo)
+   2. Border-top specular softly fades in/out
+   The star twinkles via a separate animation on .sp-star-glyph.
+*/
+@keyframes spIconBreath {
   0%, 100% {
     box-shadow:
-      0 6px 20px rgba(0, 0, 0, 0.45),
-      0 0 0 0.5px rgba(255, 255, 255, 0.07) inset;
+      0 5px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
   }
   50% {
     box-shadow:
-      0 6px 24px rgba(0, 0, 0, 0.50),
-      0 0 12px rgba(145, 125, 255, 0.18),
-      0 0 0 0.5px rgba(255, 255, 255, 0.10) inset;
+      0 7px 26px rgba(0, 0, 0, 0.50),
+      0 0 18px rgba(145, 120, 255, 0.22),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12) inset;
   }
 }
 
 #sp-icon:hover {
-  transform: translateY(-50%) scale(1.08);
+  transform: translateY(-50%) scale(1.10);
   box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.55),
-    0 0 16px rgba(155, 135, 255, 0.30),
-    0 0 0 0.5px rgba(255, 255, 255, 0.14) inset;
-  animation: none;   /* stop idle pulse on hover */
+    0 10px 32px rgba(0, 0, 0, 0.58),
+    0 0 22px rgba(165, 140, 255, 0.38),
+    0 0 0 0.5px rgba(255, 255, 255, 0.16) inset;
+  animation: none;
 }
 
-/* Brain SVG icon */
+/* Brain SVG wrapper — breathes brightness in sync with the glow pulse */
 #sp-icon-brain {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  color: rgba(185, 168, 255, 0.68);
-  transition: color 0.25s ease, filter 0.25s ease;
+  color: rgba(185, 168, 255, 0.62);
+  /* brightness pulse — dim 0.62 → bright 0.90 → dim, matching spIconBreath */
+  animation: spBrainBreath 3.6s ease-in-out infinite;
+  transition: filter 0.22s ease;
   pointer-events: none;
+  overflow: visible;   /* let the star glyph not get clipped */
 }
+@keyframes spBrainBreath {
+  0%, 100% { color: rgba(185, 168, 255, 0.62); }
+  50%      { color: rgba(210, 196, 255, 0.90); }
+}
+
 #sp-icon:hover #sp-icon-brain {
-  color: rgba(215, 202, 255, 0.96);
-  filter: drop-shadow(0 0 5px rgba(185, 165, 255, 0.55));
+  color: rgba(222, 210, 255, 0.97);
+  filter: drop-shadow(0 0 6px rgba(190, 170, 255, 0.60));
+  animation: none;
+}
+
+/* ✦ sparkle — twinkles at a different phase so it feels alive, not mechanical */
+.sp-star-glyph {
+  animation: spStarTwinkle 3.6s ease-in-out infinite;
+  transform-origin: 16.4px 5.5px;   /* pivot at the star's centre */
+}
+@keyframes spStarTwinkle {
+  0%   { opacity: 0.20; transform: scale(0.85); }
+  30%  { opacity: 0.22; transform: scale(0.88); }  /* lags behind main pulse */
+  65%  { opacity: 0.88; transform: scale(1.18); }  /* peak — star brightens later */
+  100% { opacity: 0.20; transform: scale(0.85); }
+}
+#sp-icon:hover .sp-star-glyph {
+  opacity: 1;
+  transform: scale(1.25);
+  animation: none;
 }
 
 /* State ring — thin coloured glow ring around the icon showing focus state */
 #sp-icon-ring {
   position: absolute;
-  inset: -3px;
-  border-radius: 13px;   /* slightly larger than icon radius */
+  inset: -4px;
+  border-radius: 15px;   /* slightly larger than icon's 11px radius */
   border: 1.5px solid transparent;
   pointer-events: none;
   transition: border-color 0.6s ease, box-shadow 0.6s ease;

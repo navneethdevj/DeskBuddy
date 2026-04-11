@@ -214,9 +214,10 @@
 
   <!-- Sidebar icon — small floating glass brain icon on the right edge.
        Hover it (or the trigger zone) to open the session panel.
-       The ring around it changes colour with timer focus state. -->
+       The ring around it changes colour with timer focus state.
+       The ✦ star in the top-right corner of the SVG twinkles independently. -->
   <button id="sp-icon" title="Session panel" aria-label="Open session panel">
-    <!-- Brain SVG — top-down view, two hemispheres, gyri wrinkles -->
+    <!-- Brain SVG — top-down view, two hemispheres, gyri wrinkles + ✦ sparkle -->
     <svg id="sp-icon-brain" viewBox="0 0 22 22" fill="none"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <!-- Left hemisphere outer shell -->
@@ -263,6 +264,10 @@
       <path d="M16.2 14C15.1 14.9 13.9 14.6 13.5 13.5"
             stroke="currentColor" stroke-width="1.1"
             stroke-linecap="round"/>
+      <!-- ✦ sparkle — top-right corner, twinkles independently -->
+      <text class="sp-star-glyph" x="16.4" y="7.2"
+            font-size="4.6" text-anchor="middle"
+            fill="currentColor">✦</text>
     </svg>
     <span id="sp-icon-ring"></span>
   </button>
