@@ -11,6 +11,9 @@
   const world     = document.getElementById('world');
   const statusBar = document.getElementById('status-bar');
 
+  // 0. Settings — load persisted prefs before any module reads them
+  Settings.init();
+
   // 1. Audio context — register gesture listeners so AudioContext can resume
   Sounds.init();
 
@@ -54,6 +57,9 @@
   _wireBrainToSounds();
   _wireSessionToUI();
   _wireWindowControls();
+
+  // 11. Settings panel — must come after all modules are initialised
+  SettingsPanel.init();
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.

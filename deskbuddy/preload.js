@@ -45,4 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('full-mode-exited', handler);
     return () => ipcRenderer.removeListener('full-mode-exited', handler);
   },
+
+  // Settings persistence — survives localStorage clears via main-process Store.
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (obj) => ipcRenderer.send('settings:set', obj),
 });

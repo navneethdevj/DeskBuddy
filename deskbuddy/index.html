@@ -10,6 +10,121 @@
   <div id="world"></div>
   <div id="status-bar"></div>
 
+  <!-- Settings gear button — top-left, full-mode only -->
+  <button id="settings-gear-btn" title="Settings" aria-label="Open settings" aria-expanded="false">⚙</button>
+
+  <!-- Settings panel — floating overlay, full-mode only -->
+  <div id="settings-panel" role="dialog" aria-label="Settings" aria-modal="true">
+    <div id="settings-header">
+      <span>Settings</span>
+      <button id="settings-close-btn" title="Close settings" aria-label="Close settings">✕</button>
+    </div>
+    <div id="settings-body">
+
+      <!-- ── Level 1: most-used controls ─────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Quick Controls</div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Mute preset
+            <div class="settings-row-sublabel">Which sounds play</div>
+          </div>
+          <select id="sp-mute-preset" aria-label="Mute preset">
+            <option value="ALL_ON">All on</option>
+            <option value="ESSENTIAL">Essential</option>
+            <option value="REMINDERS_ONLY">Reminders only</option>
+            <option value="ALL_OFF">All off</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Break interval
+            <div class="settings-row-sublabel">Remind me every N minutes</div>
+          </div>
+          <select id="sp-break-interval" aria-label="Break interval">
+            <option value="0">Off</option>
+            <option value="15">15 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <!-- ── Level 2: all other features ─────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Companion</div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Size
+            <div class="settings-row-sublabel">Compact overlay window size</div>
+          </div>
+          <select id="sp-companion-size" aria-label="Companion size">
+            <option value="S">Small</option>
+            <option value="M">Medium</option>
+            <option value="L">Large</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Brightness
+            <div class="settings-row-sublabel">World filter (0.3 – 1.0)</div>
+          </div>
+          <input type="range" id="sp-brightness" min="0.3" max="1.0" step="0.05"
+                 aria-label="Brightness">
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Focus</div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Sensitivity
+            <div class="settings-row-sublabel">How quickly distracted state triggers</div>
+          </div>
+          <select id="sp-sensitivity" aria-label="Sensitivity">
+            <option value="GENTLE">Gentle</option>
+            <option value="NORMAL">Normal</option>
+            <option value="STRICT">Strict</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Phone detection
+            <div class="settings-row-sublabel">Detect head-down phone posture</div>
+          </div>
+          <input type="checkbox" id="sp-phone-detection" aria-label="Phone detection">
+        </div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Audio</div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Ambient soundscape
+            <div class="settings-row-sublabel">Background drone sounds</div>
+          </div>
+          <input type="checkbox" id="sp-drone-enabled" aria-label="Ambient soundscape">
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            Night auto-volume
+            <div class="settings-row-sublabel">Reduce volume at night</div>
+          </div>
+          <input type="checkbox" id="sp-night-auto-volume" aria-label="Night auto-volume">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Compact mode: click to expand to full-screen -->
   <button id="compact-expand-btn" title="Full screen (Ctrl+Shift+P)">⛶</button>
   <!-- Full-screen mode: click to return to compact overlay -->
@@ -53,6 +168,8 @@
   <script src="components/session.js"></script>
   <script src="components/camera.js"></script>
   <script src="components/perception.js"></script>
+  <script src="components/settings.js"></script>
+  <script src="ui/settingsPanel.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
