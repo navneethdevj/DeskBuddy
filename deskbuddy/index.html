@@ -406,6 +406,15 @@
   <!-- Break ambient glow — pulses once when user takes a break -->
   <div id="break-glow" aria-hidden="true"></div>
 
+  <!-- Break card — context-aware modal shown when a break starts -->
+  <div id="break-card" role="dialog" aria-label="Break time" aria-hidden="true">
+    <div id="break-card-emoji"  class="bk-emoji">☕</div>
+    <div id="break-card-title"  class="bk-title">time for a break ✦</div>
+    <div id="break-card-body"   class="bk-body">grab a drink and rest your eyes</div>
+    <div id="break-card-budget" class="bk-budget">5:00 left</div>
+    <button id="break-card-dismiss" class="bk-dismiss">got it ✦</button>
+  </div>
+
   <!-- Milestone badge — shown briefly by Brain.onMilestone -->
   <div id="milestone-badge" class="milestone-badge"></div>
 

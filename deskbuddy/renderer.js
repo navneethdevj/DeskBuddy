@@ -408,14 +408,14 @@
       // Break countdown — start/stop the live update interval
       if (newState === 'PAUSED') {
         _startBreakCountdown();
-        // Companion relaxes; don't override if overjoyed is still running
-        Emotion.preview('happy', 2200);
         // Teal glow sweeps up from the bottom
         const glow = document.getElementById('break-glow');
         if (glow) {
           glow.classList.add('active');
-          setTimeout(() => glow.classList.remove('active'), 3000);
+          setTimeout(() => glow.classList.remove('active'), 3500);
         }
+        // Context-aware break card overlay + companion emotion
+        _fireBreakCard(stats);
         // Auto-open panel so user sees the break countdown
         _panelOpen();
       } else {
@@ -490,7 +490,7 @@
     if (icon)  icon.classList.add('sp-icon-hidden');
   }
 
-  // ── Celebration — confetti burst + banner + companion overjoyed ───────────
+  // ── Celebration — confetti falls from above + banner + companion overjoyed ─
 
   function _fireCelebration(type) {
     const overlay = document.getElementById('celebration-overlay');
@@ -504,8 +504,9 @@
       setTimeout(() => world.classList.remove('session-complete-flash'), 1500);
     }
 
-    // Confetti burst
-    const symbols = ['✦', '✦', '✧', '·', '·', '★', '♡', '⬡', '◆'];
+    // ── Confetti falls from above the screen ──────────────────────────────
+    // Symbols — mix of glyphs and emoji for a festive feel
+    const symbols = ['🎉', '🎊', '✦', '✦', '✧', '★', '·', '◆', '♡', '⬡', '▲', '●'];
     const colors  = [
       'rgba(175, 155, 255, 0.95)',
       'rgba(100, 220, 180, 0.95)',
@@ -513,50 +514,179 @@
       'rgba(245, 185, 255, 0.95)',
       'rgba(140, 215, 255, 0.95)',
       'rgba(255, 145, 165, 0.95)',
+      'rgba(255, 220, 100, 0.95)',
+      'rgba(160, 255, 200, 0.95)',
     ];
 
-    const count = type === 'complete' ? 52 : 26;
+    const count = type === 'complete' ? 72 : 36;
     for (let i = 0; i < count; i++) {
-      const p   = document.createElement('div');
+      const p = document.createElement('div');
       p.className = 'confetti-particle';
-      p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-      const x0  = 10  + Math.random() * 80;
-      const y0  = 15  + Math.random() * 60;
-      const dx  = (Math.random() - 0.5) * 170;
-      const dy  = 55  + Math.random() * 110;
-      const rot = (Math.random() - 0.5) * 900;
-      const dur = 2.0 + Math.random() * 1.4;
-      const del = Math.random() * 0.65;
-      p.style.cssText = [
-        `left:${x0}%`, `top:${y0}%`,
-        `color:${colors[Math.floor(Math.random() * colors.length)]}`,
-        `font-size:${9 + Math.random() * 13}px`,
-        `--dx:${dx}px`, `--dy:${dy}px`, `--rot:${rot}deg`,
-        `--dur:${dur}s`, `--del:${del}s`,
-      ].join(';');
+
+      // Use rectangles for ~30% of pieces (paper confetti effect)
+      const useRect = Math.random() < 0.30;
+      if (useRect) {
+        const w = 6 + Math.random() * 6;
+        const h = 4 + Math.random() * 4;
+        const col = colors[Math.floor(Math.random() * colors.length)];
+        p.style.width  = `${w}px`;
+        p.style.height = `${h}px`;
+        p.style.borderRadius = '2px';
+        p.style.background   = col;
+        p.textContent = '';
+      } else {
+        p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        p.style.color    = colors[Math.floor(Math.random() * colors.length)];
+        p.style.fontSize = `${11 + Math.random() * 14}px`;
+      }
+
+      // Start ABOVE the viewport — top: -5% to -18%
+      const x0  = Math.random() * 100;          // spread across full width
+      const y0  = -(5 + Math.random() * 13);    // -5% to -18% (above screen)
+      // Fall DOWN through the screen (700–1100 px)
+      const dy  = 700 + Math.random() * 400;
+      // Slight horizontal drift
+      const dx  = (Math.random() - 0.5) * 140;
+      const rot = (Math.random() - 0.5) * 1080;
+      const dur = 2.4 + Math.random() * 2.0;
+      const del = Math.random() * 1.4;
+
+      p.style.left = `${x0}%`;
+      p.style.top  = `${y0}%`;
+      p.style.setProperty('--dx',  `${dx}px`);
+      p.style.setProperty('--dy',  `${dy}px`);
+      p.style.setProperty('--rot', `${rot}deg`);
+      p.style.setProperty('--dur', `${dur}s`);
+      p.style.setProperty('--del', `${del}s`);
+
       overlay.appendChild(p);
-      setTimeout(() => p.remove(), (dur + del + 0.5) * 1000);
+      setTimeout(() => p.remove(), (dur + del + 0.6) * 1000);
     }
 
     // Banner
     if (msg) {
       const titleEl = msg.querySelector('.cel-title');
       const subEl   = msg.querySelector('.cel-sub');
-      if (titleEl) titleEl.textContent = '✦ session complete ✦';
-      if (subEl)   subEl.textContent   = 'great work — you did it';
+      if (titleEl) titleEl.textContent = '🎉 session complete 🎉';
+      if (subEl)   subEl.textContent   = 'great work — you absolutely did it ✦';
       msg.classList.add('active');
     }
 
     // Companion overjoyed
-    Emotion.preview('overjoyed', 4500);
+    Emotion.preview('overjoyed', 5000);
     Sounds.play('overjoyed_chirp');
 
-    // Clean up
-    const totalMs = 3400;
+    // Clean up banner
     setTimeout(() => {
       if (msg) msg.classList.remove('active');
-      setTimeout(() => { overlay.innerHTML = ''; }, 600);
-    }, totalMs);
+      setTimeout(() => { overlay.innerHTML = ''; }, 700);
+    }, 4000);
+  }
+
+  // ── Break card — context-aware modal with emoji + message ────────────────
+
+  function _fireBreakCard(stats) {
+    const card     = document.getElementById('break-card');
+    const emojiEl  = document.getElementById('break-card-emoji');
+    const titleEl  = document.getElementById('break-card-title');
+    const bodyEl   = document.getElementById('break-card-body');
+    const budgetEl = document.getElementById('break-card-budget');
+    if (!card) return;
+
+    // ── Context resolution ──────────────────────────────────────────────────
+    const period  = (window.Brain && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
+    const elapsed = stats ? (stats.elapsed || 0) : 0;           // wall-clock seconds
+    const focused = stats ? (stats.focusedSeconds || 0) : 0;    // seconds in focused state
+    const focusPct = elapsed > 0 ? (focused / elapsed) : 0;
+
+    // ── Emoji + message selection ────────────────────────────────────────────
+    let emoji, title, body;
+
+    // Night — always hydrate + rest
+    if (period === 'NIGHT') {
+      emoji = '🌙';
+      title = 'late-night session ✦';
+      body  = 'drink some water and rest your eyes\na little — you deserve it';
+
+    // Morning — energise
+    } else if (period === 'MORNING') {
+      if (elapsed >= 3600) {
+        // More than an hour — push toward breakfast
+        emoji = '🥐';
+        title = 'time for a real break';
+        body  = "you've been at it for a while — go\nget breakfast, seriously";
+      } else {
+        emoji = '☕';
+        title = 'coffee time ✦';
+        body  = "grab a coffee and stretch —\nyou're crushing the morning";
+      }
+
+    // Evening — wind down
+    } else if (period === 'EVENING') {
+      emoji = '🍵';
+      title = 'herbal tea time ✦';
+      body  = 'wind down a little — maybe some\nchamomile or green tea?';
+
+    // Afternoon — main working hours
+    } else {
+      if (focusPct >= 0.82) {
+        // Highly focused session — warm reward
+        emoji = '🌊';
+        title = "you've been in the zone \u2726";
+        body  = 'seriously impressive focus — go\nget your favourite drink';
+      } else if (elapsed >= 5400) {
+        // 90+ minutes — longer break needed
+        emoji = '🧘';
+        title = 'proper break time';
+        body  = 'step away from the screen — stretch,\nwalk, breathe for a bit';
+      } else if (elapsed >= 2700) {
+        // 45+ minutes
+        emoji = '☕';
+        title = 'tea or coffee? ✦';
+        body  = 'well earned — grab something warm\nand give your eyes a rest';
+      } else {
+        emoji = '✨';
+        title = 'quick breather ✦';
+        body  = 'take a moment — look away from\nthe screen and breathe';
+      }
+    }
+
+    if (emojiEl) emojiEl.textContent = emoji;
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl)  bodyEl.textContent  = body;
+
+    // Break budget
+    if (budgetEl) {
+      const budgetMs   = Session.getBreakTimeRemaining ? Session.getBreakTimeRemaining() : 300000;
+      const budgetSecs = Math.max(0, Math.ceil(budgetMs / 1000));
+      const bm = Math.floor(budgetSecs / 60);
+      const bs = String(budgetSecs % 60).padStart(2, '0');
+      budgetEl.textContent = `${bm}:${bs} break budget`;
+    }
+
+    // Companion — warm + happy
+    Emotion.preview('love', 3000);
+
+    // Show card
+    card.setAttribute('aria-hidden', 'false');
+    card.classList.add('active');
+
+    // Auto-dismiss after 6 s
+    let _bkTimer = setTimeout(() => _dismissBreakCard(), 6000);
+
+    // Dismiss button
+    const dismissBtn = document.getElementById('break-card-dismiss');
+    function _dismissBreakCard() {
+      clearTimeout(_bkTimer);
+      card.classList.remove('active');
+      card.setAttribute('aria-hidden', 'true');
+      // Remove listener to avoid stacking
+      if (dismissBtn) dismissBtn.removeEventListener('click', _dismissBreakCard);
+    }
+    if (dismissBtn) {
+      dismissBtn.removeEventListener('click', _dismissBreakCard); // guard
+      dismissBtn.addEventListener('click', _dismissBreakCard, { once: true });
+    }
   }
 
   // ── Break countdown helpers ───────────────────────────────────────────────

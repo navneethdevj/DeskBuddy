@@ -2979,19 +2979,18 @@ body.pip-mode #session-timer { opacity: 0.50; font-size: 11px; }
   /* particles are absolutely positioned children */
 }
 
-/* Each confetti piece spawned by _fireCelebration() */
+/* Each confetti piece spawned by _fireCelebration() — falls from ABOVE screen */
 .confetti-particle {
   position: absolute;
   pointer-events: none;
-  font-size: 12px;
   opacity: 0;
-  animation: confettiFloat var(--dur, 2.5s) ease-in var(--del, 0s) forwards;
+  animation: confettiFall var(--dur, 3s) cubic-bezier(0.22, 0.61, 0.36, 1) var(--del, 0s) forwards;
 }
-@keyframes confettiFloat {
-  0%   { opacity: 0;   transform: translate(0, 0)                       rotate(0deg)          scale(1.1); }
-  8%   { opacity: 1; }
-  80%  { opacity: 0.75; }
-  100% { opacity: 0;   transform: translate(var(--dx, 0px), var(--dy, 80px)) rotate(var(--rot, 360deg)) scale(0.55); }
+@keyframes confettiFall {
+  0%   { opacity: 0;    transform: translate(0, 0)                                 rotate(0deg)           scale(1.1); }
+  6%   { opacity: 1; }
+  85%  { opacity: 0.72; }
+  100% { opacity: 0;    transform: translate(var(--dx, 0px), var(--dy, 800px))     rotate(var(--rot, 540deg)) scale(0.45); }
 }
 
 /* Banner that floats up during celebration */
@@ -3065,3 +3064,107 @@ body.pip-mode #session-timer { opacity: 0.50; font-size: 11px; }
   transition: opacity 1.0s ease;
 }
 #break-glow.active { opacity: 1; }
+
+/* =====================================================================
+   BREAK CARD — context-aware modal overlay when a break starts
+   ===================================================================== */
+
+#break-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-44%) scale(0.84);
+  opacity: 0;
+  z-index: 3100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 32px 22px;
+  min-width: 240px;
+  max-width: 300px;
+  text-align: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+
+  /* iOS dark-mode frosted glass */
+  background: rgba(14, 10, 28, 0.72);
+  backdrop-filter: blur(60px) saturate(2.0) brightness(1.20);
+  -webkit-backdrop-filter: blur(60px) saturate(2.0) brightness(1.20);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.20);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 26px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.60),
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+
+  transition: opacity 0.45s ease, transform 0.50s cubic-bezier(0.34, 1.52, 0.64, 1);
+  -webkit-app-region: no-drag;
+}
+
+#break-card.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+
+/* Emoji */
+.bk-emoji {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 14px rgba(255, 220, 120, 0.35));
+}
+
+/* Title */
+.bk-title {
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.10em;
+  color: rgba(242, 238, 255, 0.96);
+  text-shadow: 0 0 22px rgba(165, 140, 255, 0.45);
+}
+
+/* Body */
+.bk-body {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgba(185, 175, 255, 0.60);
+  line-height: 1.5;
+  max-width: 210px;
+}
+
+/* Break budget remaining */
+.bk-budget {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(80, 220, 170, 0.50);
+  margin-top: 2px;
+}
+
+/* Dismiss button */
+.bk-dismiss {
+  margin-top: 10px;
+  padding: 8px 22px;
+  background: rgba(150, 125, 255, 0.18);
+  border: 1px solid rgba(160, 140, 255, 0.32);
+  border-radius: 10px;
+  color: rgba(215, 205, 255, 0.85);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: background 0.16s, border-color 0.16s, transform 0.10s;
+}
+.bk-dismiss:hover  { background: rgba(150, 125, 255, 0.30); border-color: rgba(165, 148, 255, 0.50); }
+.bk-dismiss:active { transform: scale(0.96); }
+
+body.pip-mode #break-card { display: none !important; }
