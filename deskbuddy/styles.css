@@ -3242,3 +3242,289 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 .bk-dismiss:active { transform: scale(0.96); }
 
 body.pip-mode #break-card { display: none !important; }
+
+/* =====================================================================
+   ANALYTICS PANEL — post-session focus report overlay
+   z-index 3200 — above celebration (3001) and break-card (3100)
+   ===================================================================== */
+
+#analytics-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.38s ease;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#analytics-panel.analytics-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.pip-mode #analytics-panel { display: none !important; }
+
+/* ── Inner card (iOS dark frosted glass) ────────────────────────── */
+#analytics-inner {
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 135, 255, 0.25) transparent;
+
+  background: rgba(14, 10, 28, 0.82);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.20);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 26px;
+  padding: 20px 20px 22px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  /* Slide up when appearing */
+  transform: translateY(14px);
+  transition: transform 0.44s cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+#analytics-panel.analytics-visible #analytics-inner {
+  transform: translateY(0);
+}
+
+/* ── Header ────────────────────────────────────────────────────── */
+#analytics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#analytics-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(175, 155, 255, 0.65);
+}
+
+#analytics-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.30);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 5px;
+  line-height: 1;
+  transition: color 0.15s;
+  -webkit-app-region: no-drag;
+}
+#analytics-close-btn:hover { color: rgba(255, 255, 255, 0.72); }
+
+/* ── Focus timeline canvas ─────────────────────────────────────── */
+#analytics-chart {
+  width: 100%;
+  height: 110px;
+  border-radius: 10px;
+  display: block;
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Session stats grid ────────────────────────────────────────── */
+.ast-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ast-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.042);
+  border-radius: 12px;
+  padding: 10px 8px 8px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ast-val {
+  font-size: 20px;
+  font-weight: 300;
+  color: rgba(225, 215, 255, 0.92);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.ast-unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(165, 155, 220, 0.70);
+  letter-spacing: 0;
+}
+
+.ast-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+  margin-top: 4px;
+}
+
+.ast-goal {
+  font-size: 11px;
+  color: rgba(200, 190, 240, 0.60);
+  text-align: center;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.032);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ast-goal-yes { color: rgba(100, 220, 160, 0.92); }
+.ast-goal-no  { color: rgba(255, 120, 110, 0.85); }
+
+/* ── Period tabs ───────────────────────────────────────────────── */
+#analytics-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.atab {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.042);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.30);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  -webkit-app-region: no-drag;
+  font-family: inherit;
+  outline: none;
+}
+
+.atab:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.atab-active {
+  background: rgba(155, 135, 255, 0.18);
+  border-color: rgba(155, 135, 255, 0.30);
+  color: rgba(195, 180, 255, 0.90);
+}
+
+/* ── Historical summary ────────────────────────────────────────── */
+#analytics-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ahist-empty {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+  padding: 14px 0;
+}
+
+.ahist-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.ahist-item {
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 10px;
+  padding: 8px 6px 6px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ahist-val {
+  font-size: 16px;
+  font-weight: 300;
+  color: rgba(215, 205, 255, 0.88);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.ahist-unit {
+  font-size: 10px;
+  color: rgba(155, 145, 210, 0.65);
+}
+
+.ahist-lbl {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 3px;
+}
+
+/* ── Weekly mini bar chart ─────────────────────────────────────── */
+.ahist-week-chart {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  padding: 0 2px;
+}
+
+.ahist-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.ahist-bar-wrap {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ahist-bar {
+  width: 100%;
+  min-height: 0;
+  border-radius: 4px 4px 2px 2px;
+  background: rgba(145, 130, 240, 0.38);
+  transition: height 0.35s ease;
+}
+
+.ahist-bar-today {
+  background: rgba(155, 140, 255, 0.68);
+  box-shadow: 0 0 6px rgba(155, 140, 255, 0.28);
+}
+
+.ahist-bar-lbl {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.ahist-bar-today-lbl {
+  color: rgba(195, 180, 255, 0.65);
+}

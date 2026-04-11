@@ -92,6 +92,7 @@
   _wireSettings();
   _wireBreakReminder();
   _wireSidebar();
+  _wireAnalytics();
 
   // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
   // Read/write the three HH:MM:SS number fields as a single total-seconds value.
@@ -378,6 +379,8 @@
         badge.classList.add('visible');
         setTimeout(() => badge.classList.remove('visible'), 3000);
       }
+      // Record the focus milestone on the session timeline
+      if (window.Session) Session.recordMilestone(mins);
     });
   }
 
@@ -1345,6 +1348,30 @@
 
     // Schedule close when mouse leaves the panel
     panel.addEventListener('mouseleave', _scheduleClose);
+  }
+
+  // ── _wireAnalytics ────────────────────────────────────────────────────────
+  // Initialise the Analytics module and schedule the focus-report panel after
+  // each COMPLETED or FAILED session.  The delay lets the celebration/outcome
+  // screen animate in first before the report overlays on top.
+
+  function _wireAnalytics() {
+    if (!window.Analytics) return;
+
+    Analytics.init();
+
+    Session.onSessionStateChange((newState) => {
+      if (newState !== 'COMPLETED' && newState !== 'FAILED') return;
+
+      // COMPLETED: wait for confetti + banner to clear (≈4 s) + a breath (1.5 s)
+      // FAILED:    shorter delay — just let the outcome screen settle (1.2 s)
+      const delay = newState === 'COMPLETED' ? 5500 : 1200;
+
+      setTimeout(() => {
+        const data = Session.getLastSessionData ? Session.getLastSessionData() : null;
+        if (data) Analytics.show(data);
+      }, delay);
+    });
   }
 
 })();

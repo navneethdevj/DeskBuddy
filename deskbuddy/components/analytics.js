@@ -36,6 +36,9 @@ const Analytics = (() => {
       .replace(/>/g, '&gt;');
   }
 
+  /** Safely stringify any value for injection into innerHTML. */
+  function _safe(v) { return _esc(String(v)); }
+
   function _fmtStreak(secs) {
     const m = Math.floor(secs / 60);
     const s = String(Math.round(secs % 60)).padStart(2, '0');
@@ -206,15 +209,15 @@ const Analytics = (() => {
     el.innerHTML = `
       <div class="ast-row">
         <div class="ast-stat">
-          <div class="ast-val">${focPct}<span class="ast-unit">%</span></div>
+          <div class="ast-val">${_safe(focPct)}<span class="ast-unit">%</span></div>
           <div class="ast-lbl">focused</div>
         </div>
         <div class="ast-stat">
-          <div class="ast-val">${_fmtStreak(streak)}</div>
+          <div class="ast-val">${_safe(_fmtStreak(streak))}</div>
           <div class="ast-lbl">best streak</div>
         </div>
         <div class="ast-stat">
-          <div class="ast-val">${distr}</div>
+          <div class="ast-val">${_safe(distr)}</div>
           <div class="ast-lbl">distractions</div>
         </div>
       </div>
@@ -272,27 +275,27 @@ const Analytics = (() => {
       ${miniChart}
       <div class="ahist-grid">
         <div class="ahist-item">
-          <div class="ahist-val">${count}</div>
+          <div class="ahist-val">${_safe(count)}</div>
           <div class="ahist-lbl">sessions</div>
         </div>
         <div class="ahist-item">
-          <div class="ahist-val">${completed}<span class="ahist-unit">/${count}</span></div>
+          <div class="ahist-val">${_safe(completed)}<span class="ahist-unit">/${_safe(count)}</span></div>
           <div class="ahist-lbl">completed</div>
         </div>
         <div class="ahist-item">
-          <div class="ahist-val">${focMins}<span class="ahist-unit">m</span></div>
+          <div class="ahist-val">${_safe(focMins)}<span class="ahist-unit">m</span></div>
           <div class="ahist-lbl">focused</div>
         </div>
         <div class="ahist-item">
-          <div class="ahist-val">${avgPct}<span class="ahist-unit">%</span></div>
+          <div class="ahist-val">${_safe(avgPct)}<span class="ahist-unit">%</span></div>
           <div class="ahist-lbl">avg focus</div>
         </div>
         <div class="ahist-item">
-          <div class="ahist-val">${_fmtStreak(bestSecs)}</div>
+          <div class="ahist-val">${_safe(_fmtStreak(bestSecs))}</div>
           <div class="ahist-lbl">best streak</div>
         </div>
         <div class="ahist-item">
-          <div class="ahist-val">${totalDistr}</div>
+          <div class="ahist-val">${_safe(totalDistr)}</div>
           <div class="ahist-lbl">distractions</div>
         </div>
       </div>
