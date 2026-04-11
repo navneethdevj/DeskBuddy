@@ -1315,6 +1315,9 @@
       if (_hideTimer) return;
       _hideTimer = setTimeout(() => {
         _hideTimer = null;
+        // Don't close while the user has keyboard focus inside the panel
+        // (e.g. typing in the goal input — mouse may have drifted out)
+        if (panel.contains(document.activeElement)) return;
         panel.classList.remove('sidebar-open');
         if (icon) icon.classList.remove('sp-icon-hidden');
       }, 380);
@@ -1325,6 +1328,11 @@
 
     // Keep open while mouse is inside the panel
     panel.addEventListener('mouseenter', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    // Cancel any pending close the moment focus enters the panel
+    panel.addEventListener('focusin', () => {
       if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     });
 
