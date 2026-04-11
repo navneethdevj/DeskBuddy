@@ -103,21 +103,38 @@ const Brain = (() => {
   // Hold timers: how many seconds focus must stay below threshold before state
   //   transitions — longer for GENTLE (more patience), shorter for STRICT.
   // nofaceGraceMs: how long the face can be absent before focusLevel decays.
+  // readingPitchMax: max head-pitch (°) treated as reading-a-book rather than
+  //   phone use.  Students at a desk commonly reach 25–35°, so GENTLE and
+  //   NORMAL widen this window well beyond the old hard-coded 20° limit.
+  // readingPostureGraceMs: after leaving reading posture the focusLevel is
+  //   held steady for this long before decay begins (covers glancing back up
+  //   between paragraphs — "timer freeze delay" requested for book-studiers).
+  // phoneDetectMs: sustained ms of headPitch > readingPitchMax required before
+  //   the companion shows a suspicious reaction (phone-check animation).
   const SENSITIVITY_PRESETS = {
     GENTLE: {
       drifting: 20, distracted: 12, critical: 8,
       holdDrifting: 12, holdDistracted: 18, holdCritical: 35, holdFailed: 90,
-      nofaceGraceMs: 15000,  // 15s — very forgiving
+      nofaceGraceMs: 15000,         // 15s — very forgiving
+      readingPitchMax: 40,          // up to 40° = textbook on desk, wide lap reading
+      readingPostureGraceMs: 10000, // 10s grace after looking back up
+      phoneDetectMs: 8000,          // 8s before triggering suspicious reaction
     },
     NORMAL: {
       drifting: 30, distracted: 20, critical: 12,
       holdDrifting: 7,  holdDistracted: 12, holdCritical: 25, holdFailed: 60,
-      nofaceGraceMs: 8000,   // 8s — reasonable
+      nofaceGraceMs: 8000,          // 8s — reasonable
+      readingPitchMax: 30,          // up to 30° = notes/tablet reading at a desk
+      readingPostureGraceMs: 5000,  // 5s grace after looking back up
+      phoneDetectMs: 5000,          // 5s before triggering suspicious reaction
     },
     STRICT: {
       drifting: 50, distracted: 38, critical: 25,
       holdDrifting: 4,  holdDistracted: 7,  holdCritical: 15, holdFailed: 40,
-      nofaceGraceMs: 3000,   // 3s — quick to notice absence
+      nofaceGraceMs: 3000,          // 3s — quick to notice absence
+      readingPitchMax: 20,          // 20° — original limit, phone detection is tight
+      readingPostureGraceMs: 0,     // no grace — decay starts immediately on exit
+      phoneDetectMs: 3000,          // 3s — quick phone detection (original)
     },
   };
 
@@ -168,6 +185,11 @@ const Brain = (() => {
   // NoFace grace: ms the camera has had no face — focusLevel is frozen until
   // the grace period (from sensitivity preset) expires, then starts decaying.
   let _nofaceGraceMs = 0;
+
+  // Reading-posture grace: track the post-reading cooldown so focusLevel is
+  // held steady for readingPostureGraceMs after the student stops reading.
+  let _readingPostureGraceMs = 0;   // accumulated ms since reading posture ended
+  let _wasInReadingPosture   = false; // true if posture was active last frame
 
   // Whisper queue
   let _whisperQueue = [];
@@ -393,18 +415,31 @@ const Brain = (() => {
         const cameraFocused = window.cameraAvailable && p?.facePresent
                            && p.userState === 'Focused' && p.attentionScore > 35;
 
-        // Reading posture: head pitched 10–20° downward = reading notes/textbook.
-        // PHONE_PITCH_THRESHOLD is 20° so phone detection starts where this ends.
+        // Reading posture: head pitched between 10° and readingPitchMax downward.
+        // readingPitchMax is sensitivity-dependent: GENTLE=40°, NORMAL=30°, STRICT=20°.
+        // This covers students reading physical textbooks (typically 20–35° on a desk).
+        // Phone detection starts above readingPitchMax, not at the old hard-coded 20°.
         // Treat as soft focus: freeze focusLevel (no reward, no penalty).
         const isReadingPosture = window.cameraAvailable && p?.facePresent
-                              && p.headPitch > 10 && p.headPitch < 20;
+                              && p.headPitch > 10 && p.headPitch < thr.readingPitchMax;
 
         if (cameraFocused) {
           // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+          _wasInReadingPosture   = false;
+          _readingPostureGraceMs = 0;
           focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
         } else if (isReadingPosture) {
           // Reading notes — hold steady, neither reward nor penalise.
+          // Reset grace accumulator while actively in reading posture.
+          _wasInReadingPosture   = true;
+          _readingPostureGraceMs = 0;
+        } else if (_wasInReadingPosture && _readingPostureGraceMs < thr.readingPostureGraceMs) {
+          // Just looked back up — hold focus steady for the grace window
+          // (covers glancing up between paragraphs in a book).
+          _readingPostureGraceMs += 16;  // ~60fps frame ≈ 16ms
         } else {
+          // Grace expired (or never started) — normal focus decay.
+          _wasInReadingPosture = false;
           focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
         }
       }
@@ -1226,14 +1261,20 @@ const Brain = (() => {
       }
 
       // ── Phone detection ─────────────────────────────────────────────────
-      // Trigger: head bowed ≥ PHONE_PITCH_THRESHOLD degrees for 3s.
+      // Trigger: head bowed above readingPitchMax (sensitivity-dependent) for
+      // phoneDetectMs (also sensitivity-dependent).  Using readingPitchMax as
+      // the phone threshold ensures students reading books at GENTLE/NORMAL
+      // sensitivity are NOT flagged as phone-users until they bow far beyond
+      // the expected reading angle.
       // We intentionally do NOT check correctedGazeY here — it is head-pose
       // compensated and actively removes the downward-gaze signal we need.
       if (_phoneDetectionEnabled && window.cameraAvailable) {
         const p = window.perception;
-        if (p?.facePresent && p.headPitch > PHONE_PITCH_THRESHOLD) {
+        const phoneThr = SENSITIVITY_PRESETS[_runtimeSensitivity || _sensitivityLevel]
+                      || SENSITIVITY_PRESETS['NORMAL'];
+        if (p?.facePresent && p.headPitch > phoneThr.readingPitchMax) {
           _phoneCheckMs += 1000;
-          if (_phoneCheckMs >= PHONE_DETECT_SUSTAIN_MS && window._lastEmotion !== 'suspicious') {
+          if (_phoneCheckMs >= phoneThr.phoneDetectMs && window._lastEmotion !== 'suspicious') {
             // Jump straight to suspicious — skip DRIFTING arc
             window._emotionChanged = { from: window._lastEmotion, to: 'suspicious' };
             window._lastEmotion    = 'suspicious';
