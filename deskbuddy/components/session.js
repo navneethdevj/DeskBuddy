@@ -400,6 +400,20 @@ const Session = (() => {
     _callbacks.onSessionStateChange.push(fn);
   }
 
+  /**
+   * reset() — return to IDLE so the user can start a fresh session.
+   * Safe to call only after a terminal state (COMPLETED / FAILED / ABANDONED).
+   * No-op if already IDLE or if a session is in progress.
+   */
+  function reset() {
+    if (_state === STATE.ACTIVE || _state === STATE.PAUSED) return;
+    _current      = null;
+    _focusedSince = null;
+    _streakStart  = null;
+    _stopBreakTimer();
+    _setState(STATE.IDLE);
+  }
+
   // ── Public surface ─────────────────────────────────────────────────────────
 
   return {
@@ -408,6 +422,7 @@ const Session = (() => {
     pause,
     resume,
     abandon,
+    reset,
     setGoalAchieved,
     getHistory,
     getCurrentStats,

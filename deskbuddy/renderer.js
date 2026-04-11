@@ -74,6 +74,14 @@
     // Pre-fill start-screen duration with saved default
     const durEl = document.getElementById('duration-select');
     if (durEl) durEl.value = String(Settings.get('sessionLength') || 25);
+    // Pre-fill session panel break interval from saved settings
+    const breakSel = document.getElementById('session-break-select');
+    if (breakSel) {
+      const saved = Settings.get('breakInterval');
+      // Snap to nearest option value; fall back to 25 if the saved value isn't listed
+      const opts = Array.from(breakSel.options).map(o => o.value);
+      breakSel.value = opts.includes(String(saved)) ? String(saved) : '25';
+    }
   }
 
   // 11. Wire cross-module communication
@@ -102,6 +110,14 @@
         const durEl  = document.getElementById('duration-select');
         const goal   = goalEl?.value?.trim() || null;
         const mins   = parseInt(durEl?.value || '25', 10);
+
+        // Sync break interval from session panel if present
+        const breakSel = document.getElementById('session-break-select');
+        if (breakSel) {
+          const breakMins = parseInt(breakSel.value, 10);
+          BreakReminder.setInterval(breakMins);
+        }
+
         Timer.init(mins);
         Session.startNew(mins, goal);
         Timer.start();
@@ -130,7 +146,7 @@
       });
     }
 
-    // Abandon button
+    // Abandon button (active state)
     const abandonBtn = document.getElementById('abandon-session');
     if (abandonBtn) {
       abandonBtn.addEventListener('click', () => {
@@ -141,13 +157,35 @@
       });
     }
 
+    // Abandon button (break/paused state — separate DOM button)
+    const abandonBreakBtn = document.getElementById('abandon-session-break');
+    if (abandonBreakBtn) {
+      abandonBreakBtn.addEventListener('click', () => {
+        if (Session.getCurrentStats()?.state !== 'PAUSED') return;
+        Session.abandon();
+        Timer.reset();
+      });
+    }
+
+    // "New session" button on the outcome screen → reset back to IDLE
+    const newSessionBtn = document.getElementById('new-session-btn');
+    if (newSessionBtn) {
+      newSessionBtn.addEventListener('click', () => {
+        Session.reset();
+        Timer.reset();
+        // Clear goal input for fresh start
+        const goalEl = document.getElementById('goal-input');
+        if (goalEl) goalEl.value = '';
+      });
+    }
+
     // Goal achieved buttons (outcome screen)
     const goalYes = document.getElementById('goal-achieved-yes');
     const goalNo  = document.getElementById('goal-achieved-no');
     if (goalYes) goalYes.addEventListener('click', () => Session.setGoalAchieved(true));
     if (goalNo)  goalNo.addEventListener('click',  () => Session.setGoalAchieved(false));
 
-    // Sensitivity selector
+    // Sensitivity selector (legacy — kept for any external HTML using it)
     const sensitivitySel = document.getElementById('sensitivity-select');
     if (sensitivitySel) {
       sensitivitySel.value = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
@@ -201,6 +239,8 @@
       };
       const emotion = emotionMap[newState];
       if (emotion) Emotion.setState(emotion);
+      // Expose timer state as a data attribute so CSS can colour the focus dot
+      document.body.dataset.timerState = newState;
     });
   }
 
@@ -229,6 +269,8 @@
   // ── _wireSessionToUI ──────────────────────────────────────────────────────
   // Session state changes → DOM visibility / content updates.
 
+  let _breakCountdownInterval = null;
+
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState) => {
       const stats = Session.getCurrentStats();
@@ -240,7 +282,21 @@
       _setVisible('outcome-screen',
         newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
 
-      // Goal display below timer
+      // Session countdown timer — show during active/paused, hide otherwise
+      const sessionTimerEl = document.getElementById('session-timer');
+      if (sessionTimerEl) {
+        sessionTimerEl.style.display =
+          (newState === 'ACTIVE' || newState === 'PAUSED') ? '' : 'none';
+      }
+
+      // Break countdown — start/stop the live update interval
+      if (newState === 'PAUSED') {
+        _startBreakCountdown();
+      } else {
+        _stopBreakCountdown();
+      }
+
+      // Goal display in active panel
       const goalDisplay = document.getElementById('goal-display');
       if (goalDisplay) {
         const txt = stats?.goalText || '';
@@ -264,7 +320,37 @@
         else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session abandoned.';
         else                                outcomeLabel.textContent = '';
       }
+
+      // Reset timer state body attribute when session ends
+      if (newState === 'IDLE' || newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+        delete document.body.dataset.timerState;
+      }
     });
+  }
+
+  // ── Break countdown helpers ───────────────────────────────────────────────
+
+  function _startBreakCountdown() {
+    _stopBreakCountdown();
+    _updateBreakCountdown();
+    _breakCountdownInterval = setInterval(_updateBreakCountdown, 500);
+  }
+
+  function _stopBreakCountdown() {
+    if (_breakCountdownInterval !== null) {
+      clearInterval(_breakCountdownInterval);
+      _breakCountdownInterval = null;
+    }
+  }
+
+  function _updateBreakCountdown() {
+    const el = document.getElementById('break-countdown');
+    if (!el) return;
+    const ms = Session.getBreakTimeRemaining();
+    const totalSecs = Math.max(0, Math.ceil(ms / 1000));
+    const m = String(Math.floor(totalSecs / 60)).padStart(1, '0');
+    const s = String(totalSecs % 60).padStart(2, '0');
+    el.textContent = `${m}:${s}`;
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────

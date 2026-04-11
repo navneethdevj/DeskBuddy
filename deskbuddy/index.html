@@ -199,6 +199,110 @@
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
 
+  <!-- Session panel — right side, full-mode only -->
+  <div id="session-panel">
+
+    <!-- ── Chill / Idle state ────────────────────────────────────── -->
+    <div id="session-idle">
+      <div class="sp-header">
+        <span class="sp-mode-label">chill mode</span>
+        <span class="sp-mode-star">✦</span>
+      </div>
+      <div class="sp-setup">
+        <div class="sp-row">
+          <label class="sp-label" for="duration-select">study for</label>
+          <select id="duration-select" class="sp-select">
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="25" selected>25 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+            <option value="90">90 min</option>
+          </select>
+        </div>
+        <div class="sp-row" id="sp-break-row">
+          <label class="sp-label" for="session-break-select">break every</label>
+          <select id="session-break-select" class="sp-select">
+            <option value="0">no nudge</option>
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="25" selected>25 min</option>
+            <option value="30">30 min</option>
+          </select>
+        </div>
+        <div class="sp-row sp-goal-row">
+          <input type="text" id="goal-input" class="sp-goal-input"
+            placeholder="what are you working on?" maxlength="80" autocomplete="off">
+        </div>
+        <button id="start-session" class="sp-btn sp-btn-primary">
+          ✦ start session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Active session state ──────────────────────────────────── -->
+    <div id="session-active" style="display:none">
+      <div class="sp-header">
+        <span class="sp-mode-label">session</span>
+        <span id="sp-focus-dot" class="sp-focus-dot"></span>
+      </div>
+      <div id="goal-display" class="sp-goal-display" style="display:none"></div>
+      <div class="sp-controls">
+        <button id="pause-session" class="sp-btn sp-btn-secondary">
+          ☕ take a break
+        </button>
+        <button id="abandon-session" class="sp-btn sp-btn-ghost">
+          end session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Paused / break state ───────────────────────────────────── -->
+    <div id="session-paused" style="display:none">
+      <div class="sp-header">
+        <span class="sp-mode-label">on break</span>
+      </div>
+      <div class="sp-break-body">
+        <div id="break-countdown" class="sp-break-countdown">5:00</div>
+        <div class="sp-break-hint">budget remaining</div>
+      </div>
+      <div class="sp-controls">
+        <button id="resume-session" class="sp-btn sp-btn-primary">
+          ▶ resume
+        </button>
+        <button id="abandon-session-break" class="sp-btn sp-btn-ghost">
+          end session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Outcome screen ────────────────────────────────────────── -->
+    <div id="outcome-screen" style="display:none">
+      <div id="outcome-label" class="sp-outcome-label"></div>
+      <div id="goal-prompt" class="sp-goal-prompt" style="display:none">
+        <div class="sp-label">did you finish it?</div>
+        <div class="sp-goal-achieved-row">
+          <button id="goal-achieved-yes" class="sp-btn sp-btn-yes">yes ✓</button>
+          <button id="goal-achieved-no"  class="sp-btn sp-btn-no">not yet</button>
+        </div>
+      </div>
+      <button id="new-session-btn" class="sp-btn sp-btn-primary">
+        ✦ new session
+      </button>
+    </div>
+
+  </div><!-- /#session-panel -->
+
+  <!-- Milestone badge — shown briefly by Brain.onMilestone -->
+  <div id="milestone-badge" class="milestone-badge"></div>
+
+  <!-- Session timer — counted down by timer.js, hidden until session starts -->
+  <div id="session-timer" style="display:none"></div>
+
+  <!-- goal-overlay: kept for renderer.js compatibility, no visual role -->
+  <div id="goal-overlay" style="display:none"></div>
+
   <!-- Break reminder toast — shown by BreakReminder.onTrigger, hidden on dismiss -->
   <div id="break-toast" aria-live="polite" aria-atomic="true">
     <div id="break-toast-icon">☕</div>

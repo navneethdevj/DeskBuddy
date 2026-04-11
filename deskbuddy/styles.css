@@ -2259,3 +2259,327 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* =====================================================================
+   SESSION PANEL — right-side floating glass card, full-mode only.
+   Shows chill-mode setup, active controls, break countdown, and outcome.
+   ===================================================================== */
+#session-panel {
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 182px;
+  z-index: 2500;
+  display: none;          /* shown only in full-mode */
+  flex-direction: column;
+  gap: 0;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+body.full-mode #session-panel { display: flex; }
+body.pip-mode  #session-panel { display: none !important; }
+
+/* The glass card — same glass-morphism language as settings panel */
+#session-idle,
+#session-active,
+#session-paused,
+#outcome-screen {
+  background: rgba(14, 11, 26, 0.44);
+  backdrop-filter: blur(38px) saturate(1.8) brightness(1.10);
+  -webkit-backdrop-filter: blur(38px) saturate(1.8) brightness(1.10);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.10) inset;
+}
+
+/* ── Header row ─────────────────────────────────────────────────── */
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sp-mode-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.60);
+}
+
+.sp-mode-star {
+  font-size: 10px;
+  color: rgba(175, 160, 255, 0.38);
+  animation: spStarPulse 3.5s ease-in-out infinite;
+}
+@keyframes spStarPulse {
+  0%, 100% { opacity: 0.38; }
+  50%      { opacity: 0.70; }
+}
+
+/* Focus state dot (active panel) */
+.sp-focus-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(120, 235, 180, 0.75);
+  box-shadow: 0 0 6px rgba(100, 220, 160, 0.50);
+  animation: spDotPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+@keyframes spDotPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+/* Dot colour shifts with timer state */
+body[data-timer-state="DRIFTING"]   .sp-focus-dot { background: rgba(255,185,68,0.85); box-shadow: 0 0 6px rgba(255,180,50,0.45); }
+body[data-timer-state="DISTRACTED"] .sp-focus-dot { background: rgba(255,80,80,0.85);  box-shadow: 0 0 6px rgba(255,60,60,0.45);  }
+body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1.00);  box-shadow: 0 0 8px rgba(255,60,60,0.65);  animation: spDotPulse 0.6s ease-in-out infinite; }
+
+/* ── Setup form rows ────────────────────────────────────────────── */
+.sp-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sp-label {
+  font-size: 11px;
+  color: rgba(210, 200, 255, 0.60);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Re-use existing settings-select visual language */
+.sp-select {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(215, 205, 255, 0.85);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 4px 22px 4px 7px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  min-width: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(160%2C140%2C255%2C0.48)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 7px 5px;
+  transition: border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.sp-select:hover  { border-color: rgba(160, 140, 255, 0.26); }
+.sp-select:focus  { border-color: rgba(160, 140, 255, 0.50); background-color: rgba(160, 140, 255, 0.07); }
+.sp-select option { background: #120f22; color: rgba(220, 210, 255, 0.90); }
+
+.sp-goal-row {
+  display: block;
+}
+
+.sp-goal-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 9px;
+  color: rgba(220, 212, 255, 0.82);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 7px 10px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s, background 0.18s;
+  -webkit-app-region: no-drag;
+}
+.sp-goal-input::placeholder { color: rgba(175, 165, 255, 0.28); }
+.sp-goal-input:focus {
+  border-color: rgba(160, 140, 255, 0.42);
+  background: rgba(160, 140, 255, 0.06);
+}
+
+/* ── Session panel buttons ──────────────────────────────────────── */
+.sp-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.16s, border-color 0.16s, color 0.16s, box-shadow 0.16s, transform 0.10s;
+  -webkit-app-region: no-drag;
+}
+.sp-btn:active { transform: scale(0.97); }
+
+/* Primary — periwinkle gradient (start / resume / new session) */
+.sp-btn-primary {
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.72), rgba(105, 82, 220, 0.72));
+  border: 1px solid rgba(165, 145, 255, 0.40);
+  color: rgba(240, 235, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(120, 95, 220, 0.28), 0 0 0 1px rgba(155, 130, 255, 0.12) inset;
+}
+.sp-btn-primary:hover {
+  background: linear-gradient(135deg, rgba(165, 140, 255, 0.82), rgba(115, 92, 230, 0.82));
+  border-color: rgba(175, 155, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(130, 100, 230, 0.40), 0 0 0 1px rgba(170, 145, 255, 0.18) inset;
+}
+
+/* Secondary — teal/mint accent (take a break) */
+.sp-btn-secondary {
+  background: rgba(68, 220, 165, 0.10);
+  border: 1px solid rgba(68, 220, 165, 0.22);
+  color: rgba(80, 230, 175, 0.88);
+}
+.sp-btn-secondary:hover {
+  background: rgba(68, 220, 165, 0.18);
+  border-color: rgba(68, 220, 165, 0.40);
+  color: rgba(100, 240, 185, 1.0);
+}
+
+/* Ghost — silent / end session */
+.sp-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(200, 190, 255, 0.38);
+}
+.sp-btn-ghost:hover {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.22);
+  color: rgba(255, 110, 110, 0.80);
+}
+
+/* Goal-achieved row */
+.sp-btn-yes {
+  flex: 1;
+  background: rgba(68, 220, 165, 0.12);
+  border: 1px solid rgba(68, 220, 165, 0.25);
+  color: rgba(80, 230, 175, 0.90);
+}
+.sp-btn-yes:hover {
+  background: rgba(68, 220, 165, 0.22);
+  border-color: rgba(68, 220, 165, 0.42);
+}
+.sp-btn-no {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(200, 190, 255, 0.50);
+}
+.sp-btn-no:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(215, 205, 255, 0.80);
+}
+
+/* Controls column */
+.sp-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Goal display during active session */
+.sp-goal-display {
+  font-size: 11px;
+  color: rgba(210, 200, 255, 0.52);
+  line-height: 1.45;
+  font-style: italic;
+  padding: 5px 8px;
+  border-left: 2px solid rgba(155, 135, 255, 0.30);
+  border-radius: 2px;
+}
+
+/* ── Break / paused state ───────────────────────────────────────── */
+.sp-break-body {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.sp-break-countdown {
+  font-size: 2.4vmin;
+  font-weight: 200;
+  letter-spacing: 0.14em;
+  color: rgba(80, 230, 175, 0.90);
+  text-shadow: 0 0 14px rgba(60, 210, 155, 0.38);
+}
+
+.sp-break-hint {
+  font-size: 9.5px;
+  color: rgba(175, 165, 255, 0.35);
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+
+/* ── Outcome screen ─────────────────────────────────────────────── */
+.sp-outcome-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(220, 210, 255, 0.82);
+  text-align: center;
+  padding: 2px 0 4px;
+}
+
+.sp-goal-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sp-goal-achieved-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Session timer — bottom center, visible only during sessions ── */
+#session-timer {
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Milestone badge — brief pop above companion ────────────────── */
+.milestone-badge {
+  position: fixed;
+  bottom: 18vmin;
+  left: 50%;
+  transform: translateX(-50%) scale(0.85);
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.55), rgba(105, 82, 220, 0.55));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(165, 145, 255, 0.40);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(240, 235, 255, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2000;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.48, 0.64, 1);
+  -webkit-app-region: no-drag;
+}
+.milestone-badge.visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+body.pip-mode .milestone-badge { display: none; }
