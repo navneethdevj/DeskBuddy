@@ -417,7 +417,7 @@ html, body {
 .companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
 .companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.36); }
 .companion.embarrassed .blush { background: rgba(255, 120, 155, 0.30); }
-.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.18); }
+.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.42); }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {

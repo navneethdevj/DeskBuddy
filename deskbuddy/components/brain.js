@@ -206,6 +206,9 @@ const Brain = (() => {
   let _welcomeBackSeqId1 = null;
   let _welcomeBackSeqId2 = null;
 
+  // Curious look loop — continuous gaze scan while in curious state
+  let _curiousLookTimer = null;
+
   // Sensitivity
   let _sensitivityLevel = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
 
@@ -754,7 +757,7 @@ const Brain = (() => {
       case 'curious':
         Emotion.setState('curious');
         SpriteAnimator.play('idle');
-        triggerLookSequence();
+        _curiousLookLoop();
         break;
       case 'idle':
         Emotion.setState('idle');
@@ -824,6 +827,36 @@ const Brain = (() => {
         }, 600 + Math.random() * 400);
       }, 600 + Math.random() * 400);
     }, 600 + Math.random() * 400);
+  }
+
+  /**
+   * Continuous gaze-scan loop while in the curious state.
+   * Picks a random look target, holds it briefly, then reschedules itself.
+   * Stops as soon as the state is no longer 'curious'.
+   */
+  function _curiousLookLoop() {
+    if (_curiousLookTimer) { clearTimeout(_curiousLookTimer); _curiousLookTimer = null; }
+    if (currentState !== 'curious') { Companion.resetLook(); return; }
+
+    var c = Companion.getCenter();
+    var glances = [
+      { x: c.x - 300, y: c.y },
+      { x: c.x + 300, y: c.y },
+      { x: c.x,       y: c.y - 200 },
+      { x: c.x - 200, y: c.y + 120 },
+      { x: c.x + 200, y: c.y - 140 },
+    ];
+    var target = glances[Math.floor(Math.random() * glances.length)];
+    Companion.lookAt(target.x, target.y);
+
+    // Hold the glance for a beat, then reset and pause before the next one
+    _curiousLookTimer = setTimeout(function () {
+      if (currentState !== 'curious') { Companion.resetLook(); return; }
+      Companion.resetLook();
+      _curiousLookTimer = setTimeout(function () {
+        _curiousLookLoop();
+      }, 350 + Math.random() * 500);
+    }, 700 + Math.random() * 900);
   }
 
   /** Briefly flash a happy expression during idle. */
