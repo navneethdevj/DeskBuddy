@@ -509,12 +509,34 @@
       }
     });
 
+    // ── Break toast helpers ────────────────────────────────────────────────
+    const breakToast        = document.getElementById('break-toast');
+    const breakToastDismiss = document.getElementById('break-toast-dismiss');
+
+    function _showBreakToast() {
+      if (!breakToast) return;
+      breakToast.classList.remove('break-toast-hiding');
+      breakToast.classList.add('break-toast-visible');
+    }
+
+    function _hideBreakToast() {
+      if (!breakToast) return;
+      breakToast.classList.add('break-toast-hiding');
+      // Wait for the slide-out animation to finish before fully hiding
+      breakToast.addEventListener('animationend', (e) => {
+        if (e.animationName !== 'breakToastOut') return;
+        breakToast.classList.remove('break-toast-visible', 'break-toast-hiding');
+      }, { once: true });
+    }
+
+    if (breakToastDismiss) {
+      breakToastDismiss.addEventListener('click', () => BreakReminder.dismiss());
+    }
+
     BreakReminder.onTrigger(() => {
       Sounds.play('break_start');
       Emotion.setState('excited');  // companion perks up: "hey, take a break!"
-      if (window.Brain?.showWhisper) {
-        Brain.showWhisper('hey, take a break! you earned it ✦', 5000);
-      }
+      _showBreakToast();
       setTimeout(() => {
         if (BreakReminder.isActive()) Emotion.setState(null);
       }, 3000);
@@ -522,6 +544,7 @@
 
     BreakReminder.onDismiss(() => {
       Sounds.play('break_end');
+      _hideBreakToast();
     });
   }
 

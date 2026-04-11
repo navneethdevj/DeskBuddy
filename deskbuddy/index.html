@@ -130,6 +130,16 @@
   <div id="tear-overlay"><div id="tear-fill"></div></div>
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
+
+  <!-- Break reminder toast — shown by BreakReminder.onTrigger, hidden on dismiss -->
+  <div id="break-toast" aria-live="polite" aria-atomic="true">
+    <div id="break-toast-icon">☕</div>
+    <div id="break-toast-body">
+      <div id="break-toast-title">time for a break</div>
+      <div id="break-toast-sub">you've been focused for a while — step away for a bit ✦</div>
+    </div>
+    <button id="break-toast-dismiss" title="Dismiss break reminder">got it</button>
+  </div>
   <!-- Focus timer — counts focused time -->
   <div id="focus-timer">focus 00:00</div>
   <!-- Attention bar — EyeOnTask concept, barely visible -->
