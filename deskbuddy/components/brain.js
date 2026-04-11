@@ -99,10 +99,25 @@ const Brain = (() => {
   const MILESTONE_MAX_MINUTES      = 25;
 
   // Sensitivity presets — used by timer.js via Brain.getSensitivityThresholds()
+  // Thresholds: focusLevel values that trigger state changes.
+  // Hold times (seconds): continuous time below threshold before state transitions.
+  // nofaceGraceMs: ms the face can be absent before focusLevel decay begins.
   const SENSITIVITY_PRESETS = {
-    GENTLE: { drifting: 25, distracted: 15, critical: 10 },
-    NORMAL: { drifting: 40, distracted: 35, critical: 20 },
-    STRICT: { drifting: 55, distracted: 45, critical: 30 },
+    GENTLE: {
+      drifting: 20, distracted: 12, critical: 8,
+      holdDrifting: 12, holdDistracted: 18, holdCritical: 35, holdFailed: 90,
+      nofaceGraceMs: 15000,
+    },
+    NORMAL: {
+      drifting: 30, distracted: 20, critical: 12,
+      holdDrifting: 7,  holdDistracted: 12, holdCritical: 25, holdFailed: 60,
+      nofaceGraceMs: 8000,
+    },
+    STRICT: {
+      drifting: 50, distracted: 38, critical: 25,
+      holdDrifting: 4,  holdDistracted: 7,  holdCritical: 15, holdFailed: 40,
+      nofaceGraceMs: 3000,
+    },
   };
 
   const STATE_LABELS = {
@@ -126,6 +141,10 @@ const Brain = (() => {
   let focusLevel = 50;
   let lastMouseMoveTime = 0;
   let lastKeyTime = 0;
+
+  // NoFace grace — tracks accumulated ms the face has been absent so decay
+  // doesn't start immediately when a user briefly looks away from the camera.
+  let _nofaceGraceMs = 0;
 
   // Idle look state
   let idleLookActive = false;
@@ -353,13 +372,39 @@ const Brain = (() => {
       // slowly build focus instead of decaying — covers physical book reading
       // and any screen activity that doesn't involve keyboard/mouse input.
       const p = window.perception;
-      const cameraFocused = window.cameraAvailable && p?.facePresent
-                         && p.userState === 'Focused' && p.attentionScore > 35;
-      if (cameraFocused) {
-        // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
-        focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+      const facePresent = window.cameraAvailable ? (p?.facePresent ?? true) : true;
+
+      if (!facePresent) {
+        // NoFace grace — don't penalise immediately; the user may have looked away
+        // briefly to write something or check their notes.
+        const thr = getSensitivityThresholds();
+        _nofaceGraceMs += 16; // ~60fps frame
+        if (_nofaceGraceMs > thr.nofaceGraceMs) {
+          // Grace expired — full decay
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
+        // During grace: freeze focusLevel (no build, no decay)
       } else {
-        focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        _nofaceGraceMs = 0; // reset grace timer when face returns
+
+        const cameraFocused = window.cameraAvailable && p?.facePresent
+                           && p.userState === 'Focused' && p.attentionScore > 35;
+
+        // Reading posture: head pitched down 10–20° = reading notes/textbook.
+        // The phone detection window is 20°+, so there is no overlap.
+        // Treat as neutral — freeze focusLevel (no reward, no penalty).
+        const isReadingPosture = window.cameraAvailable && p?.facePresent
+                              && p.headPitch > 10 && p.headPitch < 20;
+
+        if (cameraFocused) {
+          // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+          focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+        } else if (isReadingPosture) {
+          // Reading: hold steady. Not rewarded, not penalised.
+          // focusLevel unchanged.
+        } else {
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
       }
     }
   }
