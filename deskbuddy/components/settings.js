@@ -22,8 +22,8 @@ const Settings = (() => {
     sensitivity:     'NORMAL',    // 'GENTLE' | 'NORMAL' | 'STRICT'
     phoneDetection:  true,        // brain.js phone posture detection
     companionSize:   'M',         // 'S' | 'M' | 'L'
-    nightAutoVolume: true,         // soundscape reduces volume at NIGHT
-    keybinds:        {},           // override map: { [action_id]: 'KeyboardShortcut' }
+    nightAutoVolume: true,        // soundscape reduces volume at NIGHT
+    keybinds:        {},          // override map: { [action_id]: 'KeyboardShortcut' }
   };
 
   let _current = { ...DEFAULTS };

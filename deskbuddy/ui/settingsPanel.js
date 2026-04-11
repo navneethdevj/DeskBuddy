@@ -180,7 +180,7 @@ const SettingsPanel = (() => {
   function init() {
     _panel   = document.getElementById('settings-panel');
     _gearBtn = document.getElementById('settings-gear-btn');
-    _closeBtn= document.getElementById('settings-close-btn');
+    _closeBtn = document.getElementById('settings-close-btn');
 
     if (!_panel || !_gearBtn) return;
 
