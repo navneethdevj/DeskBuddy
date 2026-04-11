@@ -70,6 +70,61 @@ const Sounds = (() => {
     welcomeBack:       800,
   };
 
+  // ── Mute preset system ────────────────────────────────────────────────────
+  // Four tiers control which sound categories are audible at any given time.
+  // Category A: tick sounds (highest frequency, most likely to irritate)
+  // Category B: emotion/personality sounds (medium frequency, ambient character)
+  // Category C: session lifecycle sounds (infrequent, high meaning)
+  // Category D: break/reminder sounds (explicit user-requested notifications)
+
+  const SOUND_CATEGORIES = {
+    // Category A — ticks
+    focused_tick:       'A',
+    drifting_tick:      'A',
+    distracted_tick:    'A',
+    // Category B — emotion/personality
+    happy_coo:          'B',
+    curious_ooh:        'B',
+    suspicious_squint:  'B',
+    pouty_mweh:         'B',
+    grumpy_hmph:        'B',
+    scared_eep:         'B',
+    sad_whimper:        'B',
+    crying_sob:         'B',
+    overjoyed_chirp:    'B',
+    excited_chirp:      'B',
+    shy_squeak:         'B',
+    love_purr:          'B',
+    startled_gasp:      'B',
+    stretch_coo:        'B',
+    wink_blip:          'B',
+    giggle:             'B',
+    yawn:               'B',
+    sulking:            'B',
+    userLeft:           'B',
+    welcomeBack:        'B',
+    relief:             'B',
+    surprise:           'B',
+    // Category C — session lifecycle
+    session_start:      'C',
+    session_complete:   'C',
+    session_fail:       'C',
+    refocus:            'C',
+    // Category D — break/reminder
+    break_start:        'D',
+    break_end:          'D',
+  };
+
+  // Which categories are audible per preset
+  const PRESET_ALLOWS = {
+    ALL_ON:         new Set(['A', 'B', 'C', 'D']),
+    ESSENTIAL:      new Set(['C', 'D']),
+    REMINDERS_ONLY: new Set(['D']),
+    ALL_OFF:        new Set(),
+  };
+
+  let _mutePreset = 'ALL_ON';
+
   // ── Init ───────────────────────────────────────────────────────────────────
 
   function init() {
@@ -102,6 +157,10 @@ const Sounds = (() => {
    * Unknown names are silently ignored (future-proof).
    */
   function play(name) {
+    // Category filter — check if current preset allows this sound's category
+    const cat = SOUND_CATEGORIES[name];
+    if (cat && !PRESET_ALLOWS[_mutePreset].has(cat)) return;
+
     const dispatch = {
       focused_tick:       _focused_tick,
       drifting_tick:      _drifting_tick,
@@ -120,6 +179,22 @@ const Sounds = (() => {
     };
     if (dispatch[name]) dispatch[name]();
   }
+
+  function setMutePreset(preset) {
+    if (!PRESET_ALLOWS[preset]) return;
+    _mutePreset = preset;
+    // Stamp the data-attribute so CSS can reflect mute state visually
+    document.body.dataset.mutePreset = preset;
+    // If ALL_OFF, zero masterGain immediately to silence any in-flight audio
+    if (preset === 'ALL_OFF') {
+      if (masterGain) masterGain.gain.value = 0;
+    } else {
+      // Restore masterGain unless a manual mute is active
+      if (!_muted && masterGain) masterGain.gain.value = _savedGain * _timeGainMult;
+    }
+  }
+
+  function getMutePreset() { return _mutePreset; }
 
   function setVolume(v) {
     _savedGain = Math.max(0, Math.min(1, v));
@@ -549,8 +624,11 @@ const Sounds = (() => {
   function _pollExpressions() {
     if (!window.perception?.facePresent) return;
     const p = window.perception;
-    if (p.userSmiling && !_lastSmiling)     _giggle();
-    if (p.userSurprised && !_lastSurprised) _surpriseGasp();
+    // Giggle and surprise gasp are category B — skip if preset doesn't allow it
+    if (PRESET_ALLOWS[_mutePreset].has('B')) {
+      if (p.userSmiling && !_lastSmiling)     _giggle();
+      if (p.userSurprised && !_lastSurprised) _surpriseGasp();
+    }
     _lastSmiling   = p.userSmiling;
     _lastSurprised = p.userSurprised;
   }
@@ -559,12 +637,17 @@ const Sounds = (() => {
     if (!ready) return;
     const present = !!window.perception?.facePresent;
     if (_lastFacePresent === undefined) { _lastFacePresent = present; return; }
-    if (present && !_lastFacePresent)   _welcomeBack();
-    if (!present && _lastFacePresent)   _userLeft();
+    // welcomeBack and userLeft are category B — skip if preset doesn't allow it
+    if (PRESET_ALLOWS[_mutePreset].has('B')) {
+      if (present && !_lastFacePresent)   _welcomeBack();
+      if (!present && _lastFacePresent)   _userLeft();
+    }
     _lastFacePresent = present;
   }
 
   function _playForTransition(from, to) {
+    // All emotion sounds are category B — skip if preset doesn't allow it
+    if (!PRESET_ALLOWS[_mutePreset].has('B')) return;
     switch (to) {
       case 'curious':    _curious_ooh();        break;
       case 'suspicious': _suspicious_squint();  break;
@@ -1450,6 +1533,6 @@ const Sounds = (() => {
 
   // ── Public surface ─────────────────────────────────────────────────────────
 
-  return { init, play, setVolume, mute, unmute, setNightGainMult };
+  return { init, play, setVolume, mute, unmute, setNightGainMult, setMutePreset, getMutePreset };
 
 })();

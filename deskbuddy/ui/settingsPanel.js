@@ -19,13 +19,18 @@ const SettingsPanel = (() => {
 
   // ── Apply helpers — translate a setting value into live module calls ───────
 
+  const _MUTE_DESCRIPTIONS = {
+    ALL_ON:         'All sounds: ticks, emotions, sessions, breaks',
+    ESSENTIAL:      'Session & break sounds only — no tick or emotion chatter',
+    REMINDERS_ONLY: 'Break reminders only — everything else is silent',
+    ALL_OFF:        'Complete silence — no sounds at all',
+  };
+
   function _applyMutePreset(preset) {
-    if (!window.Sounds) return;
-    if (preset === 'ALL_OFF') {
-      Sounds.mute();
-    } else {
-      Sounds.unmute();
-    }
+    if (window.Sounds && Sounds.setMutePreset) Sounds.setMutePreset(preset);
+    // Update description text
+    const desc = document.getElementById('sp-mute-desc');
+    if (desc) desc.textContent = _MUTE_DESCRIPTIONS[preset] || '';
   }
 
   function _applyDroneEnabled(enabled) {
@@ -133,6 +138,9 @@ const SettingsPanel = (() => {
     _setControl('sp-phone-detection',  Settings.get('phoneDetection'),  true);
     _setControl('sp-drone-enabled',    Settings.get('droneEnabled'),    true);
     _setControl('sp-night-auto-volume',Settings.get('nightAutoVolume'), true);
+    // Refresh mute description to match current preset
+    const desc = document.getElementById('sp-mute-desc');
+    if (desc) desc.textContent = _MUTE_DESCRIPTIONS[Settings.get('mutePreset')] || '';
   }
 
   function _setControl(id, value, isCheckbox) {

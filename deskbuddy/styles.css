@@ -1829,3 +1829,66 @@ body.pip-mode #settings-panel  { display: none !important; }
   accent-color: rgba(120, 135, 235, 0.9);
 }
 
+
+/* ===== Mute Preset Visual Indicators =====
+   Body data-attribute set by Sounds.setMutePreset(). The .mouth ::after
+   pseudo-element overlays a small icon to show the current mute state.
+   This gives the companion a physical cue — useful at a glance in PiP mode too.
+   ===================================================================== */
+
+/* Enable pseudo-element layering on the mouth */
+.mouth {
+  overflow: visible;
+}
+
+/* ALL_OFF — sealed cross (✕) over the mouth: companion literally cannot speak */
+body[data-mute-preset="ALL_OFF"] .mouth::after {
+  content: '✕';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.6vmin;
+  line-height: 1;
+  color: rgba(255, 90, 80, 0.80);
+  pointer-events: none;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.28s ease;
+}
+
+/* ESSENTIAL — small dot: some sounds blocked, lifecycle sounds still play */
+body[data-mute-preset="ESSENTIAL"] .mouth::after {
+  content: '·';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  font-size: 4vmin;
+  line-height: 1;
+  color: rgba(200, 180, 255, 0.55);
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+
+/* REMINDERS_ONLY — small ring: almost silent, only break sounds */
+body[data-mute-preset="REMINDERS_ONLY"] .mouth::after {
+  content: '○';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.2vmin;
+  line-height: 1;
+  color: rgba(180, 200, 255, 0.50);
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+
+/* Mute preset description row */
+.settings-mute-desc {
+  padding: 0 16px 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
+  line-height: 1.4;
+  min-height: 16px;
+}

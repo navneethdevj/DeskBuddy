@@ -57,6 +57,7 @@
   _wireBrainToSounds();
   _wireSessionToUI();
   _wireWindowControls();
+  _wireSettings();
 
   // 11. Settings panel — must come after all modules are initialised
   SettingsPanel.init();
@@ -249,6 +250,30 @@
   }
 
 
+  // ── _wireSettings ─────────────────────────────────────────────────────────
+  // Apply persisted settings to live modules on startup and keep them in sync.
+
+  function _wireSettings() {
+    // Apply saved mute preset to Sounds on startup
+    Sounds.setMutePreset(Settings.get('mutePreset'));
+
+    // Apply live changes whenever a setting is updated (from panel or keybind)
+    Settings.onChange('mutePreset',     (v) => Sounds.setMutePreset(v));
+    Settings.onChange('droneEnabled',   (v) => {
+      if (window.Soundscape) { v ? Soundscape.resume() : Soundscape.stop(); }
+    });
+    Settings.onChange('brightness',     (v) => {
+      const world = document.getElementById('world');
+      if (world) world.style.filter = `brightness(${v})`;
+    });
+    Settings.onChange('sensitivity',    (v) => Brain.setSensitivity(v));
+    Settings.onChange('phoneDetection', (v) => Brain.setPhoneDetectionEnabled(v));
+    Settings.onChange('nightAutoVolume',(v) => {
+      if (!v) Sounds.setNightGainMult(1.0);  // disable night reduction
+      // If re-enabled, Brain's next applyTimePeriod call will restore 0.8 at NIGHT
+    });
+  }
+
   // ── Compact window — mode toggle ────────────────────────────────────────
   // The companion starts as a small floating overlay (PiP mode).
   // A toggle button (or Ctrl/Cmd+Shift+P) switches between compact and full.
@@ -280,6 +305,15 @@
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
         e.preventDefault();
         _isFullMode ? _exitFullMode() : _enterFullMode();
+      }
+
+      // Ctrl/Cmd + Shift + M → cycle mute preset
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'M') {
+        e.preventDefault();
+        const order = ['ALL_ON', 'ESSENTIAL', 'REMINDERS_ONLY', 'ALL_OFF'];
+        const current = Settings.get('mutePreset');
+        const next = order[(order.indexOf(current) + 1) % order.length];
+        Settings.set('mutePreset', next);
       }
     });
 
