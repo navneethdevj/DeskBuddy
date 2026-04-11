@@ -15,11 +15,6 @@
  * resume whenever they are ready.
  *
  * localStorage key: 'deskbuddy_sessions'.  Max 50 sessions; oldest dropped.
- *
- * Focus timeline: samples { t, level, state } every 5 s during ACTIVE state.
- * Milestones: { t, type } events (distraction, break_start, break_end, milestone_Xm).
- * Timeline/milestones are stripped from all but the most recent stored session
- * to keep localStorage usage low (≈12 KB max per recent session).
  */
 const Session = (() => {
 
@@ -27,8 +22,6 @@ const Session = (() => {
 
   const _MAX_SESSIONS   = 50;
   const _STORAGE_KEY    = 'deskbuddy_sessions';
-  const _SAMPLE_RATE_MS = 5000;   // one focus-level sample every 5 s
-  const _MAX_SAMPLES    = 720;    // cap: 1 hr session at 5 s/sample
 
   const STATE = {
     IDLE:      'IDLE',
@@ -48,9 +41,6 @@ const Session = (() => {
   // Focus tracking (only during ACTIVE state)
   let _focusedSince = null;  // ms when current FOCUSED timer-state began
   let _streakStart  = null;  // ms when current focused streak began (resets on distraction)
-
-  // Timeline sampler
-  let _sampleInterval = null;
 
   let _history  = [];  // array of completed session objects loaded from localStorage
 
@@ -99,13 +89,6 @@ const Session = (() => {
   }
 
   function _pushSession(session) {
-    // Strip focusTimeline + milestones from all previously stored sessions —
-    // only the most-recent (index 0) needs the full timeline for the graph.
-    _history = _history.map(s => {
-      if (!s.focusTimeline && !s.milestones) return s;
-      const { focusTimeline, milestones, ...rest } = s; // eslint-disable-line no-unused-vars
-      return rest;
-    });
     _history.unshift(session);
     if (_history.length > _MAX_SESSIONS) {
       _history = _history.slice(0, _MAX_SESSIONS);
@@ -117,40 +100,6 @@ const Session = (() => {
 
   function _clearBreakStart() {
     _breakStartMs = null;
-  }
-
-  // ── Focus timeline sampler ─────────────────────────────────────────────────
-
-  /** Elapsed seconds since session start (derived from Timer remaining time). */
-  function _elapsedSeconds() {
-    if (!_current) return 0;
-    if (window.Timer && Timer.getRemainingSeconds) {
-      return Math.max(0, _current.durationMinutes * 60 - Timer.getRemainingSeconds());
-    }
-    return 0;
-  }
-
-  /**
-   * _startSampler() — begin recording { t, level, state } at _SAMPLE_RATE_MS.
-   * Called on ACTIVE entry (startNew + resume). No-op if already running.
-   */
-  function _startSampler() {
-    if (_sampleInterval) return;
-    _sampleInterval = setInterval(() => {
-      if (_state !== STATE.ACTIVE || !_current) return;
-      const elapsed = Math.round(_elapsedSeconds());
-      const level   = Math.round(window.Brain?.getFocusLevel?.() ?? 50);
-      const state   = window.Timer?.getState?.()   || 'FOCUSED';
-      _current.focusTimeline.push({ t: elapsed, level, state });
-      if (_current.focusTimeline.length > _MAX_SAMPLES) {
-        _current.focusTimeline.shift();
-      }
-    }, _SAMPLE_RATE_MS);
-  }
-
-  /** _stopSampler() — stop sampling. Called on PAUSED and terminal states. */
-  function _stopSampler() {
-    if (_sampleInterval) { clearInterval(_sampleInterval); _sampleInterval = null; }
   }
 
   // ── Focus streak accounting ────────────────────────────────────────────────
@@ -219,8 +168,6 @@ const Session = (() => {
     if ((newState === TIMER_DISTRACTED || newState === TIMER_CRITICAL) &&
         (oldState === TIMER_FOCUSED || oldState === TIMER_DRIFTING)) {
       _current.distractionCount++;
-      // Record distraction milestone on the timeline
-      _current.milestones.push({ t: Math.round(_elapsedSeconds()), type: 'distraction' });
     }
 
     // ── Terminal: timer FAILED ────────────────────────────────────────────────
@@ -242,7 +189,6 @@ const Session = (() => {
   function _endSession(outcome) {
     if (!_current) return;
 
-    _stopSampler();
     _closeFocusedStreak();
     _clearBreakStart();
 
@@ -294,8 +240,6 @@ const Session = (() => {
       outcome:                   null,
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
-      focusTimeline:             [],   // { t, level, state } samples every 5 s
-      milestones:                [],   // { t, type } event markers
     };
 
     // Start counting focused time from session start (assume user is focused)
@@ -304,7 +248,6 @@ const Session = (() => {
 
     _setState(STATE.ACTIVE);
     if (window.Sounds) Sounds.play('session_start');
-    _startSampler();
 
     // ── Time-of-day awareness ──────────────────────────────────────────────
     if (window.Brain) {
@@ -334,16 +277,10 @@ const Session = (() => {
   function pause() {
     if (_state !== STATE.ACTIVE) return;
 
-    _stopSampler();
     _closeFocusedStreak();
     _streakStart = null;
 
     _breakStartMs = _now();
-
-    // Mark break start on the timeline
-    if (_current) {
-      _current.milestones.push({ t: Math.round(_elapsedSeconds()), type: 'break_start' });
-    }
 
     _setState(STATE.PAUSED);
     if (window.Sounds) Sounds.play('break_start');
@@ -361,14 +298,8 @@ const Session = (() => {
     _focusedSince = _now();
     _streakStart  = _now();
 
-    // Mark break end on the timeline
-    if (_current) {
-      _current.milestones.push({ t: Math.round(_elapsedSeconds()), type: 'break_end' });
-    }
-
     _setState(STATE.ACTIVE);
     if (window.Sounds) Sounds.play('break_end');
-    _startSampler();
   }
 
   /**
@@ -377,29 +308,6 @@ const Session = (() => {
   function abandon() {
     if (_state !== STATE.ACTIVE && _state !== STATE.PAUSED) return;
     _endSession('ABANDONED');
-  }
-
-  /**
-   * recordMilestone(minutesMark) — push a focus-milestone event onto the timeline.
-   * Called from renderer.js when Brain.onMilestone fires (every 5 min focused).
-   * @param {number} minutesMark — e.g. 5, 10, 15 …
-   */
-  function recordMilestone(minutesMark) {
-    if (!_current || _state !== STATE.ACTIVE) return;
-    _current.milestones.push({
-      t:    Math.round(_elapsedSeconds()),
-      type: `milestone_${minutesMark}m`,
-    });
-  }
-
-  /**
-   * getLastSessionData() — return the most recently completed session (index 0),
-   * including its focusTimeline and milestones arrays.
-   * Returns null if no session has been recorded yet.
-   * @returns {Object|null}
-   */
-  function getLastSessionData() {
-    return _history.length > 0 ? _history[0] : null;
   }
 
   /**
@@ -506,11 +414,9 @@ const Session = (() => {
     reset,
     setGoalAchieved,
     getHistory,
-    getLastSessionData,
     getCurrentStats,
     getBreakElapsedMs,
     onSessionStateChange,
-    recordMilestone,
     STATE,
   };
 

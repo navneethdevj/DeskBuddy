@@ -92,7 +92,6 @@
   _wireSettings();
   _wireBreakReminder();
   _wireSidebar();
-  _wireAnalytics();
 
   // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
   // Read/write the three HH:MM:SS number fields as a single total-seconds value.
@@ -131,9 +130,6 @@
         const goalEl = document.getElementById('goal-input');
         const goal   = goalEl?.value?.trim() || null;
         const mins   = _getDurationMinutes();
-
-        // Cancel any lingering focus graph / analytics from the previous session
-        if (window.FocusGraph) FocusGraph.cancel();
 
         // Sync break interval from session panel
         BreakReminder.setInterval(_getBreakMinutes());
@@ -193,8 +189,6 @@
     const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
-        // Cancel any in-progress focus graph + analytics chain from the previous session
-        if (window.FocusGraph) FocusGraph.cancel();
         Session.reset();
         Timer.reset();
         // Clear goal input for fresh start
@@ -384,8 +378,6 @@
         badge.classList.add('visible');
         setTimeout(() => badge.classList.remove('visible'), 3000);
       }
-      // Record the focus milestone on the session timeline
-      if (window.Session) Session.recordMilestone(mins);
     });
   }
 
@@ -1374,52 +1366,6 @@
 
     // Schedule close when mouse leaves the panel
     panel.addEventListener('mouseleave', _scheduleClose);
-  }
-
-  // ── _wireAnalytics ────────────────────────────────────────────────────────
-  // Initialise the Analytics module and orchestrate the full post-session flow:
-  //
-  //   Session ends  ──600ms──►  FocusGraph.show() (draws in 1.5 s, holds 8 s,
-  //                              fades 0.8 s)  ──onDone──►  Analytics.show()
-  //
-  // If there is insufficient timeline data (< 3 samples), FocusGraph.show()
-  // immediately fires onDone, and Analytics falls back to a shorter delay.
-  // ABANDONED sessions only show the focus graph, not the analytics panel.
-
-  function _wireAnalytics() {
-    // Initialise the analytics panel if the module is present
-    if (window.Analytics) Analytics.init();
-
-    Session.onSessionStateChange((newState) => {
-      const isTerminal = (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
-      if (!isTerminal) return;
-
-      // Only show the analytics panel for COMPLETED / FAILED (not ABANDONED)
-      const showPanel = (newState === 'COMPLETED' || newState === 'FAILED');
-
-      // Brief delay — let the outcome screen / celebration animation settle first
-      const triggerDelayMs = 600;
-
-      setTimeout(() => {
-        const data      = Session.getLastSessionData ? Session.getLastSessionData() : null;
-        const hasGraph  = !!(window.FocusGraph && data?.focusTimeline?.length >= 3);
-
-        if (hasGraph) {
-          // Show the ephemeral focus graph; when it fades out, show the analytics panel
-          FocusGraph.show(data, showPanel ? () => {
-            if (window.Analytics && data) Analytics.show(data);
-          } : null);
-        } else if (showPanel) {
-          // No timeline data — skip the graph and open the analytics panel after
-          // a period that matches the original timing expectations
-          const analyticsDelay = newState === 'COMPLETED' ? 5000 : 1200;
-          setTimeout(() => {
-            const d = Session.getLastSessionData ? Session.getLastSessionData() : null;
-            if (window.Analytics && d) Analytics.show(d);
-          }, analyticsDelay);
-        }
-      }, triggerDelayMs);
-    });
   }
 
 })();

@@ -23,11 +23,11 @@ const Timer = (() => {
   // timer moves into it, preventing flicker when focus briefly bounces.
 
   const STATE = {
-    FOCUSED:    'FOCUSED',     // focusLevel >= 30 (NORMAL)                 → 1.0x
-    DRIFTING:   'DRIFTING',    // focusLevel 20–29 for >= 7s continuous     → 0.7x
-    DISTRACTED: 'DISTRACTED',  // focusLevel < 20 for >= 12s continuous     → 0.35x
-    CRITICAL:   'CRITICAL',    // focusLevel < 12 for >= 25s continuous     → 0.08x
-    FAILED:     'FAILED',      // CRITICAL held >= 60s                      → 0x (session lost)
+    FOCUSED:    'FOCUSED',     // focusLevel >= 60                       → 1.0x
+    DRIFTING:   'DRIFTING',    // focusLevel 35–59 for >= 5s continuous  → 0.7x
+    DISTRACTED: 'DISTRACTED',  // focusLevel < 35 for >= 8s continuous   → 0.35x
+    CRITICAL:   'CRITICAL',    // focusLevel < 20 for >= 20s continuous  → 0.08x
+    FAILED:     'FAILED',      // CRITICAL held >= 45s                   → 0x (session lost)
   };
 
   // Multiplier applied to the 100ms accumulator increment.
@@ -42,14 +42,11 @@ const Timer = (() => {
 
   // Minimum continuous seconds at a degraded focus level before entering state.
   // Recovery going upward also respects MIN_HOLD_RECOVERY to prevent bounce.
-  // NOTE: These are the fallback defaults only. When Brain is available,
-  // _pollFocus() uses thr.holdDrifting / holdDistracted / holdCritical / holdFailed
-  // from getSensitivityThresholds() so the holds scale with the chosen preset.
   const ENTRY_HOLD = {
-    [STATE.DRIFTING]:   7,   // NORMAL-preset default
-    [STATE.DISTRACTED]: 12,
-    [STATE.CRITICAL]:   25,
-    [STATE.FAILED]:     60,
+    [STATE.DRIFTING]:   5,   // 5s below 60
+    [STATE.DISTRACTED]: 8,   // 8s below 35
+    [STATE.CRITICAL]:   20,  // 20s below 20
+    [STATE.FAILED]:     45,  // 45s in CRITICAL
   };
 
   // Minimum seconds of improved focus before stepping *up* one recovery level.
@@ -86,7 +83,7 @@ const Timer = (() => {
   // State entry/recovery hold tracking.
   // Each potential next-state has its own continuous-seconds counter so
   // transitions in different directions don't share the same clock.
-  let _distractionTimer = 0;  // seconds continuously below the current DRIFTING threshold
+  let _distractionTimer = 0;  // seconds continuously below the DRIFTING threshold (< 60)
   let _criticalTimer    = 0;  // seconds continuously in CRITICAL (to detect FAILED)
   let _recoveryHold     = 0;  // seconds continuously at improved focus (for recovery step)
 
@@ -225,14 +222,7 @@ const Timer = (() => {
 
     const level = window.Brain ? Brain.getFocusLevel() : 50;
     const thr   = (window.Brain?.getSensitivityThresholds?.())
-                  || { drifting: 30, distracted: 20, critical: 12,
-                       holdDrifting: 7, holdDistracted: 12, holdCritical: 25, holdFailed: 60 };
-
-    // Resolve hold values from sensitivity preset, falling back to ENTRY_HOLD constants.
-    const holdDrifting   = thr.holdDrifting   ?? ENTRY_HOLD[STATE.DRIFTING];
-    const holdDistracted = thr.holdDistracted ?? ENTRY_HOLD[STATE.DISTRACTED];
-    const holdCritical   = thr.holdCritical   ?? ENTRY_HOLD[STATE.CRITICAL];
-    const holdFailed     = thr.holdFailed     ?? ENTRY_HOLD[STATE.FAILED];
+                  || { drifting: 40, distracted: 35, critical: 20 };
 
     const HALF = 0.5; // 500ms poll = 0.5s per call
 
@@ -242,7 +232,7 @@ const Timer = (() => {
         _criticalTimer += HALF;
         _recoveryHold   = 0;
         _distractionTimer = 0;
-        if (_criticalTimer >= holdFailed) {
+        if (_criticalTimer >= ENTRY_HOLD[STATE.FAILED]) {
           _applyState(STATE.FAILED);
           _stop();
         }
@@ -264,7 +254,7 @@ const Timer = (() => {
         _distractionTimer += HALF;
         _criticalTimer    += HALF;
         _recoveryHold      = 0;
-        if (_distractionTimer >= holdCritical) {
+        if (_distractionTimer >= ENTRY_HOLD[STATE.CRITICAL]) {
           _applyState(STATE.CRITICAL);
           _distractionTimer = 0;
         }
@@ -290,7 +280,7 @@ const Timer = (() => {
       if (level < thr.distracted) {
         _distractionTimer += HALF;
         _recoveryHold      = 0;
-        if (_distractionTimer >= holdDistracted) {
+        if (_distractionTimer >= ENTRY_HOLD[STATE.DISTRACTED]) {
           _applyState(STATE.DISTRACTED);
           _distractionTimer = 0;
         }
@@ -313,7 +303,7 @@ const Timer = (() => {
     if (level < thr.drifting) {
       _distractionTimer += HALF;
       _recoveryHold      = 0;
-      if (_distractionTimer >= holdDrifting) {
+      if (_distractionTimer >= ENTRY_HOLD[STATE.DRIFTING]) {
         _applyState(STATE.DRIFTING);
         _distractionTimer = 0;
       }
