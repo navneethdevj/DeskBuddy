@@ -69,6 +69,7 @@
   _wireBrainToSounds();
   _wireSessionToUI();
   _wireWindowControls();
+  _wireKeybinds();
   _wireSettings();
   _wireBreakReminder();
 
@@ -286,13 +287,7 @@
   }
 
   function _wireWindowControls() {
-    // Keyboard shortcut: Ctrl/Cmd + Shift + P → toggle compact / full
-    window.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
-        e.preventDefault();
-        _isFullMode ? _exitFullMode() : _enterFullMode();
-      }
-    });
+    // Keyboard shortcut registered via Keybinds in _wireKeybinds() below
 
     // Toggle buttons
     const expandBtn   = document.getElementById('compact-expand-btn');
@@ -313,6 +308,47 @@
         document.body.classList.add('pip-mode');
       });
     }
+  }
+
+  // ── _wireKeybinds ─────────────────────────────────────────────────────────
+  // Register all keyboard shortcuts in the central registry, then install the
+  // single keydown listener.  Raw keydown handlers for these combos are removed
+  // from _wireWindowControls / _wireSettings so there is exactly one listener.
+
+  function _wireKeybinds() {
+    Keybinds.register({
+      id: 'toggle-pip',
+      label: 'Toggle compact overlay',
+      defaultKey: 'Ctrl+Shift+P',
+      fn: () => _isFullMode ? _exitFullMode() : _enterFullMode(),
+    });
+
+    Keybinds.register({
+      id: 'toggle-settings',
+      label: 'Open / close settings',
+      defaultKey: 'Ctrl+Shift+Comma',
+      fn: () => document.getElementById('settings-gear-btn')?.click(),
+    });
+
+    Keybinds.register({
+      id: 'cycle-mute-preset',
+      label: 'Cycle mute preset',
+      defaultKey: 'Ctrl+Shift+M',
+      fn: () => {
+        const order = ['ALL_ON', 'ESSENTIAL', 'REMINDERS_ONLY', 'ALL_OFF'];
+        const cur   = Settings.get('mutePreset');
+        Settings.set('mutePreset', order[(order.indexOf(cur) + 1) % order.length]);
+      },
+    });
+
+    Keybinds.register({
+      id: 'dismiss-break-reminder',
+      label: 'Dismiss break reminder',
+      defaultKey: 'Ctrl+Shift+B',
+      fn: () => { if (BreakReminder.isActive()) BreakReminder.dismiss(); },
+    });
+
+    Keybinds.init();
   }
 
   // ── _wireSettings ─────────────────────────────────────────────────────────
@@ -471,16 +507,68 @@
       if (droneToggle) droneToggle.checked = v;
     });
 
-    // ── Ctrl+Shift+M — cycle mute preset ────────────────────────────────
-    window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
-        e.preventDefault();
-        const order = ['ALL_ON', 'ESSENTIAL', 'REMINDERS_ONLY', 'ALL_OFF'];
-        const cur   = Settings.get('mutePreset');
-        const next  = order[(order.indexOf(cur) + 1) % order.length];
-        Settings.set('mutePreset', next);
-      }
-    });
+    // ── Emotion preview grid ─────────────────────────────────────────────
+    const emotionGrid = document.getElementById('emotion-grid');
+    if (emotionGrid) {
+      const GLOW = {
+        idle: '155,135,255', curious: '115,125,245', focused: '110,130,225',
+        sleepy: '130,140,210', suspicious: '115,120,240', happy: '160,140,245',
+        scared: '195,218,255', sad: '100,145,210', crying: '75,120,195',
+        pouty: '255,188,118', grumpy: '255,138,128', overjoyed: '255,240,198',
+        sulking: '205,138,192', embarrassed: '255,120,155', forgiven: '255,160,190',
+        excited: '255,228,120', shy: '255,142,198', love: '255,138,180',
+        startled: '200,220,255',
+      };
+      const SOUND_MAP = {
+        happy: 'happy_coo', curious: 'curious_ooh', overjoyed: 'overjoyed_chirp',
+        excited: 'excited_chirp', shy: 'shy_squeak', love: 'love_purr',
+        suspicious: 'suspicious_squint', pouty: 'pouty_mweh', grumpy: 'grumpy_hmph',
+        scared: 'scared_eep', sad: 'sad_whimper', crying: 'crying_sob',
+        startled: 'startled_gasp',
+      };
+      let _activeBtn = null;
+
+      emotionGrid.style.cssText =
+        'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 10px 10px;';
+
+      Emotion.getStates().forEach(state => {
+        const btn = document.createElement('button');
+        btn.className = 'emotion-test-btn';
+        btn.textContent = state;
+        btn.title = `Preview: ${state}`;
+        btn.style.setProperty('--glow-color', GLOW[state] || '155,135,255');
+        btn.addEventListener('click', () => {
+          if (_activeBtn) _activeBtn.classList.remove('active');
+          btn.classList.add('active');
+          _activeBtn = btn;
+          const sound = SOUND_MAP[state];
+          if (sound) Sounds.play(sound);
+          Emotion.preview(state, 3000, () => {
+            btn.classList.remove('active');
+            if (_activeBtn === btn) _activeBtn = null;
+          });
+        });
+        emotionGrid.appendChild(btn);
+      });
+    }
+
+    // ── Shortcuts display ────────────────────────────────────────────────
+    const shortcutsList = document.getElementById('shortcuts-list');
+    if (shortcutsList) {
+      Keybinds.getAll().forEach(({ label, currentKey }) => {
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'settings-row-label';
+        labelEl.textContent = label;
+        const chip = document.createElement('kbd');
+        chip.className = 'shortcut-chip';
+        chip.textContent = Keybinds.prettyKey(currentKey);
+        row.appendChild(labelEl);
+        row.appendChild(chip);
+        shortcutsList.appendChild(row);
+      });
+    }
   }
 
   // ── _wireBreakReminder ────────────────────────────────────────────────────

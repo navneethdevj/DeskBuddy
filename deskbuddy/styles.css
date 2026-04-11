@@ -2092,3 +2092,50 @@ body.pip-mode #settings-panel { display: none !important; }
 .companion.muted-all-off .mouth::after {
   transform: translate(-50%, -50%) rotate(-35deg);
 }
+
+/* =====================================================================
+   EMOTION TEST BUTTONS — compact grid in Settings › Expressions
+   ===================================================================== */
+.emotion-test-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  color: rgba(215, 205, 255, 0.60);
+  font-family: inherit;
+  font-size: 10.5px;
+  padding: 5px 3px;
+  cursor: pointer;
+  text-align: center;
+  text-transform: lowercase;
+  line-height: 1;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  --glow-color: 155, 135, 255;
+  -webkit-app-region: no-drag;
+}
+.emotion-test-btn:hover {
+  background: rgba(var(--glow-color), 0.12);
+  border-color: rgba(var(--glow-color), 0.28);
+  box-shadow: 0 0 7px rgba(var(--glow-color), 0.22);
+  color: rgba(255, 255, 255, 0.90);
+}
+.emotion-test-btn.active {
+  background: rgba(var(--glow-color), 0.20);
+  border-color: rgba(var(--glow-color), 0.45);
+  box-shadow: 0 0 12px rgba(var(--glow-color), 0.38);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* =====================================================================
+   SHORTCUT CHIPS — keyboard shortcut display in Settings › Shortcuts
+   ===================================================================== */
+.shortcut-chip {
+  font-family: inherit;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: rgba(200, 190, 255, 0.65);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
