@@ -110,6 +110,19 @@
             <option value="90">90 min</option>
           </select>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Timer step</div>
+            <div class="settings-row-sublabel">+/− button increment size</div>
+          </div>
+          <select id="timer-step-select" class="settings-select">
+            <option value="1">1 min</option>
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+          </select>
+        </div>
         <div class="settings-row settings-row-hint" id="session-stats-row">
           <div>
             <div class="settings-row-sublabel" id="sessions-today-label">— sessions today</div>
@@ -282,21 +295,24 @@
         <span class="sp-mode-star">✦</span>
       </div>
       <div class="sp-setup">
-        <!-- Duration stepper — number + sec/min/hr unit + +/− buttons -->
+        <!-- Duration HH:MM:SS stepper — enter hours, minutes and seconds together -->
         <div class="sp-row">
           <label class="sp-label">study for</label>
-          <div class="sp-stepper">
-            <button class="sp-step-btn" data-target="duration-select" data-dir="-1"
+          <div class="sp-stepper sp-stepper-hms">
+            <button class="sp-step-btn" id="duration-dec"
                     aria-label="decrease duration">−</button>
-            <input type="number" id="duration-select" class="sp-step-input"
-              value="25" min="1" max="240" step="5" autocomplete="off"
-              -webkit-app-region="no-drag">
-            <select id="duration-unit" class="sp-unit-select">
-              <option value="sec">sec</option>
-              <option value="min" selected>min</option>
-              <option value="hr">hr</option>
-            </select>
-            <button class="sp-step-btn" data-target="duration-select" data-dir="1"
+            <div class="sp-hms-group">
+              <input type="number" id="duration-h" class="sp-hms-input"
+                value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">h</span>
+              <input type="number" id="duration-m" class="sp-hms-input"
+                value="25" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">m</span>
+              <input type="number" id="duration-s" class="sp-hms-input"
+                value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">s</span>
+            </div>
+            <button class="sp-step-btn" id="duration-inc"
                     aria-label="increase duration">+</button>
           </div>
         </div>

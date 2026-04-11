@@ -27,6 +27,7 @@ const Settings = (() => {
     companionSize:   'M',        // 'S' | 'M' | 'L'
     nightAutoVolume: true,       // soundscape reduces volume at NIGHT
     sessionLength:   25,         // default session duration in minutes
+    timerStep:       5,          // +/− step size in minutes for duration stepper
     ticksEnabled:    true,       // soft timer tick sounds on/off
     keybinds:        {},         // override map: { [action_id]: 'KeyboardShortcut' }
   };

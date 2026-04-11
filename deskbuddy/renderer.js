@@ -71,9 +71,8 @@
     const brightness = Settings.get('brightness') || 1.0;
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.filter = `brightness(${brightness})`;
-    // Pre-fill start-screen duration with saved default (unit stays 'min')
-    const durEl = document.getElementById('duration-select');
-    if (durEl) durEl.value = String(Settings.get('sessionLength') || 25);
+    // Pre-fill HH:MM:SS fields with saved default (sessionLength is in minutes)
+    _setDurationSeconds((Settings.get('sessionLength') || 25) * 60);
     // Pre-fill session panel break interval from saved settings
     const breakSel = document.getElementById('session-break-select');
     if (breakSel) {
@@ -93,6 +92,29 @@
   _wireSettings();
   _wireBreakReminder();
   _wireSidebar();
+
+  // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
+  // Read/write the three HH:MM:SS number fields as a single total-seconds value.
+
+  function _getDurationSeconds() {
+    const h = parseInt(document.getElementById('duration-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('duration-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('duration-s')?.value, 10) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+
+  function _setDurationSeconds(totalSecs) {
+    totalSecs = Math.max(0, Math.min(86399, Math.round(totalSecs)));
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    const hEl = document.getElementById('duration-h');
+    const mEl = document.getElementById('duration-m');
+    const sEl = document.getElementById('duration-s');
+    if (hEl) hEl.value = String(h);
+    if (mEl) mEl.value = String(m);
+    if (sEl) sEl.value = String(s);
+  }
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.
@@ -194,11 +216,8 @@
   // by Timer.init() and BreakReminder.setInterval().
 
   function _getDurationMinutes() {
-    const num  = parseFloat(document.getElementById('duration-select')?.value) || 25;
-    const unit = document.getElementById('duration-unit')?.value || 'min';
-    if (unit === 'sec') return Math.max(1 / 60, num / 60);
-    if (unit === 'hr')  return num * 60;
-    return Math.max(1 / 60, num);
+    const totalSecs = _getDurationSeconds();
+    return Math.max(1 / 60, totalSecs / 60);
   }
 
   function _getBreakMinutes() {
@@ -275,8 +294,47 @@
       });
     }
 
-    _wireOne('duration-select',       'duration-unit');
     _wireOne('session-break-select',  'break-unit-select');
+
+    // ── HH:MM:SS duration +/− buttons ────────────────────────────────────
+    // Each click adds/subtracts timerStep minutes worth of seconds, then
+    // redistributes the result into the three h/m/s fields.
+
+    function _clampHmsFields() {
+      const hEl = document.getElementById('duration-h');
+      const mEl = document.getElementById('duration-m');
+      const sEl = document.getElementById('duration-s');
+      if (hEl) hEl.value = String(Math.max(0, Math.min(23, parseInt(hEl.value, 10) || 0)));
+      if (mEl) mEl.value = String(Math.max(0, Math.min(59, parseInt(mEl.value, 10) || 0)));
+      if (sEl) sEl.value = String(Math.max(0, Math.min(59, parseInt(sEl.value, 10) || 0)));
+    }
+
+    // Clamp individual fields on manual edit
+    ['duration-h', 'duration-m', 'duration-s'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', _clampHmsFields);
+    });
+
+    const decBtn = document.getElementById('duration-dec');
+    const incBtn = document.getElementById('duration-inc');
+
+    if (decBtn) {
+      decBtn.addEventListener('click', () => {
+        const stepSecs = (Settings.get('timerStep') || 5) * 60;
+        const cur  = _getDurationSeconds();
+        const next = Math.max(0, cur - stepSecs);
+        _setDurationSeconds(next);
+      });
+    }
+
+    if (incBtn) {
+      incBtn.addEventListener('click', () => {
+        const stepSecs = (Settings.get('timerStep') || 5) * 60;
+        const cur  = _getDurationSeconds();
+        const next = Math.min(86399, cur + stepSecs);
+        _setDurationSeconds(next);
+      });
+    }
 
     // +/− button clicks
     document.querySelectorAll('.sp-step-btn').forEach((btn) => {
@@ -1055,23 +1113,32 @@
       sessionLengthSel.addEventListener('change', (e) => {
         const v = parseInt(e.target.value, 10);
         Settings.set('sessionLength', v);
-        // Also update the start-screen duration selector if visible
-        const durEl = document.getElementById('duration-select');
-        if (durEl) durEl.value = String(v);
+        // Also update the start-screen HH:MM:SS duration fields if visible
+        _setDurationSeconds(v * 60);
       });
     }
 
     Settings.onChange('sessionLength', (v) => {
       if (sessionLengthSel) sessionLengthSel.value = String(v);
-      const durEl = document.getElementById('duration-select');
-      if (durEl) durEl.value = String(v);
+      _setDurationSeconds(v * 60);
     });
 
-    // Pre-fill start-screen duration selector with saved default now
+    // Pre-fill start-screen HH:MM:SS fields with saved default now
     {
-      const durEl = document.getElementById('duration-select');
-      if (durEl) durEl.value = String(Settings.get('sessionLength'));
+      _setDurationSeconds(Settings.get('sessionLength') * 60);
     }
+
+    // ── Timer step (duration stepper +/− increment) ─────────────────────
+    const timerStepSel = document.getElementById('timer-step-select');
+    if (timerStepSel) {
+      timerStepSel.value = String(Settings.get('timerStep') || 5);
+      timerStepSel.addEventListener('change', (e) => {
+        Settings.set('timerStep', parseInt(e.target.value, 10));
+      });
+    }
+    Settings.onChange('timerStep', (v) => {
+      if (timerStepSel) timerStepSel.value = String(v);
+    });
 
     // ── Session stats (today) ────────────────────────────────────────────
     function _refreshSessionStats() {
