@@ -333,7 +333,7 @@
   function _startBreakCountdown() {
     _stopBreakCountdown();
     _updateBreakCountdown();
-    _breakCountdownInterval = setInterval(_updateBreakCountdown, 500);
+    _breakCountdownInterval = setInterval(_updateBreakCountdown, 1000);
   }
 
   function _stopBreakCountdown() {
@@ -348,7 +348,7 @@
     if (!el) return;
     const ms = Session.getBreakTimeRemaining();
     const totalSecs = Math.max(0, Math.ceil(ms / 1000));
-    const m = String(Math.floor(totalSecs / 60)).padStart(1, '0');
+    const m = String(Math.floor(totalSecs / 60));
     const s = String(totalSecs % 60).padStart(2, '0');
     el.textContent = `${m}:${s}`;
   }
