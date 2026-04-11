@@ -71,16 +71,14 @@
     const brightness = Settings.get('brightness') || 1.0;
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.filter = `brightness(${brightness})`;
-    // Pre-fill start-screen duration with saved default
+    // Pre-fill start-screen duration with saved default (unit stays 'min')
     const durEl = document.getElementById('duration-select');
     if (durEl) durEl.value = String(Settings.get('sessionLength') || 25);
     // Pre-fill session panel break interval from saved settings
     const breakSel = document.getElementById('session-break-select');
     if (breakSel) {
       const saved = Settings.get('breakInterval');
-      // Snap to nearest option value; fall back to 25 if the saved value isn't listed
-      const opts = Array.from(breakSel.options).map(o => o.value);
-      breakSel.value = opts.includes(String(saved)) ? String(saved) : '25';
+      breakSel.value = String(saved !== undefined ? saved : 25);
     }
   }
 
@@ -108,16 +106,11 @@
         const stats = Session.getCurrentStats();
         if (stats && stats.state !== 'IDLE') return;
         const goalEl = document.getElementById('goal-input');
-        const durEl  = document.getElementById('duration-select');
         const goal   = goalEl?.value?.trim() || null;
-        const mins   = parseInt(durEl?.value || '25', 10);
+        const mins   = _getDurationMinutes();
 
-        // Sync break interval from session panel if present
-        const breakSel = document.getElementById('session-break-select');
-        if (breakSel) {
-          const breakMins = parseInt(breakSel.value, 10);
-          BreakReminder.setInterval(breakMins);
-        }
+        // Sync break interval from session panel
+        BreakReminder.setInterval(_getBreakMinutes());
 
         Timer.init(mins);
         Session.startNew(mins, goal);
@@ -126,6 +119,8 @@
         if (overlay) overlay.style.display = 'none';
       });
     }
+
+    _wireSteppers();
 
     // Pause / break button
     const pauseBtn = document.getElementById('pause-session');
@@ -194,6 +189,119 @@
     }
   }
 
+  // ── Stepper helpers ───────────────────────────────────────────────────────
+  // Convert the stepper number + unit-select into fractional minutes consumed
+  // by Timer.init() and BreakReminder.setInterval().
+
+  function _getDurationMinutes() {
+    const num  = parseFloat(document.getElementById('duration-select')?.value) || 25;
+    const unit = document.getElementById('duration-unit')?.value || 'min';
+    if (unit === 'sec') return Math.max(1 / 60, num / 60);
+    if (unit === 'hr')  return num * 60;
+    return Math.max(1 / 60, num);
+  }
+
+  function _getBreakMinutes() {
+    const num  = parseFloat(document.getElementById('session-break-select')?.value) || 0;
+    if (num <= 0) return 0;
+    const unit = document.getElementById('break-unit-select')?.value || 'min';
+    if (unit === 'sec') return Math.max(0, num / 60);
+    if (unit === 'hr')  return num * 60;
+    return num;
+  }
+
+  // ── _wireSteppers ─────────────────────────────────────────────────────────
+  // Wire +/− buttons and unit-select changes for all sp-stepper inputs.
+  // Unit change converts the current value to the new unit (rounded to step).
+
+  function _wireSteppers() {
+    // Step sizes and limits per unit
+    const UNIT_CONFIG = {
+      sec: { step: 10, min: 0, max: 3600 },
+      min: { step:  5, min: 0, max:  240 },
+      hr:  { step:  1, min: 0, max:   16 },
+    };
+
+    // Convert a value between units, rounding to the new step
+    function _convertUnits(val, fromUnit, toUnit) {
+      // Normalise to seconds first
+      let secs = val;
+      if (fromUnit === 'min') secs = val * 60;
+      if (fromUnit === 'hr')  secs = val * 3600;
+      // Convert to target unit
+      let out;
+      if (toUnit === 'sec')  out = secs;
+      else if (toUnit === 'hr')  out = secs / 3600;
+      else                       out = secs / 60;  // min
+      const cfg  = UNIT_CONFIG[toUnit];
+      const step = cfg.step;
+      out = Math.round(out / step) * step;
+      return Math.min(cfg.max, Math.max(cfg.min, out));
+    }
+
+    function _wireOne(inputId, unitId) {
+      const input    = document.getElementById(inputId);
+      const unitSel  = document.getElementById(unitId);
+      if (!input) return;
+
+      function _applyConfig() {
+        const unit = unitSel?.value || 'min';
+        const cfg  = UNIT_CONFIG[unit];
+        input.step = String(cfg.step);
+        input.min  = String(cfg.min);
+        input.max  = String(cfg.max);
+      }
+      _applyConfig();
+
+      // Unit change — convert existing value
+      if (unitSel) {
+        unitSel.addEventListener('change', () => {
+          const prevUnit = unitSel.dataset.prevUnit || 'min';
+          const newUnit  = unitSel.value;
+          const cur      = parseFloat(input.value) || 0;
+          input.value    = String(_convertUnits(cur, prevUnit, newUnit));
+          unitSel.dataset.prevUnit = newUnit;
+          _applyConfig();
+        });
+        unitSel.dataset.prevUnit = unitSel.value;
+      }
+
+      // Clamp on manual edit
+      input.addEventListener('change', () => {
+        const cfg = UNIT_CONFIG[unitSel?.value || 'min'];
+        let v = parseFloat(input.value) || 0;
+        v = Math.min(cfg.max, Math.max(cfg.min, v));
+        input.value = String(v);
+      });
+    }
+
+    _wireOne('duration-select',       'duration-unit');
+    _wireOne('session-break-select',  'break-unit-select');
+
+    // +/− button clicks
+    document.querySelectorAll('.sp-step-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.target;
+        const dir      = parseFloat(btn.dataset.dir) || 0;
+        const input    = document.getElementById(targetId);
+        if (!input) return;
+
+        // Detect unit from sibling select (look for first select in same stepper)
+        const stepper  = btn.closest('.sp-stepper');
+        const unitSel  = stepper ? stepper.querySelector('select') : null;
+        const unit     = unitSel?.value || 'min';
+        const cfg      = UNIT_CONFIG[unit] || UNIT_CONFIG.min;
+        const step     = parseFloat(input.step) || cfg.step;
+        let   val      = parseFloat(input.value) || 0;
+        val = Math.min(cfg.max, Math.max(cfg.min, val + dir * step));
+        // Round to step to avoid float drift
+        val = Math.round(val / step) * step;
+        input.value = String(val);
+        input.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+
   // ── _wireTimerToSounds ────────────────────────────────────────────────────
   // Tick sounds (one per logical timer-second) + notable state transitions.
 
@@ -225,22 +333,14 @@
   }
 
   // ── _wireTimerToCompanion ─────────────────────────────────────────────────
-  // Map timer state to companion emotion overrides.
-  // brain.js applyFocusEmotion() runs every rAF frame and may subsequently
-  // override these; that's intentional — brain adjusts for perception nuance.
+  // Expose timer state on <body> so CSS and brain.js can react to it.
+  // Emotion selection for DRIFTING/DISTRACTED/CRITICAL is handled inside
+  // brain.js applyFocusEmotion() — setting it here too causes a race where
+  // the rAF emotion loop immediately overrides whatever we set.
+  // FAILED emotion is handled in _wireSessionToUI via the session outcome.
 
   function _wireTimerToCompanion() {
     Timer.onStateChange((newState) => {
-      const emotionMap = {
-        FOCUSED:    null,         // brain handles normally
-        DRIFTING:   'suspicious',
-        DISTRACTED: 'pouty',
-        CRITICAL:   'grumpy',
-        FAILED:     'crying',
-      };
-      const emotion = emotionMap[newState];
-      if (emotion) Emotion.setState(emotion);
-      // Expose timer state as a data attribute so CSS can colour the focus dot
       document.body.dataset.timerState = newState;
     });
   }
@@ -271,6 +371,7 @@
   // Session state changes → DOM visibility / content updates.
 
   let _breakCountdownInterval = null;
+  let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
 
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState) => {
@@ -290,9 +391,33 @@
           (newState === 'ACTIVE' || newState === 'PAUSED') ? '' : 'none';
       }
 
+      // ── On session start: snapshot total duration for progress ring ──
+      if (newState === 'ACTIVE') {
+        _sessionTotalSeconds = _getDurationMinutes() * 60;
+        // Reset ring to full
+        const ring = document.getElementById('sp-ring-progress');
+        if (ring) ring.style.strokeDashoffset = '0';
+        const inlineTimer = document.getElementById('sp-inline-timer');
+        if (inlineTimer) {
+          const m = String(Math.floor(_sessionTotalSeconds / 60)).padStart(2, '0');
+          const s = String(Math.round(_sessionTotalSeconds % 60)).padStart(2, '0');
+          inlineTimer.textContent = `${m}:${s}`;
+        }
+      }
+
       // Break countdown — start/stop the live update interval
       if (newState === 'PAUSED') {
         _startBreakCountdown();
+        // Companion relaxes; don't override if overjoyed is still running
+        Emotion.preview('happy', 2200);
+        // Teal glow sweeps up from the bottom
+        const glow = document.getElementById('break-glow');
+        if (glow) {
+          glow.classList.add('active');
+          setTimeout(() => glow.classList.remove('active'), 3000);
+        }
+        // Auto-open panel so user sees the break countdown
+        _panelOpen();
       } else {
         _stopBreakCountdown();
       }
@@ -313,7 +438,7 @@
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
-      // Outcome label
+      // Outcome label + effects
       const outcomeLabel = document.getElementById('outcome-label');
       if (outcomeLabel) {
         if      (newState === 'COMPLETED')  outcomeLabel.textContent = '✦ session complete!';
@@ -322,11 +447,116 @@
         else                                outcomeLabel.textContent = '';
       }
 
+      if (newState === 'COMPLETED') {
+        _fireCelebration('complete');
+        _panelOpen();
+      }
+
+      if (newState === 'FAILED' || newState === 'ABANDONED') {
+        // Companion shows sad/crying (FAILED) or idle (ABANDONED)
+        if (newState === 'FAILED') Emotion.setState('crying');
+        _panelOpen();
+      }
+
       // Reset timer state body attribute when session ends
       if (newState === 'IDLE' || newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
         delete document.body.dataset.timerState;
       }
     });
+
+    // ── Inline panel timer + progress ring (updated each logical timer-second) ──
+    Timer.onTick(() => {
+      const remaining = Timer.getRemainingSeconds();
+      const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const s = String(remaining % 60).padStart(2, '0');
+
+      const inlineTimer = document.getElementById('sp-inline-timer');
+      if (inlineTimer) inlineTimer.textContent = `${m}:${s}`;
+
+      const ring = document.getElementById('sp-ring-progress');
+      if (ring && _sessionTotalSeconds > 0) {
+        const CIRC    = 138.23; // 2π × r=22
+        const elapsed = _sessionTotalSeconds - remaining;
+        ring.style.strokeDashoffset = String(CIRC * (elapsed / _sessionTotalSeconds));
+      }
+    });
+  }
+
+  // ── Helper: open the panel programmatically (auto-reveal on completion/break) ──
+  function _panelOpen() {
+    const panel = document.getElementById('session-panel');
+    const icon  = document.getElementById('sp-icon');
+    if (panel) panel.classList.add('sidebar-open');
+    if (icon)  icon.classList.add('sp-icon-hidden');
+  }
+
+  // ── Celebration — confetti burst + banner + companion overjoyed ───────────
+
+  function _fireCelebration(type) {
+    const overlay = document.getElementById('celebration-overlay');
+    const msg     = document.getElementById('celebration-message');
+    const world   = document.getElementById('world');
+    if (!overlay) return;
+
+    // Screen flash
+    if (world) {
+      world.classList.add('session-complete-flash');
+      setTimeout(() => world.classList.remove('session-complete-flash'), 1500);
+    }
+
+    // Confetti burst
+    const symbols = ['✦', '✦', '✧', '·', '·', '★', '♡', '⬡', '◆'];
+    const colors  = [
+      'rgba(175, 155, 255, 0.95)',
+      'rgba(100, 220, 180, 0.95)',
+      'rgba(255, 205, 80,  0.95)',
+      'rgba(245, 185, 255, 0.95)',
+      'rgba(140, 215, 255, 0.95)',
+      'rgba(255, 145, 165, 0.95)',
+    ];
+
+    const count = type === 'complete' ? 52 : 26;
+    for (let i = 0; i < count; i++) {
+      const p   = document.createElement('div');
+      p.className = 'confetti-particle';
+      p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      const x0  = 10  + Math.random() * 80;
+      const y0  = 15  + Math.random() * 60;
+      const dx  = (Math.random() - 0.5) * 170;
+      const dy  = 55  + Math.random() * 110;
+      const rot = (Math.random() - 0.5) * 900;
+      const dur = 2.0 + Math.random() * 1.4;
+      const del = Math.random() * 0.65;
+      p.style.cssText = [
+        `left:${x0}%`, `top:${y0}%`,
+        `color:${colors[Math.floor(Math.random() * colors.length)]}`,
+        `font-size:${9 + Math.random() * 13}px`,
+        `--dx:${dx}px`, `--dy:${dy}px`, `--rot:${rot}deg`,
+        `--dur:${dur}s`, `--del:${del}s`,
+      ].join(';');
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), (dur + del + 0.5) * 1000);
+    }
+
+    // Banner
+    if (msg) {
+      const titleEl = msg.querySelector('.cel-title');
+      const subEl   = msg.querySelector('.cel-sub');
+      if (titleEl) titleEl.textContent = '✦ session complete ✦';
+      if (subEl)   subEl.textContent   = 'great work — you did it';
+      msg.classList.add('active');
+    }
+
+    // Companion overjoyed
+    Emotion.preview('overjoyed', 4500);
+    Sounds.play('overjoyed_chirp');
+
+    // Clean up
+    const totalMs = 3400;
+    setTimeout(() => {
+      if (msg) msg.classList.remove('active');
+      setTimeout(() => { overlay.innerHTML = ''; }, 600);
+    }, totalMs);
   }
 
   // ── Break countdown helpers ───────────────────────────────────────────────
@@ -895,14 +1125,13 @@
   }
 
   // ── _wireSidebar ──────────────────────────────────────────────────────────
-  // Auto-hide session sidebar: hover the brain icon or the right-edge trigger
-  // zone to slide the panel in; leave the panel to slide it away.
+  // Auto-hide session sidebar: hover the brain icon to slide the panel in;
+  // leave the panel to slide it away.
   // The brain icon fades out when the panel is open so it doesn't overlap.
 
   function _wireSidebar() {
-    const panel   = document.getElementById('session-panel');
-    const trigger = document.getElementById('sp-trigger');
-    const icon    = document.getElementById('sp-icon');
+    const panel = document.getElementById('session-panel');
+    const icon  = document.getElementById('sp-icon');
     if (!panel) return;
 
     let _hideTimer = null;
@@ -922,9 +1151,8 @@
       }, 380);
     }
 
-    // Open on entering the trigger strip or the icon
-    if (trigger) trigger.addEventListener('mouseenter', _open);
-    if (icon)    icon.addEventListener('mouseenter',    _open);
+    // Only the brain icon opens the panel
+    if (icon) icon.addEventListener('mouseenter', _open);
 
     // Keep open while mouse is inside the panel
     panel.addEventListener('mouseenter', () => {
@@ -933,9 +1161,6 @@
 
     // Schedule close when mouse leaves the panel
     panel.addEventListener('mouseleave', _scheduleClose);
-
-    // Also close when mouse leaves the trigger strip (and didn't enter the panel)
-    if (trigger) trigger.addEventListener('mouseleave', _scheduleClose);
   }
 
 })();
