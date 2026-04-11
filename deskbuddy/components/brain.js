@@ -1713,5 +1713,6 @@ const Brain = (() => {
            setSensitivity, getSensitivityThresholds,
            getTimePeriod, applyTimePeriod,
            getNightSessionCount, trackNightSession, resetNightSessions,
-           checkNightWhisper, doMorningGreeting };
+           checkNightWhisper, doMorningGreeting,
+           triggerLookSequence };
 })();

@@ -64,6 +64,7 @@ const Sounds = (() => {
     refocus:            'C',
     break_start:        'D',
     break_end:          'D',
+    break_over:         'D',
   };
 
   const PRESET_ALLOWS = {
@@ -109,6 +110,7 @@ const Sounds = (() => {
     refocus:          0,
     break_start:      0,
     break_end:        0,
+    break_over:       0,
     // Polling-triggered sounds
     giggle:            800,
     surprise:          800,
@@ -171,6 +173,7 @@ const Sounds = (() => {
       refocus:            _refocus,
       break_start:        _break_start,
       break_end:          _break_end,
+      break_over:         _break_over,
     };
     if (dispatch[name]) dispatch[name]();
   }
@@ -1398,6 +1401,25 @@ const Sounds = (() => {
       _osc('sine', 520, t + 0.240, 0.220, 0.065, {
         attack: 0.012, release: 0.088,
       });
+    } catch (e) {}
+  }
+
+  /**
+   * BREAK_OVER — "hey, break time's up!"
+   * Three ascending alert tones with a short gap between each.
+   * More prominent than break_end — meant to be heard from across the room.
+   * Axes: 440→554→659 Hz (A4→C#5→E5) / sine / quick A+R per note
+   */
+  function _break_over() {
+    if (!_ok('break_over')) return;
+    try {
+      const t = ctx.currentTime;
+      // Note 1: A4 440 Hz, 180ms
+      _osc('sine', 440, t,        0.18, 0.10, { attack: 0.010, release: 0.070 });
+      // Note 2: C#5 554 Hz, 180ms (after 60ms gap)
+      _osc('sine', 554, t + 0.24, 0.18, 0.10, { attack: 0.010, release: 0.070 });
+      // Note 3: E5 659 Hz, 280ms (after 60ms gap) — held longer for emphasis
+      _osc('sine', 659, t + 0.48, 0.28, 0.10, { attack: 0.010, release: 0.120 });
     } catch (e) {}
   }
 

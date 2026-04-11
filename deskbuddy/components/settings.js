@@ -30,6 +30,7 @@ const Settings = (() => {
     timerStep:       5,          // +/− step size in minutes for duration stepper
     ticksEnabled:    true,       // soft timer tick sounds on/off
     keybinds:        {},         // override map: { [action_id]: 'KeyboardShortcut' }
+    breakOverAlarm:  true,       // play alarm + pet look when break budget runs out
   };
 
   let _current = { ...DEFAULTS };
