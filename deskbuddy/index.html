@@ -15,6 +15,111 @@
   <!-- Full-screen mode: click to return to compact overlay -->
   <button id="full-collapse-btn" title="Compact overlay (Ctrl+Shift+P)">⤡</button>
 
+  <!-- Settings gear button — top-left, full-mode only -->
+  <button id="settings-gear-btn" title="Settings">⚙</button>
+
+  <!-- Settings panel — floating overlay, full-mode only -->
+  <div id="settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
+    <div id="settings-header">
+      <span>Settings</span>
+      <button id="settings-close-btn" title="Close settings" aria-label="Close settings">✕</button>
+    </div>
+    <div id="settings-body">
+
+      <!-- ── SOUND SECTION ─────────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Sound</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Mute preset</div>
+            <div class="settings-row-sublabel" id="mute-preset-desc">All sounds enabled</div>
+          </div>
+          <select id="mute-preset-select" class="settings-select">
+            <option value="ALL_ON">All sounds</option>
+            <option value="ESSENTIAL">No chatter</option>
+            <option value="REMINDERS_ONLY">Breaks only</option>
+            <option value="ALL_OFF">Silent</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-hint">
+          <div class="settings-row-sublabel">Cycle with <kbd>Ctrl+Shift+M</kbd></div>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Break Reminders</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Break reminders</div>
+            <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="break-reminder-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row" id="break-interval-row">
+          <div class="settings-row-label">Remind every</div>
+          <select id="break-interval-select" class="settings-select">
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Display</div>
+        <div class="settings-row">
+          <div class="settings-row-label">Ambient drone</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="drone-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Night volume reduction</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="night-volume-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Behaviour</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Focus sensitivity</div>
+            <div class="settings-row-sublabel">How strictly distraction is detected</div>
+          </div>
+          <select id="settings-sensitivity-select" class="settings-select">
+            <option value="GENTLE">Gentle</option>
+            <option value="NORMAL">Normal</option>
+            <option value="STRICT">Strict</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Phone detection</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="phone-detection-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+    </div><!-- /#settings-body -->
+  </div><!-- /#settings-panel -->
+
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
   <video id="camera-feed" autoplay playsinline muted
@@ -53,6 +158,8 @@
   <script src="components/session.js"></script>
   <script src="components/camera.js"></script>
   <script src="components/perception.js"></script>
+  <script src="components/settings.js"></script>
+  <script src="components/break-reminder.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
