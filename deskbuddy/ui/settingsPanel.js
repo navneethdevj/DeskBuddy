@@ -18,6 +18,11 @@ const SettingsPanel = (() => {
   let _open     = false;
 
   // ── Apply helpers — translate a setting value into live module calls ───────
+  //
+  // Architecture: renderer.js owns all module wiring via Settings.onChange().
+  // These helpers handle only UI side-effects that the settings panel itself
+  // must manage (description text, control enabled/disabled state, etc.).
+  // They must NOT call live modules — that would double-fire every change.
 
   const _MUTE_DESCRIPTIONS = {
     ALL_ON:         'All sounds: ticks, emotions, sessions, breaks',
@@ -27,72 +32,24 @@ const SettingsPanel = (() => {
   };
 
   function _applyMutePreset(preset) {
-    if (window.Sounds && Sounds.setMutePreset) Sounds.setMutePreset(preset);
-    // Update description text
+    // UI only — update the description line below the select
     const desc = document.getElementById('sp-mute-desc');
     if (desc) desc.textContent = _MUTE_DESCRIPTIONS[preset] || '';
   }
 
   function _applyBreakReminderEnabled(enabled) {
-    // Update interval select disabled state
-    const intervalEl = document.getElementById('sp-break-interval');
+    // UI only — dim and disable the interval row when reminders are off
+    const intervalEl  = document.getElementById('sp-break-interval');
     const intervalRow = document.getElementById('sp-break-interval-row');
     if (intervalEl)  intervalEl.disabled = !enabled;
     if (intervalRow) intervalRow.style.opacity = enabled ? '' : '0.4';
-    // Wire to BreakReminder module
-    if (!window.BreakReminder) return;
-    if (enabled) {
-      BreakReminder.setInterval(Settings.get('breakInterval'));
-    } else {
-      BreakReminder.setInterval(0);  // interval 0 = disabled inside the module
-    }
-  }
-
-  function _applyBreakInterval(minutes) {
-    if (!window.BreakReminder) return;
-    // Only apply if reminders are enabled
-    if (Settings.get('breakReminderEnabled')) {
-      BreakReminder.setInterval(minutes);
-    }
-  }
-
-  function _applyDroneEnabled(enabled) {
-    if (!window.Soundscape) return;
-    if (enabled) {
-      Soundscape.resume();
-    } else {
-      Soundscape.stop();
-    }
-  }
-
-  function _applyBrightness(value) {
-    const world = document.getElementById('world');
-    if (world) world.style.filter = `brightness(${value})`;
-  }
-
-  function _applySensitivity(level) {
-    if (window.Brain && Brain.setSensitivity) Brain.setSensitivity(level);
-  }
-
-  function _applyPhoneDetection(enabled) {
-    if (window.Brain && Brain.setPhoneDetectionEnabled) {
-      Brain.setPhoneDetectionEnabled(enabled);
-    }
   }
 
   function _applyCompanionSize(size) {
+    // No renderer.js onChange for companionSize — must call IPC here
     if (window.electronAPI && electronAPI.resizeWindow) {
       electronAPI.resizeWindow(size);
     }
-  }
-
-  function _applyNightAutoVolume(enabled) {
-    // When disabled, force night gain multiplier to 1.0 so volume never drops.
-    // Brain's applyTimePeriod will set it back to 0.8 when NIGHT if enabled.
-    if (!enabled && window.Sounds && Sounds.setNightGainMult) {
-      Sounds.setNightGainMult(1.0);
-    }
-    // If re-enabled, Brain's next applyTimePeriod call will restore the correct value.
   }
 
   // ── Panel open / close ─────────────────────────────────────────────────────
@@ -234,22 +191,23 @@ const SettingsPanel = (() => {
     });
 
     // Wire controls → Settings + live apply
+    // Passing null where there is no UI-only side-effect — renderer.js
+    // Settings.onChange handlers own all live module calls.
     _bindSelect('sp-mute-preset',       'mutePreset',      _applyMutePreset);
     _bindSelect('sp-companion-size',    'companionSize',   _applyCompanionSize);
-    _bindRange ('sp-brightness',        'brightness',      _applyBrightness);
-    _bindSelect('sp-sensitivity',       'sensitivity',     _applySensitivity);
-    _bindCheckbox('sp-phone-detection', 'phoneDetection',  _applyPhoneDetection);
-    _bindCheckbox('sp-drone-enabled',   'droneEnabled',    _applyDroneEnabled);
-    _bindCheckbox('sp-night-auto-volume','nightAutoVolume', _applyNightAutoVolume);
+    _bindRange ('sp-brightness',        'brightness',      null);
+    _bindSelect('sp-sensitivity',       'sensitivity',     null);
+    _bindCheckbox('sp-phone-detection', 'phoneDetection',  null);
+    _bindCheckbox('sp-drone-enabled',   'droneEnabled',    null);
+    _bindCheckbox('sp-night-auto-volume','nightAutoVolume', null);
     _bindCheckbox('sp-break-reminder-enabled', 'breakReminderEnabled', _applyBreakReminderEnabled);
 
-    // Break interval — integer coercion, only applies when reminders are enabled
+    // Break interval — integer coercion before storing
     const breakEl = document.getElementById('sp-break-interval');
     if (breakEl) {
       breakEl.addEventListener('change', (e) => {
-        const mins = parseInt(e.target.value, 10) || 25;
-        Settings.set('breakInterval', mins);
-        _applyBreakInterval(mins);
+        Settings.set('breakInterval', parseInt(e.target.value, 10) || 25);
+        // No UI side-effect here — renderer.js onChange handles BreakReminder.setInterval
       });
     }
     // Note: startup application of all settings is handled by _wireSettings()

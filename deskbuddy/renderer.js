@@ -1,7 +1,7 @@
 /**
  * Renderer — main frontend entry point.
  *
- * Boot order: Sounds → Session → Timer → Companion → SpriteAnimator →
+ * Boot order: Sounds → Session → Timer → BreakReminder → Companion → SpriteAnimator →
  *             Particles → Status → Camera/Perception → Brain → wire
  *
  * Cross-module communication rule: no module calls another directly.
@@ -28,19 +28,19 @@
     Settings.get('breakReminderEnabled') ? Settings.get('breakInterval') : 0
   );
 
-  // 4. Companion DOM
+  // 5. Companion DOM
   Companion.create(world);
 
-  // 5. Sprite animation engine
+  // 6. Sprite animation engine
   SpriteAnimator.init(Companion.getElement());
 
-  // 6. Particle effects
+  // 7. Particle effects
   Particles.init(world);
 
-  // 7. Status UI
+  // 8. Status UI
   Status.init(statusBar);
 
-  // 8. Face tracking (async, non-blocking — app works without camera)
+  // 9. Face tracking (async, non-blocking — app works without camera)
   Camera.init()
     .then(() => Perception.init())
     .catch((err) => {
@@ -48,14 +48,14 @@
       Perception.init();
     });
 
-  // 9. Brain loop
+  // 10. Brain loop
   Brain.start();
 
   // The companion starts in full-screen mode on launch.
   // The user can switch to compact PiP overlay via the collapse button.
   document.body.classList.add('full-mode');
 
-  // 10. Wire cross-module communication
+  // 11. Wire cross-module communication
   _wireUI();
   _wireTimerToSounds();
   _wireTimerToCompanion();
@@ -65,7 +65,7 @@
   _wireSettings();
   _wireBreakReminder();
 
-  // 11. Settings panel — must come after all modules are initialised
+  // 12. Settings panel — must come after all modules are initialised
   SettingsPanel.init();
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
