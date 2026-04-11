@@ -145,6 +145,10 @@ const Brain = (() => {
   // NoFace grace — tracks accumulated ms the face has been absent so decay
   // doesn't start immediately when a user briefly looks away from the camera.
   let _nofaceGraceMs = 0;
+  // Real-time reference for the focus-meter frame delta.
+  // Used to accumulate _nofaceGraceMs in real ms rather than a hardcoded
+  // 16ms-per-frame estimate (which is wrong on 144hz/30fps displays).
+  let _lastFocusUpdateMs = 0;
 
   // Idle look state
   let idleLookActive = false;
@@ -374,11 +378,14 @@ const Brain = (() => {
       const p = window.perception;
       const facePresent = window.cameraAvailable ? (p?.facePresent ?? true) : true;
 
+      // Compute real elapsed ms since last frame (cap at 100ms to ignore tab-sleep jumps).
+      const dt = _lastFocusUpdateMs ? Math.min(now - _lastFocusUpdateMs, 100) : 16;
+
       if (!facePresent) {
         // NoFace grace — don't penalise immediately; the user may have looked away
         // briefly to write something or check their notes.
         const thr = getSensitivityThresholds();
-        _nofaceGraceMs += 16; // ~60fps frame
+        _nofaceGraceMs += dt; // real elapsed ms — correct on all refresh rates
         if (_nofaceGraceMs > thr.nofaceGraceMs) {
           // Grace expired — full decay
           focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
@@ -407,6 +414,8 @@ const Brain = (() => {
         }
       }
     }
+
+    _lastFocusUpdateMs = now;
   }
 
   /**
@@ -928,7 +937,7 @@ const Brain = (() => {
 
     // Randomly vocalise on about 1-in-4 glances
     if (Math.random() < 0.25 && typeof Sounds !== 'undefined') {
-      Sounds.play('curious');
+      Sounds.play('curious_ooh');
     }
 
     // Vary hold time: quick flick (400-700ms) or lingering stare (900-1800ms)

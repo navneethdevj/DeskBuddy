@@ -86,7 +86,7 @@ const Timer = (() => {
   // State entry/recovery hold tracking.
   // Each potential next-state has its own continuous-seconds counter so
   // transitions in different directions don't share the same clock.
-  let _distractionTimer = 0;  // seconds continuously below the DRIFTING threshold (< 60)
+  let _distractionTimer = 0;  // seconds continuously below the current DRIFTING threshold
   let _criticalTimer    = 0;  // seconds continuously in CRITICAL (to detect FAILED)
   let _recoveryHold     = 0;  // seconds continuously at improved focus (for recovery step)
 
