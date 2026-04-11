@@ -169,12 +169,15 @@ const Soundscape = (() => {
   // ── Public API ────────────────────────────────────────────────────────────────
 
   /**
-   * init() — set up AudioContext and output gain, connect to destination.
+   * init(enabled) — set up AudioContext and output gain, connect to destination.
    * Deferred until first user gesture (same strategy as sounds.js).
    * Safe to call multiple times.
+   * enabled: initial drone state (default true).
    */
-  function init() {
+  function init(enabled) {
     if (_ready) return;
+    // Allow caller to disable drone from startup (respects saved droneEnabled setting)
+    const startEnabled = (enabled === undefined) ? true : !!enabled;
 
     const start = () => {
       if (_ready) return;
@@ -185,9 +188,9 @@ const Soundscape = (() => {
         if (_ctx.state === 'suspended') _ctx.resume();
         _ready = true;
 
-        // Start drone immediately (AFTERNOON default)
-        _running = true;
-        _buildGraph(_currentPeriod);
+        // Respect initial enabled state
+        _running = startEnabled;
+        if (_running) _buildGraph(_currentPeriod);
       } catch (e) {
         console.warn('[Soundscape] Init failed:', e);
       }
@@ -243,6 +246,15 @@ const Soundscape = (() => {
     if (_ready) _buildGraph(_currentPeriod);
   }
 
-  return { init, setTimeTint, stop, resume };
+  /**
+   * setEnabled(bool) — convenience toggle for the Settings drone switch.
+   * Wraps stop()/resume() so the Settings module can call setEnabled(false/true).
+   */
+  function setEnabled(enabled) {
+    if (enabled) resume();
+    else         stop();
+  }
+
+  return { init, setTimeTint, stop, resume, setEnabled };
 
 })();

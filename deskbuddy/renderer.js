@@ -16,6 +16,8 @@
 
   // 1. Audio context — register gesture listeners so AudioContext can resume
   Sounds.init();
+  // Soundscape drone — passes saved enabled state so drone respects user preference from startup
+  Soundscape.init(Settings.get('droneEnabled'));
 
   // Apply saved mute preset before any sounds play
   Sounds.setMutePreset(Settings.get('mutePreset'));
@@ -48,6 +50,10 @@
 
   // 9. Brain loop
   Brain.start();
+
+  // Apply saved sensitivity and phone-detection from Settings
+  Brain.setSensitivity(Settings.get('sensitivity'));
+  if (Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(Settings.get('phoneDetection'));
 
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
@@ -461,7 +467,7 @@
     });
 
     Settings.onChange('droneEnabled', (v) => {
-      if (window.Soundscape?.setEnabled) Soundscape.setEnabled(v);
+      Soundscape.setEnabled(v);
       if (droneToggle) droneToggle.checked = v;
     });
 
