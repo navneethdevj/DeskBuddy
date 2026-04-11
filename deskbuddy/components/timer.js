@@ -220,8 +220,8 @@ const Timer = (() => {
   function _pollFocus() {
     if (!_running || _currentState === STATE.FAILED) return;
 
-    const level = window.Brain ? Brain.getFocusLevel() : 50;
-    const thr   = (window.Brain?.getSensitivityThresholds?.())
+    const level = typeof Brain !== 'undefined' ? Brain.getFocusLevel() : 50;
+    const thr   = (typeof Brain !== 'undefined' && Brain?.getSensitivityThresholds?.())
                   || { drifting: 40, distracted: 35, critical: 20 };
 
     const HALF = 0.5; // 500ms poll = 0.5s per call

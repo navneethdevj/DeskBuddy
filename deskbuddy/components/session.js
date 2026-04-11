@@ -160,7 +160,7 @@ const Session = (() => {
       _streakStart  = _now();
       // Warm re-focus sound when returning from degraded state
       if (oldState === TIMER_DISTRACTED || oldState === TIMER_CRITICAL) {
-        if (window.Sounds) Sounds.play('refocus');
+        if (typeof Sounds !== 'undefined') Sounds.play('refocus');
       }
     }
 
@@ -174,7 +174,7 @@ const Session = (() => {
     if (newState === TIMER_FAILED) {
       // If the timer's remaining time reached zero it's a natural expiry → always COMPLETED.
       // CRITICAL held 45 s with time still on the clock → distraction failure → FAILED.
-      const naturalExpiry = !!(window.Timer && Timer.getRemainingSeconds() === 0);
+      const naturalExpiry = !!(typeof Timer !== 'undefined' && Timer.getRemainingSeconds() === 0);
       _endSession((naturalExpiry || oldState !== TIMER_CRITICAL) ? 'COMPLETED' : 'FAILED');
     }
   }
@@ -196,7 +196,7 @@ const Session = (() => {
     _pushSession(Object.assign({}, _current));
 
     // Play appropriate lifecycle sound
-    if (window.Sounds) {
+    if (typeof Sounds !== 'undefined') {
       if (outcome === 'COMPLETED') Sounds.play('session_complete');
       else if (outcome === 'FAILED') Sounds.play('session_fail');
       // ABANDONED: silent — user chose to quit
@@ -217,7 +217,7 @@ const Session = (() => {
    */
   function init() {
     _loadFromStorage();
-    if (window.Timer && Timer.onStateChange) {
+    if (typeof Timer !== 'undefined' && Timer.onStateChange) {
       Timer.onStateChange(_onTimerStateChange);
     }
   }
@@ -247,13 +247,13 @@ const Session = (() => {
     _streakStart  = _now();
 
     _setState(STATE.ACTIVE);
-    if (window.Sounds) Sounds.play('session_start');
+    if (typeof Sounds !== 'undefined') Sounds.play('session_start');
 
     // ── Time-of-day awareness ──────────────────────────────────────────────
-    if (window.Brain) {
+    if (typeof Brain !== 'undefined') {
       const period = Brain.getTimePeriod();
       Brain.applyTimePeriod(period);
-      if (window.Soundscape) Soundscape.setTimeTint(period);
+      if (typeof Soundscape !== 'undefined') Soundscape.setTimeTint(period);
 
       if (period === 'NIGHT') {
         Brain.trackNightSession();
@@ -283,7 +283,7 @@ const Session = (() => {
     _breakStartMs = _now();
 
     _setState(STATE.PAUSED);
-    if (window.Sounds) Sounds.play('break_start');
+    if (typeof Sounds !== 'undefined') Sounds.play('break_start');
   }
 
   /**
@@ -299,7 +299,7 @@ const Session = (() => {
     _streakStart  = _now();
 
     _setState(STATE.ACTIVE);
-    if (window.Sounds) Sounds.play('break_over');
+    if (typeof Sounds !== 'undefined') Sounds.play('break_over');
   }
 
   /**
@@ -356,7 +356,7 @@ const Session = (() => {
 
     // Elapsed: derive from Timer if available; else 0 (caller can compute)
     let elapsed = 0;
-    if (window.Timer && Timer.getRemainingSeconds) {
+    if (typeof Timer !== 'undefined' && Timer.getRemainingSeconds) {
       const totalSeconds = _current.durationMinutes * 60;
       elapsed = Math.max(0, totalSeconds - Timer.getRemainingSeconds());
     }

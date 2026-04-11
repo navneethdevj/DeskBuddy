@@ -1119,8 +1119,7 @@ const Brain = (() => {
     p.style.left = px + 'px';
     p.style.top  = py + 'px';
     // Color matches current timer state
-    const timerState = window.Timer?.getState?.() || 'FOCUSED';
-    const palette = { FOCUSED: '160,190,255', DRIFTING: '255,190,70', DISTRACTED: '255,80,80', CRITICAL: '255,50,50', FAILED: '130,130,150' };
+    const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
     const rgb = palette[timerState] || '160,190,255';
     p.style.background = `rgba(${rgb},0.85)`;
     p.style.boxShadow  = `0 0 4px rgba(${rgb},0.55)`;
@@ -1159,7 +1158,7 @@ const Brain = (() => {
         timerEl.textContent = `focus ${m}:${s}`;
 
         // Update color to reflect session timer state
-        const timerState = window.Timer?.getState?.() || 'FOCUSED';
+        const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
         if (timerState !== _lastFocusTimerState) {
           _lastFocusTimerState = timerState;
           const c = _focusTimerColors[timerState] || _focusTimerColors.FOCUSED;
@@ -1204,8 +1203,8 @@ const Brain = (() => {
 
       // ── Milestone tracking ──────────────────────────────────────────────
       // Only count when a session is actively running in FOCUSED timer state
-      const timerState   = window.Timer?.getState?.();
-      const sessionState = window.Session?.getCurrentStats?.()?.state;
+      const timerState   = typeof Timer   !== 'undefined' ? Timer.getState?.()                      : undefined;
+      const sessionState = typeof Session !== 'undefined' ? Session.getCurrentStats?.()?.state : undefined;
       if (timerState === 'FOCUSED' && sessionState === 'ACTIVE') {
         _continuousFocusedMs += 1000;
         const minutesMark = Math.floor(_continuousFocusedMs / 60000);
@@ -1276,7 +1275,7 @@ const Brain = (() => {
 
   /** True if study encouragement conditions are all met. */
   function _isEncouragementEligible() {
-    if (!window.Timer?.getState || window.Timer.getState() !== 'FOCUSED') return false;
+    if (typeof Timer === 'undefined' || !Timer.getState || Timer.getState() !== 'FOCUSED') return false;
     if (focusLevel < ENCOURAGEMENT_FOCUS_MIN) return false;
     if ((Date.now() - _lastEncouragementTime) < ENCOURAGEMENT_GAP_MS) return false;
     const distress = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
@@ -1316,7 +1315,7 @@ const Brain = (() => {
     showWhisper(pool[Math.floor(Math.random() * pool.length)], 3500);
     const c = Companion.getCenter();
     Companion.lookAt(c.x, c.y);
-    if (window.Sounds) Sounds.play('happy_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
     setTimeout(() => Companion.resetLook(), 2000);
   }
 
@@ -1487,7 +1486,7 @@ const Brain = (() => {
     if (!el) return;
     el.classList.add('stretching');
     showWhisper('*stretches*', 2200);
-    if (window.Sounds) Sounds.play('stretch_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('stretch_coo');
     setTimeout(() => el.classList.remove('stretching'), 1500);
   }
 
@@ -1521,7 +1520,7 @@ const Brain = (() => {
     if (!el) return;
     const cls = Math.random() < 0.5 ? 'wink-left' : 'wink-right';
     el.classList.add(cls);
-    if (window.Sounds) Sounds.play('wink_blip');
+    if (typeof Sounds !== 'undefined') Sounds.play('wink_blip');
     setTimeout(() => el.classList.remove(cls), 340);
   }
 
@@ -1607,7 +1606,7 @@ const Brain = (() => {
     const gainMap = { MORNING: 1.0, AFTERNOON: 1.0, EVENING: 1.0, NIGHT: 0.8 };
     const nightEnabled = window.Settings ? Settings.get('nightAutoVolume') : true;
     const gainMult = nightEnabled ? (gainMap[period] || 1.0) : 1.0;
-    if (window.Sounds) Sounds.setNightGainMult(gainMult);
+    if (typeof Sounds !== 'undefined') Sounds.setNightGainMult(gainMult);
 
     // Sensitivity runtime override — NIGHT auto-gentle (doesn't touch localStorage)
     if (period === 'NIGHT') {
@@ -1691,7 +1690,7 @@ const Brain = (() => {
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
 
-    if (window.Sounds) Sounds.play('happy_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
 
     const morningGreets = [
       'good morning! ✦', 'rise and grind! ☀️', 'morning~ let\'s do this! ✧',

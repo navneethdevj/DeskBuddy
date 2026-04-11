@@ -490,7 +490,7 @@
         // Companion shows sad/crying for both failed and abandoned sessions
         Emotion.setState('crying');
         // Abandoned sessions play the fail sound (session.js is intentionally silent for abandon)
-        if (newState === 'ABANDONED' && window.Sounds) Sounds.play('session_fail');
+        if (newState === 'ABANDONED' && typeof Sounds !== 'undefined') Sounds.play('session_fail');
       }
 
       // Reset timer state body attribute when session ends
@@ -627,7 +627,7 @@
     if (!card) return;
 
     // ── Context resolution ──────────────────────────────────────────────────
-    const period  = (window.Brain && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
+    const period  = (typeof Brain !== 'undefined' && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
     const elapsed = stats ? (stats.elapsed || 0) : 0;           // wall-clock seconds
     const focused = stats ? (stats.focusedSeconds || 0) : 0;    // seconds in focused state
     const focusPct = elapsed > 0 ? (focused / elapsed) : 0;
@@ -740,7 +740,7 @@
     }
 
     // Companion perks up
-    if (window.Emotion) Emotion.preview('excited', 2500);
+    if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2500);
   }
 
   // ── Break countdown helpers ───────────────────────────────────────────────
@@ -1046,7 +1046,7 @@
     });
 
     Settings.onChange('phoneDetection', (v) => {
-      if (window.Brain?.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(v);
+      if (typeof Brain !== 'undefined' && Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(v);
       if (phoneToggle) phoneToggle.checked = v;
     });
 
