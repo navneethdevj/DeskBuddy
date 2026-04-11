@@ -45,7 +45,8 @@ const Brain = (() => {
   const IDLE_LOOK_MAX_DURATION = 2000;
 
   // Curious trigger: sustained focused attention for this long → curious state
-  const CURIOUS_ATTENTION_MS = 8000;   // 8s focused + high attention → curious
+  const CURIOUS_ATTENTION_MS  = 22000;  // 22s focused + high attention → curious
+  const CURIOUS_COOLDOWN_MS   = 90000;  // 90s before curious can fire again after exiting
 
   // Emotion timing thresholds (ms) — tuned for snappy, responsive feel
   const LOOKING_AWAY_SUSPICIOUS_MS =  4000;   //  4s → suspicious
@@ -172,7 +173,8 @@ const Brain = (() => {
   // Shy — sustained eye contact detection
   let _eyeContactStart  = 0;     // epoch ms when continuous eye contact began
   let _shyUntil         = 0;     // epoch ms when shy state expires
-  let _shyCooldownUntil = 0;     // epoch ms after which shy can trigger again
+  let _shyCooldownUntil    = 0;     // epoch ms after which shy can trigger again
+  let _curiousCooldownUntil = 0;    // epoch ms after which curious can trigger again
 
   // Love (petting) — click interaction
   let _loveUntil = 0;            // epoch ms when love state expires
@@ -434,9 +436,10 @@ const Brain = (() => {
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
         // Both surprise (instant) and sustained attention trigger curious —
         // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
-        if (p.userSurprised)                       emotion = 'curious';
+        if (p.userSurprised && now >= _curiousCooldownUntil) emotion = 'curious';
         else if (tms >= CURIOUS_ATTENTION_MS
-              && p.attentionScore > 40)             emotion = 'curious';
+              && p.attentionScore > 40
+              && now >= _curiousCooldownUntil)             emotion = 'curious';
         else {
           // Shy trigger — sustained eye contact while companion would normally be 'focused'
           if (p.eyeContact) {
@@ -749,6 +752,11 @@ const Brain = (() => {
       stateTimer = null;
     }
 
+    // When leaving curious, start the re-trigger cooldown
+    if (currentState === 'curious' && state !== 'curious') {
+      _curiousCooldownUntil = Date.now() + CURIOUS_COOLDOWN_MS;
+    }
+
     Companion.setRotation(0);
 
     switch (state) {
@@ -802,7 +810,8 @@ const Brain = (() => {
       if (p.userState === 'Sleepy')  { enterState('observe'); return; } // stay alert, motivate user
       if (p.userState === 'Focused'
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
-       && p.attentionScore > 50)     { enterState('curious'); return; }
+       && p.attentionScore > 50
+       && Date.now() >= _curiousCooldownUntil) { enterState('curious'); return; }
       if (p.userState === 'Focused'
        || p.userState === 'LookingAway') { enterState('observe'); return; }
     }
