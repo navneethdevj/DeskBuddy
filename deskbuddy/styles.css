@@ -2579,6 +2579,19 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   gap: 8px;
 }
 
+/* Stacked variant — label above, stepper full-width (used for HH:MM:SS rows) */
+.sp-row-hms {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.sp-row-hms .sp-stepper {
+  width: 100%;
+}
+.sp-row-hms .sp-hms-group {
+  flex: 1;
+}
+
 .sp-label {
   font-size: 11px;
   color: rgba(210, 200, 255, 0.60);

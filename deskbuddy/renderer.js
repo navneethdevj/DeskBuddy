@@ -221,12 +221,32 @@
   }
 
   function _getBreakMinutes() {
-    const num  = parseFloat(document.getElementById('session-break-select')?.value) || 0;
-    if (num <= 0) return 0;
-    const unit = document.getElementById('break-unit-select')?.value || 'min';
-    if (unit === 'sec') return Math.max(0, num / 60);
-    if (unit === 'hr')  return num * 60;
-    return num;
+    const h = parseInt(document.getElementById('break-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('break-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('break-s')?.value, 10) || 0;
+    const totalSecs = h * 3600 + m * 60 + s;
+    if (totalSecs <= 0) return 0;
+    return totalSecs / 60;
+  }
+
+  function _setBreakSeconds(totalSecs) {
+    totalSecs = Math.max(0, Math.min(86399, Math.round(totalSecs)));
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    const hEl = document.getElementById('break-h');
+    const mEl = document.getElementById('break-m');
+    const sEl = document.getElementById('break-s');
+    if (hEl) hEl.value = String(h);
+    if (mEl) mEl.value = String(m);
+    if (sEl) sEl.value = String(s);
+  }
+
+  function _getBreakSeconds() {
+    const h = parseInt(document.getElementById('break-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('break-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('break-s')?.value, 10) || 0;
+    return h * 3600 + m * 60 + s;
   }
 
   // ── _wireSteppers ─────────────────────────────────────────────────────────
@@ -234,76 +254,11 @@
   // Unit change converts the current value to the new unit (rounded to step).
 
   function _wireSteppers() {
-    // Step sizes and limits per unit
-    const UNIT_CONFIG = {
-      sec: { step: 10, min: 0, max: 3600 },
-      min: { step:  5, min: 0, max:  240 },
-      hr:  { step:  1, min: 0, max:   16 },
-    };
-
-    // Convert a value between units, rounding to the new step
-    function _convertUnits(val, fromUnit, toUnit) {
-      // Normalise to seconds first
-      let secs = val;
-      if (fromUnit === 'min') secs = val * 60;
-      if (fromUnit === 'hr')  secs = val * 3600;
-      // Convert to target unit
-      let out;
-      if (toUnit === 'sec')  out = secs;
-      else if (toUnit === 'hr')  out = secs / 3600;
-      else                       out = secs / 60;  // min
-      const cfg  = UNIT_CONFIG[toUnit];
-      const step = cfg.step;
-      out = Math.round(out / step) * step;
-      return Math.min(cfg.max, Math.max(cfg.min, out));
-    }
-
-    function _wireOne(inputId, unitId) {
-      const input    = document.getElementById(inputId);
-      const unitSel  = document.getElementById(unitId);
-      if (!input) return;
-
-      function _applyConfig() {
-        const unit = unitSel?.value || 'min';
-        const cfg  = UNIT_CONFIG[unit];
-        input.step = String(cfg.step);
-        input.min  = String(cfg.min);
-        input.max  = String(cfg.max);
-      }
-      _applyConfig();
-
-      // Unit change — convert existing value
-      if (unitSel) {
-        unitSel.addEventListener('change', () => {
-          const prevUnit = unitSel.dataset.prevUnit || 'min';
-          const newUnit  = unitSel.value;
-          const cur      = parseFloat(input.value) || 0;
-          input.value    = String(_convertUnits(cur, prevUnit, newUnit));
-          unitSel.dataset.prevUnit = newUnit;
-          _applyConfig();
-        });
-        unitSel.dataset.prevUnit = unitSel.value;
-      }
-
-      // Clamp on manual edit
-      input.addEventListener('change', () => {
-        const cfg = UNIT_CONFIG[unitSel?.value || 'min'];
-        let v = parseFloat(input.value) || 0;
-        v = Math.min(cfg.max, Math.max(cfg.min, v));
-        input.value = String(v);
-      });
-    }
-
-    _wireOne('session-break-select',  'break-unit-select');
-
     // ── HH:MM:SS duration +/− buttons ────────────────────────────────────
-    // Each click adds/subtracts timerStep minutes worth of seconds, then
-    // redistributes the result into the three h/m/s fields.
-
-    function _clampHmsFields() {
-      const hEl = document.getElementById('duration-h');
-      const mEl = document.getElementById('duration-m');
-      const sEl = document.getElementById('duration-s');
+    function _clampHmsFields(hId, mId, sId) {
+      const hEl = document.getElementById(hId);
+      const mEl = document.getElementById(mId);
+      const sEl = document.getElementById(sId);
       if (hEl) hEl.value = String(Math.max(0, Math.min(23, parseInt(hEl.value, 10) || 0)));
       if (mEl) mEl.value = String(Math.max(0, Math.min(59, parseInt(mEl.value, 10) || 0)));
       if (sEl) sEl.value = String(Math.max(0, Math.min(59, parseInt(sEl.value, 10) || 0)));
@@ -312,7 +267,11 @@
     // Clamp individual fields on manual edit
     ['duration-h', 'duration-m', 'duration-s'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.addEventListener('change', _clampHmsFields);
+      if (el) el.addEventListener('change', () => _clampHmsFields('duration-h', 'duration-m', 'duration-s'));
+    });
+    ['break-h', 'break-m', 'break-s'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => _clampHmsFields('break-h', 'break-m', 'break-s'));
     });
 
     const decBtn = document.getElementById('duration-dec');
@@ -336,28 +295,25 @@
       });
     }
 
-    // +/− button clicks
-    document.querySelectorAll('.sp-step-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const targetId = btn.dataset.target;
-        const dir      = parseFloat(btn.dataset.dir) || 0;
-        const input    = document.getElementById(targetId);
-        if (!input) return;
+    const breakDecBtn = document.getElementById('break-dec');
+    const breakIncBtn = document.getElementById('break-inc');
+    const BREAK_STEP_SECS = 5 * 60; // 5 min default step for break
 
-        // Detect unit from sibling select (look for first select in same stepper)
-        const stepper  = btn.closest('.sp-stepper');
-        const unitSel  = stepper ? stepper.querySelector('select') : null;
-        const unit     = unitSel?.value || 'min';
-        const cfg      = UNIT_CONFIG[unit] || UNIT_CONFIG.min;
-        const step     = parseFloat(input.step) || cfg.step;
-        let   val      = parseFloat(input.value) || 0;
-        val = Math.min(cfg.max, Math.max(cfg.min, val + dir * step));
-        // Round to step to avoid float drift
-        val = Math.round(val / step) * step;
-        input.value = String(val);
-        input.dispatchEvent(new Event('change'));
+    if (breakDecBtn) {
+      breakDecBtn.addEventListener('click', () => {
+        const cur  = _getBreakSeconds();
+        const next = Math.max(0, cur - BREAK_STEP_SECS);
+        _setBreakSeconds(next);
       });
-    });
+    }
+
+    if (breakIncBtn) {
+      breakIncBtn.addEventListener('click', () => {
+        const cur  = _getBreakSeconds();
+        const next = Math.min(86399, cur + BREAK_STEP_SECS);
+        _setBreakSeconds(next);
+      });
+    }
   }
 
   // ── _wireTimerToSounds ────────────────────────────────────────────────────

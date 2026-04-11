@@ -324,7 +324,7 @@
       </div>
       <div class="sp-setup">
         <!-- Duration HH:MM:SS stepper — enter hours, minutes and seconds together -->
-        <div class="sp-row">
+        <div class="sp-row sp-row-hms">
           <label class="sp-label">study for</label>
           <div class="sp-stepper sp-stepper-hms">
             <button class="sp-step-btn" id="duration-dec"
@@ -344,21 +344,24 @@
                     aria-label="increase duration">+</button>
           </div>
         </div>
-        <!-- Break stepper — value 0 means "off" -->
-        <div class="sp-row" id="sp-break-row">
+        <!-- Break HH:MM:SS stepper — 0:0:0 means "off" -->
+        <div class="sp-row sp-row-hms" id="sp-break-row">
           <label class="sp-label">break every</label>
-          <div class="sp-stepper">
-            <button class="sp-step-btn" data-target="session-break-select" data-dir="-1"
+          <div class="sp-stepper sp-stepper-hms">
+            <button class="sp-step-btn" id="break-dec"
                     aria-label="decrease break">−</button>
-            <input type="number" id="session-break-select" class="sp-step-input"
-              value="25" min="0" max="120" step="5" autocomplete="off"
-              -webkit-app-region="no-drag">
-            <select id="break-unit-select" class="sp-unit-select">
-              <option value="sec">sec</option>
-              <option value="min" selected>min</option>
-              <option value="hr">hr</option>
-            </select>
-            <button class="sp-step-btn" data-target="session-break-select" data-dir="1"
+            <div class="sp-hms-group">
+              <input type="number" id="break-h" class="sp-hms-input"
+                value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">h</span>
+              <input type="number" id="break-m" class="sp-hms-input"
+                value="25" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">m</span>
+              <input type="number" id="break-s" class="sp-hms-input"
+                value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">s</span>
+            </div>
+            <button class="sp-step-btn" id="break-inc"
                     aria-label="increase break">+</button>
           </div>
         </div>
