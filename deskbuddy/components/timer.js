@@ -222,7 +222,8 @@ const Timer = (() => {
 
     const level = typeof Brain !== 'undefined' ? Brain.getFocusLevel() : 50;
     const thr   = (typeof Brain !== 'undefined' && Brain?.getSensitivityThresholds?.())
-                  || { drifting: 40, distracted: 35, critical: 20 };
+                  || { drifting: 30, distracted: 20, critical: 12,
+                       holdDrifting: 7, holdDistracted: 12, holdCritical: 25, holdFailed: 60 };
 
     const HALF = 0.5; // 500ms poll = 0.5s per call
 
@@ -232,7 +233,7 @@ const Timer = (() => {
         _criticalTimer += HALF;
         _recoveryHold   = 0;
         _distractionTimer = 0;
-        if (_criticalTimer >= ENTRY_HOLD[STATE.FAILED]) {
+        if (_criticalTimer >= thr.holdFailed) {
           _applyState(STATE.FAILED);
           _stop();
         }
@@ -254,7 +255,7 @@ const Timer = (() => {
         _distractionTimer += HALF;
         _criticalTimer    += HALF;
         _recoveryHold      = 0;
-        if (_distractionTimer >= ENTRY_HOLD[STATE.CRITICAL]) {
+        if (_distractionTimer >= thr.holdCritical) {
           _applyState(STATE.CRITICAL);
           _distractionTimer = 0;
         }
@@ -280,7 +281,7 @@ const Timer = (() => {
       if (level < thr.distracted) {
         _distractionTimer += HALF;
         _recoveryHold      = 0;
-        if (_distractionTimer >= ENTRY_HOLD[STATE.DISTRACTED]) {
+        if (_distractionTimer >= thr.holdDistracted) {
           _applyState(STATE.DISTRACTED);
           _distractionTimer = 0;
         }
@@ -303,7 +304,7 @@ const Timer = (() => {
     if (level < thr.drifting) {
       _distractionTimer += HALF;
       _recoveryHold      = 0;
-      if (_distractionTimer >= ENTRY_HOLD[STATE.DRIFTING]) {
+      if (_distractionTimer >= thr.holdDrifting) {
         _applyState(STATE.DRIFTING);
         _distractionTimer = 0;
       }

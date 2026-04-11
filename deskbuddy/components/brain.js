@@ -99,10 +99,26 @@ const Brain = (() => {
   const MILESTONE_MAX_MINUTES      = 25;
 
   // Sensitivity presets — used by timer.js via Brain.getSensitivityThresholds()
+  // Thresholds: recalibrated so NORMAL/GENTLE tolerate natural study pauses.
+  // Hold timers: how many seconds focus must stay below threshold before state
+  //   transitions — longer for GENTLE (more patience), shorter for STRICT.
+  // nofaceGraceMs: how long the face can be absent before focusLevel decays.
   const SENSITIVITY_PRESETS = {
-    GENTLE: { drifting: 25, distracted: 15, critical: 10 },
-    NORMAL: { drifting: 40, distracted: 35, critical: 20 },
-    STRICT: { drifting: 55, distracted: 45, critical: 30 },
+    GENTLE: {
+      drifting: 20, distracted: 12, critical: 8,
+      holdDrifting: 12, holdDistracted: 18, holdCritical: 35, holdFailed: 90,
+      nofaceGraceMs: 15000,  // 15s — very forgiving
+    },
+    NORMAL: {
+      drifting: 30, distracted: 20, critical: 12,
+      holdDrifting: 7,  holdDistracted: 12, holdCritical: 25, holdFailed: 60,
+      nofaceGraceMs: 8000,   // 8s — reasonable
+    },
+    STRICT: {
+      drifting: 50, distracted: 38, critical: 25,
+      holdDrifting: 4,  holdDistracted: 7,  holdCritical: 15, holdFailed: 40,
+      nofaceGraceMs: 3000,   // 3s — quick to notice absence
+    },
   };
 
   const STATE_LABELS = {
@@ -148,6 +164,10 @@ const Brain = (() => {
   let _focusSecs  = 0;
   let _nofaceSecs = 0;
   let _timerInt   = null;
+
+  // NoFace grace: ms the camera has had no face — focusLevel is frozen until
+  // the grace period (from sensitivity preset) expires, then starts decaying.
+  let _nofaceGraceMs = 0;
 
   // Whisper queue
   let _whisperQueue = [];
@@ -349,17 +369,44 @@ const Brain = (() => {
     if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
 
     if (!mouseActive && !keyActive) {
-      // When the camera confirms the user is facing forward with eyes open,
-      // slowly build focus instead of decaying — covers physical book reading
-      // and any screen activity that doesn't involve keyboard/mouse input.
       const p = window.perception;
-      const cameraFocused = window.cameraAvailable && p?.facePresent
-                         && p.userState === 'Focused' && p.attentionScore > 35;
-      if (cameraFocused) {
-        // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
-        focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+      const thr = SENSITIVITY_PRESETS[_runtimeSensitivity || _sensitivityLevel]
+               || SENSITIVITY_PRESETS['NORMAL'];
+
+      // Determine whether the camera currently sees the user's face
+      const facePresent = window.cameraAvailable ? (p?.facePresent ?? true) : true;
+
+      if (!facePresent) {
+        // NoFace grace: freeze focusLevel for a sensitivity-dependent window
+        // before we start penalising absence (handles looking away to write notes).
+        _nofaceGraceMs += 16;  // ~60fps frame ≈ 16ms
+        if (_nofaceGraceMs > thr.nofaceGraceMs) {
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
+        // During grace: hold steady — do not build, do not decay.
       } else {
-        focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        _nofaceGraceMs = 0;  // reset grace timer whenever face is present
+
+        // When the camera confirms the user is facing forward with eyes open,
+        // slowly build focus — covers physical book reading and any screen
+        // activity that doesn't involve keyboard/mouse input.
+        const cameraFocused = window.cameraAvailable && p?.facePresent
+                           && p.userState === 'Focused' && p.attentionScore > 35;
+
+        // Reading posture: head pitched 10–20° downward = reading notes/textbook.
+        // PHONE_PITCH_THRESHOLD is 20° so phone detection starts where this ends.
+        // Treat as soft focus: freeze focusLevel (no reward, no penalty).
+        const isReadingPosture = window.cameraAvailable && p?.facePresent
+                              && p.headPitch > 10 && p.headPitch < 20;
+
+        if (cameraFocused) {
+          // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+          focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+        } else if (isReadingPosture) {
+          // Reading notes — hold steady, neither reward nor penalise.
+        } else {
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
       }
     }
   }
