@@ -443,6 +443,29 @@
 
   </div><!-- /#session-panel -->
 
+  <!-- Analytics panel — post-session focus report (shown after COMPLETED / FAILED) -->
+  <div id="analytics-panel" role="dialog" aria-modal="true"
+       aria-label="Focus Report" aria-hidden="true">
+    <div id="analytics-inner">
+      <div id="analytics-header">
+        <div id="analytics-title">✦ focus report</div>
+        <button id="analytics-close-btn" aria-label="Close focus report">✕</button>
+      </div>
+      <!-- Focus timeline canvas chart -->
+      <canvas id="analytics-chart"></canvas>
+      <!-- Per-session stats: focused %, best streak, distractions -->
+      <div id="analytics-stats"></div>
+      <!-- Period tabs -->
+      <div id="analytics-tabs">
+        <button class="atab atab-active" data-period="today">Today</button>
+        <button class="atab" data-period="week">Week</button>
+        <button class="atab" data-period="month">Month</button>
+      </div>
+      <!-- Aggregated historical data for the selected period -->
+      <div id="analytics-history"></div>
+    </div>
+  </div>
+
   <!-- Session completion celebration overlay — confetti + banner -->
   <div id="celebration-overlay" aria-hidden="true"></div>
   <div id="celebration-message" aria-hidden="true">
