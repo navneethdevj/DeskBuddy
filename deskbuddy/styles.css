@@ -560,7 +560,28 @@ html, body {
   50%      { transform: translateY(-0.2vh) scale(1.003); }
 }
 
-/* ===== Eye shimmer — subtle inner glow pulse for aliveness ===== */
+/* ===== Time-of-Day: Night dimming ===== */
+/* When period is NIGHT, reduce companion glow to 60% via CSS var */
+body[data-time-period="NIGHT"] .companion {
+  opacity: calc(var(--companion-glow-opacity, 1.0) * 0.82);
+}
+
+/* ===== Time-of-Day: Morning bounce greeting ===== */
+/* Triggered programmatically by Brain.doMorningGreeting() at session start */
+.companion.morning-bounce .companion-inner {
+  animation: morningBounce 0.85s cubic-bezier(0.36,0.07,0.19,0.97) both;
+}
+@keyframes morningBounce {
+  0%   { transform: translateY(0) scale(1); }
+  18%  { transform: translateY(-2.2vh) scale(1.04); }
+  36%  { transform: translateY(0.3vh) scale(0.97); }
+  54%  { transform: translateY(-1.4vh) scale(1.025); }
+  72%  { transform: translateY(0.1vh) scale(0.99); }
+  88%  { transform: translateY(-0.5vh) scale(1.008); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+
 .eye::after {
   content: '';
   position: absolute;

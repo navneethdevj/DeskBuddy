@@ -25,6 +25,7 @@ const Movement = (() => {
   let vx = 0;
   let vy = 0;
   let curveDir = 1;
+  let _speedMult = 1.0;
 
   /**
    * Initialize home position and pick the first drift target.
@@ -61,8 +62,8 @@ const Movement = (() => {
     const perpX = -dirY * CURVE_AMOUNT * curveDir;
     const perpY = dirX * CURVE_AMOUNT * curveDir;
 
-    const desiredVX = (dirX + perpX) * SPEED;
-    const desiredVY = (dirY + perpY) * SPEED;
+    const desiredVX = (dirX + perpX) * SPEED * _speedMult;
+    const desiredVY = (dirY + perpY) * SPEED * _speedMult;
 
     // Smooth steering toward desired velocity
     vx += (desiredVX - vx) * STEER_STRENGTH;
@@ -116,9 +117,13 @@ const Movement = (() => {
     targetY = clamp(targetY, -MAX_DRIFT, MAX_DRIFT);
   }
 
+  function setSpeedMultiplier(m) {
+    _speedMult = Math.max(0.1, Math.min(3.0, m));
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
-  return { init: init, update: update, decay: decay, getVelocity: getVelocity };
+  return { init: init, update: update, decay: decay, getVelocity: getVelocity, setSpeedMultiplier: setSpeedMultiplier };
 })();

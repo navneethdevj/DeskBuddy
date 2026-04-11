@@ -209,6 +209,13 @@ const Brain = (() => {
   // Sensitivity
   let _sensitivityLevel = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
 
+  // ── TIME-OF-DAY STATE ─────────────────────────────────────────────────────
+  const _NIGHT_SESSIONS_KEY    = 'deskbuddy_night_sessions';
+  const _NIGHT_WHISPER_KEY     = 'deskbuddy_night_whisper_date';
+  let   _currentTimePeriod     = 'AFTERNOON'; // set at each session start
+  // _runtimeSensitivity: temporary override that doesn't touch localStorage
+  let   _runtimeSensitivity    = null;
+
   // ===== Activity Helpers =====
 
   function isMouseActive(now) {
@@ -1128,7 +1135,8 @@ const Brain = (() => {
 
   /** Fire the milestone callback and companion celebration. */
   function _fireMilestone(minutesMark) {
-    const whispers = {
+    // Base whispers for all periods
+    const baseWhispers = {
       5:  '5 min streak! ✦',
       10: '10 minutes! 🔥',
       15: 'you\'re on fire! ✧',
@@ -1142,11 +1150,28 @@ const Brain = (() => {
       55: 'you\'re amazing. keep it up!',
       60: '1 HOUR!! 🎉🎉🎉',
     };
+
+    // Period-specific early-milestone overrides (only first few milestones)
+    const morningWhispers = ['good morning grind! ✦', 'morning focus ✦', 'early bird ✧', 'dawn warrior! ☀️'];
+    const eveningWhispers = ['evening flow ✦', 'night owl mode ✧', 'calm focus... ✦', 'quiet grind ✧'];
+    const nightWhispers   = ['...still going. ✦', 'night owl ✧', '...quiet strength ✦', 'the night is yours ✧'];
+
+    let whisper;
+    const earlyMark = minutesMark <= 20; // use period flavour for first few milestones
+    if (earlyMark && _currentTimePeriod === 'MORNING') {
+      whisper = morningWhispers[Math.floor(minutesMark / 5) - 1] || baseWhispers[minutesMark];
+    } else if (earlyMark && _currentTimePeriod === 'EVENING') {
+      whisper = eveningWhispers[Math.floor(minutesMark / 5) - 1] || baseWhispers[minutesMark];
+    } else if (earlyMark && _currentTimePeriod === 'NIGHT') {
+      whisper = nightWhispers[Math.floor(minutesMark / 5) - 1] || baseWhispers[minutesMark];
+    } else {
+      whisper = baseWhispers[minutesMark] || `${minutesMark} min! ✦`;
+    }
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
     // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
-    showWhisper(whispers[minutesMark] || `${minutesMark} min! ✦`, 3000);
+    showWhisper(whisper, 3000);
     _milestoneCallbacks.forEach(fn => { try { fn(minutesMark); } catch (e) {} });
     // Return to focused after 1.5s
     setTimeout(() => {
@@ -1170,13 +1195,33 @@ const Brain = (() => {
   /** Deliver a study encouragement moment. */
   function _doStudyEncouragement() {
     _lastEncouragementTime = Date.now();
-    const msgs = [
+
+    // Period-specific encouragement pools
+    const baseMsgs = [
       '✦ keep going!', 'you\'re doing great', '( ˘▽˘)/', '✧ focus ✧', '...good.',
       'i believe in you~', 'stay strong!', '*cheers for you*', 'almost there!',
       'you\'ve got this ♡', '...i\'m rooting for you.', 'don\'t stop now!',
     ];
-    showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
-    // Look directly at user for 2s, then return
+    const morningMsgs = [
+      '☀️ morning momentum!', 'you started strong — keep it!',
+      'early bird energy ✦', 'morning focus is peak focus ✧',
+    ];
+    const eveningMsgs = [
+      'evening grind ✦', 'winding down but not giving up ✧',
+      'the day\'s almost done — finish strong!', 'calm, steady focus ♡',
+    ];
+    const nightMsgs = [
+      '...quiet focus. i\'m proud of you.', 'late-night warrior ✦',
+      '...you didn\'t give up. ♡', '*sits quietly beside you*',
+      '...still here with you.', 'the night belongs to the dedicated ✧',
+    ];
+
+    let pool = baseMsgs;
+    if (_currentTimePeriod === 'MORNING') pool = [...morningMsgs, ...baseMsgs];
+    else if (_currentTimePeriod === 'EVENING') pool = [...eveningMsgs, ...baseMsgs];
+    else if (_currentTimePeriod === 'NIGHT') pool = [...nightMsgs, ...baseMsgs];
+
+    showWhisper(pool[Math.floor(Math.random() * pool.length)], 3500);
     const c = Companion.getCenter();
     Companion.lookAt(c.x, c.y);
     if (window.Sounds) Sounds.play('happy_coo');
@@ -1431,11 +1476,148 @@ const Brain = (() => {
    * { drifting: number, distracted: number, critical: number }
    */
   function getSensitivityThresholds() {
-    return SENSITIVITY_PRESETS[_sensitivityLevel] || SENSITIVITY_PRESETS['NORMAL'];
+    const level = _runtimeSensitivity || _sensitivityLevel;
+    return SENSITIVITY_PRESETS[level] || SENSITIVITY_PRESETS['NORMAL'];
+  }
+
+  // ── TIME-OF-DAY: core API ──────────────────────────────────────────────────
+
+  /**
+   * getTimePeriod() — classify current wall-clock hour into one of four periods.
+   * @returns {'MORNING'|'AFTERNOON'|'EVENING'|'NIGHT'}
+   */
+  function getTimePeriod() {
+    const h = new Date().getHours();
+    if (h >= 6  && h < 12) return 'MORNING';
+    if (h >= 12 && h < 18) return 'AFTERNOON';
+    if (h >= 18 && h < 22) return 'EVENING';
+    return 'NIGHT';
+  }
+
+  /**
+   * applyTimePeriod(period) — apply all time-of-day side effects.
+   * Called at session start from session.js.
+   */
+  function applyTimePeriod(period) {
+    _currentTimePeriod = period;
+
+    // Movement speed
+    const speedMap = { MORNING: 1.2, AFTERNOON: 1.0, EVENING: 0.85, NIGHT: 0.6 };
+    if (window.Movement) Movement.setSpeedMultiplier(speedMap[period] || 1.0);
+
+    // Glow opacity CSS variable
+    const glowMap = { MORNING: '1.0', AFTERNOON: '1.0', EVENING: '0.85', NIGHT: '0.6' };
+    document.documentElement.style.setProperty(
+      '--companion-glow-opacity', glowMap[period] || '1.0'
+    );
+
+    // Sound gain (NIGHT = 80%)
+    const gainMap = { MORNING: 1.0, AFTERNOON: 1.0, EVENING: 1.0, NIGHT: 0.8 };
+    if (window.Sounds) Sounds.setNightGainMult(gainMap[period] || 1.0);
+
+    // Sensitivity runtime override — NIGHT auto-gentle (doesn't touch localStorage)
+    if (period === 'NIGHT') {
+      _runtimeSensitivity = 'GENTLE';
+    } else {
+      _runtimeSensitivity = null;  // restore user preference
+    }
+
+    // body data-attribute for CSS period hooks
+    document.body.dataset.timePeriod = period;
+  }
+
+  /**
+   * getNightSessionCount() — read consecutive night session count from localStorage.
+   * @returns {number}
+   */
+  function getNightSessionCount() {
+    const raw = localStorage.getItem(_NIGHT_SESSIONS_KEY);
+    const n   = parseInt(raw, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  /**
+   * trackNightSession() — call at session start when period is NIGHT.
+   * Increments the consecutive night counter.
+   */
+  function trackNightSession() {
+    const count = getNightSessionCount() + 1;
+    localStorage.setItem(_NIGHT_SESSIONS_KEY, String(count));
+  }
+
+  /**
+   * resetNightSessions() — call at session start when period is NOT NIGHT.
+   * Resets the consecutive night counter (user studied during the day).
+   */
+  function resetNightSessions() {
+    localStorage.setItem(_NIGHT_SESSIONS_KEY, '0');
+  }
+
+  /**
+   * checkNightWhisper() — show the "you're up late again" whisper once per day
+   * when 3+ consecutive night sessions have been logged.
+   */
+  function checkNightWhisper() {
+    const count = getNightSessionCount();
+    if (count < 3) return;
+
+    const today   = new Date().toDateString();
+    const lastDay = localStorage.getItem(_NIGHT_WHISPER_KEY);
+    if (lastDay === today) return;  // already whispered today
+
+    localStorage.setItem(_NIGHT_WHISPER_KEY, today);
+
+    // Staged caring late-night messages — rotate by count so repeat nights
+    // feel progressively more concerned, never nagging.
+    const msgs = [
+      '...you\'re up late again.',
+      '...still here? get some rest ♡',
+      '...i worry about you. sleep soon.',
+      '...it\'s late. you matter more than the work.',
+      '...i\'ll be here tomorrow too. sleep. ♡',
+    ];
+    const idx = Math.min(count - 3, msgs.length - 1);
+    setTimeout(() => showWhisper(msgs[idx], 6000), 1800);
+  }
+
+  /**
+   * doMorningGreeting() — energetic session-start animation for MORNING period.
+   * Quick bounce + widened eyes + HAPPY_COO.
+   */
+  function doMorningGreeting() {
+    const el = Companion.getElement();
+    if (!el) return;
+
+    // Quick happy bounce
+    el.classList.add('morning-bounce');
+    setTimeout(() => el.classList.remove('morning-bounce'), 900);
+
+    // Immediate overjoyed emotion → happy after 700ms
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+
+    if (window.Sounds) Sounds.play('happy_coo');
+
+    const morningGreets = [
+      'good morning! ✦', 'rise and grind! ☀️', 'morning~ let\'s do this! ✧',
+      'good morning! ready? ✦', '...morning. ☀️ let\'s go!',
+    ];
+    const msg = morningGreets[Math.floor(Math.random() * morningGreets.length)];
+    setTimeout(() => showWhisper(msg, 4000), 300);
+
+    setTimeout(() => {
+      Emotion.setState('happy');
+      window._lastEmotion = 'happy';
+      setTimeout(() => { window._lastEmotion = null; }, 1500);
+    }, 700);
   }
 
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
-           setSensitivity, getSensitivityThresholds };
+           setSensitivity, getSensitivityThresholds,
+           getTimePeriod, applyTimePeriod,
+           getNightSessionCount, trackNightSession, resetNightSessions,
+           checkNightWhisper, doMorningGreeting };
 })();
