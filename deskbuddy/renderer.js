@@ -21,6 +21,8 @@
 
   // Apply saved mute preset before any sounds play
   Sounds.setMutePreset(Settings.get('mutePreset'));
+  // Apply saved master volume
+  Sounds.setVolume(Settings.get('volume'));
 
   // 2. Session — load localStorage history
   Session.init();
@@ -61,6 +63,18 @@
   // The companion starts in full-screen mode on launch.
   // The user can switch to compact PiP overlay via the collapse button.
   document.body.classList.add('full-mode');
+
+  // Apply saved companion size and brightness before wiring UI
+  {
+    const size = Settings.get('companionSize') || 'M';
+    document.body.classList.add(`companion-size-${size}`);
+    const brightness = Settings.get('brightness') || 1.0;
+    const worldEl = document.getElementById('world');
+    if (worldEl) worldEl.style.filter = `brightness(${brightness})`;
+    // Pre-fill start-screen duration with saved default
+    const durEl = document.getElementById('duration-select');
+    if (durEl) durEl.value = String(Settings.get('sessionLength') || 25);
+  }
 
   // 11. Wire cross-module communication
   _wireUI();
@@ -507,7 +521,129 @@
       if (droneToggle) droneToggle.checked = v;
     });
 
-    // ── Emotion preview grid ─────────────────────────────────────────────
+    // ── Volume slider ────────────────────────────────────────────────────
+    const volumeSlider  = document.getElementById('volume-slider');
+    const volumeSubLabel = document.getElementById('volume-sublabel');
+
+    function _applyVolume(v) {
+      Sounds.setVolume(v);
+      if (volumeSlider)   volumeSlider.value = Math.round(v * 100);
+      if (volumeSubLabel) volumeSubLabel.textContent = `${Math.round(v * 100)}%`;
+    }
+
+    _applyVolume(Settings.get('volume'));
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener('input', () => {
+        const v = parseInt(volumeSlider.value, 10) / 100;
+        Settings.set('volume', v);
+      });
+    }
+
+    Settings.onChange('volume', (v) => _applyVolume(v));
+
+    // ── Brightness slider ────────────────────────────────────────────────
+    const brightnessSlider   = document.getElementById('brightness-slider');
+    const brightnessSubLabel = document.getElementById('brightness-sublabel');
+
+    function _applyBrightness(v) {
+      const world = document.getElementById('world');
+      if (world) world.style.filter = `brightness(${v})`;
+      if (brightnessSlider)   brightnessSlider.value = Math.round(v * 100);
+      if (brightnessSubLabel) brightnessSubLabel.textContent = `${Math.round(v * 100)}%`;
+    }
+
+    _applyBrightness(Settings.get('brightness'));
+
+    if (brightnessSlider) {
+      brightnessSlider.addEventListener('input', () => {
+        const v = parseInt(brightnessSlider.value, 10) / 100;
+        Settings.set('brightness', v);
+      });
+    }
+
+    Settings.onChange('brightness', (v) => _applyBrightness(v));
+
+    // ── Companion size ───────────────────────────────────────────────────
+    const sizeBtnsContainer = document.getElementById('companion-size-btns');
+
+    function _applyCompanionSize(size) {
+      document.body.classList.remove('companion-size-S', 'companion-size-M', 'companion-size-L');
+      document.body.classList.add(`companion-size-${size}`);
+      if (sizeBtnsContainer) {
+        sizeBtnsContainer.querySelectorAll('.settings-size-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.size === size);
+        });
+      }
+    }
+
+    _applyCompanionSize(Settings.get('companionSize'));
+
+    if (sizeBtnsContainer) {
+      sizeBtnsContainer.querySelectorAll('.settings-size-btn').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('companionSize', btn.dataset.size));
+      });
+    }
+
+    Settings.onChange('companionSize', (v) => _applyCompanionSize(v));
+
+    // ── Default session length ───────────────────────────────────────────
+    const sessionLengthSel = document.getElementById('session-length-select');
+
+    if (sessionLengthSel) {
+      sessionLengthSel.value = String(Settings.get('sessionLength'));
+      sessionLengthSel.addEventListener('change', (e) => {
+        const v = parseInt(e.target.value, 10);
+        Settings.set('sessionLength', v);
+        // Also update the start-screen duration selector if visible
+        const durEl = document.getElementById('duration-select');
+        if (durEl) durEl.value = String(v);
+      });
+    }
+
+    Settings.onChange('sessionLength', (v) => {
+      if (sessionLengthSel) sessionLengthSel.value = String(v);
+      const durEl = document.getElementById('duration-select');
+      if (durEl) durEl.value = String(v);
+    });
+
+    // Pre-fill start-screen duration selector with saved default now
+    {
+      const durEl = document.getElementById('duration-select');
+      if (durEl) durEl.value = String(Settings.get('sessionLength'));
+    }
+
+    // ── Session stats (today) ────────────────────────────────────────────
+    function _refreshSessionStats() {
+      const todayLabel  = document.getElementById('sessions-today-label');
+      const focusLabel  = document.getElementById('focus-today-label');
+      if (!todayLabel && !focusLabel) return;
+
+      const history = Session.getHistory ? Session.getHistory() : [];
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayMs = todayStart.getTime();
+
+      let sessions = 0;
+      let focusSec = 0;
+      history.forEach(s => {
+        const ts = s.date ? new Date(s.date).getTime() : 0;
+        if (ts >= todayMs) {
+          sessions++;
+          focusSec += s.actualFocusedSeconds || 0;
+        }
+      });
+
+      const focusMins = Math.round(focusSec / 60);
+      if (todayLabel) todayLabel.textContent = `${sessions} session${sessions !== 1 ? 's' : ''} today`;
+      if (focusLabel) focusLabel.textContent  = `${focusMins} min focused today`;
+    }
+
+    _refreshSessionStats();
+    // Refresh stats each time the panel opens
+    gearBtn.addEventListener('click', _refreshSessionStats);
+
+
     const emotionGrid = document.getElementById('emotion-grid');
     if (emotionGrid) {
       const GLOW = {

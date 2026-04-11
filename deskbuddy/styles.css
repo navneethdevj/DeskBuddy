@@ -2105,6 +2105,77 @@ body.pip-mode #settings-panel { display: none !important; }
   background: rgba(255, 255, 255, 0.95);
 }
 
+/* ── Settings range slider ──────────────────────────────────── */
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(165, 145, 255, 0.90);
+  box-shadow: 0 0 6px rgba(150, 125, 255, 0.50);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(160, 135, 255, 0.70);
+}
+.settings-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(165, 145, 255, 0.90);
+  box-shadow: 0 0 6px rgba(150, 125, 255, 0.50);
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Companion size button group ────────────────────────────── */
+.settings-size-btns {
+  display: flex;
+  gap: 3px;
+}
+.settings-size-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  color: rgba(200, 188, 255, 0.60);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.settings-size-btn:hover {
+  background: rgba(160, 140, 255, 0.14);
+  color: rgba(215, 205, 255, 0.88);
+  border-color: rgba(160, 140, 255, 0.28);
+}
+.settings-size-btn.active {
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.65), rgba(105, 82, 220, 0.65));
+  border-color: rgba(160, 140, 255, 0.55);
+  color: rgba(240, 235, 255, 0.98);
+  box-shadow: 0 0 8px rgba(145, 120, 255, 0.35);
+}
+
+/* ── Companion size scale (applied via body class) ─────────── */
+body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
+body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
+body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
+
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
    Two thin rotated bars form a soft × over a flat neutral line.

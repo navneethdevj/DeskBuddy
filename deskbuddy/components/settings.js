@@ -18,6 +18,7 @@ const Settings = (() => {
 
   const DEFAULTS = {
     mutePreset:      'ALL_ON',   // 'ALL_ON' | 'ESSENTIAL' | 'REMINDERS_ONLY' | 'ALL_OFF'
+    volume:          0.7,        // master volume 0–1
     droneEnabled:    true,       // ambient soundscape on/off
     brightness:      1.0,        // #world CSS filter brightness (0.3–1.0)
     breakInterval:   25,         // minutes, 0 = disabled
@@ -25,6 +26,7 @@ const Settings = (() => {
     phoneDetection:  true,       // brain.js phone posture detection
     companionSize:   'M',        // 'S' | 'M' | 'L'
     nightAutoVolume: true,       // soundscape reduces volume at NIGHT
+    sessionLength:   25,         // default session duration in minutes
     keybinds:        {},         // override map: { [action_id]: 'KeyboardShortcut' }
   };
 
