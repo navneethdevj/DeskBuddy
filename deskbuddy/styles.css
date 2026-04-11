@@ -1108,11 +1108,14 @@ body[data-time-period="NIGHT"] .companion {
   position: fixed; bottom: 9.5vmin; left: 50%; transform: translateX(-50%);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 5.5vmin;
   font-weight: 200; letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
   color: var(--timer-color, white);
   text-shadow:
     0 0 18px var(--timer-glow-color, rgba(255,255,255,0.15)),
     0 0 40px var(--timer-glow-color, transparent);
-  pointer-events: none; z-index: 1000;
+  pointer-events: none; -webkit-app-region: no-drag; z-index: 1000;
+  opacity: 0.85;
+  transition: color 0.6s ease, text-shadow 0.6s ease, opacity 0.3s ease;
   animation: timerShake var(--timer-pulse-speed, none) ease-in-out infinite;
 }
 @keyframes timerShake {
@@ -2784,12 +2787,6 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   gap: 6px;
 }
 
-/* ── Session timer — bottom center, visible only during sessions ── */
-#session-timer {
-  pointer-events: none;
-  -webkit-app-region: no-drag;
-}
-
 /* ── Milestone badge — brief pop above companion ────────────────── */
 .milestone-badge {
   position: fixed;
@@ -3043,30 +3040,6 @@ body[data-timer-state="CRITICAL"]   .sp-ring-fill {
 body[data-timer-state="DRIFTING"]   .sp-ring-state-label::before { content: 'drifting'; color: rgba(255, 185, 68, 0.65); }
 body[data-timer-state="DISTRACTED"] .sp-ring-state-label::before { content: 'distracted'; color: rgba(255, 100, 100, 0.70); }
 body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'critical!'; color: rgba(255, 80, 80, 0.85); }
-
-/* =====================================================================
-   SESSION PANEL — FLOATING TIMER (#session-timer)
-   Beautiful bottom-right countdown shown during active sessions.
-   ===================================================================== */
-
-#session-timer {
-  position: fixed;
-  bottom: 20px;
-  right: 14px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 300;
-  letter-spacing: 0.14em;
-  font-variant-numeric: tabular-nums;
-  color: var(--timer-color, rgba(210, 200, 255, 0.55));
-  text-shadow: 0 0 12px var(--timer-glow-color, transparent);
-  pointer-events: none;
-  -webkit-app-region: no-drag;
-  z-index: 2200;
-  transition: color 0.6s ease, text-shadow 0.6s ease, opacity 0.3s ease;
-  opacity: 0.65;
-}
-body.pip-mode #session-timer { opacity: 0.50; font-size: 11px; }
 
 /* =====================================================================
    CELEBRATION OVERLAY — confetti + banner on session complete

@@ -384,6 +384,17 @@
   // ── _wireSessionToUI ──────────────────────────────────────────────────────
   // Session state changes → DOM visibility / content updates.
 
+  /** Format seconds as H:MM:SS (hours omitted when 0). */
+  function _fmtSecs(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
   let _breakCountdownInterval = null;
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
 
@@ -413,9 +424,7 @@
         if (ring) ring.style.strokeDashoffset = '0';
         const inlineTimer = document.getElementById('sp-inline-timer');
         if (inlineTimer) {
-          const m = String(Math.floor(_sessionTotalSeconds / 60)).padStart(2, '0');
-          const s = String(Math.round(_sessionTotalSeconds % 60)).padStart(2, '0');
-          inlineTimer.textContent = `${m}:${s}`;
+          inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
         }
       }
 
@@ -482,11 +491,8 @@
     // ── Inline panel timer + progress ring (updated each logical timer-second) ──
     Timer.onTick(() => {
       const remaining = Timer.getRemainingSeconds();
-      const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-      const s = String(remaining % 60).padStart(2, '0');
-
       const inlineTimer = document.getElementById('sp-inline-timer');
-      if (inlineTimer) inlineTimer.textContent = `${m}:${s}`;
+      if (inlineTimer) inlineTimer.textContent = _fmtSecs(remaining);
 
       const ring = document.getElementById('sp-ring-progress');
       if (ring && _sessionTotalSeconds > 0) {
