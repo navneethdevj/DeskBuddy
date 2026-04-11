@@ -211,7 +211,8 @@ const Brain = (() => {
   let _welcomeBackSeqId2 = null;
 
   // Curious look loop — continuous gaze scan while in curious state
-  let _curiousLookTimer = null;
+  let _curiousLookTimer  = null;
+  let _curiousChirpTimer = null;
 
   // Sensitivity
   let _sensitivityLevel = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
@@ -755,6 +756,7 @@ const Brain = (() => {
     // When leaving curious, start the re-trigger cooldown
     if (currentState === 'curious' && state !== 'curious') {
       _curiousCooldownUntil = Date.now() + CURIOUS_COOLDOWN_MS;
+      if (_curiousChirpTimer) { clearTimeout(_curiousChirpTimer); _curiousChirpTimer = null; }
     }
 
     Companion.setRotation(0);
@@ -768,6 +770,7 @@ const Brain = (() => {
         Emotion.setState('curious');
         SpriteAnimator.play('idle');
         _curiousLookLoop();
+        _scheduleCuriousChirps();
         break;
       case 'idle':
         Emotion.setState('idle');
@@ -883,6 +886,22 @@ const Brain = (() => {
         _curiousLookLoop();
       }, pauseMs);
     }, holdMs);
+  }
+
+  /**
+   * Schedule periodic soft vocalisations while in the curious state.
+   * Plays 'curious_ooh' every 4–8 seconds — quiet punctuation of ongoing investigation.
+   * Stops automatically when the state is no longer 'curious'.
+   */
+  function _scheduleCuriousChirps() {
+    if (_curiousChirpTimer) { clearTimeout(_curiousChirpTimer); _curiousChirpTimer = null; }
+    if (currentState !== 'curious') return;
+    _curiousChirpTimer = setTimeout(function () {
+      _curiousChirpTimer = null;
+      if (currentState !== 'curious') return;
+      if (typeof Sounds !== 'undefined') Sounds.play('curious_ooh');
+      _scheduleCuriousChirps();
+    }, 4000 + Math.random() * 4000);
   }
 
   /** Briefly flash a happy expression during idle. */
