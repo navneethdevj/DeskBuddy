@@ -2261,41 +2261,85 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
 }
 
 /* =====================================================================
-   SESSION PANEL — right-side floating glass card, full-mode only.
-   Shows chill-mode setup, active controls, break countdown, and outcome.
+   SESSION PANEL — auto-hide right sidebar, full-mode only.
+   Sits off-screen to the right; a thin trigger strip on the right edge
+   calls panel.classList.add('sidebar-open') via JS, sliding it in.
+   Slides out with a spring-like ease when the mouse leaves.
    ===================================================================== */
+
+/* ── Trigger strip — invisible right-edge hover zone ───────────────── */
+#sp-trigger {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 100%;
+  z-index: 2490;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  display: none;       /* revealed by full-mode rule below */
+}
+body.full-mode #sp-trigger { display: block; }
+body.pip-mode  #sp-trigger { display: none !important; }
+
+/* ── Panel container ────────────────────────────────────────────────── */
 #session-panel {
   position: fixed;
-  right: 14px;
+  right: 0;
   top: 50%;
-  transform: translateY(-50%);
-  width: 182px;
+  transform: translateY(-50%) translateX(calc(100% + 8px)); /* hidden off-screen */
+  width: 200px;
   z-index: 2500;
   display: none;          /* shown only in full-mode */
   flex-direction: column;
   gap: 0;
+  padding-right: 10px;    /* gap between panel and window edge when open */
+  pointer-events: auto;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
 body.full-mode #session-panel { display: flex; }
 body.pip-mode  #session-panel { display: none !important; }
 
-/* The glass card — same glass-morphism language as settings panel */
+/* Slide-in when open */
+#session-panel.sidebar-open {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ── iOS-style frosted glass card ───────────────────────────────────── */
+/*
+   Visual recipe (iOS dark-mode sheet):
+   • Base fill:   rgba(22, 18, 40, 0.78)  — deep purple-black, very translucent
+   • Blur:        blur(72px) saturate(2.0) brightness(1.18) — heavy iOS-style
+   • Top specular: border-top rgba(255,255,255,0.22) — light bounce off top rim
+   • Outer ring:  0.5px white inset at ~8% opacity — iOS panel ring
+   • Shadow:      deep floating shadow + ambient glow
+   • Corner:      22px radius (iOS sheets use large radii)
+*/
 #session-idle,
 #session-active,
 #session-paused,
 #outcome-screen {
-  background: rgba(14, 11, 26, 0.44);
-  backdrop-filter: blur(38px) saturate(1.8) brightness(1.10);
-  -webkit-backdrop-filter: blur(38px) saturate(1.8) brightness(1.10);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  padding: 14px 14px 16px;
+  background: rgba(22, 18, 40, 0.78);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  /* Top specular highlight — light bouncing off the "glass rim" */
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  border-right: 1px solid rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 22px;
+  padding: 16px 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.10) inset;
+  gap: 12px;
+  /* Floating shadow + faint perimeter glow ring */
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
 }
 
 /* ── Header row ─────────────────────────────────────────────────── */
