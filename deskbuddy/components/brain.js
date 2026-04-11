@@ -81,11 +81,13 @@ const Brain = (() => {
 
   // ── CHUNK 5 — new feature constants ───────────────────────────────────────
 
-  // Phone detection: gaze sharply downward = phone-checking posture
+  // Phone detection: head bowed down = phone-checking posture.
+  // NOTE: gazeY is head-pose *compensated* — it subtracts headPitch * 0.008, so
+  // a 20° forward bow only produces ~0.16 raw correction and correctedGazeY never
+  // reaches the old 0.6 threshold. headPitch alone is the reliable signal.
   const PHONE_DETECT_SUSTAIN_MS = 3000; // 3s sustained posture → trigger
-  const PHONE_GAZE_Y_THRESHOLD  = 0.6;  // gazeY above this = looking down
-  const PHONE_GAZE_Y_RESET      = 0.4;  // gazeY below this resets the timer
-  const PHONE_PITCH_THRESHOLD   = 15;   // degrees head pitch forward
+  const PHONE_PITCH_THRESHOLD   = 20;   // degrees head bowed forward → phone posture
+  const PHONE_PITCH_RESET       = 10;   // below this → head back up, reset timer
 
   // Study encouragement: reward deep focus
   const ENCOURAGEMENT_FOCUS_MIN    = 75;       // focusLevel threshold
@@ -1136,9 +1138,12 @@ const Brain = (() => {
       }
 
       // ── Phone detection ─────────────────────────────────────────────────
+      // Trigger: head bowed ≥ PHONE_PITCH_THRESHOLD degrees for 3s.
+      // We intentionally do NOT check correctedGazeY here — it is head-pose
+      // compensated and actively removes the downward-gaze signal we need.
       if (_phoneDetectionEnabled && window.cameraAvailable) {
         const p = window.perception;
-        if (p?.facePresent && p.gazeY > PHONE_GAZE_Y_THRESHOLD && p.headPitch > PHONE_PITCH_THRESHOLD) {
+        if (p?.facePresent && p.headPitch > PHONE_PITCH_THRESHOLD) {
           _phoneCheckMs += 1000;
           if (_phoneCheckMs >= PHONE_DETECT_SUSTAIN_MS && window._lastEmotion !== 'suspicious') {
             // Jump straight to suspicious — skip DRIFTING arc
@@ -1149,11 +1154,8 @@ const Brain = (() => {
             // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
           }
-        } else if (!p || !p.facePresent || p.gazeY < PHONE_GAZE_Y_RESET) {
-          // Reset when there is no perception data, face is absent, or gaze
-          // returns above the reset threshold. Without the facePresent guard the
-          // counter would hold its value across face-dropout periods and trigger
-          // spuriously on the next detection frame.
+        } else if (!p || !p.facePresent || p.headPitch < PHONE_PITCH_RESET) {
+          // Reset when face absent or head has lifted back up
           _phoneCheckMs = 0;
         }
       }
@@ -1559,9 +1561,11 @@ const Brain = (() => {
       '--companion-glow-opacity', glowMap[period] || '1.0'
     );
 
-    // Sound gain (NIGHT = 80%)
+    // Sound gain (NIGHT = 80%) — only if the nightAutoVolume setting is enabled
     const gainMap = { MORNING: 1.0, AFTERNOON: 1.0, EVENING: 1.0, NIGHT: 0.8 };
-    if (window.Sounds) Sounds.setNightGainMult(gainMap[period] || 1.0);
+    const nightEnabled = window.Settings ? Settings.get('nightAutoVolume') : true;
+    const gainMult = nightEnabled ? (gainMap[period] || 1.0) : 1.0;
+    if (window.Sounds) Sounds.setNightGainMult(gainMult);
 
     // Sensitivity runtime override — NIGHT auto-gentle (doesn't touch localStorage)
     if (period === 'NIGHT') {

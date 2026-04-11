@@ -1676,59 +1676,83 @@ body.full-mode .companion {
 
 /* =====================================================================
    SETTINGS GEAR BUTTON — top-left of full-mode screen
-   Mirrors the collapse button in weight and placement.
    ===================================================================== */
 #settings-gear-btn {
   position: fixed;
   top: 14px;
   left: 14px;
   z-index: 3000;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 18px;
+  width: 34px;
+  height: 34px;
+  background: rgba(10, 8, 22, 0.55);
+  border: 1px solid rgba(155, 135, 255, 0.18);
+  border-radius: 10px;
+  color: rgba(175, 160, 255, 0.65);
+  font-size: 16px;
   cursor: pointer;
   display: none; /* shown only in full-mode via rule below */
   align-items: center;
   justify-content: center;
-  transition: background 0.18s, color 0.18s;
-  backdrop-filter: blur(4px);
+  transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.25s;
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35),
+              0 0 0 1px rgba(155, 135, 255, 0.06) inset;
   -webkit-app-region: no-drag;
 }
 #settings-gear-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(120, 100, 210, 0.22);
+  color: rgba(205, 190, 255, 0.92);
+  border-color: rgba(165, 145, 255, 0.35);
+  transform: rotate(60deg);
 }
 body.full-mode #settings-gear-btn { display: flex; }
 body.pip-mode  #settings-gear-btn { display: none; }
 
 /* =====================================================================
-   SETTINGS PANEL — floating frosted overlay
+   SETTINGS PANEL — glass morphism frosted overlay
    ===================================================================== */
+@keyframes settingsPanelIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+
 #settings-panel {
   position: fixed;
-  top: 60px;
+  top: 58px;
   left: 14px;
-  width: 280px;
-  max-height: calc(100vh - 80px);
+  width: 300px;
+  max-height: calc(100vh - 78px);
   z-index: 3001;
-  background: rgba(18, 16, 28, 0.88);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 14px;
+  /* Glass core — transparent enough for the blur to be visible */
+  background:
+    radial-gradient(ellipse at 40% 0%, rgba(140, 115, 255, 0.07) 0%, transparent 55%),
+    linear-gradient(160deg, rgba(18, 14, 32, 0.80) 0%, rgba(10, 8, 22, 0.88) 100%);
+  backdrop-filter: blur(32px) saturate(1.6) brightness(1.05);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.05);
+  /* Frame: subtle outer border + purple-tinted top edge */
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(160, 140, 255, 0.22);
+  border-radius: 18px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   display: none; /* shown when .settings-open is added */
   flex-direction: column;
   gap: 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  /* Depth: outer shadows + inner top glass-shine highlight */
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.60),
+    0 6px 20px  rgba(0, 0, 0, 0.40),
+    0 1px 0     rgba(185, 165, 255, 0.14) inset,
+    0 -1px 0    rgba(0, 0, 0, 0.18) inset;
 }
-#settings-panel.settings-open { display: flex; }
+#settings-panel.settings-open {
+  display: flex;
+  animation: settingsPanelIn 0.22s cubic-bezier(0.34, 1.48, 0.64, 1) both;
+}
 
 /* Visibility is CSS-only — no JS mode-checking needed */
 body.pip-mode #settings-panel { display: none !important; }
@@ -1738,114 +1762,148 @@ body.pip-mode #settings-panel { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 10px;
+  padding: 14px 16px 12px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.42);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(175, 155, 255, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: sticky;
   top: 0;
-  background: rgba(18, 16, 28, 0.95);
+  background: rgba(14, 11, 26, 0.96);
+  backdrop-filter: blur(8px);
   z-index: 1;
 }
 
 #settings-close-btn {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   color: rgba(255, 255, 255, 0.35);
-  font-size: 14px;
+  font-size: 11px;
+  line-height: 1;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 #settings-close-btn:hover {
-  color: rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.80);
+  background: rgba(255, 75, 75, 0.14);
+  border-color: rgba(255, 75, 75, 0.28);
 }
 
 /* ── Panel body layout ────────────────────────────────────────── */
 #settings-body {
-  padding: 12px 0 16px;
+  padding: 8px 0 18px;
 }
 
 .settings-section {
-  padding: 0 0 4px;
+  padding: 0 0 2px;
 }
 
+/* Section title with a coloured left-bar accent marker */
 .settings-section-title {
-  padding: 10px 16px 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.10em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.28);
+  color: rgba(165, 145, 255, 0.60);
+}
+.settings-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  background: linear-gradient(to bottom, rgba(170, 145, 255, 0.75), rgba(130, 105, 230, 0.25));
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .settings-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 16px;
+  padding: 8px 12px;
   gap: 12px;
+  border-radius: 10px;
+  margin: 1px 6px;
+  transition: background 0.15s;
+}
+.settings-row:not(.settings-row-hint):hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .settings-row-hint {
-  padding-top: 0;
+  padding-top: 2px;
+  padding-bottom: 4px;
 }
 
 .settings-row-label {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(225, 218, 255, 0.78);
   line-height: 1.3;
   flex: 1;
 }
 
 .settings-row-sublabel {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
-  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.32);
+  margin-top: 2px;
 }
 
 .settings-row-sublabel kbd {
   font-family: inherit;
   font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 3px;
-  padding: 1px 4px;
-  color: rgba(255, 255, 255, 0.50);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: rgba(200, 190, 255, 0.50);
 }
 
 .settings-divider {
-  margin: 6px 16px;
+  margin: 4px 14px;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* ── Settings select ──────────────────────────────────────────── */
 .settings-select {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  color: rgba(215, 205, 255, 0.82);
   font-size: 12px;
-  padding: 4px 6px;
+  padding: 5px 26px 5px 9px;
   cursor: pointer;
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  min-width: 90px;
+  min-width: 100px;
   text-align: right;
+  /* Custom purple chevron arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(160%2C140%2C255%2C0.50)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px 5px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.settings-select:hover {
+  border-color: rgba(160, 140, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 .settings-select:focus {
-  border-color: rgba(120, 135, 235, 0.50);
+  border-color: rgba(160, 140, 255, 0.50);
+  background-color: rgba(160, 140, 255, 0.08);
 }
 .settings-select option {
-  background: #1a1828;
-  color: rgba(255, 255, 255, 0.80);
+  background: #120f22;
+  color: rgba(220, 210, 255, 0.88);
 }
 
 /* ── Toggle switch ────────────────────────────────────────────── */
@@ -1866,10 +1924,10 @@ body.pip-mode #settings-panel { display: none !important; }
 .settings-toggle-track {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  transition: background 0.18s, border-color 0.18s;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.20s, border-color 0.20s, box-shadow 0.20s;
 }
 .settings-toggle-track::after {
   content: '';
@@ -1877,44 +1935,54 @@ body.pip-mode #settings-panel { display: none !important; }
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.40);
   top: 2px;
   left: 2px;
-  transition: transform 0.18s, background 0.18s;
+  transition: transform 0.20s cubic-bezier(0.34, 1.52, 0.64, 1), background 0.20s;
 }
 .settings-toggle input:checked + .settings-toggle-track {
-  background: rgba(120, 135, 235, 0.55);
-  border-color: rgba(120, 135, 235, 0.55);
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.75), rgba(105, 82, 220, 0.75));
+  border-color: rgba(160, 140, 255, 0.50);
+  box-shadow: 0 0 8px rgba(145, 120, 255, 0.30);
 }
 .settings-toggle input:checked + .settings-toggle-track::after {
   transform: translateX(16px);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* =====================================================================
-   ALL_OFF MUTED VISUAL — crossed mouth when sound is fully silenced
-   A small × overlay on the mouth indicates the buddy can't speak.
+   ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
+   Two thin rotated bars form a soft × over a flat neutral line.
    ===================================================================== */
+
+/* Flat sealed line — neutral, no border arc */
+.companion.muted-all-off .mouth {
+  width: 6.5vmin;
+  height: 0.55vmin;
+  border-radius: 2vmin;
+  border-color: transparent;
+  background: rgba(140, 120, 200, 0.22);
+  opacity: 1;
+  overflow: visible;
+}
+
+/* Two diagonal bars forming a soft CSS × */
+.companion.muted-all-off .mouth::before,
 .companion.muted-all-off .mouth::after {
-  content: '✕';
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2.2vmin;
-  color: rgba(255, 80, 80, 0.75);
+  width: 4.0vmin;
+  height: 0.30vmin;
+  background: rgba(210, 80, 80, 0.58);
+  border-radius: 1px;
   pointer-events: none;
-  line-height: 1;
+  box-shadow: 0 0 4px rgba(220, 70, 70, 0.22);
 }
-
-/* The mouth itself fades to a flat neutral line when muted */
-.companion.muted-all-off .mouth {
-  width: 7vmin;
-  height: 1.2vmin;
-  border-radius: 1vmin;
-  border-bottom-color: rgba(255, 80, 80, 0.45);
-  border-left-color:   transparent;
-  border-right-color:  transparent;
-  border-top-color:    transparent;
-  opacity: 0.70;
+.companion.muted-all-off .mouth::before {
+  transform: translate(-50%, -50%) rotate(35deg);
+}
+.companion.muted-all-off .mouth::after {
+  transform: translate(-50%, -50%) rotate(-35deg);
 }
