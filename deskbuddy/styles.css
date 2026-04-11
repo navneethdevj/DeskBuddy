@@ -1834,15 +1834,13 @@ body.pip-mode  #settings-gear-btn { display: none; }
   width: 300px;
   max-height: calc(100vh - 78px);
   z-index: 3001;
-  /* Glass core — transparent enough for the blur to be visible */
-  background:
-    radial-gradient(ellipse at 40% 0%, rgba(140, 115, 255, 0.07) 0%, transparent 55%),
-    linear-gradient(160deg, rgba(18, 14, 32, 0.80) 0%, rgba(10, 8, 22, 0.88) 100%);
-  backdrop-filter: blur(32px) saturate(1.6) brightness(1.05);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6) brightness(1.05);
-  /* Frame: subtle outer border + purple-tinted top edge */
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-top: 1px solid rgba(160, 140, 255, 0.22);
+  /* Glass — low-alpha so the backdrop blur actually shows through */
+  background: rgba(14, 11, 26, 0.46);
+  backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  /* Crisp white glass border + soft white sheen along the top */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 18px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -1852,12 +1850,9 @@ body.pip-mode  #settings-gear-btn { display: none; }
   gap: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
-  /* Depth: outer shadows + inner top glass-shine highlight */
   box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.60),
-    0 6px 20px  rgba(0, 0, 0, 0.40),
-    0 1px 0     rgba(185, 165, 255, 0.14) inset,
-    0 -1px 0    rgba(0, 0, 0, 0.18) inset;
+    0 16px 48px rgba(0, 0, 0, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
 }
 #settings-panel.settings-open {
   display: flex;
@@ -1877,12 +1872,13 @@ body.pip-mode #settings-panel { display: none !important; }
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(175, 155, 255, 0.55);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(200, 185, 255, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   position: sticky;
   top: 0;
-  background: rgba(14, 11, 26, 0.96);
-  backdrop-filter: blur(8px);
+  background: rgba(14, 11, 26, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   z-index: 1;
 }
 
@@ -1984,8 +1980,8 @@ body.pip-mode #settings-panel { display: none !important; }
 
 /* ── Settings select ──────────────────────────────────────────── */
 .settings-select {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 8px;
   color: rgba(215, 205, 255, 0.82);
   font-size: 12px;
@@ -2034,9 +2030,9 @@ body.pip-mode #settings-panel { display: none !important; }
 .settings-toggle-track {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   transition: background 0.20s, border-color 0.20s, box-shadow 0.20s;
 }
 .settings-toggle-track::after {
