@@ -2267,20 +2267,11 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
    Slides out with a spring-like ease when the mouse leaves.
    ===================================================================== */
 
-/* ── Trigger strip — invisible right-edge hover zone ───────────────── */
+/* ── Trigger strip — disabled; panel opens only via brain icon hover ── */
 #sp-trigger {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 52px;   /* wide enough to cover the icon button */
-  height: 100%;
-  z-index: 2490;
-  pointer-events: auto;
-  -webkit-app-region: no-drag;
-  display: none;
+  display: none !important;
+  pointer-events: none;
 }
-body.full-mode #sp-trigger { display: block; }
-body.pip-mode  #sp-trigger { display: none !important; }
 
 /* ── Session sidebar icon — floating glass button on right edge ─────── */
 #sp-icon {

@@ -209,11 +209,8 @@
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
 
-  <!-- Sidebar trigger zone — invisible right-edge hover strip, full-mode only -->
-  <div id="sp-trigger"></div>
-
   <!-- Sidebar icon — small floating glass brain icon on the right edge.
-       Hover it (or the trigger zone) to open the session panel.
+       Hover it to open the session panel.
        The ring around it changes colour with timer focus state.
        The ✦ star in the top-right corner of the SVG twinkles independently. -->
   <button id="sp-icon" title="Session panel" aria-label="Open session panel">
@@ -278,12 +275,15 @@
     <!-- ── Chill / Idle state ────────────────────────────────────── -->
     <div id="session-idle">
       <div class="sp-header">
-        <span class="sp-mode-label">chill mode</span>
+        <div class="sp-header-left">
+          <span class="sp-mode-label">focus session</span>
+          <span class="sp-mode-desc">set your intention</span>
+        </div>
         <span class="sp-mode-star">✦</span>
       </div>
       <div class="sp-setup">
         <div class="sp-row">
-          <label class="sp-label" for="duration-select">study for</label>
+          <label class="sp-label" for="duration-select">duration</label>
           <select id="duration-select" class="sp-select">
             <option value="15">15 min</option>
             <option value="20">20 min</option>
@@ -304,12 +304,12 @@
             <option value="30">30 min</option>
           </select>
         </div>
-        <div class="sp-row sp-goal-row">
+        <div class="sp-goal-row">
           <input type="text" id="goal-input" class="sp-goal-input"
             placeholder="what are you working on?" maxlength="80" autocomplete="off">
         </div>
         <button id="start-session" class="sp-btn sp-btn-primary">
-          ✦ start session
+          ✦ begin session
         </button>
       </div>
     </div>
@@ -317,9 +317,22 @@
     <!-- ── Active session state ──────────────────────────────────── -->
     <div id="session-active" style="display:none">
       <div class="sp-header">
-        <span class="sp-mode-label">session</span>
+        <span class="sp-mode-label">in session</span>
         <span id="sp-focus-dot" class="sp-focus-dot"></span>
       </div>
+
+      <!-- Progress ring + inline countdown -->
+      <div class="sp-timer-ring-wrap">
+        <svg class="sp-progress-ring" viewBox="0 0 52 52" aria-hidden="true">
+          <circle class="sp-ring-track" cx="26" cy="26" r="22"/>
+          <circle id="sp-ring-progress" class="sp-ring-fill" cx="26" cy="26" r="22"/>
+        </svg>
+        <div class="sp-ring-center">
+          <div id="sp-inline-timer" class="sp-inline-timer">25:00</div>
+          <div class="sp-ring-state-label"></div>
+        </div>
+      </div>
+
       <div id="goal-display" class="sp-goal-display" style="display:none"></div>
       <div class="sp-controls">
         <button id="pause-session" class="sp-btn sp-btn-secondary">
@@ -335,14 +348,16 @@
     <div id="session-paused" style="display:none">
       <div class="sp-header">
         <span class="sp-mode-label">on break</span>
+        <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
       </div>
       <div class="sp-break-body">
+        <div class="sp-break-icon">☕</div>
         <div id="break-countdown" class="sp-break-countdown">5:00</div>
-        <div class="sp-break-hint">budget remaining</div>
+        <div class="sp-break-hint">break budget remaining</div>
       </div>
       <div class="sp-controls">
         <button id="resume-session" class="sp-btn sp-btn-primary">
-          ▶ resume
+          ▶ resume session
         </button>
         <button id="abandon-session-break" class="sp-btn sp-btn-ghost">
           end session
@@ -354,7 +369,7 @@
     <div id="outcome-screen" style="display:none">
       <div id="outcome-label" class="sp-outcome-label"></div>
       <div id="goal-prompt" class="sp-goal-prompt" style="display:none">
-        <div class="sp-label">did you finish it?</div>
+        <div class="sp-label" style="text-align:center;margin-bottom:2px">did you finish it?</div>
         <div class="sp-goal-achieved-row">
           <button id="goal-achieved-yes" class="sp-btn sp-btn-yes">yes ✓</button>
           <button id="goal-achieved-no"  class="sp-btn sp-btn-no">not yet</button>
