@@ -132,7 +132,7 @@ html, body {
 }
 
 /* Expression → glow override (each has unique color + speed) */
-.companion.curious    { animation: glowCurious 2.0s ease-in-out infinite, idleSway 5s ease-in-out infinite; }
+.companion.curious    { animation: glowCurious 2.5s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
 .companion.focused    { animation: glowFocused 3.5s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
 .companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite, idleSway 10s ease-in-out infinite; }
 .companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite, idleSway 7s ease-in-out infinite; }
@@ -512,7 +512,7 @@ html, body {
 
 /* Curious — gentle tilt like a puppy */
 .companion.curious .companion-inner {
-  animation: curiousTilt 1.8s ease-in-out infinite;
+  animation: curiousTilt 2.5s ease-in-out infinite;
 }
 @keyframes curiousTilt {
   0%        { transform: translateY(0)      rotate(0deg)   scale(1.000); }
