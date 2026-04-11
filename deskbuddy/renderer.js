@@ -430,7 +430,6 @@
 
       // Break countdown — start/stop the live update interval
       if (newState === 'PAUSED') {
-        _breakAlarmFired = false;  // reset alarm guard for this break
         _startBreakCountdown();
         // Teal glow sweeps up from the bottom
         const glow = document.getElementById('break-glow');
@@ -676,13 +675,13 @@
     if (titleEl) titleEl.textContent = title;
     if (bodyEl)  bodyEl.textContent  = body;
 
-    // Break budget
+    // Break elapsed time
     if (budgetEl) {
-      const budgetMs   = Session.getBreakTimeRemaining ? Session.getBreakTimeRemaining() : 300000;
-      const budgetSecs = Math.max(0, Math.ceil(budgetMs / 1000));
-      const bm = Math.floor(budgetSecs / 60);
-      const bs = String(budgetSecs % 60).padStart(2, '0');
-      budgetEl.textContent = `${bm}:${bs} break budget`;
+      const elapsedMs   = Session.getBreakElapsedMs ? Session.getBreakElapsedMs() : 0;
+      const elapsedSecs = Math.floor(elapsedMs / 1000);
+      const bm = Math.floor(elapsedSecs / 60);
+      const bs = String(elapsedSecs % 60).padStart(2, '0');
+      budgetEl.textContent = `on break · ${bm}:${bs}`;
     }
 
     // Companion — warm + happy
@@ -725,38 +724,14 @@
     }
   }
 
-  let _breakAlarmFired = false;  // guard: only fire alarm once per break
-
   function _updateBreakCountdown() {
     const el = document.getElementById('break-countdown');
     if (!el) return;
-    const ms = Session.getBreakTimeRemaining();
-    const totalSecs = Math.max(0, Math.ceil(ms / 1000));
+    const ms = Session.getBreakElapsedMs();
+    const totalSecs = Math.floor(ms / 1000);
     const m = String(Math.floor(totalSecs / 60));
     const s = String(totalSecs % 60).padStart(2, '0');
     el.textContent = `${m}:${s}`;
-
-    // When budget hits 0, fire alarm + pet look-around (once per break)
-    if (totalSecs === 0 && !_breakAlarmFired) {
-      _breakAlarmFired = true;
-      if (Settings.get('breakOverAlarm')) {
-        // Play distinct alarm tone
-        if (window.Sounds) Sounds.play('break_over');
-        // Pet enters curious/searching behaviour
-        if (window.Brain) {
-          Emotion.setState('curious');
-          Brain.triggerLookSequence();
-        }
-        // Flash the break-glow again
-        const glow = document.getElementById('break-glow');
-        if (glow) {
-          glow.classList.add('active');
-          setTimeout(() => glow.classList.remove('active'), 3500);
-        }
-        // Show a whisper nudge
-        if (window.Brain) Brain.showWhisper('break time\'s up! ✦');
-      }
-    }
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────
@@ -976,13 +951,7 @@
       ticksToggle.addEventListener('change', () => Settings.set('ticksEnabled', ticksToggle.checked));
     }
 
-    // Break over alarm toggle
-    const breakAlarmToggle = document.getElementById('break-over-alarm-toggle');
-    if (breakAlarmToggle) {
-      breakAlarmToggle.checked = Settings.get('breakOverAlarm');
-      breakAlarmToggle.addEventListener('change', () => Settings.set('breakOverAlarm', breakAlarmToggle.checked));
-    }
-
+    // Break over alarm toggle — removed (breaks have no time limit)
     // Drone toggle
     const droneToggle = document.getElementById('drone-toggle');
     if (droneToggle) {
@@ -1046,10 +1015,6 @@
     Settings.onChange('ticksEnabled', (v) => {
       Sounds.setTicksEnabled(v);
       if (ticksToggle) ticksToggle.checked = v;
-    });
-
-    Settings.onChange('breakOverAlarm', (v) => {
-      if (breakAlarmToggle) breakAlarmToggle.checked = v;
     });
 
     // ── Volume slider ────────────────────────────────────────────────────

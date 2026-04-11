@@ -2,7 +2,7 @@
  * Session — Study session lifecycle manager.
  *
  * Sits above timer.js. Manages the full study session lifecycle including
- * goals, break budget, localStorage history, and outcome logging.
+ * goals, break tracking, localStorage history, and outcome logging.
  *
  * States:   IDLE → ACTIVE → PAUSED → COMPLETED | FAILED | ABANDONED
  *
@@ -11,17 +11,17 @@
  *   - oldState === 'CRITICAL'  → distraction-based failure (session FAILED)
  *   - oldState !== 'CRITICAL'  → timer naturally ran to 0 (session COMPLETED)
  *
+ * Breaks have no time limit — the user may take a break of any duration and
+ * resume whenever they are ready.
+ *
  * localStorage key: 'deskbuddy_sessions'.  Max 50 sessions; oldest dropped.
- * Break budget: 5 min.  Auto-FAIL if break exceeds 2× (10 min).
  */
 const Session = (() => {
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const _MAX_SESSIONS    = 50;
-  const _BREAK_BUDGET_MS = 5 * 60 * 1000;          // 5 minutes
-  const _BREAK_MAX_MS    = 2 * _BREAK_BUDGET_MS;    // 10 minutes → auto-fail
-  const _STORAGE_KEY     = 'deskbuddy_sessions';
+  const _MAX_SESSIONS = 50;
+  const _STORAGE_KEY  = 'deskbuddy_sessions';
 
   const STATE = {
     IDLE:      'IDLE',
@@ -36,7 +36,6 @@ const Session = (() => {
 
   let _state      = STATE.IDLE;
   let _current    = null;   // session object in progress
-  let _breakTimer = null;   // setInterval ID for break budget overflow check
   let _breakStartMs = null; // wall-clock ms when break began
 
   // Focus tracking (only during ACTIVE state)
@@ -97,13 +96,9 @@ const Session = (() => {
     _saveToStorage();
   }
 
-  // ── Break timer ────────────────────────────────────────────────────────────
+  // ── Break tracking ─────────────────────────────────────────────────────────
 
-  function _stopBreakTimer() {
-    if (_breakTimer !== null) {
-      clearTimeout(_breakTimer);
-      _breakTimer = null;
-    }
+  function _clearBreakStart() {
     _breakStartMs = null;
   }
 
@@ -195,7 +190,7 @@ const Session = (() => {
     if (!_current) return;
 
     _closeFocusedStreak();
-    _stopBreakTimer();
+    _clearBreakStart();
 
     _current.outcome = outcome;
     _pushSession(Object.assign({}, _current));
@@ -276,7 +271,8 @@ const Session = (() => {
 
   /**
    * pause() — start a break.
-   * Flushes current focused streak. Starts the break-budget watchdog.
+   * Flushes current focused streak. Breaks have no time limit — the session
+   * remains paused until the user explicitly calls resume() or abandon().
    */
   function pause() {
     if (_state !== STATE.ACTIVE) return;
@@ -285,13 +281,6 @@ const Session = (() => {
     _streakStart = null;
 
     _breakStartMs = _now();
-
-    // Schedule auto-fail at exactly the moment the break budget is exhausted.
-    // One-shot setTimeout is more precise than polling (no ±interval overshoot).
-    _breakTimer = setTimeout(() => {
-      _breakTimer = null;
-      _endSession('FAILED');
-    }, _BREAK_MAX_MS);
 
     _setState(STATE.PAUSED);
     if (window.Sounds) Sounds.play('break_start');
@@ -303,7 +292,7 @@ const Session = (() => {
   function resume() {
     if (_state !== STATE.PAUSED) return;
 
-    _stopBreakTimer();
+    _clearBreakStart();
 
     // Resume focused tracking from this moment
     _focusedSince = _now();
@@ -383,13 +372,13 @@ const Session = (() => {
   }
 
   /**
-   * getBreakTimeRemaining() — milliseconds of break budget left.
-   * Returns full budget if not currently on a break.
-   * Used by the timer display to show a break countdown.
+   * getBreakElapsedMs() — milliseconds elapsed since the break started.
+   * Returns 0 if not currently on a break.
+   * Used by the UI to display a live break elapsed-time counter.
    */
-  function getBreakTimeRemaining() {
-    if (_state !== STATE.PAUSED || _breakStartMs === null) return _BREAK_BUDGET_MS;
-    return Math.max(0, _BREAK_BUDGET_MS - (_now() - _breakStartMs));
+  function getBreakElapsedMs() {
+    if (_state !== STATE.PAUSED || _breakStartMs === null) return 0;
+    return _now() - _breakStartMs;
   }
 
   /**
@@ -410,7 +399,7 @@ const Session = (() => {
     _current      = null;
     _focusedSince = null;
     _streakStart  = null;
-    _stopBreakTimer();
+    _clearBreakStart();
     _setState(STATE.IDLE);
   }
 
@@ -426,12 +415,9 @@ const Session = (() => {
     setGoalAchieved,
     getHistory,
     getCurrentStats,
-    getBreakTimeRemaining,
+    getBreakElapsedMs,
     onSessionStateChange,
     STATE,
-    // Expose constants for UI
-    BREAK_BUDGET_MS: _BREAK_BUDGET_MS,
-    BREAK_MAX_MS:    _BREAK_MAX_MS,
   };
 
 })();
