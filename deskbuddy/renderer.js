@@ -132,6 +132,9 @@
         const goal   = goalEl?.value?.trim() || null;
         const mins   = _getDurationMinutes();
 
+        // Cancel any lingering focus graph / analytics from the previous session
+        if (window.FocusGraph) FocusGraph.cancel();
+
         // Sync break interval from session panel
         BreakReminder.setInterval(_getBreakMinutes());
 
@@ -190,6 +193,8 @@
     const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
+        // Cancel any in-progress focus graph + analytics chain from the previous session
+        if (window.FocusGraph) FocusGraph.cancel();
         Session.reset();
         Timer.reset();
         // Clear goal input for fresh start
@@ -1372,7 +1377,7 @@
       const showPanel = (newState === 'COMPLETED' || newState === 'FAILED');
 
       // Brief delay — let the outcome screen / celebration animation settle first
-      const triggerDelayMs = newState === 'COMPLETED' ? 600 : 600;
+      const triggerDelayMs = 600;
 
       setTimeout(() => {
         const data      = Session.getLastSessionData ? Session.getLastSessionData() : null;

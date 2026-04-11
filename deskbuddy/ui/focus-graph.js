@@ -155,21 +155,29 @@ const FocusGraph = (() => {
   }
 
   /**
-   * Smooth bezier curve through all samples up to `progress` (0–1).
-   * Uses midpoint control points for a natural flowing line.
+   * Smooth bezier curve through all samples, revealed left-to-right via canvas
+   * clipping.  Using a clip region (rather than slicing the point array) gives a
+   * perfectly continuous reveal regardless of how few data points exist.
    */
   function _drawCurve(ctx, points, totalS, progress) {
     if (points.length < 2) return;
 
-    const drawCount = Math.max(2, Math.ceil(points.length * progress));
-    const visible   = points.slice(0, drawCount);
+    // Clip to the portion of the canvas that has been "drawn so far".
+    // progress 0 → no curve visible; progress 1 → full curve visible.
+    const clipX = PAD.left + progress * INNER_W;
 
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(_xScale(visible[0].t, totalS), _yScale(visible[0].level));
+    ctx.rect(0, 0, clipX, H);
+    ctx.clip();
 
-    for (let i = 1; i < visible.length; i++) {
-      const prev = visible[i - 1];
-      const curr = visible[i];
+    // Draw the full pre-computed bezier path; the clip hides the future portion.
+    ctx.beginPath();
+    ctx.moveTo(_xScale(points[0].t, totalS), _yScale(points[0].level));
+
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
       const cpx  = (_xScale(prev.t, totalS) + _xScale(curr.t, totalS)) / 2;
       ctx.bezierCurveTo(
         cpx, _yScale(prev.level),
@@ -183,6 +191,8 @@ const FocusGraph = (() => {
     ctx.lineJoin    = 'round';
     ctx.lineCap     = 'round';
     ctx.stroke();
+
+    ctx.restore();
   }
 
   /**
