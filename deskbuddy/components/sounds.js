@@ -74,6 +74,7 @@ const Sounds = (() => {
   };
 
   let _mutePreset = 'ALL_ON';
+  let _ticksEnabled = true;   // independent toggle for timer tick sounds
 
   const cooldowns = {};
 
@@ -234,6 +235,8 @@ const Sounds = (() => {
     if (!ready || !ctx) return false;
     // Resume suspended context — browser may suspend after inactivity
     if (ctx.state === 'suspended') { ctx.resume(); return false; }
+    // Honour the independent ticks toggle for all category-A tick sounds
+    if (!_ticksEnabled && SOUND_CATEGORIES[type] === 'A') return false;
     const now = Date.now();
     const ms  = (COOLDOWN[type] !== undefined) ? COOLDOWN[type] : 800;
     if (ms > 0 && cooldowns[type] && now - cooldowns[type] < ms) return false;
@@ -432,20 +435,28 @@ const Sounds = (() => {
 
   /**
    * FOCUSED_TICK
-   * Character: clean, bright — tiny clock in a cozy room. "Yes, keep going."
-   * Axes: 880 Hz / sine / 4ms attack + 51ms decay (AD) / no filter, no modulation
+   * Character: soft felt clock — gentle tap of a padded wooden mechanism.
+   * "Yes, keep going." Barely-there, pleasant, never sharp.
+   *
+   * Recipe:
+   *   • 340 Hz sine through a lowpass at 900 Hz — removes all brightness/harshness
+   *   • Very fast AD (2ms attack + 28ms decay) — crisp but cushioned
+   *   • Whisper-level gain (0.052) — heard but never felt
+   *   • Optional tap transient: brief 680 Hz harmonic at 0.014 gain, same shape
    */
   function _focused_tick() {
     if (!_ok('focused_tick')) return;
     try {
       const t = ctx.currentTime;
-      // Primary tone — pure sine for maximum clarity and minimum fatigue
-      _osc('sine', 880, t, 0.055, 0.07, {
-        attack: 0.004, decay: 0.051, sustain: 0,
+      // Soft fundamental — warm muffled "tok"
+      _osc('sine', 340, t, 0.030, 0.052, {
+        attack: 0.002, decay: 0.028, sustain: 0,
+        filter: { type: 'lowpass', frequency: 900, Q: 0.8 },
       });
-      // Harmonic at 2× for crystalline ring without added waveform complexity
-      _osc('sine', 1760, t, 0.055, 0.025, {
-        attack: 0.004, decay: 0.051, sustain: 0,
+      // Faint harmonic tap — adds subtle definition without metallic edge
+      _osc('sine', 680, t, 0.022, 0.014, {
+        attack: 0.002, decay: 0.020, sustain: 0,
+        filter: { type: 'lowpass', frequency: 1100, Q: 0.7 },
       });
     } catch (e) {}
   }
@@ -1540,6 +1551,8 @@ const Sounds = (() => {
 
   // ── Public surface ─────────────────────────────────────────────────────────
 
-  return { init, play, setVolume, mute, unmute, setNightGainMult, setMutePreset, getMutePreset };
+  function setTicksEnabled(v) { _ticksEnabled = !!v; }
+
+  return { init, play, setVolume, mute, unmute, setNightGainMult, setMutePreset, getMutePreset, setTicksEnabled };
 
 })();

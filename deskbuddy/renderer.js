@@ -94,6 +94,7 @@
   _wireKeybinds();
   _wireSettings();
   _wireBreakReminder();
+  _wireSidebar();
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.
@@ -547,6 +548,13 @@
       });
     }
 
+    // Ticks enabled toggle
+    const ticksToggle = document.getElementById('ticks-enabled-toggle');
+    if (ticksToggle) {
+      ticksToggle.checked = Settings.get('ticksEnabled');
+      ticksToggle.addEventListener('change', () => Settings.set('ticksEnabled', ticksToggle.checked));
+    }
+
     // Drone toggle
     const droneToggle = document.getElementById('drone-toggle');
     if (droneToggle) {
@@ -607,6 +615,11 @@
       if (droneToggle) droneToggle.checked = v;
     });
 
+    Settings.onChange('ticksEnabled', (v) => {
+      Sounds.setTicksEnabled(v);
+      if (ticksToggle) ticksToggle.checked = v;
+    });
+
     // ── Volume slider ────────────────────────────────────────────────────
     const volumeSlider  = document.getElementById('volume-slider');
     const volumeSubLabel = document.getElementById('volume-sublabel');
@@ -618,6 +631,7 @@
     }
 
     _applyVolume(Settings.get('volume'));
+    Sounds.setTicksEnabled(Settings.get('ticksEnabled'));
 
     if (volumeSlider) {
       volumeSlider.addEventListener('input', () => {
@@ -879,4 +893,49 @@
       }
     }
   }
+
+  // ── _wireSidebar ──────────────────────────────────────────────────────────
+  // Auto-hide session sidebar: hover the brain icon or the right-edge trigger
+  // zone to slide the panel in; leave the panel to slide it away.
+  // The brain icon fades out when the panel is open so it doesn't overlap.
+
+  function _wireSidebar() {
+    const panel   = document.getElementById('session-panel');
+    const trigger = document.getElementById('sp-trigger');
+    const icon    = document.getElementById('sp-icon');
+    if (!panel) return;
+
+    let _hideTimer = null;
+
+    function _open() {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+      panel.classList.add('sidebar-open');
+      if (icon) icon.classList.add('sp-icon-hidden');
+    }
+
+    function _scheduleClose() {
+      if (_hideTimer) return;
+      _hideTimer = setTimeout(() => {
+        _hideTimer = null;
+        panel.classList.remove('sidebar-open');
+        if (icon) icon.classList.remove('sp-icon-hidden');
+      }, 380);
+    }
+
+    // Open on entering the trigger strip or the icon
+    if (trigger) trigger.addEventListener('mouseenter', _open);
+    if (icon)    icon.addEventListener('mouseenter',    _open);
+
+    // Keep open while mouse is inside the panel
+    panel.addEventListener('mouseenter', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    // Schedule close when mouse leaves the panel
+    panel.addEventListener('mouseleave', _scheduleClose);
+
+    // Also close when mouse leaves the trigger strip (and didn't enter the panel)
+    if (trigger) trigger.addEventListener('mouseleave', _scheduleClose);
+  }
+
 })();

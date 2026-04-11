@@ -46,6 +46,16 @@
         </div>
         <div class="settings-row">
           <div>
+            <div class="settings-row-label">Timer ticks</div>
+            <div class="settings-row-sublabel">Soft clock sound while focused</div>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="ticks-enabled-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div>
             <div class="settings-row-label">Master volume</div>
             <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
           </div>
@@ -199,7 +209,65 @@
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
 
-  <!-- Session panel — right side, full-mode only -->
+  <!-- Sidebar trigger zone — invisible right-edge hover strip, full-mode only -->
+  <div id="sp-trigger"></div>
+
+  <!-- Sidebar icon — small floating glass brain icon on the right edge.
+       Hover it (or the trigger zone) to open the session panel.
+       The ring around it changes colour with timer focus state. -->
+  <button id="sp-icon" title="Session panel" aria-label="Open session panel">
+    <!-- Brain SVG — top-down view, two hemispheres, gyri wrinkles -->
+    <svg id="sp-icon-brain" viewBox="0 0 22 22" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Left hemisphere outer shell -->
+      <path d="M11 3.5C9.6 3.5 8.3 4.1 7.3 5
+               C6.2 6 5.6 7.3 5.5 8.7
+               C4.6 8.9 3.8 9.5 3.4 10.4
+               C2.9 11.2 2.8 12.2 3.1 13.1
+               C2.5 13.8 2.3 14.7 2.5 15.6
+               C2.7 16.5 3.2 17.2 4 17.7
+               C4.4 18.4 5.2 18.9 6.1 19.1
+               C7 19.3 7.9 19.1 8.7 18.7
+               C9.2 19.3 10 19.6 11 19.6"
+            stroke="currentColor" stroke-width="1.35"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Right hemisphere outer shell (mirror) -->
+      <path d="M11 3.5C12.4 3.5 13.7 4.1 14.7 5
+               C15.8 6 16.4 7.3 16.5 8.7
+               C17.4 8.9 18.2 9.5 18.6 10.4
+               C19.1 11.2 19.2 12.2 18.9 13.1
+               C19.5 13.8 19.7 14.7 19.5 15.6
+               C19.3 16.5 18.8 17.2 18 17.7
+               C17.6 18.4 16.8 18.9 15.9 19.1
+               C15 19.3 14.1 19.1 13.3 18.7
+               C12.8 19.3 12 19.6 11 19.6"
+            stroke="currentColor" stroke-width="1.35"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Longitudinal fissure (centre division, dashed) -->
+      <line x1="11" y1="3.5" x2="11" y2="19.6"
+            stroke="currentColor" stroke-width="0.9"
+            stroke-linecap="round" stroke-dasharray="2.2 1.6"/>
+      <!-- Left gyrus 1 -->
+      <path d="M6.8 9.2C7.6 10.3 7.4 11.4 6.3 11.9"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Left gyrus 2 -->
+      <path d="M5.8 14C6.9 14.9 8.1 14.6 8.5 13.5"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Right gyrus 1 -->
+      <path d="M15.2 9.2C14.4 10.3 14.6 11.4 15.7 11.9"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Right gyrus 2 -->
+      <path d="M16.2 14C15.1 14.9 13.9 14.6 13.5 13.5"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+    </svg>
+    <span id="sp-icon-ring"></span>
+  </button>
+
+  <!-- Session panel — auto-hide right sidebar, full-mode only -->
   <div id="session-panel">
 
     <!-- ── Chill / Idle state ────────────────────────────────────── -->

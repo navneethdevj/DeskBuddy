@@ -2272,15 +2272,133 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
   position: fixed;
   top: 0;
   right: 0;
-  width: 12px;
+  width: 52px;   /* wide enough to cover the icon button */
   height: 100%;
   z-index: 2490;
   pointer-events: auto;
   -webkit-app-region: no-drag;
-  display: none;       /* revealed by full-mode rule below */
+  display: none;
 }
 body.full-mode #sp-trigger { display: block; }
 body.pip-mode  #sp-trigger { display: none !important; }
+
+/* ── Session sidebar icon — floating glass button on right edge ─────── */
+/*
+   A small squircle (28×28 px) that floats at the vertical centre of the
+   right edge.  Uses the same iOS glass recipe as the panel cards.
+   State ring around it changes colour with the timer state so the user
+   always has a focus-at-a-glance reading even when the panel is hidden.
+*/
+#sp-icon {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;        /* squircle — matches iOS icon radius */
+  z-index: 2495;
+  cursor: pointer;
+  display: none;              /* full-mode only */
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+
+  /* iOS glass base */
+  background: rgba(22, 18, 40, 0.72);
+  backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 0 0.5px rgba(255, 255, 255, 0.07) inset;
+
+  /* Smooth transitions */
+  transition:
+    opacity       0.30s ease,
+    transform     0.30s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow    0.22s ease,
+    border-color  0.22s ease;
+
+  animation: spIconIdle 3.8s ease-in-out infinite;
+}
+body.full-mode #sp-icon { display: flex; }
+body.pip-mode  #sp-icon { display: none !important; }
+
+/* Gentle breathing pulse so the icon subtly hints at interactivity */
+@keyframes spIconIdle {
+  0%, 100% {
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.45),
+      0 0 0 0.5px rgba(255, 255, 255, 0.07) inset;
+  }
+  50% {
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.50),
+      0 0 12px rgba(145, 125, 255, 0.18),
+      0 0 0 0.5px rgba(255, 255, 255, 0.10) inset;
+  }
+}
+
+#sp-icon:hover {
+  transform: translateY(-50%) scale(1.08);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(155, 135, 255, 0.30),
+    0 0 0 0.5px rgba(255, 255, 255, 0.14) inset;
+  animation: none;   /* stop idle pulse on hover */
+}
+
+/* Brain SVG icon */
+#sp-icon-brain {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: rgba(185, 168, 255, 0.68);
+  transition: color 0.25s ease, filter 0.25s ease;
+  pointer-events: none;
+}
+#sp-icon:hover #sp-icon-brain {
+  color: rgba(215, 202, 255, 0.96);
+  filter: drop-shadow(0 0 5px rgba(185, 165, 255, 0.55));
+}
+
+/* State ring — thin coloured glow ring around the icon showing focus state */
+#sp-icon-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 13px;   /* slightly larger than icon radius */
+  border: 1.5px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.6s ease, box-shadow 0.6s ease;
+}
+/* Focused (active session, good focus) */
+body[data-timer-state="FOCUSED"] #sp-icon-ring {
+  border-color: rgba(80, 230, 175, 0.65);
+  box-shadow: 0 0 8px rgba(60, 210, 155, 0.30);
+}
+body[data-timer-state="DRIFTING"] #sp-icon-ring {
+  border-color: rgba(255, 185, 68, 0.70);
+  box-shadow: 0 0 8px rgba(255, 175, 50, 0.30);
+}
+body[data-timer-state="DISTRACTED"] #sp-icon-ring,
+body[data-timer-state="CRITICAL"] #sp-icon-ring {
+  border-color: rgba(255, 80, 80, 0.80);
+  box-shadow: 0 0 10px rgba(255, 60, 60, 0.38);
+}
+
+/* Icon fades out smoothly when the sidebar is open */
+#sp-icon.sp-icon-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.88);
+  animation: none;
+}
 
 /* ── Panel container ────────────────────────────────────────────────── */
 #session-panel {
