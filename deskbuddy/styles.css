@@ -229,13 +229,23 @@ html, body {
 /* ===== Expression: Idle (default — relaxed round eyes) ===== */
 /* Default eye shape IS the idle expression — no overrides needed */
 
-/* ===== Expression: Curious (wide-eyed wonder — big adorable eyes) ===== */
+/* ===== Expression: Curious (asymmetric wide-eyed wonder + scrutiny) ===== */
+/* Both eyes share the glow; individual sizing creates the lopsided "huh?" look */
 .companion.curious .eye {
-  width: 42vmin;
-  height: 52vmin;
-  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.55),
-              0 0 18vmin rgba(115, 125, 245, 0.20),
-              0 0 30vmin rgba(115, 125, 245, 0.08);
+  box-shadow: 0 0 6vmin rgba(115, 125, 245, 0.60),
+              0 0 18vmin rgba(115, 125, 245, 0.24),
+              0 0 32vmin rgba(115, 125, 245, 0.10);
+}
+/* Wide-open "ooh!" eye — the wonder side */
+.companion.curious .eye-left {
+  width: 45vmin;
+  height: 56vmin;
+}
+/* Slightly narrower, tilted "examining" eye — the scrutiny side */
+.companion.curious .eye-right {
+  width: 38vmin;
+  height: 48vmin;
+  transform: rotate(4deg);
 }
 
 /* ===== Expression: Focused (determined narrow gaze) ===== */
@@ -307,6 +317,14 @@ html, body {
   margin-left: -8vmin;
   pointer-events: none;
   will-change: transform;
+}
+
+/* Dilated pupils while curious — widens slightly for that "taking it all in" look */
+.companion.curious .pupil {
+  width: 19vmin;
+  height: 19vmin;
+  margin-top: -9.5vmin;
+  margin-left: -9.5vmin;
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
@@ -382,8 +400,10 @@ html, body {
 .companion.scared .brow-right { transform: translateY(-2.2vmin) rotate(4deg); }
 
 /* Curious — both raise, right one slightly more (inquisitive asymmetry) */
-.companion.curious .brow-left  { transform: translateY(-1.8vmin) rotate(-2deg); }
-.companion.curious .brow-right { transform: translateY(-2.4vmin) rotate(1.5deg); }
+/* Curious — hard asymmetry: left brow rockets up ("ooh!"), right brow
+   pulls inward to scrutinise — the definitive "huh?" face */
+.companion.curious .brow-left  { transform: translateY(-3.4vmin) rotate(-6deg); }
+.companion.curious .brow-right { transform: translateY(-1.0vmin) rotate(6deg); width: 18vmin; }
 
 /* Suspicious — left brow squints down (side-eye frown) */
 .companion.suspicious .brow-left  { transform: translateY(0.4vmin) rotate(6deg); }
@@ -417,7 +437,7 @@ html, body {
 .companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
 .companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.36); }
 .companion.embarrassed .blush { background: rgba(255, 120, 155, 0.30); }
-.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.18); }
+.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.42); }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {
@@ -495,9 +515,11 @@ html, body {
   animation: curiousTilt 2.5s ease-in-out infinite;
 }
 @keyframes curiousTilt {
-  0%, 100% { transform: translateY(-0.3vh) rotate(0deg) scale(1.005); }
-  35%      { transform: translateY(-0.6vh) rotate(2deg) scale(1.008); }
-  65%      { transform: translateY(-0.4vh) rotate(-1.5deg) scale(1.006); }
+  0%        { transform: translateY(0)      rotate(0deg)   scale(1.000); }
+  18%       { transform: translateY(-1.0vh) rotate(10deg)  scale(1.014); }
+  45%       { transform: translateY(-0.8vh) rotate(9deg)   scale(1.012); }
+  68%       { transform: translateY(-0.4vh) rotate(-7deg)  scale(1.008); }
+  88%, 100% { transform: translateY(-0.1vh) rotate(-1deg)  scale(1.002); }
 }
 
 /* Sleepy — slow gentle nodding */
@@ -1293,12 +1315,12 @@ body[data-time-period="NIGHT"] .companion {
 
 /* Curious — slightly parted, wondering */
 .companion.curious .mouth {
-  width: 6.5vmin; height: 3.5vmin;
-  border-radius: 0 0 40% 40%;
-  border-bottom-color: rgba(115, 125, 245, 0.58);
-  border-left-color:   rgba(115, 125, 245, 0.28);
-  border-right-color:  rgba(115, 125, 245, 0.28);
-  border-top-color:    transparent;
+  width: 5.5vmin; height: 5.5vmin;
+  border-radius: 50%;
+  border-bottom-color: rgba(115, 125, 245, 0.65);
+  border-left-color:   rgba(115, 125, 245, 0.40);
+  border-right-color:  rgba(115, 125, 245, 0.40);
+  border-top-color:    rgba(115, 125, 245, 0.25);
 }
 
 /* Sleepy — barely visible, relaxed neutral */

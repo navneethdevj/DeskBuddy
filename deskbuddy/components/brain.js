@@ -206,6 +206,9 @@ const Brain = (() => {
   let _welcomeBackSeqId1 = null;
   let _welcomeBackSeqId2 = null;
 
+  // Curious look loop — continuous gaze scan while in curious state
+  let _curiousLookTimer = null;
+
   // Sensitivity
   let _sensitivityLevel = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
 
@@ -754,7 +757,7 @@ const Brain = (() => {
       case 'curious':
         Emotion.setState('curious');
         SpriteAnimator.play('idle');
-        triggerLookSequence();
+        _curiousLookLoop();
         break;
       case 'idle':
         Emotion.setState('idle');
@@ -824,6 +827,51 @@ const Brain = (() => {
         }, 600 + Math.random() * 400);
       }, 600 + Math.random() * 400);
     }, 600 + Math.random() * 400);
+  }
+
+  /**
+   * Continuous gaze-scan loop while in the curious state.
+   * Picks a random look target, holds it briefly, then reschedules itself.
+   * Mixes quick flicks with longer stares and occasionally vocalises.
+   * Stops as soon as the state is no longer 'curious'.
+   */
+  function _curiousLookLoop() {
+    if (_curiousLookTimer) { clearTimeout(_curiousLookTimer); _curiousLookTimer = null; }
+    if (currentState !== 'curious') { Companion.resetLook(); return; }
+
+    var c = Companion.getCenter();
+    var glances = [
+      { x: c.x - 320, y: c.y },           // far left
+      { x: c.x + 320, y: c.y },           // far right
+      { x: c.x,       y: c.y - 240 },     // up — recalling / thinking
+      { x: c.x - 200, y: c.y - 160 },     // upper-left
+      { x: c.x + 200, y: c.y - 160 },     // upper-right
+      { x: c.x - 160, y: c.y + 100 },     // lower-left
+      { x: c.x + 160, y: c.y + 100 },     // lower-right
+      { x: c.x,       y: c.y },           // center — direct stare
+    ];
+    var target = glances[Math.floor(Math.random() * glances.length)];
+    Companion.lookAt(target.x, target.y);
+
+    // Randomly vocalise on about 1-in-4 glances
+    if (Math.random() < 0.25 && typeof Sounds !== 'undefined') {
+      Sounds.play('curious');
+    }
+
+    // Vary hold time: quick flick (400-700ms) or lingering stare (900-1800ms)
+    var holdMs = Math.random() < 0.4
+      ? 400  + Math.random() * 300   // quick flick
+      : 900  + Math.random() * 900;  // long stare
+
+    _curiousLookTimer = setTimeout(function () {
+      if (currentState !== 'curious') { Companion.resetLook(); return; }
+      Companion.resetLook();
+      // Brief pause between glances — snappy for flicks, longer after stares
+      var pauseMs = holdMs < 700 ? 180 + Math.random() * 220 : 350 + Math.random() * 450;
+      _curiousLookTimer = setTimeout(function () {
+        _curiousLookLoop();
+      }, pauseMs);
+    }, holdMs);
   }
 
   /** Briefly flash a happy expression during idle. */
