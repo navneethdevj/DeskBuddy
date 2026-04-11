@@ -76,9 +76,9 @@ The companion adapts its entire personality to the time of day:
 - Pet it with your cursor for a love reaction ♡
 
 ### 🪟 Two Window Modes
-- **Compact overlay** — small frameless transparent window that floats over your work, always draggable; sizes S / M / L (default M = 200 px)
+- **PiP overlay** — small frameless transparent window that floats over your work, always draggable and always interactive
 - **Full-screen mode** — expands to fill the display for a more immersive session; toggle with **Ctrl+Shift+P** (⌘+Shift+P on macOS) or the on-screen button
-- Window position and size persist across restarts
+- Window position persists across restarts
 
 ### 🔊 Procedural Audio
 - All sound effects generated in real-time via the **Web Audio API** — no audio files
