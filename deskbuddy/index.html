@@ -466,6 +466,11 @@
     </div>
   </div>
 
+  <!-- Focus graph overlay — ephemeral post-session attention graph (auto-fades) -->
+  <div id="focus-graph-overlay" aria-hidden="true">
+    <canvas id="focus-graph-canvas" width="600" height="220"></canvas>
+  </div>
+
   <!-- Session completion celebration overlay — confetti + banner -->
   <div id="celebration-overlay" aria-hidden="true"></div>
   <div id="celebration-message" aria-hidden="true">
@@ -534,6 +539,7 @@
   <script src="components/settings.js"></script>
   <script src="components/keybinds.js"></script>
   <script src="components/break-reminder.js"></script>
+  <script src="ui/focus-graph.js"></script>
   <script src="components/analytics.js"></script>
   <script src="renderer.js"></script>
 </body>

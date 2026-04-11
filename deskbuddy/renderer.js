@@ -1351,26 +1351,48 @@
   }
 
   // ── _wireAnalytics ────────────────────────────────────────────────────────
-  // Initialise the Analytics module and schedule the focus-report panel after
-  // each COMPLETED or FAILED session.  The delay lets the celebration/outcome
-  // screen animate in first before the report overlays on top.
+  // Initialise the Analytics module and orchestrate the full post-session flow:
+  //
+  //   Session ends  ──600ms──►  FocusGraph.show() (draws in 1.5 s, holds 8 s,
+  //                              fades 0.8 s)  ──onDone──►  Analytics.show()
+  //
+  // If there is insufficient timeline data (< 3 samples), FocusGraph.show()
+  // immediately fires onDone, and Analytics falls back to a shorter delay.
+  // ABANDONED sessions only show the focus graph, not the analytics panel.
 
   function _wireAnalytics() {
-    if (!window.Analytics) return;
-
-    Analytics.init();
+    // Initialise the analytics panel if the module is present
+    if (window.Analytics) Analytics.init();
 
     Session.onSessionStateChange((newState) => {
-      if (newState !== 'COMPLETED' && newState !== 'FAILED') return;
+      const isTerminal = (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
+      if (!isTerminal) return;
 
-      // COMPLETED: wait for confetti + banner to clear (≈4 s) + a breath (1.5 s)
-      // FAILED:    shorter delay — just let the outcome screen settle (1.2 s)
-      const delay = newState === 'COMPLETED' ? 5500 : 1200;
+      // Only show the analytics panel for COMPLETED / FAILED (not ABANDONED)
+      const showPanel = (newState === 'COMPLETED' || newState === 'FAILED');
+
+      // Brief delay — let the outcome screen / celebration animation settle first
+      const triggerDelayMs = newState === 'COMPLETED' ? 600 : 600;
 
       setTimeout(() => {
-        const data = Session.getLastSessionData ? Session.getLastSessionData() : null;
-        if (data) Analytics.show(data);
-      }, delay);
+        const data      = Session.getLastSessionData ? Session.getLastSessionData() : null;
+        const hasGraph  = !!(window.FocusGraph && data?.focusTimeline?.length >= 3);
+
+        if (hasGraph) {
+          // Show the ephemeral focus graph; when it fades out, show the analytics panel
+          FocusGraph.show(data, showPanel ? () => {
+            if (window.Analytics && data) Analytics.show(data);
+          } : null);
+        } else if (showPanel) {
+          // No timeline data — skip the graph and open the analytics panel after
+          // a period that matches the original timing expectations
+          const analyticsDelay = newState === 'COMPLETED' ? 5000 : 1200;
+          setTimeout(() => {
+            const d = Session.getLastSessionData ? Session.getLastSessionData() : null;
+            if (window.Analytics && d) Analytics.show(d);
+          }, analyticsDelay);
+        }
+      }, triggerDelayMs);
     });
   }
 
