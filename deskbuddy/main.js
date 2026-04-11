@@ -231,6 +231,8 @@ const SETTINGS_DEFAULTS = {
   companionSize:   'M',
   nightAutoVolume: true,
   keybinds:        {},
+  celebrationEnabled: true,
+  breakAnimEnabled:   true,
 };
 
 ipcMain.handle('settings:get', () => {

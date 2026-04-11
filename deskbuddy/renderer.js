@@ -439,14 +439,16 @@
       // Break countdown — start/stop the live update interval
       if (newState === 'PAUSED') {
         _startBreakCountdown();
-        // Teal glow sweeps up from the bottom
-        const glow = document.getElementById('break-glow');
-        if (glow) {
-          glow.classList.add('active');
-          setTimeout(() => glow.classList.remove('active'), 3500);
+        if (Settings.get('breakAnimEnabled')) {
+          // Teal glow sweeps up from the bottom
+          const glow = document.getElementById('break-glow');
+          if (glow) {
+            glow.classList.add('active');
+            setTimeout(() => glow.classList.remove('active'), 3500);
+          }
+          // Context-aware break card overlay + companion emotion
+          _fireBreakCard(stats);
         }
-        // Context-aware break card overlay + companion emotion
-        _fireBreakCard(stats);
         // Auto-open panel so user sees the break countdown
         _panelOpen();
       } else {
@@ -521,6 +523,7 @@
   // ── Celebration — confetti falls from above + banner + companion overjoyed ─
 
   function _fireCelebration(type) {
+    if (!Settings.get('celebrationEnabled')) return;
     const overlay = document.getElementById('celebration-overlay');
     const msg     = document.getElementById('celebration-message');
     const world   = document.getElementById('world');
@@ -986,6 +989,20 @@
     if (phoneToggle) {
       phoneToggle.checked = Settings.get('phoneDetection');
       phoneToggle.addEventListener('change', () => Settings.set('phoneDetection', phoneToggle.checked));
+    }
+
+    // Celebration toggle
+    const celebrationToggle = document.getElementById('celebration-toggle');
+    if (celebrationToggle) {
+      celebrationToggle.checked = Settings.get('celebrationEnabled');
+      celebrationToggle.addEventListener('change', () => Settings.set('celebrationEnabled', celebrationToggle.checked));
+    }
+
+    // Break animation toggle
+    const breakAnimToggle = document.getElementById('break-anim-toggle');
+    if (breakAnimToggle) {
+      breakAnimToggle.checked = Settings.get('breakAnimEnabled');
+      breakAnimToggle.addEventListener('change', () => Settings.set('breakAnimEnabled', breakAnimToggle.checked));
     }
 
     // ── Live change listeners ────────────────────────────────────────────

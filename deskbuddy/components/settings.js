@@ -28,8 +28,10 @@ const Settings = (() => {
     nightAutoVolume: true,       // soundscape reduces volume at NIGHT
     sessionLength:   25,         // default session duration in minutes
     timerStep:       5,          // +/− step size in minutes for duration stepper
-    ticksEnabled:    true,       // soft timer tick sounds on/off
-    keybinds:        {},         // override map: { [action_id]: 'KeyboardShortcut' }
+    ticksEnabled:       true,       // soft timer tick sounds on/off
+    celebrationEnabled: true,       // confetti + banner on session complete
+    breakAnimEnabled:   true,       // teal glow + break card when break starts
+    keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
   };
 
   let _current = { ...DEFAULTS };
