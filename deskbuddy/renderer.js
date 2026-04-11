@@ -410,12 +410,18 @@
     Session.onSessionStateChange((newState) => {
       const stats = Session.getCurrentStats();
 
-      // Panel visibility
+      // Panel visibility (sidebar panels)
       _setVisible('session-idle',    newState === 'IDLE');
       _setVisible('session-active',  newState === 'ACTIVE');
       _setVisible('session-paused',  newState === 'PAUSED');
-      _setVisible('outcome-screen',
-        newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
+
+      // Outcome popup — standalone overlay, works in any mode
+      const outcomeEl = document.getElementById('outcome-screen');
+      if (outcomeEl) {
+        const isOutcome = newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED';
+        outcomeEl.classList.toggle('outcome-visible', isOutcome);
+        outcomeEl.setAttribute('aria-hidden', String(!isOutcome));
+      }
 
       // Session countdown timer — show during active/paused, hide otherwise
       const sessionTimerEl = document.getElementById('session-timer');
@@ -482,13 +488,11 @@
 
       if (newState === 'COMPLETED') {
         _fireCelebration('complete');
-        _panelOpen();
       }
 
-      if (newState === 'FAILED' || newState === 'ABANDONED') {
-        // Companion shows sad/crying (FAILED) or idle (ABANDONED)
-        if (newState === 'FAILED') Emotion.setState('crying');
-        _panelOpen();
+      if (newState === 'FAILED') {
+        // Companion shows sad/crying
+        Emotion.setState('crying');
       }
 
       // Reset timer state body attribute when session ends

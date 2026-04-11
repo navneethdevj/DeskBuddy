@@ -2500,8 +2500,7 @@ body.pip-mode  #session-panel { display: none !important; }
 */
 #session-idle,
 #session-active,
-#session-paused,
-#outcome-screen {
+#session-paused {
   background: rgba(22, 18, 40, 0.78);
   backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
   -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
@@ -3242,6 +3241,60 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 .bk-dismiss:active { transform: scale(0.96); }
 
 body.pip-mode #break-card { display: none !important; }
+
+/* =====================================================================
+   OUTCOME POPUP — standalone centered card on session end
+   z-index 3150 — above celebration (3001), below analytics (3200)
+   Works in both full-mode and pip-mode.
+   ===================================================================== */
+
+#outcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 3150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.38s ease;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#outcome-screen.outcome-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Inner frosted-glass card */
+#outcome-card {
+  width: min(260px, calc(100vw - 40px));
+  background: rgba(14, 10, 28, 0.88);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.20);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 26px;
+  padding: 22px 20px 22px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Slide up when appearing */
+  transform: translateY(16px);
+  transition: transform 0.44s cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+#outcome-screen.outcome-visible #outcome-card {
+  transform: translateY(0);
+}
 
 /* =====================================================================
    ANALYTICS PANEL — post-session focus report overlay
