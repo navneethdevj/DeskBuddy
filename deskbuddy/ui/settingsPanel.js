@@ -221,15 +221,8 @@ const SettingsPanel = (() => {
         if (window.Timer && Timer.init) Timer.init(mins || 25);
       });
     }
-
-    // Apply persisted settings to live modules on startup
-    _applyMutePreset(Settings.get('mutePreset'));
-    _applyDroneEnabled(Settings.get('droneEnabled'));
-    _applyBrightness(Settings.get('brightness'));
-    _applySensitivity(Settings.get('sensitivity'));
-    _applyPhoneDetection(Settings.get('phoneDetection'));
-    _applyNightAutoVolume(Settings.get('nightAutoVolume'));
-    // companionSize and breakInterval are applied by renderer boot sequence
+    // Note: startup application of all settings is handled by _wireSettings()
+    // in renderer.js; SettingsPanel is a UI controller only.
   }
 
   return { init, openPanel, closePanel, togglePanel, isOpen: () => _open };

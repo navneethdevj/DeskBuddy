@@ -44,7 +44,8 @@ const Settings = (() => {
       window.electronAPI.getSettings().then(saved => {
         if (!saved) return;
         _current = { ...DEFAULTS, ...saved };
-        _persist();  // sync localStorage to match Store
+        // Sync only localStorage — data came from the Store, no need to IPC back
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_current)); } catch (e) {}
         // Fire all listeners so UI reflects the reconciled values
         Object.keys(_current).forEach(key => _fire(key, _current[key]));
       }).catch(() => {});
