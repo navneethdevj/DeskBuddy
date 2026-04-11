@@ -1108,11 +1108,14 @@ body[data-time-period="NIGHT"] .companion {
   position: fixed; bottom: 9.5vmin; left: 50%; transform: translateX(-50%);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 5.5vmin;
   font-weight: 200; letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
   color: var(--timer-color, white);
   text-shadow:
     0 0 18px var(--timer-glow-color, rgba(255,255,255,0.15)),
     0 0 40px var(--timer-glow-color, transparent);
-  pointer-events: none; z-index: 1000;
+  pointer-events: none; -webkit-app-region: no-drag; z-index: 1000;
+  opacity: 0.85;
+  transition: color 0.6s ease, text-shadow 0.6s ease, opacity 0.3s ease;
   animation: timerShake var(--timer-pulse-speed, none) ease-in-out infinite;
 }
 @keyframes timerShake {
@@ -1957,17 +1960,28 @@ body.pip-mode #settings-panel { display: none !important; }
   padding: 0 0 2px;
 }
 
-/* Section title with a coloured left-bar accent marker */
+/* Section title — now a full-width button that toggles its body */
 .settings-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px 5px;
+  width: 100%;
+  padding: 12px 14px 10px;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: rgba(165, 145, 255, 0.60);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s;
+}
+.settings-section-title:hover {
+  color: rgba(195, 178, 255, 0.85);
 }
 .settings-section-title::before {
   content: '';
@@ -1977,6 +1991,43 @@ body.pip-mode #settings-panel { display: none !important; }
   background: linear-gradient(to bottom, rgba(170, 145, 255, 0.75), rgba(130, 105, 230, 0.25));
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/* Chevron arrow — rotates when open */
+.settings-chevron {
+  display: inline-block;
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.18s ease, opacity 0.15s;
+  background: none;
+}
+.settings-chevron::after {
+  content: '›';
+  font-size: 14px;
+  line-height: 14px;
+  display: block;
+  transform: rotate(90deg);
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+.settings-section-title[aria-expanded="true"] .settings-chevron::after {
+  transform: rotate(-90deg);
+}
+.settings-section-title[aria-expanded="true"] .settings-chevron {
+  opacity: 0.75;
+}
+
+/* Collapsible body — CSS-height-transition accordion */
+.settings-section-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.22s ease;
+}
+.settings-section-body.expanded {
+  max-height: 600px; /* large enough for any section */
 }
 
 .settings-row {
@@ -2259,3 +2310,935 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* =====================================================================
+   SESSION PANEL — auto-hide right sidebar, full-mode only.
+   Sits off-screen to the right; a thin trigger strip on the right edge
+   calls panel.classList.add('sidebar-open') via JS, sliding it in.
+   Slides out with a spring-like ease when the mouse leaves.
+   ===================================================================== */
+
+/* ── Trigger strip — disabled; panel opens only via brain icon hover ── */
+#sp-trigger {
+  display: none !important;
+  pointer-events: none;
+}
+
+/* ── Session sidebar icon — floating glass button on right edge ─────── */
+#sp-icon {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;        /* squircle */
+  z-index: 2495;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+
+  /* iOS glass base */
+  background: rgba(22, 18, 40, 0.72);
+  backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+
+  /* Transitions for hidden state + hover; animation handles idle pulse */
+  transition:
+    opacity       0.30s ease,
+    transform     0.30s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow    0.22s ease;
+
+  animation: spIconBreath 3.6s ease-in-out infinite;
+}
+body.full-mode #sp-icon { display: flex; }
+body.pip-mode  #sp-icon { display: none !important; }
+
+/*
+   spIconBreath — three-layer pulse:
+   1. Box-shadow glow dims → brightens (periwinkle halo)
+   2. Border-top specular softly fades in/out
+   The star twinkles via a separate animation on .sp-star-glyph.
+*/
+@keyframes spIconBreath {
+  0%, 100% {
+    box-shadow:
+      0 5px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
+  }
+  50% {
+    box-shadow:
+      0 7px 26px rgba(0, 0, 0, 0.50),
+      0 0 18px rgba(145, 120, 255, 0.22),
+      0 0 0 0.5px rgba(255, 255, 255, 0.12) inset;
+  }
+}
+
+#sp-icon:hover {
+  transform: translateY(-50%) scale(1.10);
+  box-shadow:
+    0 10px 32px rgba(0, 0, 0, 0.58),
+    0 0 22px rgba(165, 140, 255, 0.38),
+    0 0 0 0.5px rgba(255, 255, 255, 0.16) inset;
+  animation: none;
+}
+
+/* Brain SVG wrapper — breathes brightness in sync with the glow pulse */
+#sp-icon-brain {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: rgba(185, 168, 255, 0.62);
+  /* brightness pulse — dim 0.62 → bright 0.90 → dim, matching spIconBreath */
+  animation: spBrainBreath 3.6s ease-in-out infinite;
+  transition: filter 0.22s ease;
+  pointer-events: none;
+  overflow: visible;   /* let the star glyph not get clipped */
+}
+@keyframes spBrainBreath {
+  0%, 100% { color: rgba(185, 168, 255, 0.62); }
+  50%      { color: rgba(210, 196, 255, 0.90); }
+}
+
+#sp-icon:hover #sp-icon-brain {
+  color: rgba(222, 210, 255, 0.97);
+  filter: drop-shadow(0 0 6px rgba(190, 170, 255, 0.60));
+  animation: none;
+}
+
+/* ✦ sparkle — twinkles at a different phase so it feels alive, not mechanical */
+.sp-star-glyph {
+  animation: spStarTwinkle 3.6s ease-in-out infinite;
+  transform-origin: 16.4px 5.5px;   /* pivot at the star's centre */
+}
+@keyframes spStarTwinkle {
+  0%   { opacity: 0.20; transform: scale(0.85); }
+  30%  { opacity: 0.22; transform: scale(0.88); }  /* lags behind main pulse */
+  65%  { opacity: 0.88; transform: scale(1.18); }  /* peak — star brightens later */
+  100% { opacity: 0.20; transform: scale(0.85); }
+}
+#sp-icon:hover .sp-star-glyph {
+  opacity: 1;
+  transform: scale(1.25);
+  animation: none;
+}
+
+/* State ring — thin coloured glow ring around the icon showing focus state */
+#sp-icon-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 15px;   /* slightly larger than icon's 11px radius */
+  border: 1.5px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.6s ease, box-shadow 0.6s ease;
+}
+/* Focused (active session, good focus) */
+body[data-timer-state="FOCUSED"] #sp-icon-ring {
+  border-color: rgba(80, 230, 175, 0.65);
+  box-shadow: 0 0 8px rgba(60, 210, 155, 0.30);
+}
+body[data-timer-state="DRIFTING"] #sp-icon-ring {
+  border-color: rgba(255, 185, 68, 0.70);
+  box-shadow: 0 0 8px rgba(255, 175, 50, 0.30);
+}
+body[data-timer-state="DISTRACTED"] #sp-icon-ring,
+body[data-timer-state="CRITICAL"] #sp-icon-ring {
+  border-color: rgba(255, 80, 80, 0.80);
+  box-shadow: 0 0 10px rgba(255, 60, 60, 0.38);
+}
+
+/* Icon fades out smoothly when the sidebar is open */
+#sp-icon.sp-icon-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.88);
+  animation: none;
+}
+
+/* ── Panel container ────────────────────────────────────────────────── */
+#session-panel {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(calc(100% + 8px)); /* hidden off-screen */
+  width: 200px;
+  z-index: 2500;
+  display: none;          /* shown only in full-mode */
+  flex-direction: column;
+  gap: 0;
+  padding-right: 10px;    /* gap between panel and window edge when open */
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+body.full-mode #session-panel { display: flex; }
+body.pip-mode  #session-panel { display: none !important; }
+
+/* Slide-in when open */
+#session-panel.sidebar-open {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ── iOS-style frosted glass card ───────────────────────────────────── */
+/*
+   Visual recipe (iOS dark-mode sheet):
+   • Base fill:   rgba(22, 18, 40, 0.78)  — deep purple-black, very translucent
+   • Blur:        blur(72px) saturate(2.0) brightness(1.18) — heavy iOS-style
+   • Top specular: border-top rgba(255,255,255,0.22) — light bounce off top rim
+   • Outer ring:  0.5px white inset at ~8% opacity — iOS panel ring
+   • Shadow:      deep floating shadow + ambient glow
+   • Corner:      22px radius (iOS sheets use large radii)
+*/
+#session-idle,
+#session-active,
+#session-paused,
+#outcome-screen {
+  background: rgba(22, 18, 40, 0.78);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  /* Top specular highlight — light bouncing off the "glass rim" */
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  border-right: 1px solid rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 22px;
+  padding: 16px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Floating shadow + faint perimeter glow ring */
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+}
+
+/* ── Header row ─────────────────────────────────────────────────── */
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sp-mode-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.60);
+}
+
+.sp-mode-star {
+  font-size: 10px;
+  color: rgba(175, 160, 255, 0.38);
+  animation: spStarPulse 3.5s ease-in-out infinite;
+}
+@keyframes spStarPulse {
+  0%, 100% { opacity: 0.38; }
+  50%      { opacity: 0.70; }
+}
+
+/* Focus state dot (active panel) */
+.sp-focus-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(120, 235, 180, 0.75);
+  box-shadow: 0 0 6px rgba(100, 220, 160, 0.50);
+  animation: spDotPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+@keyframes spDotPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+/* Dot colour shifts with timer state */
+body[data-timer-state="DRIFTING"]   .sp-focus-dot { background: rgba(255,185,68,0.85); box-shadow: 0 0 6px rgba(255,180,50,0.45); }
+body[data-timer-state="DISTRACTED"] .sp-focus-dot { background: rgba(255,80,80,0.85);  box-shadow: 0 0 6px rgba(255,60,60,0.45);  }
+body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1.00);  box-shadow: 0 0 8px rgba(255,60,60,0.65);  animation: spDotPulse 0.6s ease-in-out infinite; }
+
+/* ── Setup form rows ────────────────────────────────────────────── */
+.sp-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Stacked variant — label above, stepper full-width (used for HH:MM:SS rows) */
+.sp-row-hms {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.sp-row-hms .sp-stepper {
+  width: 100%;
+}
+.sp-row-hms .sp-hms-group {
+  flex: 1;
+}
+
+.sp-label {
+  font-size: 11px;
+  color: rgba(210, 200, 255, 0.60);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Re-use existing settings-select visual language */
+.sp-select {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(215, 205, 255, 0.85);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 4px 22px 4px 7px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  min-width: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(160%2C140%2C255%2C0.48)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 7px 5px;
+  transition: border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.sp-select:hover  { border-color: rgba(160, 140, 255, 0.26); }
+.sp-select:focus  { border-color: rgba(160, 140, 255, 0.50); background-color: rgba(160, 140, 255, 0.07); }
+.sp-select option { background: #120f22; color: rgba(220, 210, 255, 0.90); }
+
+.sp-goal-row {
+  display: block;
+}
+
+.sp-goal-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 9px;
+  color: rgba(220, 212, 255, 0.82);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 7px 10px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s, background 0.18s;
+  -webkit-app-region: no-drag;
+}
+.sp-goal-input::placeholder { color: rgba(175, 165, 255, 0.28); }
+.sp-goal-input:focus {
+  border-color: rgba(160, 140, 255, 0.42);
+  background: rgba(160, 140, 255, 0.06);
+}
+
+/* ── Session panel buttons ──────────────────────────────────────── */
+.sp-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.16s, border-color 0.16s, color 0.16s, box-shadow 0.16s, transform 0.10s;
+  -webkit-app-region: no-drag;
+}
+.sp-btn:active { transform: scale(0.97); }
+
+/* Primary — periwinkle gradient (start / resume / new session) */
+.sp-btn-primary {
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.72), rgba(105, 82, 220, 0.72));
+  border: 1px solid rgba(165, 145, 255, 0.40);
+  color: rgba(240, 235, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(120, 95, 220, 0.28), 0 0 0 1px rgba(155, 130, 255, 0.12) inset;
+}
+.sp-btn-primary:hover {
+  background: linear-gradient(135deg, rgba(165, 140, 255, 0.82), rgba(115, 92, 230, 0.82));
+  border-color: rgba(175, 155, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(130, 100, 230, 0.40), 0 0 0 1px rgba(170, 145, 255, 0.18) inset;
+}
+
+/* Secondary — teal/mint accent (take a break) */
+.sp-btn-secondary {
+  background: rgba(68, 220, 165, 0.10);
+  border: 1px solid rgba(68, 220, 165, 0.22);
+  color: rgba(80, 230, 175, 0.88);
+}
+.sp-btn-secondary:hover {
+  background: rgba(68, 220, 165, 0.18);
+  border-color: rgba(68, 220, 165, 0.40);
+  color: rgba(100, 240, 185, 1.0);
+}
+
+/* Ghost — silent / end session */
+.sp-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(200, 190, 255, 0.38);
+}
+.sp-btn-ghost:hover {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.22);
+  color: rgba(255, 110, 110, 0.80);
+}
+
+/* Goal-achieved row */
+.sp-btn-yes {
+  flex: 1;
+  background: rgba(68, 220, 165, 0.12);
+  border: 1px solid rgba(68, 220, 165, 0.25);
+  color: rgba(80, 230, 175, 0.90);
+}
+.sp-btn-yes:hover {
+  background: rgba(68, 220, 165, 0.22);
+  border-color: rgba(68, 220, 165, 0.42);
+}
+.sp-btn-no {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(200, 190, 255, 0.50);
+}
+.sp-btn-no:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(215, 205, 255, 0.80);
+}
+
+/* Controls column */
+.sp-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Goal display during active session */
+.sp-goal-display {
+  font-size: 11px;
+  color: rgba(210, 200, 255, 0.52);
+  line-height: 1.45;
+  font-style: italic;
+  padding: 5px 8px;
+  border-left: 2px solid rgba(155, 135, 255, 0.30);
+  border-radius: 2px;
+}
+
+/* ── Break / paused state ───────────────────────────────────────── */
+.sp-break-body {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.sp-break-countdown {
+  font-size: 22px;
+  font-weight: 200;
+  letter-spacing: 0.14em;
+  color: rgba(80, 230, 175, 0.90);
+  text-shadow: 0 0 14px rgba(60, 210, 155, 0.38);
+}
+
+.sp-break-hint {
+  font-size: 9.5px;
+  color: rgba(175, 165, 255, 0.35);
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+
+/* ── Outcome screen ─────────────────────────────────────────────── */
+.sp-outcome-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(220, 210, 255, 0.82);
+  text-align: center;
+  padding: 2px 0 4px;
+}
+
+.sp-goal-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sp-goal-achieved-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Milestone badge — brief pop above companion ────────────────── */
+.milestone-badge {
+  position: fixed;
+  bottom: 18vmin;
+  left: 50%;
+  transform: translateX(-50%) scale(0.85);
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.55), rgba(105, 82, 220, 0.55));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(165, 145, 255, 0.40);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(240, 235, 255, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2000;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.48, 0.64, 1);
+  -webkit-app-region: no-drag;
+}
+.milestone-badge.visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+body.pip-mode .milestone-badge { display: none; }
+
+/* =====================================================================
+   SESSION PANEL — STEPPER INPUTS (replace old sp-select dropdowns)
+   ===================================================================== */
+
+/* ── Stepper container ──────────────────────────────────────────── */
+.sp-stepper {
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+
+/* ── +/− buttons ────────────────────────────────────────────────── */
+.sp-step-btn {
+  width: 26px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  color: rgba(190, 178, 255, 0.65);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background 0.14s, color 0.14s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+}
+.sp-step-btn:hover  { background: rgba(155, 135, 255, 0.16); color: rgba(220, 210, 255, 0.95); }
+.sp-step-btn:active { background: rgba(155, 135, 255, 0.28); transform: scale(0.90); }
+
+/* ── Number input ───────────────────────────────────────────────── */
+.sp-step-input {
+  width: 34px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-left:  1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(225, 218, 255, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 5px 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+  -moz-appearance: textfield;
+}
+.sp-step-input::-webkit-inner-spin-button,
+.sp-step-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.sp-step-input:focus { background: rgba(155, 135, 255, 0.07); color: rgba(235, 228, 255, 1); }
+
+/* ── Unit selector ──────────────────────────────────────────────── */
+.sp-unit-select {
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(175, 162, 255, 0.65);
+  font-size: 10px;
+  font-family: inherit;
+  padding: 0 4px 0 3px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-app-region: no-drag;
+  width: 32px;
+  text-align: center;
+  transition: color 0.14s, background 0.14s;
+}
+.sp-unit-select:hover  { color: rgba(210, 200, 255, 0.85); background: rgba(155, 135, 255, 0.10); }
+.sp-unit-select option { background: #120f22; color: rgba(215, 205, 255, 0.90); }
+
+/* ── HH:MM:SS inner group (duration-stepper) ────────────────────── */
+.sp-hms-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  padding: 0 4px;
+  border-left:  1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sp-hms-input {
+  width: 24px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: rgba(225, 218, 255, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 5px 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+  -moz-appearance: textfield;
+}
+.sp-hms-input::-webkit-inner-spin-button,
+.sp-hms-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.sp-hms-input:focus { background: rgba(155, 135, 255, 0.07); color: rgba(235, 228, 255, 1); }
+
+.sp-hms-lbl {
+  font-size: 9px;
+  color: rgba(175, 162, 255, 0.45);
+  margin: 0 3px 0 1px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Header enhancements ────────────────────────────────────────── */
+.sp-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-mode-desc {
+  font-size: 9px;
+  color: rgba(175, 162, 255, 0.35);
+  letter-spacing: 0.04em;
+}
+
+/* ── Break icon in paused state ─────────────────────────────────── */
+.sp-break-icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+  opacity: 0.72;
+}
+
+/* =====================================================================
+   SESSION PANEL — PROGRESS RING + INLINE TIMER (active state)
+   ===================================================================== */
+
+.sp-timer-ring-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 2px auto 4px;
+}
+
+/* SVG ring — rotated so arc starts at 12 o'clock */
+.sp-progress-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+/* Track (background circle) */
+.sp-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 3;
+}
+
+/* Fill arc — default teal (focused) */
+.sp-ring-fill {
+  fill: none;
+  stroke: rgba(80, 220, 170, 0.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 138.23;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1.1s ease, stroke 0.6s ease;
+  filter: drop-shadow(0 0 4px rgba(60, 200, 155, 0.35));
+}
+
+/* Ring colour tracks timer state */
+body[data-timer-state="DRIFTING"]   .sp-ring-fill {
+  stroke: rgba(255, 185, 68, 0.85);
+  filter: drop-shadow(0 0 4px rgba(255, 180, 50, 0.30));
+}
+body[data-timer-state="DISTRACTED"] .sp-ring-fill,
+body[data-timer-state="CRITICAL"]   .sp-ring-fill {
+  stroke: rgba(255, 80, 80, 0.90);
+  filter: drop-shadow(0 0 4px rgba(255, 60, 60, 0.35));
+}
+
+/* Center content — timer + state label */
+.sp-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.sp-inline-timer {
+  font-size: 24px;
+  font-weight: 200;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--timer-color, rgba(235, 228, 255, 0.96));
+  text-shadow: 0 0 20px var(--timer-glow-color, transparent);
+  line-height: 1;
+  transition: color 0.6s ease, text-shadow 0.6s ease;
+}
+
+/* State label below the time — content set via CSS data-attr targeting */
+.sp-ring-state-label {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(165, 152, 255, 0.45);
+  transition: color 0.6s ease;
+}
+.sp-ring-state-label::before { content: 'focused'; }
+body[data-timer-state="DRIFTING"]   .sp-ring-state-label::before { content: 'drifting'; color: rgba(255, 185, 68, 0.65); }
+body[data-timer-state="DISTRACTED"] .sp-ring-state-label::before { content: 'distracted'; color: rgba(255, 100, 100, 0.70); }
+body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'critical!'; color: rgba(255, 80, 80, 0.85); }
+
+/* =====================================================================
+   CELEBRATION OVERLAY — confetti + banner on session complete
+   ===================================================================== */
+
+#celebration-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3000;
+  /* particles are absolutely positioned children */
+}
+
+/* Each confetti piece spawned by _fireCelebration() — falls from ABOVE screen */
+.confetti-particle {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  animation: confettiFall var(--dur, 3s) cubic-bezier(0.22, 0.61, 0.36, 1) var(--del, 0s) forwards;
+}
+@keyframes confettiFall {
+  0%   { opacity: 0;    transform: translate(0, 0)                                 rotate(0deg)           scale(1.1); }
+  6%   { opacity: 1; }
+  85%  { opacity: 0.72; }
+  100% { opacity: 0;    transform: translate(var(--dx, 0px), var(--dy, 800px))     rotate(var(--rot, 540deg)) scale(0.45); }
+}
+
+/* Banner that floats up during celebration */
+#celebration-message {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px) scale(0.88);
+  opacity: 0;
+  z-index: 3001;
+  pointer-events: none;
+  text-align: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: opacity 0.50s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+#celebration-message.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0)    scale(1);
+}
+
+.cel-title {
+  font-size: 19px;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  color: rgba(245, 240, 255, 0.96);
+  text-shadow:
+    0 0 28px rgba(165, 140, 255, 0.65),
+    0 0 60px rgba(165, 140, 255, 0.28);
+  padding: 12px 26px;
+  background: rgba(16, 12, 34, 0.60);
+  backdrop-filter: blur(44px) saturate(180%);
+  -webkit-backdrop-filter: blur(44px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.50), 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
+}
+.cel-sub {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  color: rgba(185, 175, 255, 0.48);
+}
+
+/* Brief flash on the world element when session completes */
+@keyframes sessionCompleteFlash {
+  0%   { box-shadow: inset 0 0 0   rgba(165, 140, 255, 0); }
+  18%  { box-shadow: inset 0 0 90px rgba(165, 140, 255, 0.22); }
+  100% { box-shadow: inset 0 0 0   rgba(165, 140, 255, 0); }
+}
+#world.session-complete-flash {
+  animation: sessionCompleteFlash 1.4s ease forwards;
+}
+
+/* =====================================================================
+   BREAK GLOW — soft teal pulse when user starts a break
+   ===================================================================== */
+
+#break-glow {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 130% 130% at 50% 115%,
+    rgba(68, 220, 165, 0.14) 0%,
+    transparent 58%
+  );
+  pointer-events: none;
+  z-index: 2999;
+  opacity: 0;
+  transition: opacity 1.0s ease;
+}
+#break-glow.active { opacity: 1; }
+
+/* =====================================================================
+   BREAK CARD — context-aware modal overlay when a break starts
+   ===================================================================== */
+
+#break-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-44%) scale(0.84);
+  opacity: 0;
+  z-index: 3100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 32px 22px;
+  min-width: 240px;
+  max-width: 300px;
+  text-align: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+
+  /* iOS dark-mode frosted glass */
+  background: rgba(14, 10, 28, 0.72);
+  backdrop-filter: blur(60px) saturate(2.0) brightness(1.20);
+  -webkit-backdrop-filter: blur(60px) saturate(2.0) brightness(1.20);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.20);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 26px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.60),
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+
+  transition: opacity 0.45s ease, transform 0.50s cubic-bezier(0.34, 1.52, 0.64, 1);
+  -webkit-app-region: no-drag;
+}
+
+#break-card.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+
+/* Emoji */
+.bk-emoji {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 14px rgba(255, 220, 120, 0.35));
+}
+
+/* Title */
+.bk-title {
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.10em;
+  color: rgba(242, 238, 255, 0.96);
+  text-shadow: 0 0 22px rgba(165, 140, 255, 0.45);
+}
+
+/* Body */
+.bk-body {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgba(185, 175, 255, 0.60);
+  line-height: 1.5;
+  max-width: 210px;
+}
+
+/* Break budget remaining */
+.bk-budget {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(80, 220, 170, 0.50);
+  margin-top: 2px;
+}
+
+/* Dismiss button */
+.bk-dismiss {
+  margin-top: 10px;
+  padding: 8px 22px;
+  background: rgba(150, 125, 255, 0.18);
+  border: 1px solid rgba(160, 140, 255, 0.32);
+  border-radius: 10px;
+  color: rgba(215, 205, 255, 0.85);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: background 0.16s, border-color 0.16s, transform 0.10s;
+}
+.bk-dismiss:hover  { background: rgba(150, 125, 255, 0.30); border-color: rgba(165, 148, 255, 0.50); }
+.bk-dismiss:active { transform: scale(0.96); }
+
+body.pip-mode #break-card { display: none !important; }

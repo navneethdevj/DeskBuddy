@@ -502,6 +502,20 @@ const Brain = (() => {
         emotion = 'idle';
     }
 
+    // ── Timer state priority ─────────────────────────────────────────────────
+    // When a session is running and the timer is in a degraded state, bias
+    // the companion's expression toward the timer-appropriate emotion rather
+    // than showing 'focused'/'idle' (camera says "you're looking at screen"
+    // but session logic says "you're drifting"). This is the root cause of
+    // the "emotion delay" — the rAF loop was overriding timer-set emotions.
+    const _ts = document.body.dataset.timerState;
+    if (_ts && _ts !== 'FOCUSED' && _ts !== 'FAILED'
+           && (emotion === 'focused' || emotion === 'idle')) {
+      if      (_ts === 'CRITICAL')   emotion = 'grumpy';
+      else if (_ts === 'DISTRACTED') emotion = 'pouty';
+      else if (_ts === 'DRIFTING')   emotion = 'suspicious';
+    }
+
     // Track changes for audio + manage tears
     if (emotion !== window._lastEmotion) {
       // Return-from-absence: face reappeared while still in distress emotion
@@ -1699,5 +1713,6 @@ const Brain = (() => {
            setSensitivity, getSensitivityThresholds,
            getTimePeriod, applyTimePeriod,
            getNightSessionCount, trackNightSession, resetNightSessions,
-           checkNightWhisper, doMorningGreeting };
+           checkNightWhisper, doMorningGreeting,
+           triggerLookSequence };
 })();

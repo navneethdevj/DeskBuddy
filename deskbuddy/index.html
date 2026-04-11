@@ -28,82 +28,117 @@
 
       <!-- ── SOUND SECTION ─────────────────────────────────────── -->
       <div class="settings-section">
-        <div class="settings-section-title">Sound</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Mute preset</div>
-            <div class="settings-row-sublabel" id="mute-preset-desc">All sounds enabled</div>
+        <button class="settings-section-title" aria-expanded="false">
+          Sound<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Mute preset</div>
+              <div class="settings-row-sublabel" id="mute-preset-desc">All sounds enabled</div>
+            </div>
+            <select id="mute-preset-select" class="settings-select">
+              <option value="ALL_ON">All sounds</option>
+              <option value="ESSENTIAL">No chatter</option>
+              <option value="REMINDERS_ONLY">Breaks only</option>
+              <option value="ALL_OFF">Silent</option>
+            </select>
           </div>
-          <select id="mute-preset-select" class="settings-select">
-            <option value="ALL_ON">All sounds</option>
-            <option value="ESSENTIAL">No chatter</option>
-            <option value="REMINDERS_ONLY">Breaks only</option>
-            <option value="ALL_OFF">Silent</option>
-          </select>
-        </div>
-        <div class="settings-row settings-row-hint">
-          <div class="settings-row-sublabel">Cycle with <kbd>Ctrl+Shift+M</kbd></div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Master volume</div>
-            <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
+          <div class="settings-row settings-row-hint">
+            <div class="settings-row-sublabel">Cycle with <kbd>Ctrl+Shift+M</kbd></div>
           </div>
-          <input type="range" id="volume-slider" class="settings-slider"
-            min="0" max="100" step="1" value="70">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Timer ticks</div>
+              <div class="settings-row-sublabel">Soft clock sound while focused</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="ticks-enabled-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Master volume</div>
+              <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
+            </div>
+            <input type="range" id="volume-slider" class="settings-slider"
+              min="0" max="100" step="1" value="70">
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
 
       <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
       <div class="settings-section">
-        <div class="settings-section-title">Break Reminders</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Break reminders</div>
-            <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
+        <button class="settings-section-title" aria-expanded="false">
+          Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Break reminders</div>
+              <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="break-reminder-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
           </div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="break-reminder-toggle">
-            <span class="settings-toggle-track"></span>
-          </label>
-        </div>
-        <div class="settings-row" id="break-interval-row">
-          <div class="settings-row-label">Remind every</div>
-          <select id="break-interval-select" class="settings-select">
-            <option value="15">15 min</option>
-            <option value="20">20 min</option>
-            <option value="25">25 min</option>
-            <option value="30">30 min</option>
-            <option value="45">45 min</option>
-            <option value="60">60 min</option>
-          </select>
+          <div class="settings-row" id="break-interval-row">
+            <div class="settings-row-label">Remind every</div>
+            <select id="break-interval-select" class="settings-select">
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="25">25 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
 
       <!-- ── SESSION SECTION ──────────────────────────────────── -->
       <div class="settings-section">
-        <div class="settings-section-title">Session</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Default duration</div>
-            <div class="settings-row-sublabel">Pre-filled on session start</div>
+        <button class="settings-section-title" aria-expanded="false">
+          Session<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Default duration</div>
+              <div class="settings-row-sublabel">Pre-filled on session start</div>
+            </div>
+            <select id="session-length-select" class="settings-select">
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="25">25 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+              <option value="90">90 min</option>
+            </select>
           </div>
-          <select id="session-length-select" class="settings-select">
-            <option value="15">15 min</option>
-            <option value="20">20 min</option>
-            <option value="25">25 min</option>
-            <option value="30">30 min</option>
-            <option value="45">45 min</option>
-            <option value="60">60 min</option>
-            <option value="90">90 min</option>
-          </select>
-        </div>
-        <div class="settings-row settings-row-hint" id="session-stats-row">
-          <div>
-            <div class="settings-row-sublabel" id="sessions-today-label">— sessions today</div>
-            <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Timer step</div>
+              <div class="settings-row-sublabel">+/− button increment size</div>
+            </div>
+            <select id="timer-step-select" class="settings-select">
+              <option value="1">1 min</option>
+              <option value="5">5 min</option>
+              <option value="10">10 min</option>
+              <option value="15">15 min</option>
+              <option value="30">30 min</option>
+            </select>
+          </div>
+          <div class="settings-row settings-row-hint" id="session-stats-row">
+            <div>
+              <div class="settings-row-sublabel" id="sessions-today-label">— sessions today</div>
+              <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
+            </div>
           </div>
         </div>
       </div>
@@ -111,78 +146,94 @@
 
       <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
       <div class="settings-section">
-        <div class="settings-section-title">Display</div>
-        <div class="settings-row">
-          <div class="settings-row-label">Companion size</div>
-          <div class="settings-size-btns" id="companion-size-btns">
-            <button class="settings-size-btn" data-size="S">S</button>
-            <button class="settings-size-btn" data-size="M">M</button>
-            <button class="settings-size-btn" data-size="L">L</button>
+        <button class="settings-section-title" aria-expanded="false">
+          Display<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div class="settings-row-label">Companion size</div>
+            <div class="settings-size-btns" id="companion-size-btns">
+              <button class="settings-size-btn" data-size="S">S</button>
+              <button class="settings-size-btn" data-size="M">M</button>
+              <button class="settings-size-btn" data-size="L">L</button>
+            </div>
           </div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Screen brightness</div>
-            <div class="settings-row-sublabel" id="brightness-sublabel">100%</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Screen brightness</div>
+              <div class="settings-row-sublabel" id="brightness-sublabel">100%</div>
+            </div>
+            <input type="range" id="brightness-slider" class="settings-slider"
+              min="30" max="100" step="2" value="100">
           </div>
-          <input type="range" id="brightness-slider" class="settings-slider"
-            min="30" max="100" step="2" value="100">
-        </div>
-        <div class="settings-row">
-          <div class="settings-row-label">Ambient drone</div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="drone-toggle">
-            <span class="settings-toggle-track"></span>
-          </label>
-        </div>
-        <div class="settings-row">
-          <div class="settings-row-label">Night volume reduction</div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="night-volume-toggle">
-            <span class="settings-toggle-track"></span>
-          </label>
+          <div class="settings-row">
+            <div class="settings-row-label">Ambient drone</div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="drone-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-label">Night volume reduction</div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="night-volume-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
 
       <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
       <div class="settings-section">
-        <div class="settings-section-title">Behaviour</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Focus sensitivity</div>
-            <div class="settings-row-sublabel">How strictly distraction is detected</div>
+        <button class="settings-section-title" aria-expanded="false">
+          Behaviour<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Focus sensitivity</div>
+              <div class="settings-row-sublabel">How strictly distraction is detected</div>
+            </div>
+            <select id="settings-sensitivity-select" class="settings-select">
+              <option value="GENTLE">Gentle</option>
+              <option value="NORMAL">Normal</option>
+              <option value="STRICT">Strict</option>
+            </select>
           </div>
-          <select id="settings-sensitivity-select" class="settings-select">
-            <option value="GENTLE">Gentle</option>
-            <option value="NORMAL">Normal</option>
-            <option value="STRICT">Strict</option>
-          </select>
-        </div>
-        <div class="settings-row">
-          <div class="settings-row-label">Phone detection</div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="phone-detection-toggle">
-            <span class="settings-toggle-track"></span>
-          </label>
+          <div class="settings-row">
+            <div class="settings-row-label">Phone detection</div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="phone-detection-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
 
       <!-- ── EXPRESSIONS SECTION ──────────────────────────────────── -->
       <hr class="settings-divider">
       <div class="settings-section">
-        <div class="settings-section-title">Expressions</div>
-        <div class="settings-row-sublabel" style="padding:0 16px 8px;font-size:11px;color:rgba(255,255,255,0.28);">
-          tap any state to preview it for 3 s
+        <button class="settings-section-title" aria-expanded="false">
+          Expressions<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row-sublabel" style="padding:0 10px 8px;font-size:11px;color:rgba(255,255,255,0.28);">
+            tap any state to preview it for 3 s
+          </div>
+          <div id="emotion-grid"></div>
         </div>
-        <div id="emotion-grid"></div>
       </div>
 
       <!-- ── SHORTCUTS SECTION ─────────────────────────────────────── -->
       <hr class="settings-divider">
       <div class="settings-section">
-        <div class="settings-section-title">Shortcuts</div>
-        <div id="shortcuts-list"></div>
+        <button class="settings-section-title" aria-expanded="false">
+          Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div id="shortcuts-list"></div>
+        </div>
       </div>
 
     </div><!-- /#settings-body -->
@@ -198,6 +249,227 @@
   <div id="tear-overlay"><div id="tear-fill"></div></div>
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
+
+  <!-- Sidebar icon — small floating glass brain icon on the right edge.
+       Hover it to open the session panel.
+       The ring around it changes colour with timer focus state.
+       The ✦ star in the top-right corner of the SVG twinkles independently. -->
+  <button id="sp-icon" title="Session panel" aria-label="Open session panel">
+    <!-- Brain SVG — top-down view, two hemispheres, gyri wrinkles + ✦ sparkle -->
+    <svg id="sp-icon-brain" viewBox="0 0 22 22" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Left hemisphere outer shell -->
+      <path d="M11 3.5C9.6 3.5 8.3 4.1 7.3 5
+               C6.2 6 5.6 7.3 5.5 8.7
+               C4.6 8.9 3.8 9.5 3.4 10.4
+               C2.9 11.2 2.8 12.2 3.1 13.1
+               C2.5 13.8 2.3 14.7 2.5 15.6
+               C2.7 16.5 3.2 17.2 4 17.7
+               C4.4 18.4 5.2 18.9 6.1 19.1
+               C7 19.3 7.9 19.1 8.7 18.7
+               C9.2 19.3 10 19.6 11 19.6"
+            stroke="currentColor" stroke-width="1.35"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Right hemisphere outer shell (mirror) -->
+      <path d="M11 3.5C12.4 3.5 13.7 4.1 14.7 5
+               C15.8 6 16.4 7.3 16.5 8.7
+               C17.4 8.9 18.2 9.5 18.6 10.4
+               C19.1 11.2 19.2 12.2 18.9 13.1
+               C19.5 13.8 19.7 14.7 19.5 15.6
+               C19.3 16.5 18.8 17.2 18 17.7
+               C17.6 18.4 16.8 18.9 15.9 19.1
+               C15 19.3 14.1 19.1 13.3 18.7
+               C12.8 19.3 12 19.6 11 19.6"
+            stroke="currentColor" stroke-width="1.35"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Longitudinal fissure (centre division, dashed) -->
+      <line x1="11" y1="3.5" x2="11" y2="19.6"
+            stroke="currentColor" stroke-width="0.9"
+            stroke-linecap="round" stroke-dasharray="2.2 1.6"/>
+      <!-- Left gyrus 1 -->
+      <path d="M6.8 9.2C7.6 10.3 7.4 11.4 6.3 11.9"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Left gyrus 2 -->
+      <path d="M5.8 14C6.9 14.9 8.1 14.6 8.5 13.5"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Right gyrus 1 -->
+      <path d="M15.2 9.2C14.4 10.3 14.6 11.4 15.7 11.9"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- Right gyrus 2 -->
+      <path d="M16.2 14C15.1 14.9 13.9 14.6 13.5 13.5"
+            stroke="currentColor" stroke-width="1.1"
+            stroke-linecap="round"/>
+      <!-- ✦ sparkle — top-right corner, twinkles independently -->
+      <text class="sp-star-glyph" x="16.4" y="7.2"
+            font-size="4.6" text-anchor="middle"
+            fill="currentColor">✦</text>
+    </svg>
+    <span id="sp-icon-ring"></span>
+  </button>
+
+  <!-- Session panel — auto-hide right sidebar, full-mode only -->
+  <div id="session-panel">
+
+    <!-- ── Chill / Idle state ────────────────────────────────────── -->
+    <div id="session-idle">
+      <div class="sp-header">
+        <div class="sp-header-left">
+          <span class="sp-mode-label">focus session</span>
+          <span class="sp-mode-desc">set your intention</span>
+        </div>
+        <span class="sp-mode-star">✦</span>
+      </div>
+      <div class="sp-setup">
+        <!-- Duration HH:MM:SS stepper — enter hours, minutes and seconds together -->
+        <div class="sp-row sp-row-hms">
+          <label class="sp-label">study for</label>
+          <div class="sp-stepper sp-stepper-hms">
+            <button class="sp-step-btn" id="duration-dec"
+                    aria-label="decrease duration">−</button>
+            <div class="sp-hms-group">
+              <input type="number" id="duration-h" class="sp-hms-input"
+                value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">h</span>
+              <input type="number" id="duration-m" class="sp-hms-input"
+                value="25" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">m</span>
+              <input type="number" id="duration-s" class="sp-hms-input"
+                value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">s</span>
+            </div>
+            <button class="sp-step-btn" id="duration-inc"
+                    aria-label="increase duration">+</button>
+          </div>
+        </div>
+        <!-- Break HH:MM:SS stepper — 0:0:0 means "off" -->
+        <div class="sp-row sp-row-hms" id="sp-break-row">
+          <label class="sp-label">break every</label>
+          <div class="sp-stepper sp-stepper-hms">
+            <button class="sp-step-btn" id="break-dec"
+                    aria-label="decrease break">−</button>
+            <div class="sp-hms-group">
+              <input type="number" id="break-h" class="sp-hms-input"
+                value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">h</span>
+              <input type="number" id="break-m" class="sp-hms-input"
+                value="25" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">m</span>
+              <input type="number" id="break-s" class="sp-hms-input"
+                value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+              <span class="sp-hms-lbl">s</span>
+            </div>
+            <button class="sp-step-btn" id="break-inc"
+                    aria-label="increase break">+</button>
+          </div>
+        </div>
+        <div class="sp-goal-row">
+          <input type="text" id="goal-input" class="sp-goal-input"
+            placeholder="what are you working on?" maxlength="80" autocomplete="off">
+        </div>
+        <button id="start-session" class="sp-btn sp-btn-primary">
+          ✦ begin session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Active session state ──────────────────────────────────── -->
+    <div id="session-active" style="display:none">
+      <div class="sp-header">
+        <span class="sp-mode-label">in session</span>
+        <span id="sp-focus-dot" class="sp-focus-dot"></span>
+      </div>
+
+      <!-- Progress ring + inline countdown -->
+      <div class="sp-timer-ring-wrap">
+        <svg class="sp-progress-ring" viewBox="0 0 52 52" aria-hidden="true">
+          <circle class="sp-ring-track" cx="26" cy="26" r="22"/>
+          <circle id="sp-ring-progress" class="sp-ring-fill" cx="26" cy="26" r="22"/>
+        </svg>
+        <div class="sp-ring-center">
+          <div id="sp-inline-timer" class="sp-inline-timer">25:00</div>
+          <div class="sp-ring-state-label"></div>
+        </div>
+      </div>
+
+      <div id="goal-display" class="sp-goal-display" style="display:none"></div>
+      <div class="sp-controls">
+        <button id="pause-session" class="sp-btn sp-btn-secondary">
+          ☕ take a break
+        </button>
+        <button id="abandon-session" class="sp-btn sp-btn-ghost">
+          end session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Paused / break state ───────────────────────────────────── -->
+    <div id="session-paused" style="display:none">
+      <div class="sp-header">
+        <span class="sp-mode-label">on break</span>
+        <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
+      </div>
+      <div class="sp-break-body">
+        <div class="sp-break-icon">☕</div>
+        <div id="break-countdown" class="sp-break-countdown">5:00</div>
+        <div class="sp-break-hint">break budget remaining</div>
+      </div>
+      <div class="sp-controls">
+        <button id="resume-session" class="sp-btn sp-btn-primary">
+          ▶ resume session
+        </button>
+        <button id="abandon-session-break" class="sp-btn sp-btn-ghost">
+          end session
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Outcome screen ────────────────────────────────────────── -->
+    <div id="outcome-screen" style="display:none">
+      <div id="outcome-label" class="sp-outcome-label"></div>
+      <div id="goal-prompt" class="sp-goal-prompt" style="display:none">
+        <div class="sp-label" style="text-align:center;margin-bottom:2px">did you finish it?</div>
+        <div class="sp-goal-achieved-row">
+          <button id="goal-achieved-yes" class="sp-btn sp-btn-yes">yes ✓</button>
+          <button id="goal-achieved-no"  class="sp-btn sp-btn-no">not yet</button>
+        </div>
+      </div>
+      <button id="new-session-btn" class="sp-btn sp-btn-primary">
+        ✦ new session
+      </button>
+    </div>
+
+  </div><!-- /#session-panel -->
+
+  <!-- Session completion celebration overlay — confetti + banner -->
+  <div id="celebration-overlay" aria-hidden="true"></div>
+  <div id="celebration-message" aria-hidden="true">
+    <div class="cel-title">✦ session complete ✦</div>
+    <div class="cel-sub">great work — you did it</div>
+  </div>
+
+  <!-- Break ambient glow — pulses once when user takes a break -->
+  <div id="break-glow" aria-hidden="true"></div>
+
+  <!-- Break card — context-aware modal shown when a break starts -->
+  <div id="break-card" role="dialog" aria-label="Break time" aria-hidden="true">
+    <div id="break-card-emoji"  class="bk-emoji">☕</div>
+    <div id="break-card-title"  class="bk-title">time for a break ✦</div>
+    <div id="break-card-body"   class="bk-body">grab a drink and rest your eyes</div>
+    <div id="break-card-budget" class="bk-budget">5:00 left</div>
+    <button id="break-card-dismiss" class="bk-dismiss">got it ✦</button>
+  </div>
+
+  <!-- Milestone badge — shown briefly by Brain.onMilestone -->
+  <div id="milestone-badge" class="milestone-badge"></div>
+
+  <!-- Session timer — counted down by timer.js, hidden until session starts -->
+  <div id="session-timer" style="display:none"></div>
+
+  <!-- goal-overlay: kept for renderer.js compatibility, no visual role -->
+  <div id="goal-overlay" style="display:none"></div>
 
   <!-- Break reminder toast — shown by BreakReminder.onTrigger, hidden on dismiss -->
   <div id="break-toast" aria-live="polite" aria-atomic="true">

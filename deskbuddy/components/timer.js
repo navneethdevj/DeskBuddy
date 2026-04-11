@@ -337,6 +337,19 @@ const Timer = (() => {
   }
 
   /**
+   * _fmtSecs(secs) — format a seconds value as H:MM:SS (hours omitted when 0).
+   */
+  function _fmtSecs(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  /**
    * _fireTick — called each time the accumulated ms crosses a 1000ms boundary.
    *
    * Responsibilities:
@@ -351,9 +364,7 @@ const Timer = (() => {
     // Update the timer display element if present
     const timerEl = document.getElementById('session-timer');
     if (timerEl) {
-      const m = String(Math.floor(_remainingSeconds / 60)).padStart(2, '0');
-      const s = String(_remainingSeconds % 60).padStart(2, '0');
-      timerEl.textContent = `${m}:${s}`;
+      timerEl.textContent = _fmtSecs(_remainingSeconds);
     }
 
     if (_remainingSeconds <= 0 && _currentState !== STATE.FAILED) {

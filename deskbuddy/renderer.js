@@ -71,9 +71,14 @@
     const brightness = Settings.get('brightness') || 1.0;
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.filter = `brightness(${brightness})`;
-    // Pre-fill start-screen duration with saved default
-    const durEl = document.getElementById('duration-select');
-    if (durEl) durEl.value = String(Settings.get('sessionLength') || 25);
+    // Pre-fill HH:MM:SS fields with saved default (sessionLength is in minutes)
+    _setDurationSeconds((Settings.get('sessionLength') || 25) * 60);
+    // Pre-fill session panel break interval from saved settings
+    const breakSel = document.getElementById('session-break-select');
+    if (breakSel) {
+      const saved = Settings.get('breakInterval');
+      breakSel.value = String(saved !== undefined ? saved : 25);
+    }
   }
 
   // 11. Wire cross-module communication
@@ -86,6 +91,30 @@
   _wireKeybinds();
   _wireSettings();
   _wireBreakReminder();
+  _wireSidebar();
+
+  // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
+  // Read/write the three HH:MM:SS number fields as a single total-seconds value.
+
+  function _getDurationSeconds() {
+    const h = parseInt(document.getElementById('duration-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('duration-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('duration-s')?.value, 10) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+
+  function _setDurationSeconds(totalSecs) {
+    totalSecs = Math.max(0, Math.min(86399, Math.round(totalSecs)));
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    const hEl = document.getElementById('duration-h');
+    const mEl = document.getElementById('duration-m');
+    const sEl = document.getElementById('duration-s');
+    if (hEl) hEl.value = String(h);
+    if (mEl) mEl.value = String(m);
+    if (sEl) sEl.value = String(s);
+  }
 
   // ── _wireUI ───────────────────────────────────────────────────────────────
   // Button handlers, sensitivity selector, goal overlay.
@@ -99,9 +128,12 @@
         const stats = Session.getCurrentStats();
         if (stats && stats.state !== 'IDLE') return;
         const goalEl = document.getElementById('goal-input');
-        const durEl  = document.getElementById('duration-select');
         const goal   = goalEl?.value?.trim() || null;
-        const mins   = parseInt(durEl?.value || '25', 10);
+        const mins   = _getDurationMinutes();
+
+        // Sync break interval from session panel
+        BreakReminder.setInterval(_getBreakMinutes());
+
         Timer.init(mins);
         Session.startNew(mins, goal);
         Timer.start();
@@ -109,6 +141,8 @@
         if (overlay) overlay.style.display = 'none';
       });
     }
+
+    _wireSteppers();
 
     // Pause / break button
     const pauseBtn = document.getElementById('pause-session');
@@ -130,7 +164,7 @@
       });
     }
 
-    // Abandon button
+    // Abandon button (active state)
     const abandonBtn = document.getElementById('abandon-session');
     if (abandonBtn) {
       abandonBtn.addEventListener('click', () => {
@@ -141,17 +175,144 @@
       });
     }
 
+    // Abandon button (break/paused state — separate DOM button)
+    const abandonBreakBtn = document.getElementById('abandon-session-break');
+    if (abandonBreakBtn) {
+      abandonBreakBtn.addEventListener('click', () => {
+        if (Session.getCurrentStats()?.state !== 'PAUSED') return;
+        Session.abandon();
+        Timer.reset();
+      });
+    }
+
+    // "New session" button on the outcome screen → reset back to IDLE
+    const newSessionBtn = document.getElementById('new-session-btn');
+    if (newSessionBtn) {
+      newSessionBtn.addEventListener('click', () => {
+        Session.reset();
+        Timer.reset();
+        // Clear goal input for fresh start
+        const goalEl = document.getElementById('goal-input');
+        if (goalEl) goalEl.value = '';
+      });
+    }
+
     // Goal achieved buttons (outcome screen)
     const goalYes = document.getElementById('goal-achieved-yes');
     const goalNo  = document.getElementById('goal-achieved-no');
     if (goalYes) goalYes.addEventListener('click', () => Session.setGoalAchieved(true));
     if (goalNo)  goalNo.addEventListener('click',  () => Session.setGoalAchieved(false));
 
-    // Sensitivity selector
+    // Sensitivity selector (legacy — kept for any external HTML using it)
     const sensitivitySel = document.getElementById('sensitivity-select');
     if (sensitivitySel) {
       sensitivitySel.value = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
       sensitivitySel.addEventListener('change', (e) => Brain.setSensitivity(e.target.value));
+    }
+  }
+
+  // ── Stepper helpers ───────────────────────────────────────────────────────
+  // Convert the stepper number + unit-select into fractional minutes consumed
+  // by Timer.init() and BreakReminder.setInterval().
+
+  function _getDurationMinutes() {
+    const totalSecs = _getDurationSeconds();
+    return Math.max(1 / 60, totalSecs / 60);
+  }
+
+  function _getBreakMinutes() {
+    const h = parseInt(document.getElementById('break-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('break-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('break-s')?.value, 10) || 0;
+    const totalSecs = h * 3600 + m * 60 + s;
+    if (totalSecs <= 0) return 0;
+    return totalSecs / 60;
+  }
+
+  function _setBreakSeconds(totalSecs) {
+    totalSecs = Math.max(0, Math.min(86399, Math.round(totalSecs)));
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    const hEl = document.getElementById('break-h');
+    const mEl = document.getElementById('break-m');
+    const sEl = document.getElementById('break-s');
+    if (hEl) hEl.value = String(h);
+    if (mEl) mEl.value = String(m);
+    if (sEl) sEl.value = String(s);
+  }
+
+  function _getBreakSeconds() {
+    const h = parseInt(document.getElementById('break-h')?.value, 10) || 0;
+    const m = parseInt(document.getElementById('break-m')?.value, 10) || 0;
+    const s = parseInt(document.getElementById('break-s')?.value, 10) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+
+  // ── _wireSteppers ─────────────────────────────────────────────────────────
+  // Wire +/− buttons and unit-select changes for all sp-stepper inputs.
+  // Unit change converts the current value to the new unit (rounded to step).
+
+  function _wireSteppers() {
+    // ── HH:MM:SS duration +/− buttons ────────────────────────────────────
+    function _clampHmsFields(hId, mId, sId) {
+      const hEl = document.getElementById(hId);
+      const mEl = document.getElementById(mId);
+      const sEl = document.getElementById(sId);
+      if (hEl) hEl.value = String(Math.max(0, Math.min(23, parseInt(hEl.value, 10) || 0)));
+      if (mEl) mEl.value = String(Math.max(0, Math.min(59, parseInt(mEl.value, 10) || 0)));
+      if (sEl) sEl.value = String(Math.max(0, Math.min(59, parseInt(sEl.value, 10) || 0)));
+    }
+
+    // Clamp individual fields on manual edit
+    ['duration-h', 'duration-m', 'duration-s'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => _clampHmsFields('duration-h', 'duration-m', 'duration-s'));
+    });
+    ['break-h', 'break-m', 'break-s'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => _clampHmsFields('break-h', 'break-m', 'break-s'));
+    });
+
+    const decBtn = document.getElementById('duration-dec');
+    const incBtn = document.getElementById('duration-inc');
+
+    if (decBtn) {
+      decBtn.addEventListener('click', () => {
+        const stepSecs = (Settings.get('timerStep') || 5) * 60;
+        const cur  = _getDurationSeconds();
+        const next = Math.max(0, cur - stepSecs);
+        _setDurationSeconds(next);
+      });
+    }
+
+    if (incBtn) {
+      incBtn.addEventListener('click', () => {
+        const stepSecs = (Settings.get('timerStep') || 5) * 60;
+        const cur  = _getDurationSeconds();
+        const next = Math.min(86399, cur + stepSecs);
+        _setDurationSeconds(next);
+      });
+    }
+
+    const breakDecBtn = document.getElementById('break-dec');
+    const breakIncBtn = document.getElementById('break-inc');
+    const BREAK_STEP_SECS = 5 * 60; // 5 min default step for break
+
+    if (breakDecBtn) {
+      breakDecBtn.addEventListener('click', () => {
+        const cur  = _getBreakSeconds();
+        const next = Math.max(0, cur - BREAK_STEP_SECS);
+        _setBreakSeconds(next);
+      });
+    }
+
+    if (breakIncBtn) {
+      breakIncBtn.addEventListener('click', () => {
+        const cur  = _getBreakSeconds();
+        const next = Math.min(86399, cur + BREAK_STEP_SECS);
+        _setBreakSeconds(next);
+      });
     }
   }
 
@@ -186,21 +347,15 @@
   }
 
   // ── _wireTimerToCompanion ─────────────────────────────────────────────────
-  // Map timer state to companion emotion overrides.
-  // brain.js applyFocusEmotion() runs every rAF frame and may subsequently
-  // override these; that's intentional — brain adjusts for perception nuance.
+  // Expose timer state on <body> so CSS and brain.js can react to it.
+  // Emotion selection for DRIFTING/DISTRACTED/CRITICAL is handled inside
+  // brain.js applyFocusEmotion() — setting it here too causes a race where
+  // the rAF emotion loop immediately overrides whatever we set.
+  // FAILED emotion is handled in _wireSessionToUI via the session outcome.
 
   function _wireTimerToCompanion() {
     Timer.onStateChange((newState) => {
-      const emotionMap = {
-        FOCUSED:    null,         // brain handles normally
-        DRIFTING:   'suspicious',
-        DISTRACTED: 'pouty',
-        CRITICAL:   'grumpy',
-        FAILED:     'crying',
-      };
-      const emotion = emotionMap[newState];
-      if (emotion) Emotion.setState(emotion);
+      document.body.dataset.timerState = newState;
     });
   }
 
@@ -229,6 +384,20 @@
   // ── _wireSessionToUI ──────────────────────────────────────────────────────
   // Session state changes → DOM visibility / content updates.
 
+  /** Format seconds as H:MM:SS (hours omitted when 0). */
+  function _fmtSecs(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  let _breakCountdownInterval = null;
+  let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
+
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState) => {
       const stats = Session.getCurrentStats();
@@ -240,7 +409,43 @@
       _setVisible('outcome-screen',
         newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
 
-      // Goal display below timer
+      // Session countdown timer — show during active/paused, hide otherwise
+      const sessionTimerEl = document.getElementById('session-timer');
+      if (sessionTimerEl) {
+        sessionTimerEl.style.display =
+          (newState === 'ACTIVE' || newState === 'PAUSED') ? '' : 'none';
+      }
+
+      // ── On session start: snapshot total duration for progress ring ──
+      if (newState === 'ACTIVE') {
+        _sessionTotalSeconds = _getDurationMinutes() * 60;
+        // Reset ring to full
+        const ring = document.getElementById('sp-ring-progress');
+        if (ring) ring.style.strokeDashoffset = '0';
+        const inlineTimer = document.getElementById('sp-inline-timer');
+        if (inlineTimer) {
+          inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
+        }
+      }
+
+      // Break countdown — start/stop the live update interval
+      if (newState === 'PAUSED') {
+        _startBreakCountdown();
+        // Teal glow sweeps up from the bottom
+        const glow = document.getElementById('break-glow');
+        if (glow) {
+          glow.classList.add('active');
+          setTimeout(() => glow.classList.remove('active'), 3500);
+        }
+        // Context-aware break card overlay + companion emotion
+        _fireBreakCard(stats);
+        // Auto-open panel so user sees the break countdown
+        _panelOpen();
+      } else {
+        _stopBreakCountdown();
+      }
+
+      // Goal display in active panel
       const goalDisplay = document.getElementById('goal-display');
       if (goalDisplay) {
         const txt = stats?.goalText || '';
@@ -256,7 +461,7 @@
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
-      // Outcome label
+      // Outcome label + effects
       const outcomeLabel = document.getElementById('outcome-label');
       if (outcomeLabel) {
         if      (newState === 'COMPLETED')  outcomeLabel.textContent = '✦ session complete!';
@@ -264,7 +469,269 @@
         else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session abandoned.';
         else                                outcomeLabel.textContent = '';
       }
+
+      if (newState === 'COMPLETED') {
+        _fireCelebration('complete');
+        _panelOpen();
+      }
+
+      if (newState === 'FAILED' || newState === 'ABANDONED') {
+        // Companion shows sad/crying (FAILED) or idle (ABANDONED)
+        if (newState === 'FAILED') Emotion.setState('crying');
+        _panelOpen();
+      }
+
+      // Reset timer state body attribute when session ends
+      if (newState === 'IDLE' || newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+        delete document.body.dataset.timerState;
+      }
     });
+
+    // ── Inline panel timer + progress ring (updated each logical timer-second) ──
+    Timer.onTick(() => {
+      const remaining = Timer.getRemainingSeconds();
+      const inlineTimer = document.getElementById('sp-inline-timer');
+      if (inlineTimer) inlineTimer.textContent = _fmtSecs(remaining);
+
+      const ring = document.getElementById('sp-ring-progress');
+      if (ring && _sessionTotalSeconds > 0) {
+        const CIRC    = 138.23; // 2π × r=22
+        const elapsed = _sessionTotalSeconds - remaining;
+        ring.style.strokeDashoffset = String(CIRC * (elapsed / _sessionTotalSeconds));
+      }
+    });
+  }
+
+  // ── Helper: open the panel programmatically (auto-reveal on completion/break) ──
+  function _panelOpen() {
+    const panel = document.getElementById('session-panel');
+    const icon  = document.getElementById('sp-icon');
+    if (panel) panel.classList.add('sidebar-open');
+    if (icon)  icon.classList.add('sp-icon-hidden');
+  }
+
+  // ── Celebration — confetti falls from above + banner + companion overjoyed ─
+
+  function _fireCelebration(type) {
+    const overlay = document.getElementById('celebration-overlay');
+    const msg     = document.getElementById('celebration-message');
+    const world   = document.getElementById('world');
+    if (!overlay) return;
+
+    // Screen flash
+    if (world) {
+      world.classList.add('session-complete-flash');
+      setTimeout(() => world.classList.remove('session-complete-flash'), 1500);
+    }
+
+    // ── Confetti falls from above the screen ──────────────────────────────
+    // Symbols — mix of glyphs and emoji for a festive feel
+    const symbols = ['🎉', '🎊', '✦', '✦', '✧', '★', '·', '◆', '♡', '⬡', '▲', '●'];
+    const colors  = [
+      'rgba(175, 155, 255, 0.95)',
+      'rgba(100, 220, 180, 0.95)',
+      'rgba(255, 205, 80,  0.95)',
+      'rgba(245, 185, 255, 0.95)',
+      'rgba(140, 215, 255, 0.95)',
+      'rgba(255, 145, 165, 0.95)',
+      'rgba(255, 220, 100, 0.95)',
+      'rgba(160, 255, 200, 0.95)',
+    ];
+
+    const count = type === 'complete' ? 72 : 36;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti-particle';
+
+      // Use rectangles for ~30% of pieces (paper confetti effect)
+      const useRect = Math.random() < 0.30;
+      if (useRect) {
+        const w = 6 + Math.random() * 6;
+        const h = 4 + Math.random() * 4;
+        const col = colors[Math.floor(Math.random() * colors.length)];
+        p.style.width  = `${w}px`;
+        p.style.height = `${h}px`;
+        p.style.borderRadius = '2px';
+        p.style.background   = col;
+        p.textContent = '';
+      } else {
+        p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        p.style.color    = colors[Math.floor(Math.random() * colors.length)];
+        p.style.fontSize = `${11 + Math.random() * 14}px`;
+      }
+
+      // Start ABOVE the viewport — top: -5% to -18%
+      const x0  = Math.random() * 100;          // spread across full width
+      const y0  = -(5 + Math.random() * 13);    // -5% to -18% (above screen)
+      // Fall DOWN through the screen (700–1100 px)
+      const dy  = 700 + Math.random() * 400;
+      // Slight horizontal drift
+      const dx  = (Math.random() - 0.5) * 140;
+      const rot = (Math.random() - 0.5) * 1080;
+      const dur = 2.4 + Math.random() * 2.0;
+      const del = Math.random() * 1.4;
+
+      p.style.left = `${x0}%`;
+      p.style.top  = `${y0}%`;
+      p.style.setProperty('--dx',  `${dx}px`);
+      p.style.setProperty('--dy',  `${dy}px`);
+      p.style.setProperty('--rot', `${rot}deg`);
+      p.style.setProperty('--dur', `${dur}s`);
+      p.style.setProperty('--del', `${del}s`);
+
+      overlay.appendChild(p);
+      setTimeout(() => p.remove(), (dur + del + 0.6) * 1000);
+    }
+
+    // Banner
+    if (msg) {
+      const titleEl = msg.querySelector('.cel-title');
+      const subEl   = msg.querySelector('.cel-sub');
+      if (titleEl) titleEl.textContent = '🎉 session complete 🎉';
+      if (subEl)   subEl.textContent   = 'great work — you absolutely did it ✦';
+      msg.classList.add('active');
+    }
+
+    // Companion overjoyed
+    Emotion.preview('overjoyed', 5000);
+    Sounds.play('overjoyed_chirp');
+
+    // Clean up banner
+    setTimeout(() => {
+      if (msg) msg.classList.remove('active');
+      setTimeout(() => { overlay.innerHTML = ''; }, 700);
+    }, 4000);
+  }
+
+  // ── Break card — context-aware modal with emoji + message ────────────────
+
+  function _fireBreakCard(stats) {
+    const card     = document.getElementById('break-card');
+    const emojiEl  = document.getElementById('break-card-emoji');
+    const titleEl  = document.getElementById('break-card-title');
+    const bodyEl   = document.getElementById('break-card-body');
+    const budgetEl = document.getElementById('break-card-budget');
+    if (!card) return;
+
+    // ── Context resolution ──────────────────────────────────────────────────
+    const period  = (window.Brain && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
+    const elapsed = stats ? (stats.elapsed || 0) : 0;           // wall-clock seconds
+    const focused = stats ? (stats.focusedSeconds || 0) : 0;    // seconds in focused state
+    const focusPct = elapsed > 0 ? (focused / elapsed) : 0;
+
+    // ── Emoji + message selection ────────────────────────────────────────────
+    let emoji, title, body;
+
+    // Night — always hydrate + rest
+    if (period === 'NIGHT') {
+      emoji = '🌙';
+      title = 'late-night session ✦';
+      body  = 'drink some water and rest your eyes\na little — you deserve it';
+
+    // Morning — energise
+    } else if (period === 'MORNING') {
+      if (elapsed >= 3600) {
+        // More than an hour — push toward breakfast
+        emoji = '🥐';
+        title = 'time for a real break';
+        body  = "you've been at it for a while — go\nget breakfast, seriously";
+      } else {
+        emoji = '☕';
+        title = 'coffee time ✦';
+        body  = "grab a coffee and stretch —\nyou're crushing the morning";
+      }
+
+    // Evening — wind down
+    } else if (period === 'EVENING') {
+      emoji = '🍵';
+      title = 'herbal tea time ✦';
+      body  = 'wind down a little — maybe some\nchamomile or green tea?';
+
+    // Afternoon — main working hours
+    } else {
+      if (focusPct >= 0.82) {
+        // Highly focused session — warm reward
+        emoji = '🌊';
+        title = "you've been in the zone \u2726";
+        body  = 'seriously impressive focus — go\nget your favourite drink';
+      } else if (elapsed >= 5400) {
+        // 90+ minutes — longer break needed
+        emoji = '🧘';
+        title = 'proper break time';
+        body  = 'step away from the screen — stretch,\nwalk, breathe for a bit';
+      } else if (elapsed >= 2700) {
+        // 45+ minutes
+        emoji = '☕';
+        title = 'tea or coffee? ✦';
+        body  = 'well earned — grab something warm\nand give your eyes a rest';
+      } else {
+        emoji = '✨';
+        title = 'quick breather ✦';
+        body  = 'take a moment — look away from\nthe screen and breathe';
+      }
+    }
+
+    if (emojiEl) emojiEl.textContent = emoji;
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl)  bodyEl.textContent  = body;
+
+    // Break elapsed time
+    if (budgetEl) {
+      const elapsedMs   = Session.getBreakElapsedMs ? Session.getBreakElapsedMs() : 0;
+      const elapsedSecs = Math.floor(elapsedMs / 1000);
+      const bm = Math.floor(elapsedSecs / 60);
+      const bs = String(elapsedSecs % 60).padStart(2, '0');
+      budgetEl.textContent = `on break · ${bm}:${bs}`;
+    }
+
+    // Companion — warm + happy
+    Emotion.preview('love', 3000);
+
+    // Show card
+    card.setAttribute('aria-hidden', 'false');
+    card.classList.add('active');
+
+    // Auto-dismiss after 6 s
+    let _bkTimer = setTimeout(() => _dismissBreakCard(), 6000);
+
+    // Dismiss button
+    const dismissBtn = document.getElementById('break-card-dismiss');
+    function _dismissBreakCard() {
+      clearTimeout(_bkTimer);
+      card.classList.remove('active');
+      card.setAttribute('aria-hidden', 'true');
+      // Remove listener to avoid stacking
+      if (dismissBtn) dismissBtn.removeEventListener('click', _dismissBreakCard);
+    }
+    if (dismissBtn) {
+      dismissBtn.removeEventListener('click', _dismissBreakCard); // guard
+      dismissBtn.addEventListener('click', _dismissBreakCard, { once: true });
+    }
+  }
+
+  // ── Break countdown helpers ───────────────────────────────────────────────
+
+  function _startBreakCountdown() {
+    _stopBreakCountdown();
+    _updateBreakCountdown();
+    _breakCountdownInterval = setInterval(_updateBreakCountdown, 1000);
+  }
+
+  function _stopBreakCountdown() {
+    if (_breakCountdownInterval !== null) {
+      clearInterval(_breakCountdownInterval);
+      _breakCountdownInterval = null;
+    }
+  }
+
+  function _updateBreakCountdown() {
+    const el = document.getElementById('break-countdown');
+    if (!el) return;
+    const ms = Session.getBreakElapsedMs();
+    const totalSecs = Math.floor(ms / 1000);
+    const m = String(Math.floor(totalSecs / 60));
+    const s = String(totalSecs % 60).padStart(2, '0');
+    el.textContent = `${m}:${s}`;
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────
@@ -386,6 +853,12 @@
     function closePanel() {
       panel.classList.remove('settings-open');
       gearBtn.setAttribute('aria-expanded', 'false');
+      // Collapse all accordion sections
+      panel.querySelectorAll('.settings-section-title[aria-expanded="true"]').forEach(btn => {
+        btn.setAttribute('aria-expanded', 'false');
+        const body = btn.nextElementSibling;
+        if (body) body.classList.remove('expanded');
+      });
       gearBtn.focus();
     }
 
@@ -394,6 +867,16 @@
     });
 
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // ── Accordion section toggles ────────────────────────────────────────
+    panel.querySelectorAll('.settings-section-title').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isOpen = btn.getAttribute('aria-expanded') === 'true';
+        const body   = btn.nextElementSibling;
+        btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        if (body) body.classList.toggle('expanded', !isOpen);
+      });
+    });
 
     // Escape closes the panel
     panel.addEventListener('keydown', (e) => {
@@ -461,6 +944,14 @@
       });
     }
 
+    // Ticks enabled toggle
+    const ticksToggle = document.getElementById('ticks-enabled-toggle');
+    if (ticksToggle) {
+      ticksToggle.checked = Settings.get('ticksEnabled');
+      ticksToggle.addEventListener('change', () => Settings.set('ticksEnabled', ticksToggle.checked));
+    }
+
+    // Break over alarm toggle — removed (breaks have no time limit)
     // Drone toggle
     const droneToggle = document.getElementById('drone-toggle');
     if (droneToggle) {
@@ -521,6 +1012,11 @@
       if (droneToggle) droneToggle.checked = v;
     });
 
+    Settings.onChange('ticksEnabled', (v) => {
+      Sounds.setTicksEnabled(v);
+      if (ticksToggle) ticksToggle.checked = v;
+    });
+
     // ── Volume slider ────────────────────────────────────────────────────
     const volumeSlider  = document.getElementById('volume-slider');
     const volumeSubLabel = document.getElementById('volume-sublabel');
@@ -532,6 +1028,7 @@
     }
 
     _applyVolume(Settings.get('volume'));
+    Sounds.setTicksEnabled(Settings.get('ticksEnabled'));
 
     if (volumeSlider) {
       volumeSlider.addEventListener('input', () => {
@@ -595,23 +1092,32 @@
       sessionLengthSel.addEventListener('change', (e) => {
         const v = parseInt(e.target.value, 10);
         Settings.set('sessionLength', v);
-        // Also update the start-screen duration selector if visible
-        const durEl = document.getElementById('duration-select');
-        if (durEl) durEl.value = String(v);
+        // Also update the start-screen HH:MM:SS duration fields if visible
+        _setDurationSeconds(v * 60);
       });
     }
 
     Settings.onChange('sessionLength', (v) => {
       if (sessionLengthSel) sessionLengthSel.value = String(v);
-      const durEl = document.getElementById('duration-select');
-      if (durEl) durEl.value = String(v);
+      _setDurationSeconds(v * 60);
     });
 
-    // Pre-fill start-screen duration selector with saved default now
+    // Pre-fill start-screen HH:MM:SS fields with saved default now
     {
-      const durEl = document.getElementById('duration-select');
-      if (durEl) durEl.value = String(Settings.get('sessionLength'));
+      _setDurationSeconds(Settings.get('sessionLength') * 60);
     }
+
+    // ── Timer step (duration stepper +/− increment) ─────────────────────
+    const timerStepSel = document.getElementById('timer-step-select');
+    if (timerStepSel) {
+      timerStepSel.value = String(Settings.get('timerStep') || 5);
+      timerStepSel.addEventListener('change', (e) => {
+        Settings.set('timerStep', parseInt(e.target.value, 10));
+      });
+    }
+    Settings.onChange('timerStep', (v) => {
+      if (timerStepSel) timerStepSel.value = String(v);
+    });
 
     // ── Session stats (today) ────────────────────────────────────────────
     function _refreshSessionStats() {
@@ -793,4 +1299,52 @@
       }
     }
   }
+
+  // ── _wireSidebar ──────────────────────────────────────────────────────────
+  // Auto-hide session sidebar: hover the brain icon to slide the panel in;
+  // leave the panel to slide it away.
+  // The brain icon fades out when the panel is open so it doesn't overlap.
+
+  function _wireSidebar() {
+    const panel = document.getElementById('session-panel');
+    const icon  = document.getElementById('sp-icon');
+    if (!panel) return;
+
+    let _hideTimer = null;
+
+    function _open() {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+      panel.classList.add('sidebar-open');
+      if (icon) icon.classList.add('sp-icon-hidden');
+    }
+
+    function _scheduleClose() {
+      if (_hideTimer) return;
+      _hideTimer = setTimeout(() => {
+        _hideTimer = null;
+        // Don't close while the user has keyboard focus inside the panel
+        // (e.g. typing in the goal input — mouse may have drifted out)
+        if (panel.contains(document.activeElement)) return;
+        panel.classList.remove('sidebar-open');
+        if (icon) icon.classList.remove('sp-icon-hidden');
+      }, 380);
+    }
+
+    // Only the brain icon opens the panel
+    if (icon) icon.addEventListener('mouseenter', _open);
+
+    // Keep open while mouse is inside the panel
+    panel.addEventListener('mouseenter', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    // Cancel any pending close the moment focus enters the panel
+    panel.addEventListener('focusin', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    // Schedule close when mouse leaves the panel
+    panel.addEventListener('mouseleave', _scheduleClose);
+  }
+
 })();
