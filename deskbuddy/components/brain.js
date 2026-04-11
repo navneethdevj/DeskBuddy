@@ -832,6 +832,7 @@ const Brain = (() => {
   /**
    * Continuous gaze-scan loop while in the curious state.
    * Picks a random look target, holds it briefly, then reschedules itself.
+   * Mixes quick flicks with longer stares and occasionally vocalises.
    * Stops as soon as the state is no longer 'curious'.
    */
   function _curiousLookLoop() {
@@ -840,23 +841,37 @@ const Brain = (() => {
 
     var c = Companion.getCenter();
     var glances = [
-      { x: c.x - 300, y: c.y },
-      { x: c.x + 300, y: c.y },
-      { x: c.x,       y: c.y - 200 },
-      { x: c.x - 200, y: c.y + 120 },
-      { x: c.x + 200, y: c.y - 140 },
+      { x: c.x - 320, y: c.y },           // far left
+      { x: c.x + 320, y: c.y },           // far right
+      { x: c.x,       y: c.y - 240 },     // up — recalling / thinking
+      { x: c.x - 200, y: c.y - 160 },     // upper-left
+      { x: c.x + 200, y: c.y - 160 },     // upper-right
+      { x: c.x - 160, y: c.y + 100 },     // lower-left
+      { x: c.x + 160, y: c.y + 100 },     // lower-right
+      { x: c.x,       y: c.y },           // center — direct stare
     ];
     var target = glances[Math.floor(Math.random() * glances.length)];
     Companion.lookAt(target.x, target.y);
 
-    // Hold the glance for a beat, then reset and pause before the next one
+    // Randomly vocalise on about 1-in-4 glances
+    if (Math.random() < 0.25 && typeof Sounds !== 'undefined') {
+      Sounds.play('curious');
+    }
+
+    // Vary hold time: quick flick (400-700ms) or lingering stare (900-1800ms)
+    var holdMs = Math.random() < 0.4
+      ? 400  + Math.random() * 300   // quick flick
+      : 900  + Math.random() * 900;  // long stare
+
     _curiousLookTimer = setTimeout(function () {
       if (currentState !== 'curious') { Companion.resetLook(); return; }
       Companion.resetLook();
+      // Brief pause between glances — snappy for flicks, longer after stares
+      var pauseMs = holdMs < 700 ? 180 + Math.random() * 220 : 350 + Math.random() * 450;
       _curiousLookTimer = setTimeout(function () {
         _curiousLookLoop();
-      }, 350 + Math.random() * 500);
-    }, 700 + Math.random() * 900);
+      }, pauseMs);
+    }, holdMs);
   }
 
   /** Briefly flash a happy expression during idle. */
