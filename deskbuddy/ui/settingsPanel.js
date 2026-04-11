@@ -56,7 +56,7 @@ const SettingsPanel = (() => {
     }
   }
 
-
+  function _applyDroneEnabled(enabled) {
     if (!window.Soundscape) return;
     if (enabled) {
       Soundscape.resume();

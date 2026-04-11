@@ -222,15 +222,16 @@ ipcMain.on('exit-full-mode', () => {
 // ── Settings persistence ──────────────────────────────────────────────────
 
 const SETTINGS_DEFAULTS = {
-  mutePreset:      'ALL_ON',
-  droneEnabled:    true,
-  brightness:      1.0,
-  breakInterval:   25,
-  sensitivity:     'NORMAL',
-  phoneDetection:  true,
-  companionSize:   'M',
-  nightAutoVolume: true,
-  keybinds:        {},
+  mutePreset:           'ALL_ON',
+  droneEnabled:         true,
+  brightness:           1.0,
+  breakReminderEnabled: true,
+  breakInterval:        25,
+  sensitivity:          'NORMAL',
+  phoneDetection:       true,
+  companionSize:        'M',
+  nightAutoVolume:      true,
+  keybinds:             {},
 };
 
 ipcMain.handle('settings:get', () => {
