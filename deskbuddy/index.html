@@ -39,12 +39,20 @@
         <div id="sp-mute-desc" class="settings-mute-desc"></div>
         <div class="settings-row">
           <div class="settings-row-label">
-            Break interval
-            <div class="settings-row-sublabel">Remind me every N minutes</div>
+            Break reminders
+            <div class="settings-row-sublabel">Nudge you to rest periodically</div>
+          </div>
+          <input type="checkbox" id="sp-break-reminder-enabled" aria-label="Break reminders">
+        </div>
+        <div class="settings-row" id="sp-break-interval-row">
+          <div class="settings-row-label">
+            Remind every
+            <div class="settings-row-sublabel">Minutes of continuous working</div>
           </div>
           <select id="sp-break-interval" aria-label="Break interval">
-            <option value="0">Off</option>
+            <option value="10">10 min</option>
             <option value="15">15 min</option>
+            <option value="20">20 min</option>
             <option value="25">25 min</option>
             <option value="30">30 min</option>
             <option value="45">45 min</option>
@@ -169,6 +177,7 @@
   <script src="components/session.js"></script>
   <script src="components/camera.js"></script>
   <script src="components/perception.js"></script>
+  <script src="components/break-reminder.js"></script>
   <script src="components/settings.js"></script>
   <script src="ui/settingsPanel.js"></script>
   <script src="renderer.js"></script>

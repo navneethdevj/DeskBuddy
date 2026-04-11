@@ -15,15 +15,16 @@ const Settings = (() => {
   const STORAGE_KEY = 'deskbuddy_settings';
 
   const DEFAULTS = {
-    mutePreset:      'ALL_ON',    // 'ALL_ON' | 'ESSENTIAL' | 'REMINDERS_ONLY' | 'ALL_OFF'
-    droneEnabled:    true,        // ambient soundscape on/off
-    brightness:      1.0,         // #world CSS filter brightness (0.3–1.0)
-    breakInterval:   25,          // minutes, 0 = disabled
-    sensitivity:     'NORMAL',    // 'GENTLE' | 'NORMAL' | 'STRICT'
-    phoneDetection:  true,        // brain.js phone posture detection
-    companionSize:   'M',         // 'S' | 'M' | 'L'
-    nightAutoVolume: true,        // soundscape reduces volume at NIGHT
-    keybinds:        {},          // override map: { [action_id]: 'KeyboardShortcut' }
+    mutePreset:           'ALL_ON',    // 'ALL_ON' | 'ESSENTIAL' | 'REMINDERS_ONLY' | 'ALL_OFF'
+    droneEnabled:         true,        // ambient soundscape on/off
+    brightness:           1.0,         // #world CSS filter brightness (0.3–1.0)
+    breakReminderEnabled: true,        // whether break reminders fire at all
+    breakInterval:        25,          // reminder interval in minutes (used when enabled)
+    sensitivity:          'NORMAL',    // 'GENTLE' | 'NORMAL' | 'STRICT'
+    phoneDetection:       true,        // brain.js phone posture detection
+    companionSize:        'M',         // 'S' | 'M' | 'L'
+    nightAutoVolume:      true,        // soundscape reduces volume at NIGHT
+    keybinds:             {},          // override map: { [action_id]: 'KeyboardShortcut' }
   };
 
   let _current = { ...DEFAULTS };

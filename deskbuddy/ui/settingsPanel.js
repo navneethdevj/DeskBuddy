@@ -33,7 +33,30 @@ const SettingsPanel = (() => {
     if (desc) desc.textContent = _MUTE_DESCRIPTIONS[preset] || '';
   }
 
-  function _applyDroneEnabled(enabled) {
+  function _applyBreakReminderEnabled(enabled) {
+    // Update interval select disabled state
+    const intervalEl = document.getElementById('sp-break-interval');
+    const intervalRow = document.getElementById('sp-break-interval-row');
+    if (intervalEl)  intervalEl.disabled = !enabled;
+    if (intervalRow) intervalRow.style.opacity = enabled ? '' : '0.4';
+    // Wire to BreakReminder module
+    if (!window.BreakReminder) return;
+    if (enabled) {
+      BreakReminder.setInterval(Settings.get('breakInterval'));
+    } else {
+      BreakReminder.setInterval(0);  // interval 0 = disabled inside the module
+    }
+  }
+
+  function _applyBreakInterval(minutes) {
+    if (!window.BreakReminder) return;
+    // Only apply if reminders are enabled
+    if (Settings.get('breakReminderEnabled')) {
+      BreakReminder.setInterval(minutes);
+    }
+  }
+
+
     if (!window.Soundscape) return;
     if (enabled) {
       Soundscape.resume();
@@ -130,17 +153,24 @@ const SettingsPanel = (() => {
   // ── Sync controls → Settings values ───────────────────────────────────────
 
   function _syncControlsFromSettings() {
-    _setControl('sp-mute-preset',      Settings.get('mutePreset'));
-    _setControl('sp-break-interval',   String(Settings.get('breakInterval')));
-    _setControl('sp-companion-size',   Settings.get('companionSize'));
-    _setControl('sp-brightness',       String(Settings.get('brightness')));
-    _setControl('sp-sensitivity',      Settings.get('sensitivity'));
-    _setControl('sp-phone-detection',  Settings.get('phoneDetection'),  true);
-    _setControl('sp-drone-enabled',    Settings.get('droneEnabled'),    true);
-    _setControl('sp-night-auto-volume',Settings.get('nightAutoVolume'), true);
+    _setControl('sp-mute-preset',             Settings.get('mutePreset'));
+    _setControl('sp-break-reminder-enabled',  Settings.get('breakReminderEnabled'), true);
+    _setControl('sp-break-interval',          String(Settings.get('breakInterval')));
+    _setControl('sp-companion-size',          Settings.get('companionSize'));
+    _setControl('sp-brightness',              String(Settings.get('brightness')));
+    _setControl('sp-sensitivity',             Settings.get('sensitivity'));
+    _setControl('sp-phone-detection',         Settings.get('phoneDetection'),  true);
+    _setControl('sp-drone-enabled',           Settings.get('droneEnabled'),    true);
+    _setControl('sp-night-auto-volume',       Settings.get('nightAutoVolume'), true);
     // Refresh mute description to match current preset
     const desc = document.getElementById('sp-mute-desc');
     if (desc) desc.textContent = _MUTE_DESCRIPTIONS[Settings.get('mutePreset')] || '';
+    // Reflect break reminder enabled state on the interval row
+    const enabled = Settings.get('breakReminderEnabled');
+    const intervalEl  = document.getElementById('sp-break-interval');
+    const intervalRow = document.getElementById('sp-break-interval-row');
+    if (intervalEl)  intervalEl.disabled = !enabled;
+    if (intervalRow) intervalRow.style.opacity = enabled ? '' : '0.4';
   }
 
   function _setControl(id, value, isCheckbox) {
@@ -211,14 +241,15 @@ const SettingsPanel = (() => {
     _bindCheckbox('sp-phone-detection', 'phoneDetection',  _applyPhoneDetection);
     _bindCheckbox('sp-drone-enabled',   'droneEnabled',    _applyDroneEnabled);
     _bindCheckbox('sp-night-auto-volume','nightAutoVolume', _applyNightAutoVolume);
+    _bindCheckbox('sp-break-reminder-enabled', 'breakReminderEnabled', _applyBreakReminderEnabled);
 
-    // Break interval needs integer coercion before storing
+    // Break interval — integer coercion, only applies when reminders are enabled
     const breakEl = document.getElementById('sp-break-interval');
     if (breakEl) {
       breakEl.addEventListener('change', (e) => {
-        const mins = parseInt(e.target.value, 10);
+        const mins = parseInt(e.target.value, 10) || 25;
         Settings.set('breakInterval', mins);
-        if (window.Timer && Timer.init) Timer.init(mins || 25);
+        _applyBreakInterval(mins);
       });
     }
     // Note: startup application of all settings is handled by _wireSettings()
