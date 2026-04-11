@@ -3121,6 +3121,62 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 }
 
 /* =====================================================================
+   BREAK-END FLASH + WELCOME-BACK MESSAGE — fired when user resumes
+   ===================================================================== */
+
+/* Full-screen teal ripple that fades in and out quickly */
+@keyframes breakEndFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+#break-end-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 160% 120% at 50% 50%,
+    rgba(60, 220, 160, 0.18) 0%,
+    rgba(40, 180, 140, 0.10) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 3155;
+  opacity: 0;
+}
+#break-end-flash.active {
+  animation: breakEndFlash 1.2s ease forwards;
+}
+
+/* "welcome back ✦" banner — floats up from centre */
+@keyframes breakEndMsgIn {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(4px)  scale(0.90); }
+  30%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.94); }
+}
+#break-end-msg {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px) scale(0.90);
+  opacity: 0;
+  z-index: 3156;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  letter-spacing: 0.20em;
+  color: rgba(160, 240, 200, 0.95);
+  text-shadow:
+    0 0 24px rgba(60, 220, 160, 0.60),
+    0 0 55px rgba(60, 220, 160, 0.25);
+  white-space: nowrap;
+}
+#break-end-msg.active {
+  animation: breakEndMsgIn 2.6s ease forwards;
+}
+
+/* =====================================================================
    BREAK GLOW — soft teal pulse when user starts a break
    ===================================================================== */
 

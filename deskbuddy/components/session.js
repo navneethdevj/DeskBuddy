@@ -299,7 +299,7 @@ const Session = (() => {
     _streakStart  = _now();
 
     _setState(STATE.ACTIVE);
-    if (window.Sounds) Sounds.play('break_end');
+    if (window.Sounds) Sounds.play('break_over');
   }
 
   /**

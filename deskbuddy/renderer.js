@@ -399,7 +399,7 @@
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
 
   function _wireSessionToUI() {
-    Session.onSessionStateChange((newState) => {
+    Session.onSessionStateChange((newState, oldState) => {
       const stats = Session.getCurrentStats();
 
       // Panel visibility (sidebar panels)
@@ -449,6 +449,9 @@
         }
         // Auto-open panel so user sees the break countdown
         _panelOpen();
+      } else if (newState === 'ACTIVE' && oldState === 'PAUSED') {
+        _stopBreakCountdown();
+        _fireBreakEndAnim();
       } else {
         _stopBreakCountdown();
       }
@@ -474,17 +477,20 @@
       if (outcomeLabel) {
         if      (newState === 'COMPLETED')  outcomeLabel.textContent = '✦ session complete!';
         else if (newState === 'FAILED')     outcomeLabel.textContent = 'session ended early.';
-        else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session abandoned.';
+        else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session ended early.';
         else                                outcomeLabel.textContent = '';
       }
 
       if (newState === 'COMPLETED') {
-        _fireCelebration('complete');
+        // Small delay so the outcome card slides in before confetti fires
+        setTimeout(() => _fireCelebration('complete'), 400);
       }
 
-      if (newState === 'FAILED') {
-        // Companion shows sad/crying
+      if (newState === 'FAILED' || newState === 'ABANDONED') {
+        // Companion shows sad/crying for both failed and abandoned sessions
         Emotion.setState('crying');
+        // Abandoned sessions play the fail sound (session.js is intentionally silent for abandon)
+        if (newState === 'ABANDONED' && window.Sounds) Sounds.play('session_fail');
       }
 
       // Reset timer state body attribute when session ends
@@ -691,8 +697,8 @@
       budgetEl.textContent = `on break · ${bm}:${bs}`;
     }
 
-    // Companion — warm + happy
-    Emotion.preview('love', 3000);
+    // Companion — enthusiastic, celebratory start to the break
+    Emotion.preview('overjoyed', 3000);
 
     // Show card
     card.setAttribute('aria-hidden', 'false');
@@ -714,6 +720,27 @@
       dismissBtn.removeEventListener('click', _dismissBreakCard); // guard
       dismissBtn.addEventListener('click', _dismissBreakCard, { once: true });
     }
+  }
+
+  // ── Break-end animation — fired when the user resumes from a break ─────────
+
+  function _fireBreakEndAnim() {
+    // Teal flash across the screen
+    const flash = document.getElementById('break-end-flash');
+    if (flash) {
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 1200);
+    }
+
+    // "welcome back ✦" text overlay
+    const msg = document.getElementById('break-end-msg');
+    if (msg) {
+      msg.classList.add('active');
+      setTimeout(() => msg.classList.remove('active'), 2600);
+    }
+
+    // Companion perks up
+    if (window.Emotion) Emotion.preview('excited', 2500);
   }
 
   // ── Break countdown helpers ───────────────────────────────────────────────

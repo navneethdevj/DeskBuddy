@@ -99,7 +99,7 @@ const Timer = (() => {
    */
   function init(durationMinutes) {
     _stop();
-    _initialSeconds   = durationMinutes * 60;
+    _initialSeconds   = Math.round(durationMinutes * 60);
     _remainingSeconds = _initialSeconds;
     _accumulated      = 0;
     _currentState     = STATE.FOCUSED;
