@@ -7,7 +7,7 @@
  *   - Open / close the panel (gear button, close button, Escape key)
  *   - Populate controls from Settings.get() on open
  *   - Write changes back via Settings.set() on user interaction
- *   - Apply settings side-effects to live modules
+ *   - Apply UI side-effects (description text, control enabled/disabled state)
  *   - Maintain a focus trap while the panel is open (a11y)
  */
 const SettingsPanel = (() => {
