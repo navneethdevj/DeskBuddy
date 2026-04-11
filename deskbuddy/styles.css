@@ -3355,3 +3355,156 @@ body.pip-mode #break-card { display: none !important; }
   transform: translateY(0);
 }
 
+
+/* ── Share Card button (inside outcome-card) ───────────────────────────── */
+.sc-share-btn {
+  margin-top: -4px;   /* tighten gap below "new session" */
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  opacity: 0.72;
+}
+.sc-share-btn:hover {
+  opacity: 1;
+}
+
+/* ── Share Card modal overlay ────────────────────────────────────────────── */
+#share-card-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s ease, background 0.32s ease;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#share-card-modal.sc-visible {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Inner dialog */
+#share-card-inner {
+  width: min(440px, calc(100vw - 32px));
+  background: rgba(14, 10, 28, 0.92);
+  backdrop-filter: blur(72px) saturate(1.8) brightness(1.15);
+  -webkit-backdrop-filter: blur(72px) saturate(1.8) brightness(1.15);
+  border-top:    1px solid rgba(255,255,255,0.22);
+  border-left:   1px solid rgba(255,255,255,0.09);
+  border-right:  1px solid rgba(0,0,0,0.20);
+  border-bottom: 1px solid rgba(0,0,0,0.28);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.70),
+    0 12px 32px rgba(0,0,0,0.40),
+    0 0 0 0.5px rgba(255,255,255,0.07) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transform: translateY(14px) scale(0.97);
+  transition: transform 0.40s cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+#share-card-modal.sc-visible #share-card-inner {
+  transform: translateY(0) scale(1);
+}
+
+/* Header row */
+#share-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#share-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+#share-card-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.30);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+#share-card-close:hover {
+  color: rgba(255,255,255,0.80);
+  background: rgba(255,255,255,0.08);
+}
+
+/* Canvas wrapper */
+#share-card-canvas-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;           /* remove gap under inline canvas */
+  border: 1px solid rgba(255,255,255,0.06);
+}
+#share-card-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Action buttons row */
+#share-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sc-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.sc-btn-primary {
+  background: rgba(140,110,255,0.22);
+  color: rgba(200,190,255,0.95);
+  border: 1px solid rgba(140,110,255,0.28);
+}
+.sc-btn-primary:hover {
+  background: rgba(140,110,255,0.34);
+}
+
+.sc-btn-secondary {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.60);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sc-btn-secondary:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+}
+
+/* Status feedback text */
+#share-card-status {
+  font-size: 11px;
+  color: rgba(100,220,100,0.80);
+  text-align: center;
+  min-height: 14px;
+  transition: opacity 0.2s;
+}

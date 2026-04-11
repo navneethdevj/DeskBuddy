@@ -189,11 +189,27 @@
     const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
+        // Hide share card if open
+        if (typeof ShareCard !== 'undefined') ShareCard.hide();
+        // Hide share button until next completed session
+        const shareBtn = document.getElementById('share-session-btn');
+        if (shareBtn) shareBtn.style.display = 'none';
         Session.reset();
         Timer.reset();
         // Clear goal input for fresh start
         const goalEl = document.getElementById('goal-input');
         if (goalEl) goalEl.value = '';
+      });
+    }
+
+    // Share card button — shown only for COMPLETED sessions
+    const shareSessionBtn = document.getElementById('share-session-btn');
+    if (shareSessionBtn) {
+      shareSessionBtn.addEventListener('click', () => {
+        const lastSession = Session.getHistory()[0];
+        if (!lastSession) return;
+        const emotion = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
+        if (typeof ShareCard !== 'undefined') ShareCard.show(lastSession, emotion);
       });
     }
 
@@ -484,9 +500,15 @@
       if (newState === 'COMPLETED') {
         // Small delay so the outcome card slides in before confetti fires
         setTimeout(() => _fireCelebration('complete'), 400);
+        // Show the share-card button — only for completed sessions
+        const shareBtn = document.getElementById('share-session-btn');
+        if (shareBtn) shareBtn.style.display = '';
       }
 
       if (newState === 'FAILED' || newState === 'ABANDONED') {
+        // Hide share button (not a celebration)
+        const shareBtn = document.getElementById('share-session-btn');
+        if (shareBtn) shareBtn.style.display = 'none';
         // Companion shows sad/crying for both failed and abandoned sessions
         Emotion.setState('crying');
         // Abandoned sessions play the fail sound (session.js is intentionally silent for abandon)

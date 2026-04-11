@@ -390,6 +390,49 @@ const Session = (() => {
   }
 
   /**
+   * computeDayStreak() — count consecutive days ending today that each have at
+   * least one COMPLETED or FAILED (not ABANDONED) session recorded.
+   * @returns {number}
+   */
+  function computeDayStreak() {
+    const history = getHistory();
+    if (!history.length) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak   = 0;
+    let checking = new Date(today);
+
+    while (true) {
+      const dayStart  = checking.getTime();
+      const dayEnd    = dayStart + 86400000;
+      const hasSession = history.some(s => {
+        const ts = s.date ? new Date(s.date).getTime() : 0;
+        return ts >= dayStart && ts < dayEnd && s.outcome !== 'ABANDONED';
+      });
+      if (!hasSession) break;
+      streak++;
+      checking.setDate(checking.getDate() - 1);
+      if (streak > 365) break;  // safety cap
+    }
+
+    return streak;
+  }
+
+  /**
+   * getTotalFocusedMinutes() — sum of actualFocusedSeconds across all
+   * COMPLETED sessions in history, converted to minutes (floored).
+   * @returns {number}
+   */
+  function getTotalFocusedMinutes() {
+    const history = getHistory();
+    const totalSecs = history.reduce((acc, s) => {
+      return acc + (s.outcome === 'COMPLETED' ? (s.actualFocusedSeconds || 0) : 0);
+    }, 0);
+    return Math.floor(totalSecs / 60);
+  }
+
+  /**
    * reset() — return to IDLE so the user can start a fresh session.
    * Safe to call only after a terminal state (COMPLETED / FAILED / ABANDONED).
    * No-op if already IDLE or if a session is in progress.
@@ -417,6 +460,8 @@ const Session = (() => {
     getCurrentStats,
     getBreakElapsedMs,
     onSessionStateChange,
+    computeDayStreak,
+    getTotalFocusedMinutes,
     STATE,
   };
 
