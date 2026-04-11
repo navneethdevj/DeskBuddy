@@ -15,6 +15,179 @@
   <!-- Full-screen mode: click to return to compact overlay -->
   <button id="full-collapse-btn" title="Compact overlay (Ctrl+Shift+P)">⤡</button>
 
+  <!-- Settings gear button — top-left, full-mode only -->
+  <button id="settings-gear-btn" title="Settings">⚙</button>
+
+  <!-- Settings panel — floating overlay, full-mode only -->
+  <div id="settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
+    <div id="settings-header">
+      <span>Settings</span>
+      <button id="settings-close-btn" title="Close settings" aria-label="Close settings">✕</button>
+    </div>
+    <div id="settings-body">
+
+      <!-- ── SOUND SECTION ─────────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Sound</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Mute preset</div>
+            <div class="settings-row-sublabel" id="mute-preset-desc">All sounds enabled</div>
+          </div>
+          <select id="mute-preset-select" class="settings-select">
+            <option value="ALL_ON">All sounds</option>
+            <option value="ESSENTIAL">No chatter</option>
+            <option value="REMINDERS_ONLY">Breaks only</option>
+            <option value="ALL_OFF">Silent</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-hint">
+          <div class="settings-row-sublabel">Cycle with <kbd>Ctrl+Shift+M</kbd></div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Master volume</div>
+            <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
+          </div>
+          <input type="range" id="volume-slider" class="settings-slider"
+            min="0" max="100" step="1" value="70">
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Break Reminders</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Break reminders</div>
+            <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="break-reminder-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row" id="break-interval-row">
+          <div class="settings-row-label">Remind every</div>
+          <select id="break-interval-select" class="settings-select">
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── SESSION SECTION ──────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Session</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Default duration</div>
+            <div class="settings-row-sublabel">Pre-filled on session start</div>
+          </div>
+          <select id="session-length-select" class="settings-select">
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+            <option value="90">90 min</option>
+          </select>
+        </div>
+        <div class="settings-row settings-row-hint" id="session-stats-row">
+          <div>
+            <div class="settings-row-sublabel" id="sessions-today-label">— sessions today</div>
+            <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
+          </div>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Display</div>
+        <div class="settings-row">
+          <div class="settings-row-label">Companion size</div>
+          <div class="settings-size-btns" id="companion-size-btns">
+            <button class="settings-size-btn" data-size="S">S</button>
+            <button class="settings-size-btn" data-size="M">M</button>
+            <button class="settings-size-btn" data-size="L">L</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Screen brightness</div>
+            <div class="settings-row-sublabel" id="brightness-sublabel">100%</div>
+          </div>
+          <input type="range" id="brightness-slider" class="settings-slider"
+            min="30" max="100" step="2" value="100">
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Ambient drone</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="drone-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Night volume reduction</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="night-volume-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
+      <div class="settings-section">
+        <div class="settings-section-title">Behaviour</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Focus sensitivity</div>
+            <div class="settings-row-sublabel">How strictly distraction is detected</div>
+          </div>
+          <select id="settings-sensitivity-select" class="settings-select">
+            <option value="GENTLE">Gentle</option>
+            <option value="NORMAL">Normal</option>
+            <option value="STRICT">Strict</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Phone detection</div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="phone-detection-toggle">
+            <span class="settings-toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ── EXPRESSIONS SECTION ──────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <div class="settings-section-title">Expressions</div>
+        <div class="settings-row-sublabel" style="padding:0 16px 8px;font-size:11px;color:rgba(255,255,255,0.28);">
+          tap any state to preview it for 3 s
+        </div>
+        <div id="emotion-grid"></div>
+      </div>
+
+      <!-- ── SHORTCUTS SECTION ─────────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <div class="settings-section-title">Shortcuts</div>
+        <div id="shortcuts-list"></div>
+      </div>
+
+    </div><!-- /#settings-body -->
+  </div><!-- /#settings-panel -->
+
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->
   <video id="camera-feed" autoplay playsinline muted
@@ -25,6 +198,16 @@
   <div id="tear-overlay"><div id="tear-fill"></div></div>
   <!-- Whisper text — rare soft messages from DeskBuddy -->
   <div id="whisper-text"></div>
+
+  <!-- Break reminder toast — shown by BreakReminder.onTrigger, hidden on dismiss -->
+  <div id="break-toast" aria-live="polite" aria-atomic="true">
+    <div id="break-toast-icon">☕</div>
+    <div id="break-toast-body">
+      <div id="break-toast-title">time for a break</div>
+      <div id="break-toast-sub">you've been focused for a while — step away for a bit ✦</div>
+    </div>
+    <button id="break-toast-dismiss" title="Dismiss break reminder">got it</button>
+  </div>
   <!-- Focus timer — counts focused time -->
   <div id="focus-timer">focus 00:00</div>
   <!-- Attention bar — EyeOnTask concept, barely visible -->
@@ -53,6 +236,9 @@
   <script src="components/session.js"></script>
   <script src="components/camera.js"></script>
   <script src="components/perception.js"></script>
+  <script src="components/settings.js"></script>
+  <script src="components/keybinds.js"></script>
+  <script src="components/break-reminder.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

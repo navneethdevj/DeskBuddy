@@ -226,8 +226,19 @@ html, body {
               0 0 22vmin rgba(120, 135, 235, 0.06);
 }
 
-/* ===== Expression: Idle (default — relaxed round eyes) ===== */
-/* Default eye shape IS the idle expression — no overrides needed */
+/* ===== Expression: Idle (resting, soft-eyed, present) ===== */
+.companion.idle .eye {
+  width: 38vmin;
+  height: 40vmin;
+  border-radius: 50% 50% 48% 48% / 46% 46% 54% 54%;
+  box-shadow:
+    0 0 5vmin rgba(150, 140, 220, 0.42),
+    0 0 15vmin rgba(135, 125, 210, 0.16),
+    0 0 28vmin rgba(120, 110, 200, 0.06);
+}
+/* Idle brows — natural resting droop */
+.companion.idle .brow-left  { transform: translateY(0.3vmin) rotate(-1deg); }
+.companion.idle .brow-right { transform: translateY(0.3vmin) rotate(1deg); }
 
 /* ===== Expression: Curious (asymmetric wide-eyed wonder + scrutiny) ===== */
 /* Both eyes share the glow; individual sizing creates the lopsided "huh?" look */
@@ -437,7 +448,7 @@ html, body {
 .companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
 .companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.36); }
 .companion.embarrassed .blush { background: rgba(255, 120, 155, 0.30); }
-.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.42); }
+.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.34); }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {
@@ -510,16 +521,19 @@ html, body {
   75%      { transform: translateY(-0.1vh) rotate(0.3deg) scale(0.987); }
 }
 
-/* Curious — gentle tilt like a puppy */
+/* Curious — investigative head tilts: quick lean, hold, re-check */
 .companion.curious .companion-inner {
-  animation: curiousTilt 2.5s ease-in-out infinite;
+  animation: curiousTilt 3.8s ease-in-out infinite;
 }
 @keyframes curiousTilt {
-  0%        { transform: translateY(0)      rotate(0deg)   scale(1.000); }
-  18%       { transform: translateY(-1.0vh) rotate(10deg)  scale(1.014); }
-  45%       { transform: translateY(-0.8vh) rotate(9deg)   scale(1.012); }
-  68%       { transform: translateY(-0.4vh) rotate(-7deg)  scale(1.008); }
-  88%, 100% { transform: translateY(-0.1vh) rotate(-1deg)  scale(1.002); }
+  0%   { transform: translateY(-0.4vh) rotate(0deg)    scale(1.005); }
+  12%  { transform: translateY(-0.8vh) rotate(3.5deg)  scale(1.010); }
+  28%  { transform: translateY(-0.6vh) rotate(3deg)    scale(1.008); }
+  42%  { transform: translateY(-0.3vh) rotate(-1deg)   scale(1.002); }
+  58%  { transform: translateY(-0.6vh) rotate(2deg)    scale(1.006); }
+  75%  { transform: translateY(-0.9vh) rotate(-2.5deg) scale(1.012); }
+  88%  { transform: translateY(-0.5vh) rotate(0.5deg)  scale(1.004); }
+  100% { transform: translateY(-0.4vh) rotate(0deg)    scale(1.005); }
 }
 
 /* Sleepy — slow gentle nodding */
@@ -531,6 +545,17 @@ html, body {
   30%      { transform: translateY(0.4vh) rotate(-1deg); }
   60%      { transform: translateY(0.6vh) rotate(0.5deg); }
   80%      { transform: translateY(0.3vh) rotate(-0.3deg); }
+}
+
+/* Idle — resting, present, gently breathing */
+.companion.idle .companion-inner {
+  animation: idleRest 8s ease-in-out infinite;
+}
+@keyframes idleRest {
+  0%, 100% { transform: translateY(0)      rotate(0deg)   scale(1); }
+  22%      { transform: translateY(-0.4vh) rotate(0.3deg) scale(1.003); }
+  48%      { transform: translateY(-0.2vh) rotate(-0.2deg) scale(1.001); }
+  72%      { transform: translateY(-0.5vh) rotate(0.2deg) scale(1.004); }
 }
 
 /* Suspicious — slow suspicious lean */
@@ -875,6 +900,28 @@ body[data-time-period="NIGHT"] .companion {
   25%      { filter: drop-shadow(0 0 5vmin rgba(205,138,192,0.36)); }
   40%      { filter: drop-shadow(0 0 8vmin rgba(215,148,202,0.48)); }
   60%,100% { filter: drop-shadow(0 0 4vmin rgba(205,138,192,0.32)); }
+}
+
+/* FORGIVEN — warm relief after tension; eyes brighten, soft smile */
+.companion.forgiven .eye {
+  width: 40vmin;
+  height: 46vmin;
+  border-radius: 50% 50% 48% 48% / 48% 48% 52% 52%;
+  box-shadow:
+    0 0 5vmin rgba(255, 200, 220, 0.62),
+    0 0 14vmin rgba(255, 180, 210, 0.28),
+    0 0 28vmin rgba(255, 160, 200, 0.10);
+}
+.companion.forgiven .brow-left  { transform: translateY(-1.4vmin) rotate(-5deg); }
+.companion.forgiven .brow-right { transform: translateY(-1.4vmin) rotate(5deg); }
+/* Forgiven body — one small settling-down sigh, then holds */
+.companion.forgiven .companion-inner {
+  animation: forgivenSettle 1.2s ease-out forwards;
+}
+@keyframes forgivenSettle {
+  0%   { transform: translateY(-0.6vh) scale(1.008); }
+  40%  { transform: translateY(-0.3vh) scale(1.003); }
+  100% { transform: translateY(0)      scale(1); }
 }
 
 /* Tear overlay — bottom-of-screen water pool that rises while crying */
@@ -1340,17 +1387,19 @@ body[data-time-period="NIGHT"] .companion {
 /* Forgiven — soft grateful smile */
 .companion.forgiven .mouth {
   width: 10vmin; height: 4.5vmin;
-  border-bottom-color: rgba(200, 165, 235, 0.75);
-  border-left-color:   rgba(200, 165, 235, 0.38);
-  border-right-color:  rgba(200, 165, 235, 0.38);
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 185, 215, 0.82);
+  border-left-color:   rgba(255, 175, 205, 0.42);
+  border-right-color:  rgba(255, 175, 205, 0.42);
   border-top-color:    transparent;
+  border-width: 0.34vmin;
 }
 
 /* =====================================================================
    EYEBROW ADDITIONS — new emotion brows
    ===================================================================== */
-.companion.excited .brow-left  { transform: translateY(-2.8vmin) rotate(-6deg); }
-.companion.excited .brow-right { transform: translateY(-2.8vmin) rotate(6deg);  }
+.companion.excited .brow-left  { transform: translateY(-2.8vmin) rotate(-8deg); width: 24vmin; }
+.companion.excited .brow-right { transform: translateY(-2.8vmin) rotate(8deg);  width: 24vmin; }
 
 .companion.shy .brow-left  { transform: translateY(0.3vmin) rotate(3deg); }
 .companion.shy .brow-right { transform: translateY(-0.8vmin) rotate(-4deg); }
@@ -1672,4 +1721,541 @@ body.full-mode #world {
 /* In full mode, restore the companion to its default drag-free state */
 body.full-mode .companion {
   -webkit-app-region: no-drag;
+}
+
+/* =====================================================================
+   BREAK REMINDER TOAST
+   Glass card that slides up from the bottom-centre.
+   Visible in both pip and full modes.
+   ===================================================================== */
+@keyframes breakToastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1);   }
+}
+@keyframes breakToastOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1);   }
+  to   { opacity: 0; transform: translateX(-50%) translateY(16px)  scale(0.96); }
+}
+@keyframes breakToastGlow {
+  0%, 100% { box-shadow:
+    0 0 0 1px rgba(68, 232, 176, 0.20),
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(68, 232, 176, 0.08); }
+  50%       { box-shadow:
+    0 0 0 1px rgba(68, 232, 176, 0.35),
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 0 48px rgba(68, 232, 176, 0.18); }
+}
+
+#break-toast {
+  position: fixed;
+  bottom: 22vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4000;
+  /* Glass base */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(68, 232, 176, 0.07) 0%, transparent 60%),
+    linear-gradient(160deg, rgba(14, 22, 22, 0.82) 0%, rgba(8, 16, 20, 0.90) 100%);
+  backdrop-filter: blur(28px) saturate(1.5) brightness(1.06);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5) brightness(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(68, 232, 176, 0.28);
+  border-radius: 18px;
+  padding: 14px 16px 14px 14px;
+  display: none; /* shown by JS */
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  max-width: 340px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  animation: breakToastGlow 2.8s ease-in-out infinite;
+}
+#break-toast.break-toast-visible {
+  display: flex;
+  animation:
+    breakToastIn 0.30s cubic-bezier(0.34, 1.48, 0.64, 1) both,
+    breakToastGlow 2.8s 0.30s ease-in-out infinite;
+}
+#break-toast.break-toast-hiding {
+  display: flex;
+  animation: breakToastOut 0.22s ease-in both;
+}
+
+#break-toast-icon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(68, 232, 176, 0.35));
+}
+
+#break-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+#break-toast-title {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(68, 232, 176, 0.90);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+#break-toast-sub {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  color: rgba(180, 230, 210, 0.52);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+#break-toast-dismiss {
+  flex-shrink: 0;
+  background: rgba(68, 232, 176, 0.12);
+  border: 1px solid rgba(68, 232, 176, 0.25);
+  border-radius: 8px;
+  color: rgba(68, 232, 176, 0.82);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-app-region: no-drag;
+}
+#break-toast-dismiss:hover {
+  background: rgba(68, 232, 176, 0.22);
+  border-color: rgba(68, 232, 176, 0.45);
+  color: rgba(68, 232, 176, 1.0);
+}
+
+/* =====================================================================
+   SETTINGS GEAR BUTTON — top-left of full-mode screen
+   ===================================================================== */
+#settings-gear-btn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 3000;
+  width: 34px;
+  height: 34px;
+  background: rgba(10, 8, 22, 0.55);
+  border: 1px solid rgba(155, 135, 255, 0.18);
+  border-radius: 10px;
+  color: rgba(175, 160, 255, 0.65);
+  font-size: 16px;
+  cursor: pointer;
+  display: none; /* shown only in full-mode via rule below */
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.25s;
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35),
+              0 0 0 1px rgba(155, 135, 255, 0.06) inset;
+  -webkit-app-region: no-drag;
+}
+#settings-gear-btn:hover {
+  background: rgba(120, 100, 210, 0.22);
+  color: rgba(205, 190, 255, 0.92);
+  border-color: rgba(165, 145, 255, 0.35);
+  transform: rotate(60deg);
+}
+body.full-mode #settings-gear-btn { display: flex; }
+body.pip-mode  #settings-gear-btn { display: none; }
+
+/* =====================================================================
+   SETTINGS PANEL — glass morphism frosted overlay
+   ===================================================================== */
+@keyframes settingsPanelIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+
+#settings-panel {
+  position: fixed;
+  top: 58px;
+  left: 14px;
+  width: 300px;
+  max-height: calc(100vh - 78px);
+  z-index: 3001;
+  /* Glass — low-alpha so the backdrop blur actually shows through */
+  background: rgba(14, 11, 26, 0.46);
+  backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  /* Crisp white glass border + soft white sheen along the top */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: none; /* shown when .settings-open is added */
+  flex-direction: column;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+#settings-panel.settings-open {
+  display: flex;
+  animation: settingsPanelIn 0.22s cubic-bezier(0.34, 1.48, 0.64, 1) both;
+}
+
+/* Visibility is CSS-only — no JS mode-checking needed */
+body.pip-mode #settings-panel { display: none !important; }
+
+/* ── Panel header ─────────────────────────────────────────────── */
+#settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(200, 185, 255, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  position: sticky;
+  top: 0;
+  background: rgba(14, 11, 26, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  z-index: 1;
+}
+
+#settings-close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+#settings-close-btn:hover {
+  color: rgba(255, 255, 255, 0.80);
+  background: rgba(255, 75, 75, 0.14);
+  border-color: rgba(255, 75, 75, 0.28);
+}
+
+/* ── Panel body layout ────────────────────────────────────────── */
+#settings-body {
+  padding: 8px 0 18px;
+}
+
+.settings-section {
+  padding: 0 0 2px;
+}
+
+/* Section title with a coloured left-bar accent marker */
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.60);
+}
+.settings-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  background: linear-gradient(to bottom, rgba(170, 145, 255, 0.75), rgba(130, 105, 230, 0.25));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  gap: 12px;
+  border-radius: 10px;
+  margin: 1px 6px;
+  transition: background 0.15s;
+}
+.settings-row:not(.settings-row-hint):hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-row-hint {
+  padding-top: 2px;
+  padding-bottom: 4px;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  color: rgba(225, 218, 255, 0.78);
+  line-height: 1.3;
+  flex: 1;
+}
+
+.settings-row-sublabel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.32);
+  margin-top: 2px;
+}
+
+.settings-row-sublabel kbd {
+  font-family: inherit;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: rgba(200, 190, 255, 0.50);
+}
+
+.settings-divider {
+  margin: 4px 14px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Settings select ──────────────────────────────────────────── */
+.settings-select {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  color: rgba(215, 205, 255, 0.82);
+  font-size: 12px;
+  padding: 5px 26px 5px 9px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 100px;
+  text-align: right;
+  /* Custom purple chevron arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(160%2C140%2C255%2C0.50)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px 5px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.settings-select:hover {
+  border-color: rgba(160, 140, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.settings-select:focus {
+  border-color: rgba(160, 140, 255, 0.50);
+  background-color: rgba(160, 140, 255, 0.08);
+}
+.settings-select option {
+  background: #120f22;
+  color: rgba(220, 210, 255, 0.88);
+}
+
+/* ── Toggle switch ────────────────────────────────────────────── */
+.settings-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.settings-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.settings-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background 0.20s, border-color 0.20s, box-shadow 0.20s;
+}
+.settings-toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.40);
+  top: 2px;
+  left: 2px;
+  transition: transform 0.20s cubic-bezier(0.34, 1.52, 0.64, 1), background 0.20s;
+}
+.settings-toggle input:checked + .settings-toggle-track {
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.75), rgba(105, 82, 220, 0.75));
+  border-color: rgba(160, 140, 255, 0.50);
+  box-shadow: 0 0 8px rgba(145, 120, 255, 0.30);
+}
+.settings-toggle input:checked + .settings-toggle-track::after {
+  transform: translateX(16px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* ── Settings range slider ──────────────────────────────────── */
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(165, 145, 255, 0.90);
+  box-shadow: 0 0 6px rgba(150, 125, 255, 0.50);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(160, 135, 255, 0.70);
+}
+.settings-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(165, 145, 255, 0.90);
+  box-shadow: 0 0 6px rgba(150, 125, 255, 0.50);
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Companion size button group ────────────────────────────── */
+.settings-size-btns {
+  display: flex;
+  gap: 3px;
+}
+.settings-size-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  color: rgba(200, 188, 255, 0.60);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.settings-size-btn:hover {
+  background: rgba(160, 140, 255, 0.14);
+  color: rgba(215, 205, 255, 0.88);
+  border-color: rgba(160, 140, 255, 0.28);
+}
+.settings-size-btn.active {
+  background: linear-gradient(135deg, rgba(150, 125, 255, 0.65), rgba(105, 82, 220, 0.65));
+  border-color: rgba(160, 140, 255, 0.55);
+  color: rgba(240, 235, 255, 0.98);
+  box-shadow: 0 0 8px rgba(145, 120, 255, 0.35);
+}
+
+/* ── Companion size scale (applied via body class) ─────────── */
+body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
+body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
+body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
+
+/* =====================================================================
+   ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
+   Two thin rotated bars form a soft × over a flat neutral line.
+   ===================================================================== */
+
+/* Flat sealed line — neutral, no border arc */
+.companion.muted-all-off .mouth {
+  width: 6.5vmin;
+  height: 0.55vmin;
+  border-radius: 2vmin;
+  border-color: transparent;
+  background: rgba(140, 120, 200, 0.22);
+  opacity: 1;
+  overflow: visible;
+}
+
+/* Two diagonal bars forming a soft CSS × */
+.companion.muted-all-off .mouth::before,
+.companion.muted-all-off .mouth::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4.0vmin;
+  height: 0.30vmin;
+  background: rgba(210, 80, 80, 0.58);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(220, 70, 70, 0.22);
+}
+.companion.muted-all-off .mouth::before {
+  transform: translate(-50%, -50%) rotate(35deg);
+}
+.companion.muted-all-off .mouth::after {
+  transform: translate(-50%, -50%) rotate(-35deg);
+}
+
+/* =====================================================================
+   EMOTION TEST BUTTONS — compact grid in Settings › Expressions
+   ===================================================================== */
+.emotion-test-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  color: rgba(215, 205, 255, 0.60);
+  font-family: inherit;
+  font-size: 10.5px;
+  padding: 5px 3px;
+  cursor: pointer;
+  text-align: center;
+  text-transform: lowercase;
+  line-height: 1;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  --glow-color: 155, 135, 255;
+  -webkit-app-region: no-drag;
+}
+.emotion-test-btn:hover {
+  background: rgba(var(--glow-color), 0.12);
+  border-color: rgba(var(--glow-color), 0.28);
+  box-shadow: 0 0 7px rgba(var(--glow-color), 0.22);
+  color: rgba(255, 255, 255, 0.90);
+}
+.emotion-test-btn.active {
+  background: rgba(var(--glow-color), 0.20);
+  border-color: rgba(var(--glow-color), 0.45);
+  box-shadow: 0 0 12px rgba(var(--glow-color), 0.38);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* =====================================================================
+   SHORTCUT CHIPS — keyboard shortcut display in Settings › Shortcuts
+   ===================================================================== */
+.shortcut-chip {
+  font-family: inherit;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: rgba(200, 190, 255, 0.65);
+  white-space: nowrap;
+  flex-shrink: 0;
 }

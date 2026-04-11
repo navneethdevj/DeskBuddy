@@ -219,6 +219,28 @@ ipcMain.on('exit-full-mode', () => {
   mainWindow.webContents.send('full-mode-exited');
 });
 
+// ── Settings IPC handlers ──────────────────────────────────────────────────
+
+const SETTINGS_DEFAULTS = {
+  mutePreset:      'ALL_ON',
+  droneEnabled:    true,
+  brightness:      1.0,
+  breakInterval:   25,
+  sensitivity:     'NORMAL',
+  phoneDetection:  true,
+  companionSize:   'M',
+  nightAutoVolume: true,
+  keybinds:        {},
+};
+
+ipcMain.handle('settings:get', () => {
+  return store.get('settings', SETTINGS_DEFAULTS);
+});
+
+ipcMain.on('settings:set', (_event, obj) => {
+  store.set('settings', { ...SETTINGS_DEFAULTS, ...obj });
+});
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {

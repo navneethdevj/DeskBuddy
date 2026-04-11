@@ -26,6 +26,55 @@ const Sounds = (() => {
   let _savedGain  = 0.7;
   let _timeGainMult = 1.0;  // time-of-day gain modifier (0.8 at NIGHT)
 
+  // ── Mute preset system ─────────────────────────────────────────────────────
+
+  // Category A — tick sounds (highest frequency)
+  // Category B — emotion/personality sounds (medium frequency)
+  // Category C — session lifecycle sounds (infrequent, high meaning)
+  // Category D — break/reminder sounds (explicit intent)
+  const SOUND_CATEGORIES = {
+    focused_tick:       'A',
+    drifting_tick:      'A',
+    distracted_tick:    'A',
+    happy_coo:          'B',
+    curious_ooh:        'B',
+    suspicious_squint:  'B',
+    pouty_mweh:         'B',
+    grumpy_hmph:        'B',
+    scared_eep:         'B',
+    sad_whimper:        'B',
+    crying_sob:         'B',
+    overjoyed_chirp:    'B',
+    excited_chirp:      'B',
+    shy_squeak:         'B',
+    love_purr:          'B',
+    startled_gasp:      'B',
+    stretch_coo:        'B',
+    wink_blip:          'B',
+    giggle:             'B',
+    yawn:               'B',
+    sulking:            'B',
+    userLeft:           'B',
+    welcomeBack:        'B',
+    relief:             'B',
+    surprise:           'B',
+    session_start:      'C',
+    session_complete:   'C',
+    session_fail:       'C',
+    refocus:            'C',
+    break_start:        'D',
+    break_end:          'D',
+  };
+
+  const PRESET_ALLOWS = {
+    ALL_ON:          new Set(['A', 'B', 'C', 'D']),
+    ESSENTIAL:       new Set(['C', 'D']),
+    REMINDERS_ONLY:  new Set(['D']),
+    ALL_OFF:         new Set(),
+  };
+
+  let _mutePreset = 'ALL_ON';
+
   const cooldowns = {};
 
   // Per-sound minimum gap between plays (ms).
@@ -98,10 +147,14 @@ const Sounds = (() => {
 
   /**
    * play(name) — trigger a named sound by string.
-   * Used by Timer to fire tick sounds without coupling to internals.
+   * Checks the current mute preset before dispatching.
    * Unknown names are silently ignored (future-proof).
    */
   function play(name) {
+    // Category filter — check if current preset allows this sound's category
+    const cat = SOUND_CATEGORIES[name];
+    if (cat && !PRESET_ALLOWS[_mutePreset].has(cat)) return;
+
     const dispatch = {
       focused_tick:       _focused_tick,
       drifting_tick:      _drifting_tick,
@@ -120,6 +173,22 @@ const Sounds = (() => {
     };
     if (dispatch[name]) dispatch[name]();
   }
+
+  function setMutePreset(preset) {
+    if (!PRESET_ALLOWS[preset]) return;
+    _mutePreset = preset;
+    // For ALL_OFF, zero masterGain immediately (silences anything playing now)
+    if (preset === 'ALL_OFF') {
+      if (masterGain) masterGain.gain.value = 0;
+    } else {
+      // Restore masterGain if we were ALL_OFF (and not manually muted)
+      if (!_muted && masterGain) masterGain.gain.value = _savedGain * _timeGainMult;
+    }
+    // Update the companion mouth visual
+    _applyMuteVisual(preset);
+  }
+
+  function getMutePreset() { return _mutePreset; }
 
   function setVolume(v) {
     _savedGain = Math.max(0, Math.min(1, v));
@@ -143,6 +212,20 @@ const Sounds = (() => {
   function setNightGainMult(m) {
     _timeGainMult = Math.max(0, Math.min(1, m));
     if (masterGain && !_muted) masterGain.gain.value = _savedGain * _timeGainMult;
+  }
+
+  /**
+   * _applyMuteVisual(preset) — toggle the .muted-all-off class on the companion
+   * so CSS can show a crossed-out mouth when ALL_OFF is active.
+   */
+  function _applyMuteVisual(preset) {
+    const companion = document.querySelector('.companion');
+    if (!companion) return;
+    if (preset === 'ALL_OFF') {
+      companion.classList.add('muted-all-off');
+    } else {
+      companion.classList.remove('muted-all-off');
+    }
   }
 
   // ── Guard ──────────────────────────────────────────────────────────────────
@@ -548,6 +631,8 @@ const Sounds = (() => {
 
   function _pollExpressions() {
     if (!window.perception?.facePresent) return;
+    // Category B — only play if preset allows emotion sounds
+    if (!PRESET_ALLOWS[_mutePreset].has('B')) return;
     const p = window.perception;
     if (p.userSmiling && !_lastSmiling)     _giggle();
     if (p.userSurprised && !_lastSurprised) _surpriseGasp();
@@ -559,12 +644,17 @@ const Sounds = (() => {
     if (!ready) return;
     const present = !!window.perception?.facePresent;
     if (_lastFacePresent === undefined) { _lastFacePresent = present; return; }
-    if (present && !_lastFacePresent)   _welcomeBack();
-    if (!present && _lastFacePresent)   _userLeft();
+    // welcomeBack and userLeft are category B
+    if (PRESET_ALLOWS[_mutePreset].has('B')) {
+      if (present && !_lastFacePresent)   _welcomeBack();
+      if (!present && _lastFacePresent)   _userLeft();
+    }
     _lastFacePresent = present;
   }
 
   function _playForTransition(from, to) {
+    // All emotion transition sounds are category B
+    if (!PRESET_ALLOWS[_mutePreset].has('B')) return;
     switch (to) {
       case 'curious':    _curious_ooh();        break;
       case 'suspicious': _suspicious_squint();  break;
@@ -1450,6 +1540,6 @@ const Sounds = (() => {
 
   // ── Public surface ─────────────────────────────────────────────────────────
 
-  return { init, play, setVolume, mute, unmute, setNightGainMult };
+  return { init, play, setVolume, mute, unmute, setNightGainMult, setMutePreset, getMutePreset };
 
 })();

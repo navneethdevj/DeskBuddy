@@ -15,6 +15,8 @@ const Emotion = (() => {
   ];
   let currentState = null;
   let element = null;
+  let _previewActive = false;
+  let _previewTimer  = null;
 
   /**
    * Bind the emotion system to a companion DOM element.
@@ -29,6 +31,7 @@ const Emotion = (() => {
    */
   function setState(state) {
     if (!element) return;
+    if (_previewActive) return;   // brain cannot override during a preview
     if (state === currentState) return;
 
     // Remove previous state class
@@ -59,5 +62,32 @@ const Emotion = (() => {
     return [...STATES];
   }
 
-  return { init, setState, getState, getStates };
+  /**
+   * Temporarily force an emotion state for `durationMs` (default 3 s).
+   * Brain and timer overrides are blocked until the preview expires.
+   * Re-calling before the timer fires restarts the clock on the new state.
+   * onDone() is called when the lock is released.
+   */
+  function preview(state, durationMs, onDone) {
+    if (!element) return;
+    clearTimeout(_previewTimer);
+    _previewActive = true;
+
+    // Force-apply even if same as currentState (re-preview same emotion)
+    if (currentState) element.classList.remove(currentState);
+    if (state && STATES.includes(state)) {
+      element.classList.add(state);
+      currentState = state;
+    } else {
+      currentState = null;
+    }
+
+    _previewTimer = setTimeout(() => {
+      _previewActive = false;
+      _previewTimer  = null;
+      if (typeof onDone === 'function') onDone();
+    }, durationMs || 3000);
+  }
+
+  return { init, setState, getState, getStates, preview };
 })();
