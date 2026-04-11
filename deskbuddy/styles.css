@@ -1957,17 +1957,28 @@ body.pip-mode #settings-panel { display: none !important; }
   padding: 0 0 2px;
 }
 
-/* Section title with a coloured left-bar accent marker */
+/* Section title — now a full-width button that toggles its body */
 .settings-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px 5px;
+  width: 100%;
+  padding: 12px 14px 10px;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: rgba(165, 145, 255, 0.60);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s;
+}
+.settings-section-title:hover {
+  color: rgba(195, 178, 255, 0.85);
 }
 .settings-section-title::before {
   content: '';
@@ -1977,6 +1988,43 @@ body.pip-mode #settings-panel { display: none !important; }
   background: linear-gradient(to bottom, rgba(170, 145, 255, 0.75), rgba(130, 105, 230, 0.25));
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/* Chevron arrow — rotates when open */
+.settings-chevron {
+  display: inline-block;
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.18s ease, opacity 0.15s;
+  background: none;
+}
+.settings-chevron::after {
+  content: '›';
+  font-size: 14px;
+  line-height: 14px;
+  display: block;
+  transform: rotate(90deg);
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+.settings-section-title[aria-expanded="true"] .settings-chevron::after {
+  transform: rotate(-90deg);
+}
+.settings-section-title[aria-expanded="true"] .settings-chevron {
+  opacity: 0.75;
+}
+
+/* Collapsible body — CSS-height-transition accordion */
+.settings-section-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.22s ease;
+}
+.settings-section-body.expanded {
+  max-height: 600px; /* large enough for any section */
 }
 
 .settings-row {

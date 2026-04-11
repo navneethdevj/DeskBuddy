@@ -891,6 +891,12 @@
     function closePanel() {
       panel.classList.remove('settings-open');
       gearBtn.setAttribute('aria-expanded', 'false');
+      // Collapse all accordion sections
+      panel.querySelectorAll('.settings-section-title[aria-expanded="true"]').forEach(btn => {
+        btn.setAttribute('aria-expanded', 'false');
+        const body = btn.nextElementSibling;
+        if (body) body.classList.remove('expanded');
+      });
       gearBtn.focus();
     }
 
@@ -899,6 +905,16 @@
     });
 
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // ── Accordion section toggles ────────────────────────────────────────
+    panel.querySelectorAll('.settings-section-title').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isOpen = btn.getAttribute('aria-expanded') === 'true';
+        const body   = btn.nextElementSibling;
+        btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        if (body) body.classList.toggle('expanded', !isOpen);
+      });
+    });
 
     // Escape closes the panel
     panel.addEventListener('keydown', (e) => {
