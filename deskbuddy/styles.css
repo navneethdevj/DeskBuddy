@@ -3042,13 +3042,14 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 
 /* =====================================================================
    CELEBRATION OVERLAY — confetti + banner on session complete
+   z-index 3160 — above outcome popup (3150) so confetti falls over the card
    ===================================================================== */
 
 #celebration-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 3000;
+  z-index: 3160;
   /* particles are absolutely positioned children */
 }
 
@@ -3066,14 +3067,14 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
   100% { opacity: 0;    transform: translate(var(--dx, 0px), var(--dy, 800px))     rotate(var(--rot, 540deg)) scale(0.45); }
 }
 
-/* Banner that floats up during celebration */
+/* Banner that floats up during celebration — above outcome popup (3150) and confetti (3160) */
 #celebration-message {
   position: fixed;
   top: 42%;
   left: 50%;
   transform: translateX(-50%) translateY(-8px) scale(0.88);
   opacity: 0;
-  z-index: 3001;
+  z-index: 3165;
   pointer-events: none;
   text-align: center;
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -3244,7 +3245,7 @@ body.pip-mode #break-card { display: none !important; }
 
 /* =====================================================================
    OUTCOME POPUP — standalone centered card on session end
-   z-index 3150 — above celebration (3001), below analytics (3200)
+   z-index 3150 — above break-card (3100), below celebration (3160–3165) and analytics (3200)
    Works in both full-mode and pip-mode.
    ===================================================================== */
 
@@ -3255,9 +3256,10 @@ body.pip-mode #break-card { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.38s ease;
+  transition: opacity 0.38s ease, background 0.38s ease;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
@@ -3265,6 +3267,7 @@ body.pip-mode #break-card { display: none !important; }
 #outcome-screen.outcome-visible {
   opacity: 1;
   pointer-events: auto;
+  background: rgba(0, 0, 0, 0.38);
 }
 
 /* Inner frosted-glass card */
@@ -3298,7 +3301,7 @@ body.pip-mode #break-card { display: none !important; }
 
 /* =====================================================================
    ANALYTICS PANEL — post-session focus report overlay
-   z-index 3200 — above celebration (3001) and break-card (3100)
+   z-index 3200 — above celebration (3160–3165) and break-card (3100)
    ===================================================================== */
 
 #analytics-panel {
@@ -3584,7 +3587,7 @@ body.pip-mode #analytics-panel { display: none !important; }
 
 /* =====================================================================
    FOCUS GRAPH OVERLAY — ephemeral post-session attention graph
-   z-index 2600 — above session-panel (2500), below celebration (3000)
+   z-index 2600 — above session-panel (2500), below celebration (3160)
    ===================================================================== */
 
 #focus-graph-overlay {
