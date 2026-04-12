@@ -711,6 +711,13 @@
             <div id="hstat-period-focused" class="hp-hero-val">—</div>
             <div class="hp-hero-sub-label">focused</div>
           </div>
+          <!-- Goal progress bar (daily only) -->
+          <div class="hp-goal-bar-wrap" id="hp-goal-bar-wrap">
+            <div class="hp-goal-bar-track">
+              <div class="hp-goal-bar-fill" id="hp-goal-bar-fill" style="width:0%"></div>
+            </div>
+            <span class="hp-goal-bar-label" id="hp-goal-bar-label">0% of daily goal</span>
+          </div>
           <div class="hp-hero-chips">
             <span class="hp-chip hp-chip-sessions">
               <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M5 3v2.5l1.5 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -718,13 +725,40 @@
             </span>
             <span class="hp-chip hp-chip-score">
               <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1l1.12 2.27 2.5.36-1.81 1.76.43 2.49L5 6.77 2.76 7.88l.43-2.49L1.38 3.63l2.5-.36z" fill="currentColor"/></svg>
-              <span id="hstat-focus-score-avg">—</span> avg
+              <span id="hstat-focus-score-avg">—</span> avg focus
             </span>
             <span class="hp-chip hp-chip-streak">
               🔥 <span id="hstat-streak-current">0</span>d streak
             </span>
+            <span class="hp-chip hp-chip-max">
+              ⬆ best <span id="hstat-period-max">—</span>
+            </span>
           </div>
           <div id="hp-hero-motivation" class="hp-hero-motivation"></div>
+        </div>
+      </div>
+
+      <!-- ── OUTCOME BREAKDOWN ────────────────────────────────────────── -->
+      <div class="hp-breakdown-row" id="hp-breakdown-row">
+        <div class="hp-bk-item hp-bk-completed">
+          <span class="hp-bk-icon">✓</span>
+          <span class="hp-bk-val" id="hstat-bk-completed">0</span>
+          <span class="hp-bk-lbl">completed</span>
+        </div>
+        <div class="hp-bk-item hp-bk-failed">
+          <span class="hp-bk-icon">✕</span>
+          <span class="hp-bk-val" id="hstat-bk-failed">0</span>
+          <span class="hp-bk-lbl">failed</span>
+        </div>
+        <div class="hp-bk-item hp-bk-abandoned">
+          <span class="hp-bk-icon">~</span>
+          <span class="hp-bk-val" id="hstat-bk-abandoned">0</span>
+          <span class="hp-bk-lbl">abandoned</span>
+        </div>
+        <div class="hp-bk-item hp-bk-rate">
+          <span class="hp-bk-icon">◎</span>
+          <span class="hp-bk-val" id="hstat-bk-rate">—</span>
+          <span class="hp-bk-lbl">success rate</span>
         </div>
       </div>
 
@@ -735,6 +769,7 @@
           <div class="hp-stat-val" id="hstat-today-focused">—</div>
           <div class="hp-stat-lbl">today</div>
           <div class="hp-stat-sub"><span id="hstat-today-sessions">0</span> sessions</div>
+          <div class="hp-stat-max">best <span id="hstat-today-max">—</span></div>
         </div>
 
         <div class="hp-stat-divider"></div>
@@ -743,6 +778,7 @@
           <div class="hp-stat-val" id="hstat-week-focused">—</div>
           <div class="hp-stat-lbl">this week</div>
           <div class="hp-stat-sub"><span id="hstat-week-sessions">0</span> sessions</div>
+          <div class="hp-stat-max">best <span id="hstat-week-max">—</span></div>
         </div>
 
         <div class="hp-stat-divider"></div>
@@ -751,6 +787,7 @@
           <div class="hp-stat-val" id="hstat-month-focused">—</div>
           <div class="hp-stat-lbl">this month</div>
           <div class="hp-stat-sub"><span id="hstat-month-sessions">0</span> sessions</div>
+          <div class="hp-stat-max">best <span id="hstat-month-max">—</span></div>
         </div>
 
         <div class="hp-stat-divider"></div>
@@ -758,7 +795,8 @@
         <div class="hp-stat-block hp-stat-lifetime">
           <div class="hp-stat-val" id="hstat-lifetime-focused">—</div>
           <div class="hp-stat-lbl">all time</div>
-          <div class="hp-stat-sub">total focus</div>
+          <div class="hp-stat-sub"><span id="hstat-lifetime-sessions">0</span> sessions</div>
+          <div class="hp-stat-max">best <span id="hstat-lifetime-max">—</span></div>
         </div>
 
       </div>
@@ -778,6 +816,12 @@
         </div>
         <div id="hp-calendar-grid" class="hp-calendar-grid">
           <!-- Populated by history-panel.js -->
+        </div>
+        <!-- Calendar legend -->
+        <div class="hp-cal-legend">
+          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-completed"></span>completed</span>
+          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-session"></span>sessions</span>
+          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-today"></span>today</span>
         </div>
       </div>
 

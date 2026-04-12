@@ -51,6 +51,7 @@ const HistoryPanel = (() => {
         const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
         const streak  = (typeof Session !== 'undefined' && Session.computeDayStreak) ? Session.computeDayStreak() : 0;
         _renderHero(history, streak, _activePeriod);
+        _renderBreakdown(history, _activePeriod);
         _syncGraphToPeriod(_activePeriod);
       });
     });
@@ -120,6 +121,7 @@ const HistoryPanel = (() => {
 
     _renderHeroDate();
     _renderHero(history, streak, 'daily');
+    _renderBreakdown(history, 'daily');
     _renderStatRow(history, streak);
     _renderCalendarHTML(history);
     _renderRecentSessions(history, false);
@@ -182,8 +184,32 @@ const HistoryPanel = (() => {
       _setText('hstat-focus-score-avg', '—');
     }
 
+    // Best single session focus time (max actualFocusedSeconds)
+    const maxFocusMs = _getMaxFocusMs(sessions);
+    _setText('hstat-period-max', maxFocusMs > 0 ? HistoryStats.formatFocusTime(maxFocusMs) : '—');
+
     // Streak chip
     _setText('hstat-streak-current', String(streak));
+
+    // Goal progress bar (daily only — target 2h)
+    const goalWrap = document.getElementById('hp-goal-bar-wrap');
+    const goalFill = document.getElementById('hp-goal-bar-fill');
+    const goalLbl  = document.getElementById('hp-goal-bar-label');
+    if (goalWrap) {
+      if (period === 'daily') {
+        goalWrap.style.display = '';
+        const pct = Math.min(100, Math.round((focusedMs / GOAL_MS) * 100));
+        if (goalFill) goalFill.style.width = pct + '%';
+        if (goalLbl)  goalLbl.textContent  = pct >= 100 ? '🎯 daily goal reached!' : `${pct}% of 2h daily goal`;
+        if (goalFill) {
+          goalFill.style.background = pct >= 100
+            ? 'linear-gradient(90deg, rgba(52,211,153,0.90), rgba(52,211,153,0.60))'
+            : 'linear-gradient(90deg, rgba(139,118,255,0.90), rgba(88,60,200,0.60))';
+        }
+      } else {
+        goalWrap.style.display = 'none';
+      }
+    }
 
     // Goal glow on daily
     const card = document.querySelector('.hp-hero-card');
@@ -226,18 +252,70 @@ const HistoryPanel = (() => {
 
     _setText('hstat-today-focused',    HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(today)));
     _setText('hstat-today-sessions',   String(today.length));
+    _setText('hstat-today-max',        _fmtMax(_getMaxFocusMs(today)));
+
     _setText('hstat-week-focused',     HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(week)));
     _setText('hstat-week-sessions',    String(week.length));
+    _setText('hstat-week-max',         _fmtMax(_getMaxFocusMs(week)));
+
     _setText('hstat-month-focused',    HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(month)));
     _setText('hstat-month-sessions',   String(month.length));
-    _setText('hstat-lifetime-focused', HistoryStats.formatFocusTime(
-      (typeof Session !== 'undefined' ? Session.getTotalFocusedMinutes() : 0) * 60 * 1000
-    ));
+    _setText('hstat-month-max',        _fmtMax(_getMaxFocusMs(month)));
+
+    const lifetimeMs = (typeof Session !== 'undefined' ? Session.getTotalFocusedMinutes() : 0) * 60 * 1000;
+    _setText('hstat-lifetime-focused', HistoryStats.formatFocusTime(lifetimeMs));
+    _setText('hstat-lifetime-sessions', String(history.length));
+    _setText('hstat-lifetime-max',     _fmtMax(_getMaxFocusMs(history)));
 
     // Keep hidden compatibility IDs
     const longest = (typeof Session !== 'undefined' && Session.computeLongestStreak) ? Session.computeLongestStreak() : 0;
     _setText('hstat-streak-longest', String(longest));
     _setText('hstat-week-streak', String(streak));
+  }
+
+  /** Returns max actualFocusedSeconds * 1000 across completed sessions, else 0. */
+  function _getMaxFocusMs(sessions) {
+    let max = 0;
+    sessions.forEach(s => {
+      if (s.outcome !== 'COMPLETED') return;
+      const ms = (s.actualFocusedSeconds || 0) * 1000;
+      if (ms > max) max = ms;
+    });
+    return max;
+  }
+
+  function _fmtMax(ms) {
+    return ms > 0 ? HistoryStats.formatFocusTime(ms) : '—';
+  }
+
+  // ── Outcome breakdown (completed / failed / abandoned / rate) ────────────
+
+  function _renderBreakdown(history, period) {
+    let sessions;
+    if      (period === 'daily')   sessions = HistoryStats.getSessionsForToday(history);
+    else if (period === 'weekly')  sessions = HistoryStats.getSessionsForWeek(history);
+    else if (period === 'monthly') sessions = HistoryStats.getSessionsForMonth(history);
+    else                           sessions = history;
+
+    const completed = sessions.filter(s => s.outcome === 'COMPLETED').length;
+    const failed    = sessions.filter(s => s.outcome === 'FAILED').length;
+    const abandoned = sessions.filter(s => s.outcome === 'ABANDONED').length;
+    const total     = sessions.length;
+    const rate      = total > 0 ? Math.round((completed / total) * 100) : null;
+
+    _setText('hstat-bk-completed', String(completed));
+    _setText('hstat-bk-failed',    String(failed));
+    _setText('hstat-bk-abandoned', String(abandoned));
+    _setText('hstat-bk-rate', rate !== null ? `${rate}%` : '—');
+
+    // Colour-code the rate
+    const rateEl = document.getElementById('hstat-bk-rate');
+    if (rateEl) {
+      rateEl.style.color = rate === null ? ''
+        : rate >= 80 ? 'rgba(52,211,153,0.94)'
+        : rate >= 50 ? 'rgba(167,139,250,0.94)'
+        : 'rgba(248,113,113,0.88)';
+    }
   }
 
   // ── HTML calendar ─────────────────────────────────────────────────────────
@@ -413,19 +491,44 @@ const HistoryPanel = (() => {
       const isBest    = idx === bestTodayIdx && bestTodayScore > 0;
       const bestBadge = isBest ? '<span class="hp-ri-best">⭐ best</span>' : '';
 
-      const barColor  = scoreNum >= 80 ? 'var(--col-green)' : scoreNum >= 50 ? 'var(--col-purple)' : 'var(--col-red)';
+      // Focus rating label (A/B/C/D/F)
+      const focusRating = scoreNum >= 90 ? 'A+' : scoreNum >= 80 ? 'A' : scoreNum >= 70 ? 'B'
+                        : scoreNum >= 60 ? 'C'  : scoreNum >= 40 ? 'D' : scoreNum > 0 ? 'F' : '';
+      const ratingColor = scoreNum >= 80 ? 'rgba(52,211,153,0.90)'
+                        : scoreNum >= 60 ? 'rgba(167,139,250,0.90)'
+                        : scoreNum >= 40 ? 'rgba(251,191,36,0.90)'
+                        : scoreNum > 0   ? 'rgba(248,113,113,0.88)' : '';
+
+      // Day label for sessions older than today
+      const dayLabel = (() => {
+        if (!s.date) return '';
+        const d = new Date(s.date);
+        if (!isFinite(d.getTime())) return '';
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        const sd  = new Date(d); sd.setHours(0, 0, 0, 0);
+        const diff = Math.round((now - sd) / 86400000);
+        if (diff === 0) return '';
+        if (diff === 1) return 'Yesterday';
+        const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (diff < 7)  return DAYS[d.getDay()];
+        return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+      })();
+
+      const barColor  = scoreNum >= 80 ? 'rgba(52,211,153,0.75)' : scoreNum >= 50 ? 'rgba(139,118,255,0.75)' : 'rgba(248,113,113,0.65)';
       const focusBar  = scoreNum > 0
         ? `<div class="hp-ri-bar-track"><div class="hp-ri-bar-fill" style="width:${scoreNum}%;background:${barColor}"></div></div>`
         : '';
 
       return `
-        <div class="hp-recent-item" style="animation-delay:${idx * 50}ms">
+        <div class="hp-recent-item" style="animation-delay:${idx * 40}ms">
           <div class="hp-ri-outcome hp-ri-outcome-${outcome}">${icon}</div>
           <div class="hp-ri-info">
             <div class="hp-ri-top">
               <span class="hp-ri-duration">${_esc(durLabel)}</span>
               <span class="hp-ri-badge hp-ri-badge-${outcome}">${badgeTxt}</span>
               ${bestBadge}
+              ${dayLabel ? `<span class="hp-ri-day">${_esc(dayLabel)}</span>` : ''}
             </div>
             <div class="hp-ri-meta">
               ${exactTime ? `<span class="hp-ri-time">${_esc(exactTime)}</span>` : ''}
@@ -434,7 +537,7 @@ const HistoryPanel = (() => {
             </div>
             ${focusBar}
           </div>
-          ${scoreNum > 0 ? `<div class="hp-ri-score">${scoreNum}%</div>` : ''}
+          ${focusRating ? `<div class="hp-ri-rating" style="color:${ratingColor}">${focusRating}</div>` : ''}
         </div>`;
     }).join('');
 

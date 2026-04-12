@@ -2941,7 +2941,7 @@ body.pip-mode  #history-btn { display: none !important; }
   left: 0;
   top: calc(50% - 50px);
   transform: translateX(calc(-100% - 8px));
-  width: 420px;
+  width: 520px;
   max-height: calc(100vh - 60px);
   z-index: 2490;
   display: none;
@@ -2970,10 +2970,10 @@ body.pip-mode  #history-panel { display: none !important; }
   border-right: 1px solid rgba(0, 0, 0, 0.18);
   border-bottom: 1px solid rgba(0, 0, 0, 0.28);
   border-radius: 22px;
-  padding: 15px 14px 20px;
+  padding: 18px 18px 24px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 13px;
   overflow-y: auto;
   overscroll-behavior: contain;
   max-height: calc(100vh - 100px);
@@ -3012,11 +3012,11 @@ body.pip-mode  #history-panel { display: none !important; }
   50%       { opacity: 0.75; filter: drop-shadow(0 0 3px rgba(139, 118, 255, 0.50)) drop-shadow(0 0 8px rgba(139, 118, 255, 0.20)); }
 }
 .hp-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(210, 200, 255, 0.65);
+  color: rgba(210, 200, 255, 0.75);
 }
 .hp-header-right {
   display: flex;
@@ -3098,7 +3098,7 @@ body.pip-mode  #history-panel { display: none !important; }
   gap: 5px;
 }
 .hp-hero-val {
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 900;
   letter-spacing: -0.04em;
   color: rgba(230, 220, 255, 0.96);
@@ -3106,26 +3106,26 @@ body.pip-mode  #history-panel { display: none !important; }
   text-shadow: 0 0 20px rgba(139, 118, 255, 0.40);
 }
 .hp-hero-sub-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(155, 140, 220, 0.48);
+  color: rgba(155, 140, 220, 0.55);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 2px;
 }
 .hp-hero-chips {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 .hp-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 9px;
+  gap: 4px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2.5px 7px;
-  border-radius: 6px;
+  padding: 3px 8px;
+  border-radius: 7px;
   border: 1px solid;
 }
 .hp-chip-sessions {
@@ -3276,27 +3276,27 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-sdot-blue   { background: rgba(88, 166, 255, 0.80);  box-shadow: 0 0 5px rgba(88,166,255,0.50); }
 .hp-sdot-teal   { background: rgba(52, 211, 153, 0.80);  box-shadow: 0 0 5px rgba(52,211,153,0.50); }
 .hp-slabel {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: rgba(200, 190, 255, 0.50);
+  color: rgba(200, 190, 255, 0.58);
 }
 
 /* ── View pills ──────────────────────────────────────────────────── */
 .hgraph-pills {
   display: flex;
-  gap: 2px;
+  gap: 3px;
 }
 .hgraph-pill, .hcal-pill {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  padding: 3px 7px;
+  padding: 3px 9px;
   border-radius: 6px;
   border: 1px solid rgba(139, 118, 255, 0.13);
   background: transparent;
-  color: rgba(139, 118, 255, 0.38);
+  color: rgba(139, 118, 255, 0.42);
   cursor: pointer;
   transition: background 0.14s, color 0.14s, border-color 0.14s, box-shadow 0.14s;
   -webkit-app-region: no-drag;
@@ -3346,78 +3346,87 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 .hp-recent-empty {
-  font-size: 9px;
-  color: rgba(155, 140, 220, 0.35);
+  font-size: 10px;
+  color: rgba(155, 140, 220, 0.38);
   text-align: center;
-  padding: 14px 0;
+  padding: 16px 0;
   font-style: italic;
   letter-spacing: 0.04em;
 }
 .hp-recent-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.055);
   transition: background 0.15s, border-color 0.15s;
+  animation: hp-item-in 0.30s ease both;
+}
+@keyframes hp-item-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 .hp-recent-item:hover {
   background: rgba(139, 118, 255, 0.07);
   border-color: rgba(139, 118, 255, 0.16);
 }
 .hp-ri-outcome {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 .hp-ri-outcome-completed {
   background: rgba(52, 211, 153, 0.15);
   border: 1px solid rgba(52, 211, 153, 0.28);
+  color: rgba(52, 211, 153, 0.92);
 }
 .hp-ri-outcome-failed {
   background: rgba(248, 113, 113, 0.13);
   border: 1px solid rgba(248, 113, 113, 0.25);
+  color: rgba(248, 113, 113, 0.85);
 }
 .hp-ri-outcome-abandoned {
   background: rgba(120, 110, 160, 0.14);
   border: 1px solid rgba(140, 130, 180, 0.20);
+  color: rgba(170, 160, 210, 0.65);
 }
 .hp-ri-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 .hp-ri-top {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 .hp-ri-duration {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: rgba(220, 210, 255, 0.90);
+  color: rgba(220, 210, 255, 0.92);
   line-height: 1;
 }
 .hp-ri-badge {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 1.5px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 .hp-ri-badge-completed {
   background: rgba(52, 211, 153, 0.15);
@@ -3434,13 +3443,65 @@ body.pip-mode  #history-panel { display: none !important; }
   color: rgba(170, 160, 210, 0.70);
   border: 1px solid rgba(140, 130, 180, 0.18);
 }
-.hp-ri-sub {
+.hp-ri-best {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.12);
+  color: rgba(251, 191, 36, 0.88);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+}
+.hp-ri-day {
   font-size: 8.5px;
-  color: rgba(155, 140, 220, 0.42);
-  font-weight: 500;
+  font-weight: 600;
+  color: rgba(139, 118, 255, 0.52);
+  margin-left: auto;
+}
+.hp-ri-meta {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+.hp-ri-time {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(200, 185, 255, 0.55);
+}
+.hp-ri-sep {
+  font-size: 9px;
+  color: rgba(139, 118, 255, 0.25);
+}
+.hp-ri-ago {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(155, 140, 220, 0.40);
+}
+.hp-ri-stars {
+  font-size: 9px;
+  color: rgba(251, 191, 36, 0.65);
+  letter-spacing: 1px;
+  margin-left: 2px;
+}
+.hp-ri-bar-track {
+  height: 3px;
+  background: rgba(139, 118, 255, 0.10);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.hp-ri-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+.hp-ri-rating {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: center;
 }
 .hp-ri-score {
   margin-left: auto;
@@ -3462,14 +3523,14 @@ body.pip-mode  #history-panel { display: none !important; }
   border-radius: 14px;
 }
 .hp-period-tab {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  padding: 7px 4px;
+  padding: 8px 4px;
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(155, 140, 220, 0.50);
+  color: rgba(155, 140, 220, 0.55);
   cursor: pointer;
   transition: background 0.16s, color 0.16s, border-color 0.16s, box-shadow 0.16s;
   -webkit-app-region: no-drag;
@@ -3488,16 +3549,116 @@ body.pip-mode  #history-panel { display: none !important; }
 
 /* ── Hero card (simplified — no ring) ─────────────────────────────────── */
 .hp-hero-period-badge {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 4px;
   background: rgba(139, 118, 255, 0.18);
   border: 1px solid rgba(139, 118, 255, 0.30);
   color: rgba(185, 170, 255, 0.90);
 }
+
+/* ── Goal progress bar ────────────────────────────────────────────────── */
+.hp-goal-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 1px;
+}
+.hp-goal-bar-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hp-goal-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(.4,0,.2,1);
+}
+.hp-goal-bar-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(180, 165, 255, 0.52);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Max session chip ─────────────────────────────────────────────────── */
+.hp-chip-max {
+  color: rgba(52, 211, 153, 0.85);
+  background: rgba(52, 211, 153, 0.09);
+  border-color: rgba(52, 211, 153, 0.20);
+}
+
+/* ── Outcome breakdown row ────────────────────────────────────────────── */
+.hp-breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.hp-bk-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px 9px;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: box-shadow 0.15s;
+}
+.hp-bk-icon {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+.hp-bk-val {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.hp-bk-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.hp-bk-completed {
+  background: rgba(52, 211, 153, 0.07);
+  border-color: rgba(52, 211, 153, 0.18);
+}
+.hp-bk-completed .hp-bk-icon { color: rgba(52, 211, 153, 0.75); }
+.hp-bk-completed .hp-bk-val  { color: rgba(52, 211, 153, 0.94); }
+.hp-bk-completed .hp-bk-lbl  { color: rgba(52, 211, 153, 1); }
+
+.hp-bk-failed {
+  background: rgba(248, 113, 113, 0.06);
+  border-color: rgba(248, 113, 113, 0.16);
+}
+.hp-bk-failed .hp-bk-icon { color: rgba(248, 113, 113, 0.70); }
+.hp-bk-failed .hp-bk-val  { color: rgba(248, 113, 113, 0.88); }
+.hp-bk-failed .hp-bk-lbl  { color: rgba(248, 113, 113, 1); }
+
+.hp-bk-abandoned {
+  background: rgba(140, 130, 180, 0.07);
+  border-color: rgba(140, 130, 180, 0.16);
+}
+.hp-bk-abandoned .hp-bk-icon { color: rgba(170, 160, 210, 0.60); }
+.hp-bk-abandoned .hp-bk-val  { color: rgba(170, 160, 210, 0.82); }
+.hp-bk-abandoned .hp-bk-lbl  { color: rgba(170, 160, 210, 1); }
+
+.hp-bk-rate {
+  background: rgba(139, 118, 255, 0.07);
+  border-color: rgba(139, 118, 255, 0.18);
+}
+.hp-bk-rate .hp-bk-icon { color: rgba(167, 139, 250, 0.65); }
+.hp-bk-rate .hp-bk-val  { color: rgba(167, 139, 250, 0.94); font-size: 15px; }
+.hp-bk-rate .hp-bk-lbl  { color: rgba(167, 139, 250, 1); }
 .hp-hero-chip-streak {
   color: rgba(251, 191, 36, 0.90);
   background: rgba(251, 191, 36, 0.10);
@@ -3509,12 +3670,12 @@ body.pip-mode  #history-panel { display: none !important; }
   border-color: rgba(251, 191, 36, 0.20);
 }
 .hp-hero-motivation {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
-  color: rgba(180, 165, 255, 0.52);
+  color: rgba(180, 165, 255, 0.60);
   letter-spacing: 0.02em;
   margin-top: 2px;
-  min-height: 12px;
+  min-height: 14px;
 }
 
 /* ── Stats row (horizontal 4-up) ──────────────────────────────────────── */
@@ -3525,14 +3686,14 @@ body.pip-mode  #history-panel { display: none !important; }
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.055);
   border-radius: 14px;
-  padding: 12px 6px;
+  padding: 14px 8px;
 }
 .hp-stat-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 0 8px;
+  padding: 0 10px;
 }
 .hp-stat-divider {
   background: rgba(139, 118, 255, 0.12);
@@ -3541,24 +3702,34 @@ body.pip-mode  #history-panel { display: none !important; }
   margin: 4px 0;
 }
 .hp-stat-val {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
   letter-spacing: -0.03em;
   line-height: 1;
   color: rgba(220, 210, 255, 0.94);
 }
 .hp-stat-lbl {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(155, 140, 220, 0.48);
-  margin-top: 1px;
+  color: rgba(155, 140, 220, 0.55);
+  margin-top: 2px;
 }
 .hp-stat-sub {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 500;
-  color: rgba(140, 125, 200, 0.34);
+  color: rgba(140, 125, 200, 0.42);
+}
+.hp-stat-max {
+  font-size: 8.5px;
+  font-weight: 500;
+  color: rgba(139, 118, 255, 0.45);
+  margin-top: 1px;
+}
+.hp-stat-max span {
+  font-weight: 700;
+  color: rgba(167, 139, 250, 0.65);
 }
 .hp-stat-today .hp-stat-val  { color: rgba(130, 195, 255, 0.94); }
 .hp-stat-week  .hp-stat-val  { color: rgba(167, 139, 250, 0.94); }
@@ -3572,21 +3743,21 @@ body.pip-mode  #history-panel { display: none !important; }
   gap: 6px;
 }
 .hp-cal-month-label {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: rgba(200, 185, 255, 0.75);
-  min-width: 74px;
+  color: rgba(200, 185, 255, 0.80);
+  min-width: 90px;
   text-align: center;
 }
 .hp-cal-nav-btn {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
   border: 1px solid rgba(139, 118, 255, 0.18);
   background: rgba(139, 118, 255, 0.06);
-  color: rgba(155, 135, 255, 0.60);
-  font-size: 13px;
+  color: rgba(155, 135, 255, 0.65);
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -3603,24 +3774,24 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.12);
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.14);
   border: 1px solid rgba(139, 118, 255, 0.10);
   border-radius: 14px;
-  padding: 10px;
+  padding: 12px;
 }
 .hp-cal-dow {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(139, 118, 255, 0.40);
+  color: rgba(139, 118, 255, 0.45);
   text-align: center;
-  padding: 0 0 4px;
+  padding: 0 0 5px;
 }
 .hp-cal-day {
   aspect-ratio: 1;
-  border-radius: 7px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3634,17 +3805,17 @@ body.pip-mode  #history-panel { display: none !important; }
   /* placeholder for days before month starts */
 }
 .hp-cal-num {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1;
-  color: rgba(180, 165, 255, 0.42);
+  color: rgba(180, 165, 255, 0.45);
 }
 /* Day with any session */
 .hp-cal-day.hp-cal-has-session {
   background: rgba(139, 118, 255, 0.12);
 }
 .hp-cal-day.hp-cal-has-session .hp-cal-num {
-  color: rgba(200, 185, 255, 0.75);
+  color: rgba(200, 185, 255, 0.80);
 }
 /* Day with completed session */
 .hp-cal-day.hp-cal-completed {
@@ -3682,6 +3853,32 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-cal-today .hp-cal-dot {
   background: rgba(255, 255, 255, 0.80);
 }
+
+/* ── Calendar legend ──────────────────────────────────────────────────── */
+.hp-cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 4px 2px 0;
+}
+.hp-cal-leg-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(155, 140, 220, 0.42);
+}
+.hp-cal-leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.hp-cal-leg-completed { background: rgba(52, 211, 153, 0.55); }
+.hp-cal-leg-session   { background: rgba(139, 118, 255, 0.40); }
+.hp-cal-leg-today     { background: rgba(139, 118, 255, 0.70); box-shadow: 0 0 6px rgba(139,118,255,0.50); }
 
 /* ── Graph label ──────────────────────────────────────────────────────── */
 #hp-graph-label {
