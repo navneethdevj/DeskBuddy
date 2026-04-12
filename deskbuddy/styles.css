@@ -2859,14 +2859,15 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
    HISTORY BUTTON — right-side icon, below brain icon
    ===================================================================== */
 
+/* ── History toggle button — top-left, right of gear ─────────────────── */
 #history-btn {
   position: fixed;
-  left: 10px;
-  top: calc(50% + 56px);
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  z-index: 2495;
+  top: 14px;
+  left: 56px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  z-index: 3000;
   cursor: pointer;
   display: none;
   align-items: center;
@@ -2875,116 +2876,118 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
   outline: none;
   -webkit-app-region: no-drag;
 
-  background: rgba(22, 18, 40, 0.72);
-  backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
-  -webkit-backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
-  border-top: 1px solid rgba(255, 255, 255, 0.20);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.14);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+  background: rgba(10, 8, 22, 0.55);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid rgba(155, 135, 255, 0.18);
 
   transition:
-    opacity    0.30s ease,
-    transform  0.30s cubic-bezier(0.32, 0.72, 0, 1),
-    box-shadow 0.22s ease;
+    background 0.18s,
+    color      0.18s,
+    border-color 0.18s,
+    transform  0.20s cubic-bezier(0.34, 1.48, 0.64, 1),
+    box-shadow 0.18s;
 
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.40),
-    0 0 0 0.5px rgba(155, 135, 255, 0.10) inset;
+    0 2px 12px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(155, 135, 255, 0.06) inset;
 }
 body.full-mode #history-btn { display: flex; }
 body.pip-mode  #history-btn { display: none !important; }
 
-#history-btn-icon {
-  width: 16px;
-  height: 16px;
+.history-btn-glyph {
+  font-size: 16px;
   color: rgba(175, 160, 255, 0.65);
-  transition: color 0.18s, transform 0.22s;
-  flex-shrink: 0;
+  transition: color 0.18s, transform 0.20s;
+  line-height: 1;
 }
-#history-btn:hover #history-btn-icon {
-  color: rgba(210, 195, 255, 0.95);
-  transform: scale(1.08);
+#history-btn:hover {
+  background: rgba(120, 100, 210, 0.22);
+  border-color: rgba(165, 145, 255, 0.35);
 }
-.history-btn-star {
-  transition: opacity 0.22s;
+#history-btn:hover .history-btn-glyph {
+  color: rgba(205, 190, 255, 0.92);
+  transform: scale(1.12);
 }
-#history-btn:hover .history-btn-star {
-  opacity: 0.9;
+#history-btn.history-panel-open {
+  background: rgba(139, 118, 255, 0.22);
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow:
+    0 0 14px rgba(139, 118, 255, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.30);
 }
-
+#history-btn.history-panel-open .history-btn-glyph {
+  color: rgba(220, 205, 255, 0.98);
+}
 #history-btn-ring {
   position: absolute;
   inset: -3px;
-  border-radius: 14px;
+  border-radius: 13px;
   border: 1.5px solid rgba(155, 135, 255, 0.22);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.22s;
 }
-#history-btn:hover #history-btn-ring {
+#history-btn:hover #history-btn-ring,
+#history-btn.history-panel-open #history-btn-ring {
   opacity: 1;
 }
 
-#history-btn.history-btn-hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.88);
-}
-
 /* =====================================================================
-   HISTORY PANEL — right-side glass sidebar, fully redesigned
+   HISTORY PANEL — left-anchored glass panel, V2 spec
    ===================================================================== */
+
+@keyframes hp-panel-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);   }
+}
 
 #history-panel {
   position: fixed;
-  left: 0;
-  top: calc(50% - 50px);
-  transform: translateX(calc(-100% - 8px));
-  width: 520px;
-  max-height: calc(100vh - 60px);
-  z-index: 2490;
+  top: 58px;
+  left: 14px;
+  width: 320px;
+  max-height: calc(100vh - 80px);
+  z-index: 2990;
   display: none;
   flex-direction: column;
-  padding-left: 10px;
-  pointer-events: auto;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
-  overflow: visible;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 body.full-mode #history-panel { display: flex; }
 body.pip-mode  #history-panel { display: none !important; }
 
-#history-panel.history-sidebar-open {
-  transform: translateX(0);
+#history-panel.history-panel-visible {
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
+  animation: hp-panel-in 0.22s cubic-bezier(0.34, 1.48, 0.64, 1) both;
 }
 
 /* ── Glass card ───────────────────────────────────────────────────── */
 #history-card {
-  background: rgba(10, 7, 24, 0.93);
-  backdrop-filter: blur(80px) saturate(2.4) brightness(1.14);
-  -webkit-backdrop-filter: blur(80px) saturate(2.4) brightness(1.14);
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-  border-left: 1px solid rgba(255, 255, 255, 0.07);
-  border-right: 1px solid rgba(0, 0, 0, 0.18);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
-  border-radius: 22px;
-  padding: 18px 18px 24px;
+  background: rgba(14, 11, 26, 0.46);
+  backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 18px;
+  padding: 16px 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 80px);
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 118, 255, 0.14) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.70),
-    0 8px 32px rgba(0, 0, 0, 0.45),
-    0 0 0 0.5px rgba(255, 255, 255, 0.05) inset,
-    0 1px 0 rgba(255, 255, 255, 0.11) inset,
-    0 0 50px rgba(90, 60, 200, 0.10);
+    0 16px 48px rgba(0, 0, 0, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
@@ -2993,7 +2996,7 @@ body.pip-mode  #history-panel { display: none !important; }
   align-items: center;
   justify-content: space-between;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(139, 118, 255, 0.10);
+  border-bottom: 1px solid rgba(139, 118, 255, 0.12);
 }
 .hp-header-left {
   display: flex;
@@ -3001,15 +3004,9 @@ body.pip-mode  #history-panel { display: none !important; }
   gap: 6px;
 }
 .hp-title-gem {
-  font-size: 11px;
-  color: rgba(139, 118, 255, 1);
-  filter: drop-shadow(0 0 6px rgba(139, 118, 255, 0.80))
-          drop-shadow(0 0 14px rgba(139, 118, 255, 0.40));
-  animation: hp-gem-pulse 3s ease-in-out infinite;
-}
-@keyframes hp-gem-pulse {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(139, 118, 255, 0.80)) drop-shadow(0 0 14px rgba(139, 118, 255, 0.40)); }
-  50%       { opacity: 0.75; filter: drop-shadow(0 0 3px rgba(139, 118, 255, 0.50)) drop-shadow(0 0 8px rgba(139, 118, 255, 0.20)); }
+  font-size: 14px;
+  color: rgba(139, 118, 255, 0.90);
+  filter: drop-shadow(0 0 6px rgba(139, 118, 255, 0.70));
 }
 .hp-title {
   font-size: 12px;
@@ -3018,269 +3015,166 @@ body.pip-mode  #history-panel { display: none !important; }
   text-transform: uppercase;
   color: rgba(210, 200, 255, 0.75);
 }
-.hp-header-right {
-  display: flex;
-  align-items: center;
-}
-.hp-header-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(52, 211, 153, 0.80);
-  box-shadow: 0 0 6px rgba(52, 211, 153, 0.60);
-  animation: hp-pulse-dot 2.4s ease-in-out infinite;
-}
-@keyframes hp-pulse-dot {
-  0%, 100% { opacity: 0.90; transform: scale(1); }
-  50%       { opacity: 0.45; transform: scale(0.75); }
-}
-
-/* ── Today Hero card ─────────────────────────────────────────────── */
-.hp-hero-card {
-  position: relative;
-  border-radius: 16px;
-  padding: 14px 14px 13px;
-  background: linear-gradient(135deg,
-    rgba(88, 60, 200, 0.22) 0%,
-    rgba(50, 30, 120, 0.18) 50%,
-    rgba(20, 10, 60, 0.14) 100%);
-  border: 1px solid rgba(139, 118, 255, 0.24);
-  overflow: hidden;
-  box-shadow:
-    0 4px 24px rgba(88, 60, 200, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.hp-hero-bg-glow {
-  position: absolute;
-  top: -30px;
-  right: -20px;
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 118, 255, 0.18) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hp-hero-inner {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.hp-hero-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.hp-hero-badge {
-  font-size: 7.5px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: rgba(139, 118, 255, 0.20);
-  border: 1px solid rgba(139, 118, 255, 0.32);
-  color: rgba(180, 165, 255, 0.90);
-}
-.hp-hero-date {
-  font-size: 8px;
-  font-weight: 500;
-  color: rgba(170, 160, 220, 0.42);
-  letter-spacing: 0.04em;
-}
-.hp-hero-main {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-.hp-hero-val {
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: rgba(230, 220, 255, 0.96);
-  line-height: 1;
-  text-shadow: 0 0 20px rgba(139, 118, 255, 0.40);
-}
-.hp-hero-sub-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(155, 140, 220, 0.55);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-.hp-hero-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.hp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 8px;
+.hp-close-btn {
+  width: 24px;
+  height: 24px;
   border-radius: 7px;
-  border: 1px solid;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(200, 185, 255, 0.50);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  -webkit-app-region: no-drag;
 }
-.hp-chip-sessions {
-  color: rgba(88, 166, 255, 0.88);
-  background: rgba(88, 166, 255, 0.10);
-  border-color: rgba(88, 166, 255, 0.22);
-}
-.hp-chip-score {
-  color: rgba(251, 191, 36, 0.88);
-  background: rgba(251, 191, 36, 0.09);
-  border-color: rgba(251, 191, 36, 0.20);
-}
-.hp-hero-deco {
-  flex-shrink: 0;
-  position: relative;
-  width: 42px;
-  height: 42px;
-}
-.hp-hero-ring-outer {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(139, 118, 255, 0.20);
-}
-.hp-hero-ring-inner {
-  position: absolute;
-  inset: 7px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(139, 118, 255, 0.36);
-  background: rgba(88, 60, 200, 0.16);
+.hp-close-btn:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: rgba(248, 113, 113, 0.90);
+  border-color: rgba(248, 113, 113, 0.30);
 }
 
-/* ── Quick stats 2×2 grid ────────────────────────────────────────── */
-.hp-quick-grid {
+/* ── 1. Stat Cards (2×2 grid) ────────────────────────────────────── */
+.hp-stat-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 7px;
 }
-.hp-qcard {
+.hp-sc {
   position: relative;
-  border-radius: 13px;
-  padding: 10px 10px 9px;
+  border-radius: 14px;
+  padding: 12px 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   overflow: hidden;
-  border: 1px solid;
-  transition: border-color 0.18s, box-shadow 0.18s;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.16s, box-shadow 0.16s;
 }
-.hp-qcard:hover {
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
-}
-.hp-qcard-accent {
+.hp-sc::before {
+  content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 2px;
-  border-radius: 13px 13px 0 0;
+  border-radius: 14px 14px 0 0;
 }
-.hp-qcard-icon {
-  font-size: 13px;
-  line-height: 1;
-  margin-bottom: 2px;
+.hp-sc:hover {
+  background: rgba(139, 118, 255, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
 }
-.hp-qcard-val {
-  font-size: 18px;
+.hp-sc-today::before  { background: linear-gradient(90deg, rgba(130,195,255,0.80), transparent); }
+.hp-sc-sessions::before { background: linear-gradient(90deg, rgba(167,139,250,0.80), transparent); }
+.hp-sc-week::before   { background: linear-gradient(90deg, rgba(52,211,153,0.70), transparent); }
+.hp-sc-lifetime::before { background: linear-gradient(90deg, rgba(251,191,36,0.70), transparent); }
+
+.hp-sc-val {
+  font-size: 22px;
   font-weight: 900;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
   line-height: 1;
+  color: rgba(225, 215, 255, 0.96);
 }
-.hp-qcard-unit {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.55;
-}
-.hp-qcard-lbl {
+.hp-sc-today    .hp-sc-val { color: rgba(130, 195, 255, 0.96); }
+.hp-sc-sessions .hp-sc-val { color: rgba(195, 175, 255, 0.96); }
+.hp-sc-week     .hp-sc-val { color: rgba(90,  230, 175, 0.96); }
+.hp-sc-lifetime .hp-sc-val { color: rgba(255, 210, 90,  0.96); }
+
+.hp-sc-lbl {
   font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.55;
+  color: rgba(155, 140, 220, 0.50);
   margin-top: 1px;
 }
-.hp-qcard-sub {
+
+/* ── 2. Streak Row ───────────────────────────────────────────────── */
+.hp-streak-row {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 10px 6px;
+  gap: 0;
+}
+.hp-sr-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+}
+.hp-sr-val {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: rgba(225, 215, 255, 0.96);
+}
+.hp-sr-lbl {
   font-size: 8px;
-  font-weight: 500;
-  opacity: 0.38;
-  margin-top: 1px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(155, 140, 220, 0.50);
+  white-space: nowrap;
+  max-height: 9px;
+  overflow: hidden;
+  line-height: 9px;
 }
-
-/* Card colour themes */
-.hp-qcard-week {
-  background: rgba(88, 166, 255, 0.07);
-  border-color: rgba(88, 166, 255, 0.18);
+.hp-sr-div {
+  width: 1px;
+  height: 32px;
+  background: rgba(139, 118, 255, 0.14);
+  flex-shrink: 0;
 }
-.hp-qcard-week .hp-qcard-accent { background: linear-gradient(90deg, rgba(88,166,255,0.60), rgba(88,166,255,0.05)); }
-.hp-qcard-week .hp-qcard-val    { color: rgba(130, 195, 255, 0.94); }
-.hp-qcard-week .hp-qcard-lbl    { color: rgba(100, 180, 255, 1); }
-
-.hp-qcard-month {
-  background: rgba(167, 139, 250, 0.08);
-  border-color: rgba(167, 139, 250, 0.20);
-}
-.hp-qcard-month .hp-qcard-accent { background: linear-gradient(90deg, rgba(167,139,250,0.60), rgba(167,139,250,0.05)); }
-.hp-qcard-month .hp-qcard-val    { color: rgba(195, 175, 255, 0.94); }
-.hp-qcard-month .hp-qcard-lbl   { color: rgba(175, 155, 255, 1); }
-
-.hp-qcard-streak {
-  background: rgba(251, 191, 36, 0.07);
-  border-color: rgba(251, 191, 36, 0.18);
-}
-.hp-qcard-streak .hp-qcard-accent { background: linear-gradient(90deg, rgba(251,191,36,0.65), rgba(251,191,36,0.05)); }
-.hp-qcard-streak .hp-qcard-val    { color: rgba(255, 210, 90, 0.96); }
-.hp-qcard-streak .hp-qcard-lbl   { color: rgba(240, 195, 80, 1); }
-
-.hp-qcard-lifetime {
-  background: rgba(52, 211, 153, 0.07);
-  border-color: rgba(52, 211, 153, 0.18);
-}
-.hp-qcard-lifetime .hp-qcard-accent { background: linear-gradient(90deg, rgba(52,211,153,0.60), rgba(52,211,153,0.05)); }
-.hp-qcard-lifetime .hp-qcard-val    { color: rgba(90, 230, 175, 0.94); }
-.hp-qcard-lifetime .hp-qcard-lbl   { color: rgba(60, 215, 160, 1); }
 
 /* ── Sections ────────────────────────────────────────────────────── */
 .hp-section {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 .hp-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.hp-section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.hp-sdot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.hp-sdot-purple { background: rgba(139, 118, 255, 0.80); box-shadow: 0 0 5px rgba(139,118,255,0.50); }
-.hp-sdot-blue   { background: rgba(88, 166, 255, 0.80);  box-shadow: 0 0 5px rgba(88,166,255,0.50); }
-.hp-sdot-teal   { background: rgba(52, 211, 153, 0.80);  box-shadow: 0 0 5px rgba(52,211,153,0.50); }
 .hp-slabel {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: rgba(200, 190, 255, 0.58);
+  color: rgba(200, 190, 255, 0.50);
+}
+
+/* ── 3. Streak Calendar canvas ───────────────────────────────────── */
+.hp-cal-day-labels {
+  display: flex;
+  gap: 0;
+  padding: 0 0 3px;
+  width: 89px; /* 7 × (11+2) − 2 = 89px, matches canvas */
+}
+.hp-cal-day-labels span {
+  width: 13px; /* CELL + GAP */
+  flex: none;
+  text-align: center;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(139, 118, 255, 0.38);
+  text-transform: uppercase;
+}
+.hp-streak-canvas {
+  display: block;
+  border-radius: 6px;
+  image-rendering: pixelated;
+  /* width set by JS; height auto */
 }
 
 /* ── View pills ──────────────────────────────────────────────────── */
@@ -3288,7 +3182,7 @@ body.pip-mode  #history-panel { display: none !important; }
   display: flex;
   gap: 3px;
 }
-.hgraph-pill, .hcal-pill {
+.hgraph-pill {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -3301,39 +3195,24 @@ body.pip-mode  #history-panel { display: none !important; }
   transition: background 0.14s, color 0.14s, border-color 0.14s, box-shadow 0.14s;
   -webkit-app-region: no-drag;
 }
-.hgraph-pill:hover, .hcal-pill:hover {
+.hgraph-pill:hover {
   background: rgba(139, 118, 255, 0.10);
   color: rgba(200, 185, 255, 0.80);
   border-color: rgba(139, 118, 255, 0.26);
 }
-.hgraph-pill.active, .hcal-pill.active {
+.hgraph-pill.active {
   background: rgba(139, 118, 255, 0.18);
   color: rgba(220, 210, 255, 0.98);
   border-color: rgba(139, 118, 255, 0.42);
   box-shadow: 0 0 10px rgba(139, 118, 255, 0.22), 0 1px 0 rgba(255,255,255,0.08) inset;
 }
 
-/* ── Streak calendar ─────────────────────────────────────────────── */
-.hp-calendar-wrap {
-  background: rgba(139, 118, 255, 0.03);
+/* ── 4. Bar chart ────────────────────────────────────────────────── */
+.hp-chart-wrap {
+  background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(139, 118, 255, 0.10);
   border-radius: 12px;
-  padding: 10px 10px 8px;
-  display: flex;
-  justify-content: center;
-}
-#streak-calendar-canvas {
-  display: block;
-  image-rendering: pixelated;
-}
-
-/* ── Focus chart ─────────────────────────────────────────────────── */
-.hp-chart-wrap {
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(139, 118, 255, 0.13);
-  border-radius: 12px;
   overflow: hidden;
-  padding: 0;
   position: relative;
 }
 #history-chart-canvas {
@@ -3342,11 +3221,11 @@ body.pip-mode  #history-panel { display: none !important; }
   border-radius: 12px;
 }
 
-/* ── Recent sessions list ─────────────────────────────────────────── */
+/* ── 5. Recent sessions list ─────────────────────────────────────── */
 .hp-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 .hp-recent-empty {
   font-size: 10px;
@@ -3354,580 +3233,99 @@ body.pip-mode  #history-panel { display: none !important; }
   text-align: center;
   padding: 16px 0;
   font-style: italic;
-  letter-spacing: 0.04em;
 }
-.hp-recent-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  transition: background 0.15s, border-color 0.15s;
-  animation: hp-item-in 0.30s ease both;
+
+/* Each session row */
+@keyframes hp-row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0);    }
 }
-@keyframes hp-item-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0);   }
-}
-.hp-recent-item:hover {
-  background: rgba(139, 118, 255, 0.07);
-  border-color: rgba(139, 118, 255, 0.16);
-}
-.hp-ri-outcome {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.hp-ri-outcome-completed {
-  background: rgba(52, 211, 153, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.28);
-  color: rgba(52, 211, 153, 0.92);
-}
-.hp-ri-outcome-failed {
-  background: rgba(248, 113, 113, 0.13);
-  border: 1px solid rgba(248, 113, 113, 0.25);
-  color: rgba(248, 113, 113, 0.85);
-}
-.hp-ri-outcome-abandoned {
-  background: rgba(120, 110, 160, 0.14);
-  border: 1px solid rgba(140, 130, 180, 0.20);
-  color: rgba(170, 160, 210, 0.65);
-}
-.hp-ri-info {
-  flex: 1;
-  min-width: 0;
+.hp-recent-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.025);
+  transition: background 0.14s, border-color 0.14s;
+  animation: hp-row-in 0.28s ease both;
+  cursor: default;
 }
-.hp-ri-top {
+.hp-recent-row:hover {
+  background: rgba(139, 118, 255, 0.07);
+  border-color: rgba(139, 118, 255, 0.15);
+}
+.hp-ri-completed { /* normal opacity — default */ }
+.hp-ri-failed    { opacity: 0.75; }
+.hp-ri-abandoned { opacity: 0.55; }
+
+.hp-rr-left {
   display: flex;
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(200, 185, 255, 0.80);
 }
-.hp-ri-duration {
-  font-size: 13px;
+.hp-rr-date {
+  font-weight: 700;
+  color: rgba(210, 200, 255, 0.88);
+}
+.hp-rr-sep {
+  color: rgba(139, 118, 255, 0.30);
+  font-weight: 400;
+}
+.hp-rr-dur {
+  color: rgba(185, 170, 255, 0.70);
+}
+.hp-rr-score {
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: rgba(220, 210, 255, 0.92);
-  line-height: 1;
+  color: rgba(167, 139, 250, 0.88);
 }
-.hp-ri-badge {
+.hp-ri-outcome-tag {
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
 }
-.hp-ri-badge-completed {
-  background: rgba(52, 211, 153, 0.15);
-  color: rgba(52, 211, 153, 0.90);
-  border: 1px solid rgba(52, 211, 153, 0.22);
-}
-.hp-ri-badge-failed {
+.hp-ri-failed-tag {
   background: rgba(248, 113, 113, 0.12);
-  color: rgba(248, 113, 113, 0.85);
-  border: 1px solid rgba(248, 113, 113, 0.20);
+  color: rgba(248, 113, 113, 0.80);
+  border: 1px solid rgba(248, 113, 113, 0.18);
 }
-.hp-ri-badge-abandoned {
+.hp-ri-abandoned-tag {
   background: rgba(140, 130, 180, 0.12);
-  color: rgba(170, 160, 210, 0.70);
+  color: rgba(170, 160, 210, 0.65);
   border: 1px solid rgba(140, 130, 180, 0.18);
 }
-.hp-ri-best {
-  font-size: 8px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(251, 191, 36, 0.12);
-  color: rgba(251, 191, 36, 0.88);
-  border: 1px solid rgba(251, 191, 36, 0.22);
-}
-.hp-ri-day {
-  font-size: 8.5px;
-  font-weight: 600;
-  color: rgba(139, 118, 255, 0.52);
-  margin-left: auto;
-}
-.hp-ri-meta {
+.hp-rr-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 6px;
 }
-.hp-ri-time {
+.hp-rr-goal {
   font-size: 10px;
-  font-weight: 600;
-  color: rgba(200, 185, 255, 0.55);
-}
-.hp-ri-sep {
-  font-size: 9px;
-  color: rgba(139, 118, 255, 0.25);
-}
-.hp-ri-ago {
-  font-size: 9.5px;
   font-weight: 500;
-  color: rgba(155, 140, 220, 0.40);
-}
-.hp-ri-stars {
-  font-size: 9px;
-  color: rgba(251, 191, 36, 0.65);
-  letter-spacing: 1px;
-  margin-left: 2px;
-}
-.hp-ri-bar-track {
-  height: 3px;
-  background: rgba(139, 118, 255, 0.10);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 3px;
-}
-.hp-ri-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s cubic-bezier(.4,0,.2,1);
-}
-.hp-ri-rating {
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  flex-shrink: 0;
-  min-width: 26px;
-  text-align: center;
-}
-.hp-ri-score {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 800;
-  color: rgba(167, 139, 250, 0.75);
-  letter-spacing: -0.02em;
-  flex-shrink: 0;
-}
-
-/* ── Period tabs ─────────────────────────────────────────────────────── */
-.hp-period-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(139, 118, 255, 0.12);
-  border-radius: 14px;
-}
-.hp-period-tab {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 8px 4px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: rgba(155, 140, 220, 0.55);
-  cursor: pointer;
-  transition: background 0.16s, color 0.16s, border-color 0.16s, box-shadow 0.16s;
-  -webkit-app-region: no-drag;
-  text-align: center;
-}
-.hp-period-tab:hover {
-  color: rgba(200, 185, 255, 0.80);
-  background: rgba(139, 118, 255, 0.10);
-}
-.hp-period-tab.active {
-  background: rgba(139, 118, 255, 0.22);
-  color: rgba(225, 215, 255, 0.98);
-  border-color: rgba(139, 118, 255, 0.38);
-  box-shadow: 0 0 12px rgba(139, 118, 255, 0.22), 0 1px 0 rgba(255,255,255,0.10) inset;
-}
-
-/* ── Hero card (simplified — no ring) ─────────────────────────────────── */
-.hp-hero-period-badge {
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 2px 9px;
-  border-radius: 4px;
-  background: rgba(139, 118, 255, 0.18);
-  border: 1px solid rgba(139, 118, 255, 0.30);
-  color: rgba(185, 170, 255, 0.90);
-}
-
-/* ── Goal progress bar ────────────────────────────────────────────────── */
-.hp-goal-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 1px;
-}
-.hp-goal-bar-track {
-  flex: 1;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.hp-goal-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.8s cubic-bezier(.4,0,.2,1);
-}
-.hp-goal-bar-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(180, 165, 255, 0.52);
+  color: rgba(160, 148, 215, 0.52);
+  font-style: italic;
   white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
-
-/* ── Max session chip ─────────────────────────────────────────────────── */
-.hp-chip-max {
-  color: rgba(52, 211, 153, 0.85);
-  background: rgba(52, 211, 153, 0.09);
-  border-color: rgba(52, 211, 153, 0.20);
-}
-
-/* ── Outcome breakdown row ────────────────────────────────────────────── */
-.hp-breakdown-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-.hp-bk-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 10px 6px 9px;
-  border-radius: 12px;
-  border: 1px solid;
-  transition: box-shadow 0.15s;
-}
-.hp-bk-icon {
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-}
-.hp-bk-val {
-  font-size: 18px;
+.hp-rr-rating {
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: -0.03em;
-  line-height: 1;
-}
-.hp-bk-lbl {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
-.hp-bk-completed {
-  background: rgba(52, 211, 153, 0.07);
-  border-color: rgba(52, 211, 153, 0.18);
-}
-.hp-bk-completed .hp-bk-icon { color: rgba(52, 211, 153, 0.75); }
-.hp-bk-completed .hp-bk-val  { color: rgba(52, 211, 153, 0.94); }
-.hp-bk-completed .hp-bk-lbl  { color: rgba(52, 211, 153, 1); }
-
-.hp-bk-failed {
-  background: rgba(248, 113, 113, 0.06);
-  border-color: rgba(248, 113, 113, 0.16);
-}
-.hp-bk-failed .hp-bk-icon { color: rgba(248, 113, 113, 0.70); }
-.hp-bk-failed .hp-bk-val  { color: rgba(248, 113, 113, 0.88); }
-.hp-bk-failed .hp-bk-lbl  { color: rgba(248, 113, 113, 1); }
-
-.hp-bk-abandoned {
-  background: rgba(140, 130, 180, 0.07);
-  border-color: rgba(140, 130, 180, 0.16);
-}
-.hp-bk-abandoned .hp-bk-icon { color: rgba(170, 160, 210, 0.60); }
-.hp-bk-abandoned .hp-bk-val  { color: rgba(170, 160, 210, 0.82); }
-.hp-bk-abandoned .hp-bk-lbl  { color: rgba(170, 160, 210, 1); }
-
-.hp-bk-rate {
-  background: rgba(139, 118, 255, 0.07);
-  border-color: rgba(139, 118, 255, 0.18);
-}
-.hp-bk-rate .hp-bk-icon { color: rgba(167, 139, 250, 0.65); }
-.hp-bk-rate .hp-bk-val  { color: rgba(167, 139, 250, 0.94); font-size: 15px; }
-.hp-bk-rate .hp-bk-lbl  { color: rgba(167, 139, 250, 1); }
-.hp-hero-chip-streak {
-  color: rgba(251, 191, 36, 0.90);
-  background: rgba(251, 191, 36, 0.10);
-  border-color: rgba(251, 191, 36, 0.22);
-}
-.hp-chip-streak {
-  color: rgba(251, 191, 36, 0.88);
-  background: rgba(251, 191, 36, 0.09);
-  border-color: rgba(251, 191, 36, 0.20);
-}
-.hp-hero-motivation {
-  font-size: 10px;
-  font-weight: 500;
-  color: rgba(180, 165, 255, 0.60);
-  letter-spacing: 0.02em;
-  margin-top: 2px;
-  min-height: 14px;
-}
-
-/* ── Stats row (horizontal 4-up) ──────────────────────────────────────── */
-.hp-stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr;
-  gap: 0;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 14px;
-  padding: 14px 8px;
-}
-.hp-stat-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 0 10px;
-}
-.hp-stat-divider {
-  background: rgba(139, 118, 255, 0.12);
-  border-radius: 1px;
-  align-self: stretch;
-  margin: 4px 0;
-}
-.hp-stat-val {
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: rgba(220, 210, 255, 0.94);
-}
-.hp-stat-lbl {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(155, 140, 220, 0.55);
-  margin-top: 2px;
-}
-.hp-stat-sub {
-  font-size: 9px;
-  font-weight: 500;
-  color: rgba(140, 125, 200, 0.42);
-}
-.hp-stat-max {
-  font-size: 8.5px;
-  font-weight: 500;
-  color: rgba(139, 118, 255, 0.45);
-  margin-top: 1px;
-}
-.hp-stat-max span {
-  font-weight: 700;
-  color: rgba(167, 139, 250, 0.65);
-}
-.hp-stat-today .hp-stat-val  { color: rgba(130, 195, 255, 0.94); }
-.hp-stat-week  .hp-stat-val  { color: rgba(167, 139, 250, 0.94); }
-.hp-stat-month .hp-stat-val  { color: rgba(52,  211, 153, 0.94); }
-.hp-stat-lifetime .hp-stat-val { color: rgba(251, 191, 36, 0.90); }
-
-/* ── Calendar: HTML grid ───────────────────────────────────────────────── */
-.hp-cal-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.hp-cal-month-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: rgba(200, 185, 255, 0.80);
-  min-width: 90px;
-  text-align: center;
-}
-.hp-cal-nav-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 1px solid rgba(139, 118, 255, 0.18);
-  background: rgba(139, 118, 255, 0.06);
-  color: rgba(155, 135, 255, 0.65);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-app-region: no-drag;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
-}
-.hp-cal-nav-btn:hover {
-  background: rgba(139, 118, 255, 0.16);
-  color: rgba(210, 195, 255, 0.90);
-  border-color: rgba(139, 118, 255, 0.36);
-}
-.hp-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.14);
-  border: 1px solid rgba(139, 118, 255, 0.10);
-  border-radius: 14px;
-  padding: 12px;
-}
-.hp-cal-dow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(139, 118, 255, 0.45);
-  text-align: center;
-  padding: 0 0 5px;
-}
-.hp-cal-day {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  cursor: default;
-  position: relative;
-  transition: background 0.14s, box-shadow 0.14s;
-}
-.hp-cal-day-empty {
-  /* placeholder for days before month starts */
-}
-.hp-cal-num {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  color: rgba(180, 165, 255, 0.45);
-}
-/* Day with any session */
-.hp-cal-day.hp-cal-has-session {
-  background: rgba(139, 118, 255, 0.12);
-}
-.hp-cal-day.hp-cal-has-session .hp-cal-num {
-  color: rgba(200, 185, 255, 0.80);
-}
-/* Day with completed session */
-.hp-cal-day.hp-cal-completed {
-  background: rgba(139, 118, 255, 0.22);
-}
-.hp-cal-day.hp-cal-completed .hp-cal-num {
-  color: rgba(225, 215, 255, 0.95);
-  font-weight: 800;
-}
-/* Today */
-.hp-cal-day.hp-cal-today {
-  background: rgba(139, 118, 255, 0.34);
-  box-shadow: 0 0 12px rgba(139, 118, 255, 0.36), 0 0 0 1px rgba(167, 139, 250, 0.50);
-}
-.hp-cal-day.hp-cal-today .hp-cal-num {
-  color: rgba(240, 230, 255, 0.99);
-  font-weight: 900;
-}
-/* Future dates */
-.hp-cal-day.hp-cal-future .hp-cal-num {
-  color: rgba(139, 118, 255, 0.18);
-}
-/* Session count dot */
-.hp-cal-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(139, 118, 255, 0.55);
   flex-shrink: 0;
+  min-width: 22px;
+  text-align: right;
 }
-.hp-cal-completed .hp-cal-dot {
-  background: rgba(52, 211, 153, 0.75);
-  box-shadow: 0 0 4px rgba(52, 211, 153, 0.50);
-}
-.hp-cal-today .hp-cal-dot {
-  background: rgba(255, 255, 255, 0.80);
-}
-
-/* ── Calendar legend ──────────────────────────────────────────────────── */
-.hp-cal-legend {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 4px 2px 0;
-}
-.hp-cal-leg-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 9px;
-  font-weight: 500;
-  color: rgba(155, 140, 220, 0.42);
-}
-.hp-cal-leg-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-.hp-cal-leg-completed { background: rgba(52, 211, 153, 0.55); }
-.hp-cal-leg-session   { background: rgba(139, 118, 255, 0.40); }
-.hp-cal-leg-today     { background: rgba(139, 118, 255, 0.70); box-shadow: 0 0 6px rgba(139,118,255,0.50); }
-
-/* ── Graph label ──────────────────────────────────────────────────────── */
-#hp-graph-label {
-  text-transform: none;
-  letter-spacing: 0.03em;
-}
-
-/* ── More button ──────────────────────────────────────────────────────── */
-.hp-more-btn {
-  width: 100%;
-  margin-top: 4px;
-  padding: 8px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border-radius: 8px;
-  border: 1px solid rgba(139, 118, 255, 0.15);
-  background: rgba(139, 118, 255, 0.06);
-  color: rgba(155, 135, 255, 0.55);
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hp-more-btn:hover {
-  background: rgba(139, 118, 255, 0.13);
-  color: rgba(200, 180, 255, 0.80);
-  border-color: rgba(139, 118, 255, 0.30);
-}
-
-/* ── Trend badges ─────────────────────────────────────────────────────── */
-.hp-trend {
-  font-size: 8px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-.hp-trend-up   { color: rgba(52, 211, 153, 0.90); background: rgba(52, 211, 153, 0.12); }
-.hp-trend-down { color: rgba(248, 113, 113, 0.85); background: rgba(248, 113, 113, 0.10); }
-
-/* ── Misc removed elements (kept for safety) ──────────────────────────── */
-.hp-quick-grid,
-.hp-qcard,
-.hp-hero-deco,
-.hp-hero-ring-outer,
-.hp-hero-ring-inner { display: none !important; }
 
 /* ── Panel container ────────────────────────────────────────────────── */
 #session-panel {

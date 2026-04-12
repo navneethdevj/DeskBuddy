@@ -1986,46 +1986,65 @@
   }
 
   // ── _wireHistorySidebar ───────────────────────────────────────────────────
-  // Mirrors _wireSidebar: hover the history icon → slide the history panel in.
-  // Hovering the panel keeps it open; mouseleave triggers a delayed close.
+  // Click the ◉ button to open/close the history panel.
+  // Panel also closes on Escape or clicking the ✕ button.
+  // Keyboard shortcut: Ctrl+Shift+H (toggles).
+  // Opening the history panel closes the settings panel if open.
 
   function _wireHistorySidebar() {
-    const panel = document.getElementById('history-panel');
-    const icon  = document.getElementById('history-btn');
+    const panel      = document.getElementById('history-panel');
+    const btn        = document.getElementById('history-btn');
+    const closeBtn   = document.getElementById('hp-close-btn');
     if (!panel) return;
 
-    let _hideTimer = null;
+    let _isOpen = false;
 
     function _open() {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
-      panel.classList.add('history-sidebar-open');
-      if (icon) icon.classList.add('history-btn-hidden');
+      if (_isOpen) return;
+      _isOpen = true;
+
+      // Close settings panel if open
+      const settingsPanel = document.getElementById('settings-panel');
+      if (settingsPanel && settingsPanel.classList.contains('settings-open')) {
+        settingsPanel.classList.remove('settings-open');
+      }
+
+      panel.classList.add('history-panel-visible');
+      if (btn) btn.classList.add('history-panel-open');
       HistoryPanel.refresh();
     }
 
-    function _scheduleClose() {
-      if (_hideTimer) return;
-      _hideTimer = setTimeout(() => {
-        _hideTimer = null;
-        if (panel.contains(document.activeElement)) return;
-        panel.classList.remove('history-sidebar-open');
-        if (icon) icon.classList.remove('history-btn-hidden');
-      }, 380);
+    function _close() {
+      if (!_isOpen) return;
+      _isOpen = false;
+      panel.classList.remove('history-panel-visible');
+      if (btn) btn.classList.remove('history-panel-open');
     }
 
-    if (icon) icon.addEventListener('mouseenter', _open);
+    function _toggle() {
+      if (_isOpen) _close(); else _open();
+    }
 
-    panel.addEventListener('mouseenter', () => {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    // Button click
+    if (btn) btn.addEventListener('click', _toggle);
+
+    // ✕ close button
+    if (closeBtn) closeBtn.addEventListener('click', _close);
+
+    // Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && _isOpen) _close();
     });
 
-    panel.addEventListener('focusin', () => {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    // Ctrl+Shift+H
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
+        e.preventDefault();
+        _toggle();
+      }
     });
 
-    panel.addEventListener('mouseleave', _scheduleClose);
-
-    // Also init the pill click handlers
+    // Init pill click handlers
     HistoryPanel.init();
   }
 

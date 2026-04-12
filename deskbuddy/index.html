@@ -528,24 +528,9 @@
     <span id="sp-icon-ring"></span>
   </button>
 
-  <!-- History icon button — right side, below brain icon, full-mode only -->
-  <button id="history-btn" title="Session history" aria-label="Open history panel">
-    <svg id="history-btn-icon" viewBox="0 0 22 22" fill="none"
-         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- Counter-clockwise arrow around a clock face -->
-      <path d="M11 3.5A7.5 7.5 0 1 1 5.2 6.3" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" fill="none"/>
-      <!-- Arrow head pointing counter-clockwise -->
-      <polyline points="2.5,3.5 5.2,6.3 7.8,3.8" stroke="currentColor" stroke-width="1.6"
-                stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      <!-- Clock hands -->
-      <line x1="11" y1="11" x2="11" y2="7.5" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round"/>
-      <line x1="11" y1="11" x2="13.8" y2="12.6" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round"/>
-      <!-- Center dot -->
-      <circle cx="11" cy="11" r="1" fill="currentColor"/>
-    </svg>
+  <!-- History icon button — top-left, next to gear, full-mode only -->
+  <button id="history-btn" title="Session history (Ctrl+Shift+H)" aria-label="Open history panel">
+    <span class="history-btn-glyph">◉</span>
     <span id="history-btn-ring"></span>
   </button>
 
@@ -675,168 +660,77 @@
 
   </div><!-- /#session-panel -->
 
-  <!-- History panel — left sidebar, full-mode only -->
-  <div id="history-panel" role="dialog" aria-modal="false" aria-label="Session history">
+  <!-- History panel — left-anchored glass panel, full-mode only -->
+  <div id="history-panel" role="dialog" aria-modal="true" aria-label="Session history">
 
     <div id="history-card">
 
       <!-- ── HEADER ─────────────────────────────────────────────────── -->
       <div class="hp-header">
         <div class="hp-header-left">
-          <span class="hp-title-gem">✦</span>
+          <span class="hp-title-gem">◉</span>
           <span class="hp-title">Session History</span>
         </div>
-        <div class="hp-header-right">
-          <span class="hp-header-pulse"></span>
+        <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
+      </div>
+
+      <!-- ── 1. STAT CARDS (2×2) ─────────────────────────────────────── -->
+      <div class="hp-stat-cards">
+        <div class="hp-sc hp-sc-today">
+          <div class="hp-sc-val" id="hsc-today-focused">—</div>
+          <div class="hp-sc-lbl">today focused</div>
+        </div>
+        <div class="hp-sc hp-sc-sessions">
+          <div class="hp-sc-val" id="hsc-today-sessions">0</div>
+          <div class="hp-sc-lbl">today sessions</div>
+        </div>
+        <div class="hp-sc hp-sc-week">
+          <div class="hp-sc-val" id="hsc-week-focused">—</div>
+          <div class="hp-sc-lbl">this week</div>
+        </div>
+        <div class="hp-sc hp-sc-lifetime">
+          <div class="hp-sc-val" id="hsc-lifetime-focused">—</div>
+          <div class="hp-sc-lbl">lifetime</div>
         </div>
       </div>
 
-      <!-- ── PERIOD TABS ─────────────────────────────────────────────── -->
-      <div class="hp-period-tabs" role="tablist">
-        <button class="hp-period-tab active" data-period="daily"    role="tab" aria-selected="true">Day</button>
-        <button class="hp-period-tab"        data-period="weekly"   role="tab" aria-selected="false">Week</button>
-        <button class="hp-period-tab"        data-period="monthly"  role="tab" aria-selected="false">Month</button>
-        <button class="hp-period-tab"        data-period="lifetime" role="tab" aria-selected="false">All Time</button>
-      </div>
-
-      <!-- ── HERO STATS ──────────────────────────────────────────────── -->
-      <div class="hp-hero-card">
-        <div class="hp-hero-bg-glow"></div>
-        <div class="hp-hero-inner">
-          <div class="hp-hero-top">
-            <span class="hp-hero-period-badge" id="hp-hero-period-label">TODAY</span>
-            <span class="hp-hero-date" id="hp-hero-date"></span>
-          </div>
-          <div class="hp-hero-main">
-            <div id="hstat-period-focused" class="hp-hero-val">—</div>
-            <div class="hp-hero-sub-label">focused</div>
-          </div>
-          <!-- Goal progress bar (daily only) -->
-          <div class="hp-goal-bar-wrap" id="hp-goal-bar-wrap">
-            <div class="hp-goal-bar-track">
-              <div class="hp-goal-bar-fill" id="hp-goal-bar-fill" style="width:0%"></div>
-            </div>
-            <span class="hp-goal-bar-label" id="hp-goal-bar-label">0% of daily goal</span>
-          </div>
-          <div class="hp-hero-chips">
-            <span class="hp-chip hp-chip-sessions">
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M5 3v2.5l1.5 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-              <span id="hstat-period-sessions">0</span> sessions
-            </span>
-            <span class="hp-chip hp-chip-score">
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1l1.12 2.27 2.5.36-1.81 1.76.43 2.49L5 6.77 2.76 7.88l.43-2.49L1.38 3.63l2.5-.36z" fill="currentColor"/></svg>
-              <span id="hstat-focus-score-avg">—</span> avg focus
-            </span>
-            <span class="hp-chip hp-chip-streak">
-              🔥 <span id="hstat-streak-current">0</span>d streak
-            </span>
-            <span class="hp-chip hp-chip-max">
-              ⬆ best <span id="hstat-period-max">—</span>
-            </span>
-          </div>
-          <div id="hp-hero-motivation" class="hp-hero-motivation"></div>
+      <!-- ── 2. STREAK ROW ──────────────────────────────────────────── -->
+      <div class="hp-streak-row">
+        <div class="hp-sr-item">
+          <div class="hp-sr-val" id="hsr-current-streak">0</div>
+          <div class="hp-sr-lbl">🔥 streak</div>
+        </div>
+        <div class="hp-sr-div"></div>
+        <div class="hp-sr-item">
+          <div class="hp-sr-val" id="hsr-longest-streak">0</div>
+          <div class="hp-sr-lbl">🔥 longest</div>
+        </div>
+        <div class="hp-sr-div"></div>
+        <div class="hp-sr-item">
+          <div class="hp-sr-val" id="hsr-avg-score">—</div>
+          <div class="hp-sr-lbl">avg focus</div>
         </div>
       </div>
 
-      <!-- ── OUTCOME BREAKDOWN ────────────────────────────────────────── -->
-      <div class="hp-breakdown-row" id="hp-breakdown-row">
-        <div class="hp-bk-item hp-bk-completed">
-          <span class="hp-bk-icon">✓</span>
-          <span class="hp-bk-val" id="hstat-bk-completed">0</span>
-          <span class="hp-bk-lbl">completed</span>
-        </div>
-        <div class="hp-bk-item hp-bk-failed">
-          <span class="hp-bk-icon">✕</span>
-          <span class="hp-bk-val" id="hstat-bk-failed">0</span>
-          <span class="hp-bk-lbl">failed</span>
-        </div>
-        <div class="hp-bk-item hp-bk-abandoned">
-          <span class="hp-bk-icon">~</span>
-          <span class="hp-bk-val" id="hstat-bk-abandoned">0</span>
-          <span class="hp-bk-lbl">abandoned</span>
-        </div>
-        <div class="hp-bk-item hp-bk-rate">
-          <span class="hp-bk-icon">◎</span>
-          <span class="hp-bk-val" id="hstat-bk-rate">—</span>
-          <span class="hp-bk-lbl">success rate</span>
-        </div>
-      </div>
-
-      <!-- ── STATS ROW ───────────────────────────────────────────────── -->
-      <div class="hp-stats-row">
-
-        <div class="hp-stat-block hp-stat-today">
-          <div class="hp-stat-val" id="hstat-today-focused">—</div>
-          <div class="hp-stat-lbl">today</div>
-          <div class="hp-stat-sub"><span id="hstat-today-sessions">0</span> sessions</div>
-          <div class="hp-stat-max">best <span id="hstat-today-max">—</span></div>
-        </div>
-
-        <div class="hp-stat-divider"></div>
-
-        <div class="hp-stat-block hp-stat-week">
-          <div class="hp-stat-val" id="hstat-week-focused">—</div>
-          <div class="hp-stat-lbl">this week</div>
-          <div class="hp-stat-sub"><span id="hstat-week-sessions">0</span> sessions</div>
-          <div class="hp-stat-max">best <span id="hstat-week-max">—</span></div>
-        </div>
-
-        <div class="hp-stat-divider"></div>
-
-        <div class="hp-stat-block hp-stat-month">
-          <div class="hp-stat-val" id="hstat-month-focused">—</div>
-          <div class="hp-stat-lbl">this month</div>
-          <div class="hp-stat-sub"><span id="hstat-month-sessions">0</span> sessions</div>
-          <div class="hp-stat-max">best <span id="hstat-month-max">—</span></div>
-        </div>
-
-        <div class="hp-stat-divider"></div>
-
-        <div class="hp-stat-block hp-stat-lifetime">
-          <div class="hp-stat-val" id="hstat-lifetime-focused">—</div>
-          <div class="hp-stat-lbl">all time</div>
-          <div class="hp-stat-sub"><span id="hstat-lifetime-sessions">0</span> sessions</div>
-          <div class="hp-stat-max">best <span id="hstat-lifetime-max">—</span></div>
-        </div>
-
-      </div>
-
-      <!-- ── CALENDAR ────────────────────────────────────────────────── -->
+      <!-- ── 3. STREAK CALENDAR (canvas 16×7) ───────────────────────── -->
       <div class="hp-section">
         <div class="hp-section-head">
-          <div class="hp-section-title">
-            <span class="hp-sdot hp-sdot-purple"></span>
-            <span class="hp-slabel">streak calendar</span>
-          </div>
-          <div class="hp-cal-nav">
-            <button class="hp-cal-nav-btn" id="hp-cal-prev" title="Previous month">&#8249;</button>
-            <span id="hp-cal-month-label" class="hp-cal-month-label"></span>
-            <button class="hp-cal-nav-btn" id="hp-cal-next" title="Next month">&#8250;</button>
-          </div>
+          <span class="hp-slabel">streak calendar</span>
         </div>
-        <div id="hp-calendar-grid" class="hp-calendar-grid">
-          <!-- Populated by history-panel.js -->
+        <div class="hp-cal-day-labels">
+          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
         </div>
-        <!-- Calendar legend -->
-        <div class="hp-cal-legend">
-          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-completed"></span>completed</span>
-          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-session"></span>sessions</span>
-          <span class="hp-cal-leg-item"><span class="hp-cal-leg-dot hp-cal-leg-today"></span>today</span>
-        </div>
+        <canvas id="hp-streak-canvas" class="hp-streak-canvas"></canvas>
       </div>
 
-      <!-- ── FOCUS GRAPH ─────────────────────────────────────────────── -->
+      <!-- ── 4. BAR CHART (canvas) ──────────────────────────────────── -->
       <div class="hp-section">
         <div class="hp-section-head">
-          <div class="hp-section-title">
-            <span class="hp-sdot hp-sdot-blue"></span>
-            <span class="hp-slabel" id="hp-graph-label">focus time · daily</span>
-          </div>
           <div class="hgraph-pills">
-            <button class="hgraph-pill active" data-view="daily">day</button>
-            <button class="hgraph-pill" data-view="weekly">wk</button>
-            <button class="hgraph-pill" data-view="monthly">mo</button>
-            <button class="hgraph-pill" data-view="lifetime">all</button>
+            <button class="hgraph-pill active" data-view="daily">daily</button>
+            <button class="hgraph-pill" data-view="weekly">weekly</button>
+            <button class="hgraph-pill" data-view="monthly">monthly</button>
+            <button class="hgraph-pill" data-view="lifetime">lifetime</button>
           </div>
         </div>
         <div class="hp-chart-wrap">
@@ -844,26 +738,13 @@
         </div>
       </div>
 
-      <!-- ── RECENT SESSIONS ─────────────────────────────────────────── -->
+      <!-- ── 5. RECENT SESSIONS (last 7) ───────────────────────────── -->
       <div class="hp-section">
         <div class="hp-section-head">
-          <div class="hp-section-title">
-            <span class="hp-sdot hp-sdot-teal"></span>
-            <span class="hp-slabel">recent sessions</span>
-          </div>
+          <span class="hp-slabel">recent sessions</span>
         </div>
-        <div id="hp-recent-list" class="hp-recent-list">
-          <!-- Populated by history-panel.js -->
-        </div>
-        <button id="hp-recent-more" class="hp-more-btn" style="display:none">show more</button>
+        <div id="hp-recent-list" class="hp-recent-list"></div>
       </div>
-
-      <!-- Hidden IDs kept for JS compatibility -->
-      <span id="hstat-week-streak"     style="display:none"></span>
-      <span id="hstat-week-avg-score"  style="display:none"></span>
-      <span id="hstat-month-streak"    style="display:none"></span>
-      <span id="hstat-month-avg-score" style="display:none"></span>
-      <span id="hstat-streak-longest"  style="display:none"></span>
 
     </div><!-- /#history-card -->
 
