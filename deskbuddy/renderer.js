@@ -98,6 +98,7 @@
   _wireBreakReminder();
   _wireDND();
   _wireSidebar();
+  _wireHistorySidebar();
 
   // 12. Sync main-process window state with the initial full-mode.
   // Without this, createWindow()'s alwaysOnTop=false is fine but the
@@ -1982,6 +1983,50 @@
 
     // Schedule close when mouse leaves the panel
     panel.addEventListener('mouseleave', _scheduleClose);
+  }
+
+  // ── _wireHistorySidebar ───────────────────────────────────────────────────
+  // Mirrors _wireSidebar: hover the history icon → slide the history panel in.
+  // Hovering the panel keeps it open; mouseleave triggers a delayed close.
+
+  function _wireHistorySidebar() {
+    const panel = document.getElementById('history-panel');
+    const icon  = document.getElementById('history-btn');
+    if (!panel) return;
+
+    let _hideTimer = null;
+
+    function _open() {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+      panel.classList.add('history-sidebar-open');
+      if (icon) icon.classList.add('history-btn-hidden');
+      HistoryPanel.refresh();
+    }
+
+    function _scheduleClose() {
+      if (_hideTimer) return;
+      _hideTimer = setTimeout(() => {
+        _hideTimer = null;
+        if (panel.contains(document.activeElement)) return;
+        panel.classList.remove('history-sidebar-open');
+        if (icon) icon.classList.remove('history-btn-hidden');
+      }, 380);
+    }
+
+    if (icon) icon.addEventListener('mouseenter', _open);
+
+    panel.addEventListener('mouseenter', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    panel.addEventListener('focusin', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+
+    panel.addEventListener('mouseleave', _scheduleClose);
+
+    // Also init the pill click handlers
+    HistoryPanel.init();
   }
 
 })();

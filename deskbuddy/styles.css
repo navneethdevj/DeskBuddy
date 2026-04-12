@@ -2855,6 +2855,261 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
   animation: none;
 }
 
+/* =====================================================================
+   HISTORY BUTTON — right-side icon, below brain icon
+   ===================================================================== */
+
+#history-btn {
+  position: fixed;
+  right: 10px;
+  top: calc(50% + 56px);
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  z-index: 2495;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+
+  background: rgba(22, 18, 40, 0.72);
+  backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+
+  transition:
+    opacity    0.30s ease,
+    transform  0.30s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.22s ease;
+
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.40),
+    0 0 0 0.5px rgba(155, 135, 255, 0.10) inset;
+}
+body.full-mode #history-btn { display: flex; }
+body.pip-mode  #history-btn { display: none !important; }
+
+#history-btn-icon {
+  width: 16px;
+  height: 16px;
+  color: rgba(175, 160, 255, 0.65);
+  transition: color 0.18s, transform 0.22s;
+  flex-shrink: 0;
+}
+#history-btn:hover #history-btn-icon {
+  color: rgba(210, 195, 255, 0.95);
+  transform: scale(1.08);
+}
+.history-btn-star {
+  transition: opacity 0.22s;
+}
+#history-btn:hover .history-btn-star {
+  opacity: 0.9;
+}
+
+#history-btn-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(155, 135, 255, 0.22);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+#history-btn:hover #history-btn-ring {
+  opacity: 1;
+}
+
+#history-btn.history-btn-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.88);
+}
+
+/* =====================================================================
+   HISTORY PANEL — right-side glass sidebar, mirrors session panel
+   ===================================================================== */
+
+#history-panel {
+  position: fixed;
+  right: 0;
+  top: calc(50% + 28px);
+  transform: translateX(calc(100% + 8px));
+  width: 210px;
+  max-height: calc(100vh - 80px);
+  z-index: 2490;
+  display: none;
+  flex-direction: column;
+  padding-right: 10px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: visible;
+}
+body.full-mode #history-panel { display: flex; }
+body.pip-mode  #history-panel { display: none !important; }
+
+#history-panel.history-sidebar-open {
+  transform: translateX(0);
+}
+
+/* ── Glass card — identical recipe to session panel cards ─────────── */
+#history-card {
+  background: rgba(22, 18, 40, 0.78);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  border-right: 1px solid rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 22px;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100vh - 100px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 135, 255, 0.15) transparent;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.hp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(155, 135, 255, 0.12);
+}
+.hp-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(200, 185, 255, 0.55);
+}
+
+/* ── Sections ────────────────────────────────────────────────────── */
+.hp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hp-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(155, 135, 255, 0.40);
+}
+
+/* ── Stat cards ──────────────────────────────────────────────────── */
+.hp-stat-row {
+  display: flex;
+  gap: 6px;
+}
+.hp-stat-card {
+  flex: 1;
+  background: rgba(155, 135, 255, 0.06);
+  border: 1px solid rgba(155, 135, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hp-stat-card-wide {
+  flex: 1 1 100%;
+}
+.hp-stat-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(210, 195, 255, 0.90);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.hp-stat-unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(175, 160, 255, 0.55);
+}
+.hp-stat-lbl {
+  font-size: 9px;
+  color: rgba(155, 135, 255, 0.45);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* ── Streak calendar ─────────────────────────────────────────────── */
+.hp-calendar-wrap {
+  background: rgba(155, 135, 255, 0.04);
+  border: 1px solid rgba(155, 135, 255, 0.10);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+}
+#streak-calendar-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* ── Chart ───────────────────────────────────────────────────────── */
+.hp-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hgraph-pills {
+  display: flex;
+  gap: 3px;
+}
+.hgraph-pill {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(155, 135, 255, 0.18);
+  background: transparent;
+  color: rgba(155, 135, 255, 0.45);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.hgraph-pill:hover {
+  background: rgba(155, 135, 255, 0.10);
+  color: rgba(195, 180, 255, 0.80);
+}
+.hgraph-pill.active {
+  background: rgba(155, 135, 255, 0.18);
+  color: rgba(215, 200, 255, 0.92);
+  border-color: rgba(155, 135, 255, 0.35);
+}
+.hp-chart-wrap {
+  background: rgba(155, 135, 255, 0.04);
+  border: 1px solid rgba(155, 135, 255, 0.10);
+  border-radius: 10px;
+  overflow: hidden;
+}
+#history-chart-canvas {
+  display: block;
+  width: 100%;
+}
+
 /* ── Panel container ────────────────────────────────────────────────── */
 #session-panel {
   position: fixed;

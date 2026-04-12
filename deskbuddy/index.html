@@ -528,6 +528,22 @@
     <span id="sp-icon-ring"></span>
   </button>
 
+  <!-- History icon button — right side, below brain icon, full-mode only -->
+  <button id="history-btn" title="Session history" aria-label="Open history panel">
+    <svg id="history-btn-icon" viewBox="0 0 22 22" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Bar chart columns -->
+      <rect x="2.5"  y="12" width="4" height="7.5" rx="1.2" fill="currentColor" opacity="0.55"/>
+      <rect x="9"    y="7"  width="4" height="12.5" rx="1.2" fill="currentColor" opacity="0.82"/>
+      <rect x="15.5" y="3.5" width="4" height="16" rx="1.2" fill="currentColor"/>
+      <!-- Sparkle -->
+      <text class="history-btn-star" x="3.4" y="7.6"
+            font-size="4.2" text-anchor="middle"
+            fill="currentColor">✦</text>
+    </svg>
+    <span id="history-btn-ring"></span>
+  </button>
+
   <!-- Session panel — auto-hide right sidebar, full-mode only -->
   <div id="session-panel">
 
@@ -654,7 +670,96 @@
 
   </div><!-- /#session-panel -->
 
-  <!-- Outcome popup — standalone centered overlay, visible in any mode -->
+  <!-- History panel — auto-hide right sidebar, full-mode only -->
+  <div id="history-panel" role="dialog" aria-modal="false" aria-label="Session history">
+
+    <div id="history-card">
+
+      <!-- ── Header ─────────────────────────────────────────────────── -->
+      <div class="hp-header">
+        <span class="hp-title">✦ history</span>
+      </div>
+
+      <!-- ── TODAY ──────────────────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-label">today</div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card">
+            <div id="hstat-today-focused" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">focused</div>
+          </div>
+          <div class="hp-stat-card">
+            <div id="hstat-today-sessions" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">sessions</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── THIS WEEK ──────────────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-label">this week</div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-stat-card-wide">
+            <div id="hstat-week-focused" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">focused</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LIFETIME + STREAKS ─────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-label">lifetime</div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-stat-card-wide">
+            <div id="hstat-lifetime-focused" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">total focused</div>
+          </div>
+        </div>
+        <div class="hp-stat-row" style="margin-top:6px">
+          <div class="hp-stat-card">
+            <div class="hp-stat-val"><span id="hstat-streak-current">0</span><span class="hp-stat-unit"> d</span></div>
+            <div class="hp-stat-lbl">🔥 streak</div>
+          </div>
+          <div class="hp-stat-card">
+            <div class="hp-stat-val"><span id="hstat-streak-longest">0</span><span class="hp-stat-unit"> d</span></div>
+            <div class="hp-stat-lbl">best streak</div>
+          </div>
+        </div>
+        <div class="hp-stat-row" style="margin-top:6px">
+          <div class="hp-stat-card hp-stat-card-wide">
+            <div id="hstat-focus-score-avg" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">avg focus score</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STREAK CALENDAR ────────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-label">16-week activity</div>
+        <div class="hp-calendar-wrap">
+          <canvas id="streak-calendar-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- ── CHART ──────────────────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-graph-header">
+          <span class="hp-section-label">focus time</span>
+          <div class="hgraph-pills">
+            <button class="hgraph-pill active" data-view="daily">day</button>
+            <button class="hgraph-pill" data-view="weekly">wk</button>
+            <button class="hgraph-pill" data-view="monthly">mo</button>
+            <button class="hgraph-pill" data-view="lifetime">all</button>
+          </div>
+        </div>
+        <div class="hp-chart-wrap">
+          <canvas id="history-chart-canvas"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /#history-card -->
+
+  </div><!-- /#history-panel -->
   <div id="outcome-screen" role="dialog" aria-modal="true" aria-label="Session outcome" aria-hidden="true">
     <div id="outcome-card">
       <div id="outcome-label" class="sp-outcome-label"></div>
@@ -796,6 +901,8 @@
   <script src="components/dnd.js"></script>
   <script src="ui/focus-graph.js"></script>
   <script src="ui/share-card.js"></script>
+  <script src="ui/history-stats.js"></script>
+  <script src="ui/history-panel.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
