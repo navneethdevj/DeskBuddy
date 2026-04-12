@@ -212,6 +212,14 @@ const Brain = (() => {
   let _keyPressTimes  = [];      // rolling timestamps of recent keypresses
   let _excitedUntil   = 0;       // epoch ms when excited state expires
 
+  // ── Typing rhythm state ────────────────────────────────────────────────────
+  let _keyRhythmState  = 'idle';  // 'idle' | 'thinking' | 'flow' | 'burst'
+  let _keyRhythmSince  = 0;       // epoch ms when current rhythm state started
+  let _rhythmHoldTimer = null;    // debounce before committing to flow/thinking
+
+  // DND (Do Not Disturb) — suppresses rhythm reactions and spontaneous behavior
+  let _dndActive = false;
+
   // Shy — sustained eye contact detection
   let _eyeContactStart  = 0;     // epoch ms when continuous eye contact began
   let _shyUntil         = 0;     // epoch ms when shy state expires
@@ -655,6 +663,25 @@ const Brain = (() => {
     }
 
     Emotion.setState(emotion);
+
+    // ── Typing pause detection ────────────────────────────────────────────────
+    // Detects: was typing recently, now stopped, face is still present.
+    // Transitions typing rhythm to idle, fires a small observational reaction.
+    const timeSinceKey      = now - lastKeyTime;
+    const wasTypingRecently = timeSinceKey > 5000 && timeSinceKey < 20000;
+    const faceStillPresent  = window.perception?.facePresent;
+
+    if (wasTypingRecently && faceStillPresent && _keyRhythmState !== 'idle') {
+      _setTypingRhythm('idle');
+      // 40% chance of a small "noticed you stopped" reaction
+      if (!_dndActive && Math.random() < 0.40) {
+        setTimeout(() => {
+          if (Date.now() - lastKeyTime > 4000) {
+            _doIdleLook();  // glances sideways briefly
+          }
+        }, 800);
+      }
+    }
   }
 
   /**
@@ -1049,6 +1076,20 @@ const Brain = (() => {
     if (_keyPressTimes.length >= KEYPRESS_EXCITED_COUNT) {
       _excitedUntil = now + EXCITED_HOLD_MS;
     }
+
+    // ── Rhythm classification (debounced 1s to avoid reacting to single keys) ──
+    clearTimeout(_rhythmHoldTimer);
+    _rhythmHoldTimer = setTimeout(() => {
+      if (_dndActive) return;  // DND suppresses rhythm reactions
+
+      // Count keys in last 2 seconds to measure instantaneous rate
+      const keys2s     = _keyPressTimes.filter(t => now - t < 2000).length;
+      const keysPerSec = keys2s / 2;
+
+      if      (keysPerSec >= 3.0) _setTypingRhythm('flow');
+      else if (keysPerSec >= 0.5) _setTypingRhythm('thinking');
+      // Below 0.5 kps → let pause detection in rAF loop handle the transition to idle
+    }, 1000);
   }
 
   function clamp(value, min, max) {
@@ -1456,6 +1497,7 @@ const Brain = (() => {
 
   // ── WHISPER TEXT ──────────────────────────────────────────────────────────
   function showWhisper(text, durationMs) {
+    if (_dndActive) return;
     _whisperQueue.push({ text, durationMs: durationMs || 5000 });
     if (!_whisperBusy) _nextWhisper();
   }
@@ -1509,6 +1551,7 @@ const Brain = (() => {
   }
 
   function _spontaneousBehavior() {
+    if (_dndActive) return;
     // Don't interrupt timed or distress states
     const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
     if (blocked.includes(window._lastEmotion)) return;
@@ -1794,6 +1837,64 @@ const Brain = (() => {
     }, 700);
   }
 
+  // ── TYPING RHYTHM REACTIONS ───────────────────────────────────────────────
+
+  function _setTypingRhythm(newState) {
+    if (_keyRhythmState === newState) return;
+    _keyRhythmState = newState;
+    _keyRhythmSince = Date.now();
+    _applyTypingRhythm(newState);
+  }
+
+  function _applyTypingRhythm(state) {
+    // Don't override active emotional distress or special states
+    const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'love', 'startled'];
+    if (blocked.includes(window._lastEmotion)) return;
+    if (_dndActive) return;  // DND: companion is still, no rhythm reactions
+
+    const el = Companion.getElement();
+
+    if (state === 'flow') {
+      if (el) { el.classList.add('typing-flow'); el.classList.remove('typing-thinking'); }
+
+      // Whisper occasionally after 20s of sustained flow (15% chance, once)
+      const inFlowSecs = (Date.now() - _keyRhythmSince) / 1000;
+      if (inFlowSecs > 20 && Math.random() < 0.15) {
+        const msgs = ['in the zone ✦', '...keep going~', '✦', '*watching*', '...'];
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
+      }
+    }
+
+    if (state === 'thinking') {
+      if (el) { el.classList.remove('typing-flow'); el.classList.add('typing-thinking'); }
+      // 35% chance of a curious head tilt during thinking mode
+      if (Math.random() < 0.35) _doHeadTilt();
+    }
+
+    if (state === 'idle') {
+      if (el) { el.classList.remove('typing-flow', 'typing-thinking'); }
+    }
+  }
+
+  // ── DND (DO NOT DISTURB) STUB ─────────────────────────────────────────────
+
+  function setDNDActive(bool) {
+    _dndActive = !!bool;
+    const el = Companion.getElement();
+    if (bool) {
+      // Go still and focused — stop spontaneous behaviors
+      if (el) { el.classList.remove('typing-flow', 'typing-thinking'); }
+      _setTypingRhythm('idle');
+      Emotion.setState('focused');
+      window._lastEmotion = 'focused';
+      if (_idleLifeTimer) { clearTimeout(_idleLifeTimer); _idleLifeTimer = null; }
+    } else {
+      // Restore normal behavior
+      window._lastEmotion = null;
+      _startIdleLife();
+    }
+  }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
@@ -1801,5 +1902,6 @@ const Brain = (() => {
            getTimePeriod, applyTimePeriod,
            getNightSessionCount, trackNightSession, resetNightSessions,
            checkNightWhisper, doMorningGreeting,
+           setDNDActive,
            triggerLookSequence };
 })();

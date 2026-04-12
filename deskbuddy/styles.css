@@ -3777,3 +3777,32 @@ body.pip-mode #break-card { display: none !important; }
   border-radius: 10px;
   /* canvas element itself has inline width/height set by FocusGraph.draw() */
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TYPING RHYTHM STATES
+   Applied to .companion element by brain.js _applyTypingRhythm()
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* FLOW — slightly narrowed eyes, subtle forward lean */
+.companion.typing-flow .eye {
+  transform-origin: center;
+  transition: height 0.8s ease;
+}
+.companion.typing-flow .eye-left,
+.companion.typing-flow .eye-right {
+  height: calc(var(--eye-h, 44vmin) * 0.86);
+}
+.companion.typing-flow .companion-inner {
+  transform: translateY(-0.5vh) scale(1.007);
+  transition: transform 1.0s ease;
+}
+
+/* THINKING — one eye slightly wider (curious lean) */
+.companion.typing-thinking .eye-left {
+  width: calc(var(--eye-w, 36vmin) * 1.08);
+  transition: width 0.6s ease;
+}
+.companion.typing-thinking .companion-inner {
+  transform: translateY(-0.2vh) rotate(1.5deg);
+  transition: transform 0.7s ease;
+}
