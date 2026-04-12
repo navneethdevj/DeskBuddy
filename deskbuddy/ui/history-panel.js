@@ -2,20 +2,59 @@
  * HistoryPanel — Session history dashboard (right-side hover sidebar).
  *
  * Open/close is owned by renderer.js's _wireHistorySidebar().
- * This module handles only data rendering and pill toggling.
+ * This module handles data rendering, pill toggling, and all reward systems.
  *
  * Sections:
- *   1. Today hero — big focused time + session chips
- *   2. Quick stats 2×2 — week / month / streak / lifetime
- *   3. Activity calendar — 16w / month / week views on <canvas>
- *   4. Focus time bar chart — daily/weekly/monthly/lifetime pills
- *   5. Recent sessions — last 7 sessions as a styled list
+ *   0. Header with Level/XP progress bar
+ *   1. Today hero — progress ring + focused time + motivation message
+ *   2. Achievement badges — horizontally scrollable unlocked badges
+ *   3. Quick stats 2×2 — week / month / streak / lifetime with trends
+ *   4. Activity calendar — 16w / month / week views on <canvas>
+ *   5. Focus time bar chart — daily/weekly/monthly/lifetime pills
+ *   6. Recent sessions — last 8 sessions with focus bars, stars, timestamps
  *
  * Public API:
- *   HistoryPanel.init()     — wire chart-pill and cal-pill click events
+ *   HistoryPanel.init()     — wire events
  *   HistoryPanel.refresh()  — re-render all sections with latest history data
  */
 const HistoryPanel = (() => {
+
+  // ── Constants ─────────────────────────────────────────────────────────────
+
+  const GOAL_MS   = 120 * 60 * 1000;   // 2-hour daily focus goal
+  const RING_R    = 22;
+  const RING_CIRC = 2 * Math.PI * RING_R; // ≈ 138.23
+
+  // XP level table
+  const LEVELS = [
+    { name: 'Beginner',   threshold: 0    },
+    { name: 'Learner',    threshold: 60   },
+    { name: 'Student',    threshold: 180  },
+    { name: 'Focused',    threshold: 380  },
+    { name: 'Dedicated',  threshold: 700  },
+    { name: 'Expert',     threshold: 1200 },
+    { name: 'Master',     threshold: 2200 },
+    { name: 'Legend',     threshold: 4500 },
+  ];
+
+  // Achievement definitions — test(history, currentStreak) → bool
+  const ACHIEVEMENTS = [
+    { id: 'first',      icon: '🌱', name: 'First Step',    test: (h) => h.filter(x => x.outcome === 'COMPLETED').length >= 1   },
+    { id: 'five',       icon: '🎯', name: 'Sharpshooter',  test: (h) => h.filter(x => x.outcome === 'COMPLETED').length >= 5   },
+    { id: 'ten',        icon: '🏆', name: 'Champion',      test: (h) => h.filter(x => x.outcome === 'COMPLETED').length >= 10  },
+    { id: 'fifty',      icon: '💎', name: 'Diamond',       test: (h) => h.filter(x => x.outcome === 'COMPLETED').length >= 50  },
+    { id: 'hundred',    icon: '🚀', name: 'Centurion',     test: (h) => h.filter(x => x.outcome === 'COMPLETED').length >= 100 },
+    { id: 'streak3',    icon: '🔥', name: 'On Fire',       test: (h, s) => s >= 3  },
+    { id: 'streak7',    icon: '⚡', name: 'Lightning',     test: (h, s) => s >= 7  },
+    { id: 'streak14',   icon: '🌟', name: 'Fortnight',     test: (h, s) => s >= 14 },
+    { id: 'streak30',   icon: '👑', name: 'Royalty',       test: (h, s) => s >= 30 },
+    { id: 'perfect',    icon: '✨', name: 'Perfectionist', test: (h) => h.some(x => x.outcome === 'COMPLETED' && (x.durationMinutes || 0) > 0 && (x.actualFocusedSeconds || 0) >= (x.durationMinutes * 60) * 0.97) },
+    { id: 'early',      icon: '🌅', name: 'Early Bird',    test: (h) => h.some(x => x.date && new Date(x.date).getHours() < 8  && x.outcome === 'COMPLETED') },
+    { id: 'night',      icon: '🌙', name: 'Night Owl',     test: (h) => h.some(x => x.date && new Date(x.date).getHours() >= 22 && x.outcome === 'COMPLETED') },
+    { id: 'marathon',   icon: '🏃', name: 'Marathoner',    test: (h) => h.some(x => x.outcome === 'COMPLETED' && (x.durationMinutes || 0) >= 60) },
+    { id: 'comeback',   icon: '💪', name: 'Comeback Kid',  test: (h) => { for (let i = 1; i < h.length; i++) { if (h[i].outcome === 'FAILED' && h[i-1].outcome === 'COMPLETED') return true; } return false; } },
+    { id: 'consistent', icon: '📅', name: 'Consistent',    test: (h, s) => s >= 5  },
+  ];
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -41,16 +80,31 @@ const HistoryPanel = (() => {
         _renderCalendar(history, pill.dataset.calview);
       });
     });
+
+    // "Show more" in recent sessions
+    const moreBtn = document.getElementById('hp-recent-more');
+    if (moreBtn) {
+      moreBtn.addEventListener('click', () => {
+        const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        _renderRecentSessions(history, true);
+        moreBtn.style.display = 'none';
+      });
+    }
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
 
   function refresh() {
     const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+    const streak  = (typeof Session !== 'undefined' && Session.computeDayStreak) ? Session.computeDayStreak() : 0;
 
     _renderHeroDate();
-    _renderStatCards(history);
-    _renderRecentSessions(history);
+    _renderHeroProgress(history);
+    _renderHeroMotivation(history, streak);
+    _renderLevelXP(history);
+    _renderAchievements(history, streak);
+    _renderStatCards(history, streak);
+    _renderRecentSessions(history, false);
 
     // Reset calendar pill to 'activity'
     const panel = document.getElementById('history-panel');
@@ -75,53 +129,203 @@ const HistoryPanel = (() => {
   function _renderHeroDate() {
     const el = document.getElementById('hp-hero-date');
     if (!el) return;
-    const now = new Date();
-    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const now    = new Date();
+    const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     el.textContent = `${days[now.getDay()]} ${months[now.getMonth()]} ${now.getDate()}`;
   }
 
+  // ── Hero progress ring ────────────────────────────────────────────────────
+
+  function _renderHeroProgress(history) {
+    const todaySessions = HistoryStats.getSessionsForToday(history);
+    const todayMs       = HistoryStats.getFocusedMs(todaySessions);
+    const pct           = Math.min(1, todayMs / GOAL_MS);
+
+    // Today's focused time and session count
+    _setText('hstat-today-focused',  HistoryStats.formatFocusTime(todayMs));
+    _setText('hstat-today-sessions', String(todaySessions.length));
+
+    // SVG ring
+    const fill  = document.getElementById('hp-ring-fill');
+    const pctEl = document.getElementById('hp-ring-pct');
+    if (fill) {
+      fill.style.strokeDasharray  = RING_CIRC;
+      fill.style.strokeDashoffset = RING_CIRC * (1 - pct);
+    }
+    if (pctEl) pctEl.textContent = `${Math.round(pct * 100)}%`;
+
+    // Goal-achieved glow class
+    const card = document.querySelector('.hp-hero-card');
+    if (card) card.classList.toggle('hp-hero-goal-achieved', pct >= 1);
+
+    // Today vs yesterday delta
+    const yestMs  = HistoryStats.getFocusedMs(_getSessionsForYesterday(history));
+    const deltaEl = document.getElementById('hp-vs-yesterday');
+    if (deltaEl) {
+      if (yestMs > 0 || todayMs > 0) {
+        const diffMins = Math.round((todayMs - yestMs) / 60000);
+        const sign     = diffMins >= 0 ? '+' : '';
+        const cls      = diffMins >= 0 ? 'hp-delta-up' : 'hp-delta-down';
+        deltaEl.innerHTML = `<span class="${cls}">${sign}${diffMins}m vs yesterday</span>`;
+        deltaEl.style.display = '';
+      } else {
+        deltaEl.style.display = 'none';
+      }
+    }
+  }
+
+  // ── Hero motivational message ─────────────────────────────────────────────
+
+  function _renderHeroMotivation(history, streak) {
+    const el = document.getElementById('hp-hero-motivation');
+    if (!el) return;
+
+    const today          = HistoryStats.getSessionsForToday(history);
+    const todayCompleted = today.filter(s => s.outcome === 'COMPLETED');
+    const todayMins      = Math.round(HistoryStats.getFocusedMs(today) / 60000);
+
+    let msg = '';
+    if      (streak >= 30)               msg = '👑 Legendary streak! You\'re unstoppable.';
+    else if (streak >= 14)               msg = `🌟 ${streak}-day streak — you're a legend.`;
+    else if (streak >= 7)                msg = `⚡ ${streak} days strong. Lightning focus!`;
+    else if (streak >= 3)                msg = `🔥 ${streak}-day streak. Momentum is real.`;
+    else if (todayCompleted.length >= 4) msg = '🏆 Incredible day. Absolutely crushing it!';
+    else if (todayCompleted.length >= 3) msg = '🎯 Three sessions in. Elite performance!';
+    else if (todayMins >= 90)            msg = '💪 90+ min focused today. Elite work.';
+    else if (todayCompleted.length >= 2) msg = '✅ Two sessions done. Keep stacking wins.';
+    else if (todayCompleted.length === 1)msg = '🌱 First session done! Build the chain.';
+    else if (today.length === 0)         msg = '✨ Ready to focus? Your streak awaits.';
+    else                                 msg = '💡 Every focused minute compounds.';
+
+    el.textContent = msg;
+  }
+
+  // ── Level & XP system ────────────────────────────────────────────────────
+
+  function _computeXP(history) {
+    return history.reduce((xp, s) => {
+      const mins    = s.durationMinutes || 0;
+      const total   = mins * 60;
+      const focused = s.actualFocusedSeconds || 0;
+      const quality = total > 0 ? focused / total : 0;
+      if      (s.outcome === 'COMPLETED') return xp + Math.round(mins * quality * 2.5 + 5);
+      else if (s.outcome === 'FAILED')    return xp + Math.round(mins * 0.4);
+      else                                return xp + Math.round(mins * 0.1);
+    }, 0);
+  }
+
+  function _getLevelInfo(xp) {
+    let lvlIdx = 0;
+    for (let i = 0; i < LEVELS.length; i++) {
+      if (xp >= LEVELS[i].threshold) lvlIdx = i;
+    }
+    const cur     = LEVELS[lvlIdx];
+    const next    = LEVELS[lvlIdx + 1];
+    const prgXP   = xp - cur.threshold;
+    const needXP  = next ? next.threshold - cur.threshold : 1;
+    return {
+      level:    lvlIdx + 1,
+      name:     cur.name,
+      xp,
+      prgXP,
+      needXP,
+      pct:      next ? Math.min(1, prgXP / needXP) : 1,
+      isMax:    !next,
+      nextName: next ? next.name : null,
+    };
+  }
+
+  function _renderLevelXP(history) {
+    const xp   = _computeXP(history);
+    const info = _getLevelInfo(xp);
+
+    const levelEl = document.getElementById('hp-level-label');
+    const xpFill  = document.getElementById('hp-xp-fill');
+    const xpText  = document.getElementById('hp-xp-text');
+    const xpBadge = document.getElementById('hp-xp-badge');
+
+    if (levelEl) levelEl.textContent = `Lv ${info.level}`;
+    if (xpFill)  xpFill.style.width  = `${Math.round(info.pct * 100)}%`;
+    if (xpText)  xpText.textContent  = info.isMax ? `${xp} XP · MAX` : `${info.prgXP} / ${info.needXP} XP`;
+    if (xpBadge) xpBadge.title       = `${info.name} · ${xp} total XP`;
+  }
+
+  // ── Achievement badges ────────────────────────────────────────────────────
+
+  function _renderAchievements(history, streak) {
+    const container = document.getElementById('hp-achievements');
+    if (!container) return;
+
+    const unlocked = ACHIEVEMENTS.filter(a => a.test(history, streak));
+    const locked   = ACHIEVEMENTS.filter(a => !a.test(history, streak));
+
+    const unlockedHtml = unlocked.map(a => `
+      <div class="hp-badge hp-badge-unlocked" title="${_esc(a.name)}">
+        <span class="hp-badge-icon">${a.icon}</span>
+        <span class="hp-badge-name">${_esc(a.name)}</span>
+      </div>`).join('');
+
+    // Show up to 4 locked badges as "next goals"
+    const lockedHtml = locked.slice(0, Math.max(0, 5 - unlocked.length)).map(a => `
+      <div class="hp-badge hp-badge-locked" title="${_esc(a.name)} (locked)">
+        <span class="hp-badge-icon">🔒</span>
+        <span class="hp-badge-name">${_esc(a.name)}</span>
+      </div>`).join('');
+
+    container.innerHTML = unlockedHtml + lockedHtml;
+  }
+
   // ── Stat cards ────────────────────────────────────────────────────────────
 
-  function _renderStatCards(history) {
+  function _renderStatCards(history, streak) {
     const todaySessions  = HistoryStats.getSessionsForToday(history);
     const weekSessions   = HistoryStats.getSessionsForWeek(history);
     const monthSessions  = HistoryStats.getSessionsForMonth(history);
+    const lastWeek       = _getSessionsForLastWeek(history);
+    const lastMonth      = _getSessionsForLastMonth(history);
 
-    // Today
-    _setText('hstat-today-focused',  HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(todaySessions)));
+    // Today (used by hero chips)
     _setText('hstat-today-sessions', String(todaySessions.length));
 
     // This week
     _setText('hstat-week-focused',   HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(weekSessions)));
     _setText('hstat-week-sessions',  String(weekSessions.length));
-
-    const streak = (typeof Session !== 'undefined' && Session.computeDayStreak) ? Session.computeDayStreak() : 0;
-    _setText('hstat-week-streak', String(streak));
+    _setTrend('hstat-week-trend', _computeTrend(
+      HistoryStats.getFocusedMs(weekSessions),
+      HistoryStats.getFocusedMs(lastWeek)
+    ));
 
     // This month
-    _setText('hstat-month-focused',   HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(monthSessions)));
-    _setText('hstat-month-sessions',  String(monthSessions.length));
+    _setText('hstat-month-focused',  HistoryStats.formatFocusTime(HistoryStats.getFocusedMs(monthSessions)));
+    _setText('hstat-month-sessions', String(monthSessions.length));
+    _setTrend('hstat-month-trend', _computeTrend(
+      HistoryStats.getFocusedMs(monthSessions),
+      HistoryStats.getFocusedMs(lastMonth)
+    ));
+
+    // Streak
+    _setText('hstat-week-streak', String(streak));
+    _setText('hstat-streak-current', String(streak));
+    const longest = (typeof Session !== 'undefined' && Session.computeLongestStreak) ? Session.computeLongestStreak() : 0;
+    _setText('hstat-streak-longest', String(longest));
 
     // Lifetime
     _setText('hstat-lifetime-focused', HistoryStats.formatFocusTime(
       (typeof Session !== 'undefined' ? Session.getTotalFocusedMinutes() : 0) * 60 * 1000
     ));
 
-    const longest = (typeof Session !== 'undefined' && Session.computeLongestStreak) ? Session.computeLongestStreak() : 0;
-    _setText('hstat-streak-current', `${streak}`);
-    _setText('hstat-streak-longest', `${longest}`);
-
-    const completedSessions = history.filter(s => s.outcome === 'COMPLETED');
-    if (completedSessions.length > 0) {
-      const avgScore = Math.round(
-        completedSessions.reduce((sum, s) => {
+    // Focus score avg (for hero chip)
+    const completed = history.filter(s => s.outcome === 'COMPLETED');
+    if (completed.length > 0) {
+      const avg = Math.round(
+        completed.reduce((sum, s) => {
           const total   = (s.durationMinutes || 0) * 60;
           const focused = s.actualFocusedSeconds || 0;
           return sum + (total > 0 ? (focused / total) * 100 : 0);
-        }, 0) / completedSessions.length
+        }, 0) / completed.length
       );
-      _setText('hstat-focus-score-avg', `${avgScore}%`);
+      _setText('hstat-focus-score-avg', `${avg}%`);
     } else {
       _setText('hstat-focus-score-avg', '—');
     }
@@ -129,35 +333,70 @@ const HistoryPanel = (() => {
 
   // ── Recent sessions list ──────────────────────────────────────────────────
 
-  function _renderRecentSessions(history) {
+  function _renderRecentSessions(history, showAll) {
     const container = document.getElementById('hp-recent-list');
+    const moreBtn   = document.getElementById('hp-recent-more');
     if (!container) return;
 
-    const recent = history.slice(0, 7);
+    const LIMIT   = showAll ? 20 : 8;
+    const recent  = history.slice(0, LIMIT);
+    const hasMore = !showAll && history.length > LIMIT;
 
     if (!recent.length) {
-      container.innerHTML = '<div class="hp-recent-empty">no sessions yet</div>';
+      container.innerHTML = '<div class="hp-recent-empty">✨ No sessions yet — start your first one!</div>';
+      if (moreBtn) moreBtn.style.display = 'none';
       return;
     }
 
-    // Known outcome values — anything else is treated as abandoned
     const KNOWN_OUTCOMES = new Set(['completed', 'failed', 'abandoned']);
 
-    container.innerHTML = recent.map(s => {
+    // Find today's best session index (for star treatment)
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    let bestTodayScore = -1, bestTodayIdx = -1;
+    recent.forEach((s, i) => {
+      if (!s.date || new Date(s.date) < todayStart) return;
+      if (s.outcome !== 'COMPLETED') return;
+      const total   = (s.durationMinutes || 0) * 60;
+      const focused = s.actualFocusedSeconds || 0;
+      const sc      = total > 0 ? (focused / total) * 100 : 0;
+      if (sc > bestTodayScore) { bestTodayScore = sc; bestTodayIdx = i; }
+    });
+
+    container.innerHTML = recent.map((s, idx) => {
       const rawOutcome = String(s.outcome || 'ABANDONED').toLowerCase();
       const outcome    = KNOWN_OUTCOMES.has(rawOutcome) ? rawOutcome : 'abandoned';
-      const icon       = outcome === 'completed' ? '✓' : outcome === 'failed' ? '✕' : '~';
-      const badgeTxt   = outcome === 'completed' ? 'done' : outcome === 'failed' ? 'failed' : 'quit';
-      const durMins    = Math.max(0, parseInt(s.durationMinutes, 10) || 0);
-      const durLabel   = durMins >= 60
+      const ICONS  = { completed: '✓', failed: '✕', abandoned: '~' };
+      const BADGES = { completed: 'done', failed: 'failed', abandoned: 'quit' };
+      const icon     = ICONS[outcome];
+      const badgeTxt = BADGES[outcome];
+
+      const durMins  = Math.max(0, parseInt(s.durationMinutes, 10) || 0);
+      const durLabel = durMins >= 60
         ? `${Math.floor(durMins / 60)}h ${durMins % 60 > 0 ? (durMins % 60) + 'm' : ''}`.trim()
         : `${durMins}m`;
 
-      const score = (() => {
-        if (outcome !== 'completed') return '';
+      const scoreNum = (() => {
+        if (outcome !== 'completed') return 0;
         const total   = durMins * 60;
         const focused = Math.max(0, parseInt(s.actualFocusedSeconds, 10) || 0);
-        return total > 0 ? `${Math.round((focused / total) * 100)}%` : '';
+        return total > 0 ? Math.round((focused / total) * 100) : 0;
+      })();
+
+      // 1-5 star rating
+      const stars    = scoreNum > 0 ? Math.max(1, Math.round(scoreNum / 20)) : 0;
+      const starsHtml = stars > 0
+        ? `<span class="hp-ri-stars" title="${scoreNum}% focus">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}</span>`
+        : '';
+
+      const exactTime = (() => {
+        if (!s.date) return '';
+        const d = new Date(s.date);
+        if (!isFinite(d.getTime())) return '';
+        let h   = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const ap = h >= 12 ? 'pm' : 'am';
+        h = h % 12 || 12;
+        return `${h}:${m}${ap}`;
       })();
 
       const timeAgo = (() => {
@@ -165,30 +404,52 @@ const HistoryPanel = (() => {
         const t = new Date(s.date).getTime();
         if (!isFinite(t)) return '';
         const diff = Date.now() - t;
-        const mins  = Math.floor(diff / 60000);
-        if (mins < 60)          return `${mins}m ago`;
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60)  return `${mins}m ago`;
         const hrs = Math.floor(mins / 60);
-        if (hrs < 24)           return `${hrs}h ago`;
+        if (hrs < 24)   return `${hrs}h ago`;
         const days = Math.floor(hrs / 24);
-        if (days === 1)         return 'yesterday';
-        if (days < 7)           return `${days}d ago`;
-        const wks = Math.floor(days / 7);
-        return `${wks}w ago`;
+        if (days === 1) return 'yesterday';
+        if (days < 7)   return `${days}d ago`;
+        return `${Math.floor(days / 7)}w ago`;
       })();
 
+      const isBest    = idx === bestTodayIdx && bestTodayScore > 0;
+      const bestBadge = isBest ? '<span class="hp-ri-best">⭐ best</span>' : '';
+
+      const barColor  = scoreNum >= 80 ? 'var(--col-green)' : scoreNum >= 50 ? 'var(--col-purple)' : 'var(--col-red)';
+      const focusBar  = scoreNum > 0
+        ? `<div class="hp-ri-bar-track"><div class="hp-ri-bar-fill" style="width:${scoreNum}%;background:${barColor}"></div></div>`
+        : '';
+
       return `
-        <div class="hp-recent-item">
+        <div class="hp-recent-item" style="animation-delay:${idx * 50}ms">
           <div class="hp-ri-outcome hp-ri-outcome-${outcome}">${icon}</div>
           <div class="hp-ri-info">
             <div class="hp-ri-top">
               <span class="hp-ri-duration">${_esc(durLabel)}</span>
               <span class="hp-ri-badge hp-ri-badge-${outcome}">${badgeTxt}</span>
+              ${bestBadge}
             </div>
-            <div class="hp-ri-sub">${_esc(timeAgo)}</div>
+            <div class="hp-ri-meta">
+              ${exactTime ? `<span class="hp-ri-time">${_esc(exactTime)}</span>` : ''}
+              ${timeAgo   ? `<span class="hp-ri-sep">·</span><span class="hp-ri-ago">${_esc(timeAgo)}</span>` : ''}
+              ${starsHtml}
+            </div>
+            ${focusBar}
           </div>
-          ${score ? `<div class="hp-ri-score">${_esc(score)}</div>` : ''}
+          ${scoreNum > 0 ? `<div class="hp-ri-score">${scoreNum}%</div>` : ''}
         </div>`;
     }).join('');
+
+    if (moreBtn) {
+      if (hasMore) {
+        moreBtn.style.display = 'flex';
+        moreBtn.textContent   = `show ${history.length - LIMIT} more`;
+      } else {
+        moreBtn.style.display = 'none';
+      }
+    }
   }
 
   // ── Streak calendar ───────────────────────────────────────────────────────
