@@ -5,9 +5,11 @@
  * The curve reveals itself left-to-right over 1.5 seconds using
  * requestAnimationFrame and a clip-rect reveal technique.
  *
- * Zone bands (green / amber / red), distraction markers (amber dot + drop line),
- * and 5-minute milestone markers (white star) are drawn alongside the curve.
- * Milestone markers appear as the animation reaches their x position.
+ * The curve is drawn in segments coloured by the focus state of each data
+ * point — green (FOCUSED), amber (DRIFTING), red (DISTRACTED/CRITICAL/FAILED).
+ * Distraction markers (amber dot + drop line) and 5-minute milestone markers
+ * (white star) are drawn alongside the curve.  Milestone markers appear as
+ * the animation reaches their x position.
  *
  * No auto-fade — the graph persists until the parent modal is closed.
  *
@@ -48,47 +50,74 @@ const FocusGraph = (() => {
     return PAD.left + (t / maxT) * innerW;
   }
 
-  /** Draw the three zone bands — call once as the static background. */
-  function _drawBands(ctx) {
-    const innerW = W - PAD.left - PAD.right;
-
-    // Green band: 60–100
-    ctx.fillStyle = 'rgba(80, 220, 120, 0.08)';
-    ctx.fillRect(PAD.left, _ly(100), innerW, _ly(60) - _ly(100));
-
-    // Amber band: 35–59
-    ctx.fillStyle = 'rgba(255, 180, 40, 0.08)';
-    ctx.fillRect(PAD.left, _ly(60), innerW, _ly(35) - _ly(60));
-
-    // Red band: 0–34
-    ctx.fillStyle = 'rgba(255, 60, 60, 0.10)';
-    ctx.fillRect(PAD.left, _ly(35), innerW, _ly(0) - _ly(35));
+  /**
+   * Return the stroke colour that corresponds to a timer state name.
+   * FOCUSED → green, DRIFTING → amber, DISTRACTED/CRITICAL/FAILED → red.
+   */
+  function _colorForState(state) {
+    switch (state) {
+      case 'FOCUSED':    return 'rgba(74, 222, 128, 0.90)';
+      case 'DRIFTING':   return 'rgba(251, 191,  36, 0.90)';
+      case 'DISTRACTED': return 'rgba(248, 113, 113, 0.90)';
+      case 'CRITICAL':   return 'rgba(239,  68,  68, 0.90)';
+      case 'FAILED':     return 'rgba(220,  38,  38, 0.90)';
+      default:           return 'rgba(255, 255, 255, 0.75)';
+    }
   }
 
   /**
-   * Draw the focus curve clipped to `revealX` pixels from the left edge.
-   * Uses a smooth bezier path: for each segment i → i+1 the horizontal
-   * mid-point is used as both control points, giving a gentle S-curve that
-   * respects the data shape without overshooting.
+   * Draw a neutral chart background with faint horizontal guide lines at the
+   * state-threshold levels (60 and 35).  No coloured zone bands — the curve
+   * itself carries the colour information.
+   */
+  function _drawBackground(ctx) {
+    const innerW = W - PAD.left - PAD.right;
+
+    // Subtle dark fill for the plot area
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.fillRect(PAD.left, PAD.top, innerW, H - PAD.top - PAD.bottom);
+
+    // Faint guide lines at the two threshold levels
+    const guides = [60, 35];
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 4]);
+    for (const lvl of guides) {
+      const gy = _ly(lvl);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left,         gy);
+      ctx.lineTo(PAD.left + innerW, gy);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  /**
+   * Draw the focus curve segment-by-segment, each segment coloured by the
+   * timer state of the destination point (FOCUSED=green, DRIFTING=amber,
+   * DISTRACTED/CRITICAL/FAILED=red).  Uses horizontal mid-point bezier
+   * control points for a smooth S-curve between consecutive data points.
    */
   function _drawCurve(ctx, pts) {
     if (pts.length < 2) return;
 
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin  = 'round';
+    ctx.lineCap   = 'round';
 
     for (let i = 1; i < pts.length; i++) {
       const prev = pts[i - 1];
       const cur  = pts[i];
       const midX = (prev.x + cur.x) / 2;
-      ctx.bezierCurveTo(midX, prev.y, midX, cur.y, cur.x, cur.y);
-    }
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-    ctx.lineWidth   = 2;
-    ctx.lineJoin    = 'round';
-    ctx.lineCap     = 'round';
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(prev.x, prev.y);
+      ctx.bezierCurveTo(midX, prev.y, midX, cur.y, cur.x, cur.y);
+      ctx.strokeStyle = _colorForState(cur.state);
+      ctx.stroke();
+    }
   }
 
   /**
@@ -202,16 +231,17 @@ const FocusGraph = (() => {
 
     // Require at least 2 data points to draw anything meaningful
     if (timeline.length < 2) {
-      _drawBands(ctx);
+      _drawBackground(ctx);
       return;
     }
 
     const maxT = timeline[timeline.length - 1].t || 1;
 
-    // Pre-compute pixel coordinates for every data point
+    // Pre-compute pixel coordinates for every data point (include state for colour)
     const pts = timeline.map(p => ({
-      x: _tx(p.t, maxT),
-      y: _ly(p.level),
+      x:     _tx(p.t, maxT),
+      y:     _ly(p.level),
+      state: p.state,
     }));
 
     const innerW   = W - PAD.left - PAD.right;
@@ -227,8 +257,8 @@ const FocusGraph = (() => {
 
       ctx.clearRect(0, 0, W, H);
 
-      // 1. Zone bands — always full-width, drawn instantly
-      _drawBands(ctx);
+      // 1. Background + guide lines — always full-width, drawn instantly
+      _drawBackground(ctx);
 
       // 2. Curve — clipped to the revealed region
       ctx.save();
