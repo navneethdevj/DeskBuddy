@@ -1,7 +1,7 @@
 /**
  * ShareCard — Session Share Card
  *
- * Renders a 400×240 canvas card summarising the completed session, then
+ * Renders a 400×252 canvas card summarising the completed session, then
  * shows a popup modal with options to copy the image to the clipboard
  * or download it as a PNG.
  *

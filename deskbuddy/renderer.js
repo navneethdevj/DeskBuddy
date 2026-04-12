@@ -477,6 +477,8 @@
       const outcomeLabel = document.getElementById('outcome-label');
       if (outcomeLabel) {
         if      (newState === 'COMPLETED')  outcomeLabel.textContent = '✦ session complete!';
+        // Both FAILED and ABANDONED share the same user-facing message intentionally —
+        // the distinction (distraction vs. manual exit) is captured in session history.
         else if (newState === 'FAILED')     outcomeLabel.textContent = 'session ended early.';
         else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session ended early.';
         else                                outcomeLabel.textContent = '';
@@ -507,7 +509,7 @@
       if (newState === 'FAILED' || newState === 'ABANDONED') {
         // Companion shows sad/crying for both failed and abandoned sessions
         Emotion.setState('crying');
-        // Abandoned sessions play the fail sound (session.js is intentionally silent for abandon)
+        // session.js plays no sound for ABANDONED — renderer fills the gap here.
         if (newState === 'ABANDONED' && typeof Sounds !== 'undefined') Sounds.play('session_fail');
       }
 
