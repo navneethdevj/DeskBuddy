@@ -441,6 +441,47 @@
   let _dailyGoalLastTick      = 0;   // throttle daily goal arc updates during sessions
   let _budgetWarnedAt         = -1;  // distraction count at which we last warned
 
+  // ── Live focus heatmap — 90 per-second coloured blocks ────────────────────
+  const HEATMAP_MAX_BLOCKS = 90;
+  const _heatmapData       = [];
+  let   _heatmapInterval   = null;
+
+  function _heatmapPush() {
+    const state = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
+    _heatmapData.push(state.toLowerCase());
+    if (_heatmapData.length > HEATMAP_MAX_BLOCKS) _heatmapData.shift();
+    _heatmapRender();
+  }
+
+  function _heatmapRender() {
+    const strip = document.getElementById('focus-heatmap-strip');
+    if (!strip) return;
+    strip.innerHTML = '';
+    const empties = HEATMAP_MAX_BLOCKS - _heatmapData.length;
+    for (let i = 0; i < empties; i++) {
+      const b = document.createElement('div');
+      b.className = 'fh-block fh-empty';
+      strip.appendChild(b);
+    }
+    _heatmapData.forEach(s => {
+      const b = document.createElement('div');
+      b.className = `fh-block fh-${s}`;
+      strip.appendChild(b);
+    });
+  }
+
+  function _heatmapStart() {
+    _heatmapData.length = 0;
+    if (_heatmapInterval) clearInterval(_heatmapInterval);
+    _heatmapInterval = setInterval(_heatmapPush, 1000);
+    _heatmapRender();
+  }
+
+  function _heatmapStop() {
+    if (_heatmapInterval) { clearInterval(_heatmapInterval); _heatmapInterval = null; }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState, oldState) => {
       const stats = Session.getCurrentStats();
@@ -483,6 +524,9 @@
           if (fill)  fill.style.width = '0%';
           if (pctEl) pctEl.textContent = '–';
         }
+
+        // Start live focus heatmap on fresh session start
+        if (oldState === 'IDLE') _heatmapStart();
 
         // Immediate companion reaction — only on a fresh start (not resume from pause)
         if (oldState === 'IDLE') _fireSessionStartAnim();
@@ -583,6 +627,7 @@
         setTimeout(() => _updateDailyGoalArc(), 200);
         const budgetRow = document.getElementById('sp-budget-row');
         if (budgetRow) budgetRow.style.display = 'none';
+        _heatmapStop();
       }
 
       // Reset timer state body attribute when session ends

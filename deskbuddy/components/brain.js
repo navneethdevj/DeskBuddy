@@ -199,6 +199,27 @@ const Brain = (() => {
   let _whisperQueue = [];
   let _whisperBusy  = false;
 
+  // Emotion-tinted whisper colors — each mood gives the text a unique tint
+  const _WHISPER_COLORS = {
+    happy:      'rgba(255, 235, 160, 0.95)',
+    overjoyed:  'rgba(255, 250, 195, 0.98)',
+    excited:    'rgba(255, 228, 120, 0.95)',
+    love:       'rgba(255, 158, 198, 0.95)',
+    cozy:       'rgba(255, 148, 165, 0.90)',
+    shy:        'rgba(255, 168, 210, 0.85)',
+    sad:        'rgba(130, 175, 245, 0.88)',
+    crying:     'rgba(110, 160, 240, 0.90)',
+    scared:     'rgba(195, 218, 255, 0.92)',
+    startled:   'rgba(205, 225, 255, 0.95)',
+    grumpy:     'rgba(255, 175, 120, 0.90)',
+    pouty:      'rgba(255, 205, 130, 0.88)',
+    curious:    'rgba(155, 170, 255, 0.92)',
+    sulking:    'rgba(200, 148, 210, 0.85)',
+    suspicious: 'rgba(160, 165, 248, 0.88)',
+    forgiven:   'rgba(255, 200, 225, 0.90)',
+    embarrassed:'rgba(255, 160, 200, 0.88)',
+  };
+
   // Face gaze interpolation removed — smoothing handled by
   // One Euro Filter in perception.js + lerp in companion.js (no double-lerp needed)
 
@@ -747,6 +768,11 @@ const Brain = (() => {
 
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+
+      // Nudge the ambient soundscape drone to match the new emotional state
+      if (typeof Soundscape !== 'undefined' && Soundscape.nudgeForEmotion) {
+        Soundscape.nudgeForEmotion(emotion);
+      }
 
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
@@ -1388,6 +1414,14 @@ const Brain = (() => {
     CRITICAL:   { color: 'rgba(255, 60, 60,0.95)', glow: 'rgba(255, 30, 30,0.45)', opacity: '0.95' },
     FAILED:     { color: 'rgba(140,140,160,0.50)', glow: 'transparent',             opacity: '0.35' },
   };
+  // RGB-only palette used by _spawnFocusParticle for color blending
+  const palette = {
+    FOCUSED:    '160,190,255',
+    DRIFTING:   '255,200, 80',
+    DISTRACTED: '255, 90, 90',
+    CRITICAL:   '255, 60, 60',
+    FAILED:     '140,140,160',
+  };
   let _lastFocusTimerState = null;
   let _ftParticleInt = null;
 
@@ -1806,6 +1840,8 @@ const Brain = (() => {
     // Snap in quickly (0.2 s) so message is readable immediately,
     // then fade out smoothly (0.6 s) so exit feels gentle.
     el.textContent          = text;
+    // Tint the whisper text to match the companion's current emotional state
+    el.style.color = _WHISPER_COLORS[window._lastEmotion] || 'rgba(255,255,255,0.78)';
     el.style.transition     = 'opacity 0.2s ease';
     el.style.opacity        = '0.72';
     setTimeout(() => {

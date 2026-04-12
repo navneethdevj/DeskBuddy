@@ -3896,6 +3896,33 @@ body[data-timer-state="CRITICAL"]   .sp-focus-stat-fill { background: rgba(255, 
   text-align: right;
 }
 
+/* ── Live focus heatmap strip ───────────────────────────────────── */
+/* 90 per-second coloured micro-blocks showing recent focus history  */
+.focus-heatmap-strip {
+  display: flex;
+  gap: 1px;
+  margin-top: 5px;
+  height: 4px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.fh-block {
+  flex: 1;
+  height: 100%;
+  border-radius: 1px;
+  min-width: 0;
+  transition: background 0.5s ease;
+}
+
+.fh-block.fh-empty      { background: rgba(255, 255, 255, 0.05); }
+.fh-block.fh-focused    { background: rgba(74,  222, 128, 0.72); }
+.fh-block.fh-drifting   { background: rgba(251, 191,  36, 0.72); }
+.fh-block.fh-distracted { background: rgba(255,  80,  80, 0.78); }
+.fh-block.fh-critical   { background: rgba(255,  50,  50, 0.92); }
+.fh-block.fh-failed     { background: rgba(110, 110, 130, 0.40); }
+
 /* ── Break / paused state ───────────────────────────────────────── */
 .sp-break-body {
   text-align: center;
