@@ -411,6 +411,13 @@
             </div>
             <button id="import-settings-btn" class="settings-action-btn">import</button>
           </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Reset to defaults</div>
+              <div class="settings-row-sublabel">Restore all preferences to factory values</div>
+            </div>
+            <button id="reset-settings-btn" class="settings-action-btn settings-action-btn-danger">reset</button>
+          </div>
           <div id="settings-backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
         </div>
       </div>
@@ -573,6 +580,14 @@
       </div>
 
       <div id="goal-display" class="sp-goal-display" style="display:none"></div>
+      <!-- Live focus stat bar -->
+      <div class="sp-focus-stat-row">
+        <div class="sp-focus-stat-label">focus</div>
+        <div class="sp-focus-stat-bar">
+          <div id="sp-focus-stat-fill" class="sp-focus-stat-fill"></div>
+        </div>
+        <div id="sp-focus-stat-pct" class="sp-focus-stat-pct">–</div>
+      </div>
       <div class="sp-controls">
         <button id="pause-session" class="sp-btn sp-btn-secondary">
           ☕ take a break
@@ -592,7 +607,7 @@
       <div class="sp-break-body">
         <div class="sp-break-icon">☕</div>
         <div id="break-countdown" class="sp-break-countdown">5:00</div>
-        <div class="sp-break-hint">break budget remaining</div>
+        <div class="sp-break-hint">time on break</div>
       </div>
       <div class="sp-controls">
         <button id="resume-session" class="sp-btn sp-btn-primary">

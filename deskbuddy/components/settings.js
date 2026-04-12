@@ -160,5 +160,14 @@ const Settings = (() => {
     return { success: true, applied };
   }
 
-  return { init, get, set, onChange, dump, exportSettings, importSettings };
+  /**
+   * reset() — restore all settings to factory defaults and persist.
+   */
+  function reset() {
+    _current = { ...DEFAULTS };
+    _persist();
+    Object.keys(_current).forEach(key => _fire(key, _current[key]));
+  }
+
+  return { init, get, set, onChange, dump, exportSettings, importSettings, reset };
 })();

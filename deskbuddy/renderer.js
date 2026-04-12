@@ -442,6 +442,13 @@
         if (inlineTimer) {
           inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
         }
+        // Reset focus stat bar on fresh start
+        if (oldState === 'IDLE') {
+          const fill  = document.getElementById('sp-focus-stat-fill');
+          const pctEl = document.getElementById('sp-focus-stat-pct');
+          if (fill)  fill.style.width = '0%';
+          if (pctEl) pctEl.textContent = '–';
+        }
 
         // Immediate companion reaction — only on a fresh start (not resume from pause)
         if (oldState === 'IDLE') _fireSessionStartAnim();
@@ -548,6 +555,16 @@
         const CIRC    = 138.23; // 2π × r=22
         const elapsed = _sessionTotalSeconds - remaining;
         ring.style.strokeDashoffset = String(CIRC * (elapsed / _sessionTotalSeconds));
+      }
+
+      // Live focus stat bar
+      const stats = Session.getCurrentStats ? Session.getCurrentStats() : null;
+      if (stats && stats.elapsed > 0) {
+        const pct = Math.round((stats.focusedSeconds / stats.elapsed) * 100);
+        const fill = document.getElementById('sp-focus-stat-fill');
+        const pctEl = document.getElementById('sp-focus-stat-pct');
+        if (fill) fill.style.width = `${pct}%`;
+        if (pctEl) pctEl.textContent = `${pct}%`;
       }
     });
   }
@@ -1540,6 +1557,7 @@
     // ── Settings backup: export / import ─────────────────────────────────────
     const exportSettingsBtn    = document.getElementById('export-settings-btn');
     const importSettingsBtn    = document.getElementById('import-settings-btn');
+    const resetSettingsBtn     = document.getElementById('reset-settings-btn');
     const settingsBackupStatus = document.getElementById('settings-backup-status');
 
     function _showSettingsBackupStatus(msg, color) {
@@ -1591,6 +1609,12 @@
       });
     }
 
+    if (resetSettingsBtn) {
+      resetSettingsBtn.addEventListener('click', () => {
+        Settings.reset();
+        _showSettingsBackupStatus('settings reset to defaults ✓', 'rgba(68,232,176,0.80)');
+      });
+    }
 
     // ── Emotion preview duration slider ─────────────────────────────────
     const previewDurSlider   = document.getElementById('preview-dur-slider');
@@ -1797,13 +1821,6 @@
       } else {
         // IDLE | COMPLETED | FAILED | ABANDONED
         BreakReminder.stop();
-      }
-    });
-
-    // When user resumes, dismiss any active reminder
-    Session.onSessionStateChange((newState) => {
-      if (newState === 'ACTIVE' && BreakReminder.isActive()) {
-        BreakReminder.dismiss();
       }
     });
 
