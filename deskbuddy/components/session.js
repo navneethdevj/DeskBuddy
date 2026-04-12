@@ -482,6 +482,46 @@ const Session = (() => {
   }
 
   /**
+   * computeLongestStreak() — find the longest ever consecutive-day streak
+   * in the full history. Scans up to 2 years of history.
+   * @returns {number} — days
+   */
+  function computeLongestStreak() {
+    const history = getHistory();
+    if (!history.length) return 0;
+
+    // Build a Set of "day keys" (date strings) for all non-abandoned sessions
+    const dayKeys = new Set(
+      history
+        .filter(s => s.outcome !== 'ABANDONED')
+        .map(s => {
+          if (!s.date) return null;
+          const d = new Date(s.date);
+          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        })
+        .filter(Boolean)
+    );
+
+    let longest = 0;
+    let current = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 730; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (dayKeys.has(key)) {
+        current++;
+        if (current > longest) longest = current;
+      } else {
+        current = 0;
+      }
+    }
+    return longest;
+  }
+
+  /**
    * getTotalFocusedMinutes() — sum of actualFocusedSeconds across all
    * COMPLETED sessions in history, converted to minutes (floored).
    * @returns {number}
@@ -608,6 +648,7 @@ const Session = (() => {
     getBreakElapsedMs,
     onSessionStateChange,
     computeDayStreak,
+    computeLongestStreak,
     getTotalFocusedMinutes,
     getGoalCompletionRate,
     STATE,
