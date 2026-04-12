@@ -552,6 +552,13 @@
     // Companion goes excited immediately — no setTimeout, no lag
     if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2800);
 
+    // Particle burst — spawn multiple excited particles in a rapid staggered burst
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => Particles.spawn('excited'), i * 55);
+      }
+    }
+
     // Companion bounce — force-retrigger even if class is already set
     const buddy = typeof Companion !== 'undefined' ? Companion.getElement() : null;
     if (buddy) {

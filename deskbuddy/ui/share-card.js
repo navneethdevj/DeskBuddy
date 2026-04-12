@@ -582,14 +582,18 @@ const ShareCard = (() => {
         </div>
         <div id="share-card-canvas-wrap"></div>
         <div id="share-card-goal-prompt" style="display:none">
-          <span class="sc-prompt-label">did you finish it? 🎯</span>
+          <div class="sc-goal-prompt-content">
+            <span class="sc-prompt-icon">🎯</span>
+            <span id="share-card-goal-label" class="sc-prompt-label">did you complete your goal?</span>
+          </div>
           <div class="sc-prompt-btns">
-            <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes ✓</button>
+            <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes! ✓</button>
             <button id="share-card-goal-no"  class="sc-btn sc-btn-no">not yet</button>
           </div>
         </div>
+        <div id="share-card-goal-insight" style="display:none" aria-live="polite"></div>
         <div id="share-card-mood-prompt" style="display:none">
-          <span class="sc-prompt-label">how was this session?</span>
+          <span class="sc-prompt-label">how did this session feel?</span>
           <div class="sc-mood-btns">
             <button class="sc-mood-btn" data-rating="1" title="Drained">😩</button>
             <button class="sc-mood-btn" data-rating="2" title="Meh">😕</button>
@@ -628,6 +632,11 @@ const ShareCard = (() => {
       if (typeof Session !== 'undefined') Session.setGoalAchieved(true);
       _rerenderCard();
       modal.querySelector('#share-card-goal-prompt').style.display = 'none';
+      // Buddy celebrates with the user
+      if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 3000);
+      if (typeof Sounds !== 'undefined') Sounds.play('overjoyed_chirp');
+      // Show goal completion insight
+      _showGoalInsight(true);
     });
 
     // Goal achieved — no
@@ -637,6 +646,10 @@ const ShareCard = (() => {
       if (typeof Session !== 'undefined') Session.setGoalAchieved(false);
       _rerenderCard();
       modal.querySelector('#share-card-goal-prompt').style.display = 'none';
+      // Buddy shows supportive pouty expression
+      if (typeof Emotion !== 'undefined') Emotion.preview('pouty', 2500);
+      // Show encouraging goal insight
+      _showGoalInsight(false);
     });
 
     // Mood rating — one of five emoji buttons
@@ -721,6 +734,39 @@ const ShareCard = (() => {
     }
   }
 
+  /**
+   * _showGoalInsight(achieved) — show a goal completion insight after the user
+   * answers the goal prompt. Displays goal completion rate and a personal message.
+   */
+  function _showGoalInsight(achieved) {
+    const insightEl = document.getElementById('share-card-goal-insight');
+    if (!insightEl) return;
+
+    const rate = (typeof Session !== 'undefined' && Session.getGoalCompletionRate?.()) || null;
+
+    let message, sub;
+    if (achieved) {
+      message = '🎉 goal crushed!';
+      if (rate && rate.total >= 2) {
+        sub = `${rate.achieved} of ${rate.total} goals completed — ${rate.rate}% completion rate`;
+      } else {
+        sub = 'keep up the amazing work!';
+      }
+    } else {
+      message = '💙 next time you will';
+      if (rate && rate.total >= 2) {
+        sub = `${rate.achieved} of ${rate.total} goals completed — you\'re building the habit`;
+      } else {
+        sub = 'every session gets you closer';
+      }
+    }
+
+    insightEl.innerHTML = `<span class="sc-insight-msg">${message}</span><span class="sc-insight-sub">${sub}</span>`;
+    insightEl.style.display = '';
+    // Auto-hide insight after 8s
+    setTimeout(() => { insightEl.style.display = 'none'; }, 8000);
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
@@ -745,12 +791,26 @@ const ShareCard = (() => {
     // Show the right prompt depending on whether the session had a goal
     const goalPromptEl = document.getElementById('share-card-goal-prompt');
     const moodPromptEl = document.getElementById('share-card-mood-prompt');
+    const insightEl    = document.getElementById('share-card-goal-insight');
+    // Reset insight on each new show
+    if (insightEl) insightEl.style.display = 'none';
     if (goalPromptEl && moodPromptEl) {
       const hasGoal  = !!sessionData.goalText;
       const showGoal = hasGoal && sessionData.goalAchieved === null;
       const showMood = !hasGoal && (sessionData.moodRating === null || sessionData.moodRating === undefined);
       goalPromptEl.style.display = showGoal ? '' : 'none';
       moodPromptEl.style.display = showMood ? '' : 'none';
+      // Personalise the goal prompt label with the actual goal text
+      if (hasGoal && showGoal) {
+        const labelEl = document.getElementById('share-card-goal-label');
+        if (labelEl) {
+          const maxLen = 48;
+          const truncated = sessionData.goalText.length > maxLen
+            ? sessionData.goalText.slice(0, maxLen - 1) + '…'
+            : sessionData.goalText;
+          labelEl.textContent = `did you complete: "${truncated}"?`;
+        }
+      }
     }
 
     const modal = document.getElementById('share-card-modal');
