@@ -166,6 +166,14 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => { mainWindow = null; });
+
+  // ── Auto-PiP on blur: forward window focus/blur to renderer ──────────────
+  mainWindow.on('blur', () => {
+    if (mainWindow) mainWindow.webContents.send('app-blur');
+  });
+  mainWindow.on('focus', () => {
+    if (mainWindow) mainWindow.webContents.send('app-focus');
+  });
 }
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────

@@ -863,6 +863,7 @@
   // The window is always interactive in PiP mode — no click-through.
 
   let _isFullMode = true;  // starts in full-screen
+  let _autoPipActive = false; // true when auto-PiP triggered the collapse
   let _pendingShareCard = null; // queued when session ends while in PiP mode
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
@@ -891,6 +892,12 @@
     if (window.electronAPI) window.electronAPI.exitFullMode();
   }
 
+  function _exitFullModeManual() {
+    // Clear auto-pip flag so a subsequent focus event doesn't auto-restore.
+    _autoPipActive = false;
+    _exitFullMode();
+  }
+
   function _wireWindowControls() {
     // Keyboard shortcut registered via Keybinds in _wireKeybinds() below
 
@@ -898,7 +905,7 @@
     const expandBtn   = document.getElementById('compact-expand-btn');
     const collapseBtn = document.getElementById('full-collapse-btn');
     if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
-    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullMode());
+    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullModeManual());
 
     // Sync mode state when main reports transitions (covers IPC-initiated toggles).
     if (window.electronAPI) {
@@ -919,6 +926,22 @@
         document.body.classList.remove('full-mode');
         document.body.classList.add('pip-mode');
       });
+
+      // Auto-PiP: collapse to compact overlay when the user switches away
+      window.electronAPI.onAppBlur(() => {
+        if (_isFullMode && Settings.get('autoPipOnBlur')) {
+          _autoPipActive = true;
+          _exitFullMode();
+        }
+      });
+
+      // Auto-PiP: restore full mode when the user comes back (only if we auto-collapsed)
+      window.electronAPI.onAppFocus(() => {
+        if (_autoPipActive && !_isFullMode) {
+          _autoPipActive = false;
+          _enterFullMode();
+        }
+      });
     }
   }
 
@@ -932,7 +955,7 @@
       id: 'toggle-pip',
       label: 'Toggle compact overlay',
       defaultKey: 'Ctrl+Shift+P',
-      fn: () => _isFullMode ? _exitFullMode() : _enterFullMode(),
+      fn: () => _isFullMode ? _exitFullModeManual() : _enterFullMode(),
     });
 
     Keybinds.register({
@@ -1096,6 +1119,16 @@
       nightToggle.checked = Settings.get('nightAutoVolume');
       nightToggle.addEventListener('change', () => Settings.set('nightAutoVolume', nightToggle.checked));
     }
+
+    // Auto-PiP on app switch toggle
+    const autoPipToggle = document.getElementById('auto-pip-toggle');
+    if (autoPipToggle) {
+      autoPipToggle.checked = Settings.get('autoPipOnBlur');
+      autoPipToggle.addEventListener('change', () => Settings.set('autoPipOnBlur', autoPipToggle.checked));
+    }
+    Settings.onChange('autoPipOnBlur', (v) => {
+      if (autoPipToggle) autoPipToggle.checked = v;
+    });
 
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');

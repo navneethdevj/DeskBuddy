@@ -32,6 +32,8 @@ const Settings = (() => {
     celebrationEnabled: true,       // confetti + banner on session complete
     breakAnimEnabled:   true,       // teal glow + break card when break starts
     keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
+    // ── Window behaviour ──────────────────────────────────────────────
+    autoPipOnBlur:          true,  // collapse to PiP when the user switches to another app
     // ── Buddy personality ──────────────────────────────────────────────
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
