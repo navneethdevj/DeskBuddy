@@ -883,34 +883,49 @@
       <div class="hp-section hp-streak-section">
         <div class="hp-streak-row">
           <div class="hp-sr-item">
-            <div class="hp-sr-fires" id="hsr-fires"></div>
+            <div class="hp-sr-fires" id="hsr-fires" title="Current streak fire emojis"></div>
             <div class="hp-sr-val" id="hsr-current-streak">0</div>
-            <div class="hp-sr-lbl">day streak</div>
+            <div class="hp-sr-lbl">day streak 🔥</div>
           </div>
           <div class="hp-sr-div"></div>
           <div class="hp-sr-item">
             <div class="hp-sr-fires hp-sr-fires-dim" id="hsr-fires-longest"></div>
             <div class="hp-sr-val" id="hsr-longest-streak">0</div>
-            <div class="hp-sr-lbl">longest</div>
+            <div class="hp-sr-lbl">longest 🏆</div>
           </div>
           <div class="hp-sr-div"></div>
           <div class="hp-sr-item">
             <div class="hp-sr-val hp-sr-val-score" id="hsr-avg-score">—</div>
-            <div class="hp-sr-lbl">avg focus</div>
+            <div class="hp-sr-lbl">avg focus %</div>
           </div>
         </div>
-        <div class="hp-section-head" style="margin-top:4px">
+        <div class="hp-section-head" style="margin-top:6px">
           <span class="hp-slabel">streak calendar</span>
-          <span class="hp-slabel" id="hp-cal-months-label" style="font-size:8px;opacity:0.55;letter-spacing:0.04em"></span>
+          <div class="hp-cal-modes">
+            <button class="hp-cal-mode-btn active" data-cal-mode="16w" title="Show last 16 weeks (GitHub-style)">16 Weeks</button>
+            <button class="hp-cal-mode-btn" data-cal-mode="month" title="Show current month as calendar">Month</button>
+          </div>
         </div>
-        <div class="hp-cal-wrap">
-          <div class="hp-cal-day-col">
-            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+        <!-- GitHub-style: columns=weeks, rows=days, day labels on left -->
+        <div class="hp-cal-wrap" id="hp-cal-wrap-github">
+          <div class="hp-cal-day-col" id="hp-cal-day-col">
+            <!-- Day labels: Mon, Tue, Wed, Thu, Fri, Sat, Sun -->
+            <span title="Monday">M</span>
+            <span title="Tuesday">T</span>
+            <span title="Wednesday">W</span>
+            <span title="Thursday">T</span>
+            <span title="Friday">F</span>
+            <span title="Saturday">S</span>
+            <span title="Sunday">S</span>
           </div>
           <div class="hp-cal-graph-wrap">
             <div class="hp-cal-month-labels" id="hp-cal-months"></div>
-            <canvas id="hp-streak-canvas" class="hp-streak-canvas"></canvas>
+            <canvas id="hp-streak-canvas" class="hp-streak-canvas" title="Focus streak — purple = completed session, dim = attempted, empty = no session"></canvas>
           </div>
+        </div>
+        <!-- Month-mode calendar grid (hidden by default) -->
+        <div id="hp-cal-wrap-month" style="display:none;">
+          <div id="hp-cal-month-grid-container"></div>
         </div>
       </div>
 
@@ -918,6 +933,7 @@
       <div class="hp-section">
         <div class="hp-section-head">
           <span class="hp-slabel">recent sessions</span>
+          <span style="font-size:8px;color:rgba(155,140,220,0.35);letter-spacing:0.04em">last 7</span>
         </div>
         <div id="hp-recent-list" class="hp-recent-list"></div>
       </div>

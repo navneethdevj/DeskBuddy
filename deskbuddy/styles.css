@@ -1929,14 +1929,18 @@ body.pip-mode #session-timer {
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  opacity: 0.78;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  opacity: 0.88;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(120, 135, 235, 0.4);
   pointer-events: none;
   -webkit-user-select: none;
   z-index: 1001;
   animation: none;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.28);
+  border-radius: 6px;
 }
 /* In circle/rounded mode pull the timer up so it doesn't clip outside the curve */
 body.pip-shape-circle.pip-mode  #session-timer,
@@ -2946,7 +2950,7 @@ body.pip-mode  #history-btn { display: none !important; }
   position: fixed;
   top: 58px;
   left: 14px;
-  width: 320px;
+  width: 420px;
   max-height: calc(100vh - 80px);
   z-index: 2990;
   display: none;
@@ -3197,27 +3201,193 @@ body.pip-mode  #history-panel { display: none !important; }
 }
 
 /* ── 3. Streak Calendar canvas ───────────────────────────────────── */
-.hp-cal-day-labels {
+
+/* Calendar mode picker buttons */
+.hp-cal-modes {
   display: flex;
-  gap: 0;
-  padding: 0 0 3px;
-  width: 89px; /* 7 × (11+2) − 2 = 89px, matches canvas */
+  gap: 3px;
+  margin-bottom: 4px;
 }
-.hp-cal-day-labels span {
-  width: 13px; /* CELL + GAP */
-  flex: none;
-  text-align: center;
+.hp-cal-mode-btn {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(139, 118, 255, 0.13);
+  background: transparent;
+  color: rgba(139, 118, 255, 0.42);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  -webkit-app-region: no-drag;
+}
+.hp-cal-mode-btn:hover {
+  background: rgba(139, 118, 255, 0.10);
+  color: rgba(200, 185, 255, 0.80);
+}
+.hp-cal-mode-btn.active {
+  background: rgba(139, 118, 255, 0.16);
+  color: rgba(220, 210, 255, 0.95);
+  border-color: rgba(139, 118, 255, 0.38);
+}
+
+/* GitHub-style calendar: columns=weeks, rows=days */
+.hp-cal-wrap {
+  display: flex;
+  gap: 5px;
+  width: 100%;
+  align-items: flex-start;
+}
+.hp-cal-day-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0;
+  padding-top: 14px; /* offset for month label row */
+  flex-shrink: 0;
+  width: 16px;
+}
+.hp-cal-day-col span {
   font-size: 7.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(139, 118, 255, 0.38);
   text-transform: uppercase;
+  height: 11px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+.hp-cal-graph-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.hp-cal-month-labels {
+  display: flex;
+  height: 12px;
+  position: relative;
 }
 .hp-streak-canvas {
   display: block;
-  border-radius: 6px;
+  border-radius: 4px;
   image-rendering: pixelated;
-  /* width set by JS; height auto */
+  width: 100%;
+  height: auto;
+}
+
+/* Month-mode calendar grid */
+.hp-cal-month-grid {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.hp-cal-month-grid th {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(139, 118, 255, 0.45);
+  text-align: center;
+  padding: 0 0 4px;
+  width: calc(100% / 7);
+}
+.hp-cal-month-grid td {
+  text-align: center;
+  padding: 1px;
+}
+.hp-cal-day-cell {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: rgba(139, 118, 255, 0.35);
+  background: rgba(255,255,255,0.03);
+  margin: 0 auto;
+  transition: background 0.12s;
+  cursor: default;
+  position: relative;
+}
+.hp-cal-day-cell.hp-day-completed {
+  background: rgba(139, 118, 255, 0.55);
+  color: rgba(230, 220, 255, 0.96);
+  box-shadow: 0 0 8px rgba(139, 118, 255, 0.40);
+}
+.hp-cal-day-cell.hp-day-attempted {
+  background: rgba(139, 118, 255, 0.18);
+  color: rgba(180, 165, 255, 0.70);
+}
+.hp-cal-day-cell.hp-day-today {
+  outline: 1.5px solid rgba(200, 185, 255, 0.70);
+  outline-offset: 1px;
+}
+.hp-cal-day-cell.hp-day-empty { background: transparent; }
+.hp-cal-day-cell.hp-day-future {
+  background: rgba(255,255,255,0.02);
+  color: rgba(139, 118, 255, 0.15);
+}
+
+/* ── Fire emoji streaks ──────────────────────────────────────────── */
+.hp-sr-fires {
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 1px;
+}
+.hp-sr-fires-dim {
+  opacity: 0.45;
+  filter: grayscale(0.5);
+}
+
+/* ── hp-view visibility (pills control which view is shown) ─────── */
+.hp-view {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.hp-view.hp-view-active {
+  display: flex;
+}
+
+/* ── Chart section within views ──────────────────────────────────── */
+.hp-chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hp-chart-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(155, 140, 220, 0.45);
+}
+
+/* ── Stat card color variants ─────────────────────────────────────── */
+.hp-sc-avg::before   { background: linear-gradient(90deg, rgba(251,191,36,0.70), transparent); }
+.hp-sc-dur::before   { background: linear-gradient(90deg, rgba(248,113,113,0.70), transparent); }
+.hp-sc-month::before { background: linear-gradient(90deg, rgba(52,211,153,0.70), transparent); }
+.hp-sc-avg  .hp-sc-val { color: rgba(251, 191, 36, 0.96); }
+.hp-sc-dur  .hp-sc-val { color: rgba(248, 113, 113, 0.96); }
+.hp-sc-month .hp-sc-val { color: rgba(90, 230, 175, 0.96); }
+
+/* ── Day-view empty canvas slots ─────────────────────────────────── */
+.hp-cal-day-labels {
+  display: flex;
+  gap: 0;
+  padding: 0 0 3px;
 }
 
 /* ── View pills ──────────────────────────────────────────────────── */
@@ -3258,10 +3428,15 @@ body.pip-mode  #history-panel { display: none !important; }
   overflow: hidden;
   position: relative;
 }
-#history-chart-canvas {
+#history-chart-canvas,
+#hp-chart-daily,
+#hp-chart-weekly,
+#hp-chart-monthly,
+#hp-chart-lifetime {
   display: block;
   width: 100%;
   border-radius: 12px;
+  min-height: 80px;
 }
 
 /* ── 5. Recent sessions list ─────────────────────────────────────── */

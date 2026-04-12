@@ -231,6 +231,10 @@ ipcMain.on('enter-full-mode', () => {
   mainWindow.setResizable(false);
   mainWindow.setBounds({ x: 0, y: 0, width, height }, process.platform === 'darwin');
   mainWindow.setSkipTaskbar(false);
+  // Clear any pip thumbnail clip so the full window shows in task view
+  if (process.platform === 'win32') {
+    try { mainWindow.setThumbnailClip({ x: 0, y: 0, width, height }); } catch (_) {}
+  }
   // Full mode is not always-on-top and is always interactive.
   mainWindow.setAlwaysOnTop(false);
   mainWindow.setIgnoreMouseEvents(false);
@@ -250,6 +254,11 @@ ipcMain.on('exit-full-mode', () => {
   mainWindow.setBounds({ x: pos.x, y: pos.y, width: dim, height: dim }, process.platform === 'darwin');
   mainWindow.setSkipTaskbar(false);  // Keep visible in Win+Tab Task View
   mainWindow.setIgnoreMouseEvents(false);
+  // On Windows, clip the taskbar thumbnail to the pip bubble area so the companion
+  // is clearly visible when hovering over the taskbar icon or in Win+Tab Task View.
+  if (process.platform === 'win32') {
+    try { mainWindow.setThumbnailClip({ x: 0, y: 0, width: dim, height: dim }); } catch (_) {}
+  }
   // showInactive first so the window is rendered at the new size/position,
   // then assert alwaysOnTop last — nothing after this call can reset the level.
   mainWindow.showInactive();
