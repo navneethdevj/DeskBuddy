@@ -1877,9 +1877,10 @@ body.pip-shape-circle.pip-mode  #pip-hover-overlay { border-radius: 50%; }
 body.pip-shape-rounded.pip-mode #pip-hover-overlay { border-radius: 32px; }
 body.pip-shape-square.pip-mode  #pip-hover-overlay { border-radius: 16px; }
 
-/* Hide always-visible expand button in non-square shapes (hover overlay is enough) */
+/* Hide always-visible expand button in all pip shapes — hover overlay handles it */
 body.pip-shape-circle.pip-mode  #compact-expand-btn { display: none; }
 body.pip-shape-rounded.pip-mode #compact-expand-btn { display: none; }
+body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
 
 #pip-expand-btn {
   background: rgba(255, 255, 255, 0.14);
