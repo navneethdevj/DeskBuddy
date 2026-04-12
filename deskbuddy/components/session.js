@@ -263,8 +263,8 @@ const Session = (() => {
       }
 
       if (period === 'MORNING') {
-        // Small delay so session_start sound plays first
-        setTimeout(() => Brain.doMorningGreeting(), 600);
+        // Short delay so the start animation fires first, then morning whisper follows
+        setTimeout(() => Brain.doMorningGreeting(), 100);
       }
     }
   }
@@ -433,6 +433,21 @@ const Session = (() => {
   }
 
   /**
+   * getGoalCompletionRate() — statistics on answered goal sessions.
+   * Only counts sessions where goalText was set AND the user answered
+   * the "did you finish it?" prompt (goalAchieved is not null).
+   * @returns {{ total: number, achieved: number, rate: number }}
+   */
+  function getGoalCompletionRate() {
+    const history  = getHistory();
+    const answered = history.filter(s => s.goalText && s.goalAchieved !== null);
+    const achieved = answered.filter(s => s.goalAchieved === true).length;
+    const rate     = answered.length > 0 ? Math.round((achieved / answered.length) * 100) : 0;
+    return { total: answered.length, achieved, rate };
+  }
+
+
+  /**
    * reset() — return to IDLE so the user can start a fresh session.
    * Safe to call only after a terminal state (COMPLETED / FAILED / ABANDONED).
    * No-op if already IDLE or if a session is in progress.
@@ -462,6 +477,7 @@ const Session = (() => {
     onSessionStateChange,
     computeDayStreak,
     getTotalFocusedMinutes,
+    getGoalCompletionRate,
     STATE,
   };
 

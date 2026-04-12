@@ -390,6 +390,19 @@ const ShareCard = (() => {
     const CHIP_H = 18, CHIP_Y = 124, GAP = 8;
     ctx.font = '400 10px "Segoe UI", system-ui, sans-serif';
 
+    // Third chip: show goal result if the user answered "did you finish it?",
+    // otherwise fall back to session duration.
+    const goalAchieved = sessionData.goalAchieved;
+    const hasGoalAnswer = sessionData.goalText && goalAchieved !== null && goalAchieved !== undefined;
+    const thirdChip = hasGoalAnswer
+      ? goalAchieved === true
+        ? { label: '✓  goal achieved!',
+            tc: 'rgba(72,215,148,0.90)', bg: 'rgba(72,215,148,0.10)', bd: 'rgba(72,215,148,0.30)' }
+        : { label: '✗  goal incomplete',
+            tc: 'rgba(255,120,100,0.84)', bg: 'rgba(255,80,60,0.08)', bd: 'rgba(255,80,60,0.22)' }
+      : { label: `◈  ${durationMins} min session`,
+          tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)' };
+
     const chipDefs = [
       {
         label: distractions === 0 ? '✓  no distractions!' : `◈  ${distractions} distraction${distractions !== 1 ? 's' : ''}`,
@@ -401,10 +414,7 @@ const ShareCard = (() => {
         label: `◈  ${longestMins} min streak`,
         tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)',
       },
-      {
-        label: `◈  ${durationMins} min session`,
-        tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)',
-      },
+      thirdChip,
     ];
 
     // Measure all chips, then distribute evenly
@@ -471,6 +481,9 @@ const ShareCard = (() => {
     const totalMins = (typeof Session !== 'undefined' && Session.getTotalFocusedMinutes?.()) || 0;
     const tier      = _getBondingTier(streak, totalMins);
 
+    // Goal completion rate — only rendered when there's meaningful history (≥3 answered)
+    const goalRate = (typeof Session !== 'undefined' && Session.getGoalCompletionRate?.()) || null;
+
     // Footer gradient separator
     const fl = ctx.createLinearGradient(0, 0, W, 0);
     fl.addColorStop(0,    'rgba(0,0,0,0)');
@@ -490,6 +503,24 @@ const ShareCard = (() => {
     ctx.font      = '400 10px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.32)';
     ctx.fillText(streakLabel, 22, 234);
+
+    // Goal completion rate — shown between streak and tier when ≥3 goals answered
+    if (goalRate && goalRate.total >= 3) {
+      const grLabel = `${goalRate.achieved}/${goalRate.total} goals ✓`;
+      ctx.font      = '400 9px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = goalRate.rate >= 70
+        ? 'rgba(72,215,148,0.60)'
+        : 'rgba(255,255,255,0.28)';
+      const streakW = ctx.measureText(streakLabel).width;
+      // Position it right after the streak label with a mid-dot separator
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillText(' · ', 22 + streakW, 234);
+      const dotW = ctx.measureText(' · ').width;
+      ctx.fillStyle = goalRate.rate >= 70
+        ? 'rgba(72,215,148,0.60)'
+        : 'rgba(255,255,255,0.28)';
+      ctx.fillText(grLabel, 22 + streakW + dotW, 234);
+    }
 
     // Tier badge (right of footer bottom row)
     ctx.font     = '600 9px "Segoe UI", system-ui, sans-serif';

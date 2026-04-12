@@ -433,6 +433,9 @@
         if (inlineTimer) {
           inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
         }
+
+        // Immediate companion reaction — only on a fresh start (not resume from pause)
+        if (oldState === 'IDLE') _fireSessionStartAnim();
       }
 
       // Break countdown — start/stop the live update interval
@@ -542,7 +545,50 @@
     if (icon)  icon.classList.add('sp-icon-hidden');
   }
 
-  // ── Celebration — confetti falls from above + banner + companion overjoyed ─
+  // ── Session-start animation — fires immediately when a new session begins ──
+  // Gives the companion an instant, rewarding reaction with zero lag.
+
+  function _fireSessionStartAnim() {
+    // Companion goes excited immediately — no setTimeout, no lag
+    if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2800);
+
+    // Companion bounce — force-retrigger even if class is already set
+    const buddy = typeof Companion !== 'undefined' ? Companion.getElement() : null;
+    if (buddy) {
+      buddy.classList.remove('session-start-bounce');
+      void buddy.offsetWidth; // reflow so animation re-triggers cleanly
+      buddy.classList.add('session-start-bounce');
+      setTimeout(() => buddy.classList.remove('session-start-bounce'), 900);
+    }
+
+    // Gold radial flash across the screen
+    const flash = document.getElementById('session-start-flash');
+    if (flash) {
+      flash.classList.remove('active');
+      void flash.offsetWidth;
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 1200);
+    }
+
+    // Time-of-day aware banner text
+    const msgEl = document.getElementById('session-start-msg');
+    if (msgEl) {
+      const period = (typeof Brain !== 'undefined' && Brain.getTimePeriod)
+        ? Brain.getTimePeriod() : 'AFTERNOON';
+      const MSGS = {
+        MORNING:   'good morning ✦ let\'s focus!',
+        AFTERNOON: 'let\'s focus! ✦',
+        EVENING:   'time to focus ✦',
+        NIGHT:     'late-night grind ✦',
+      };
+      msgEl.textContent = MSGS[period] || 'let\'s go! ✦';
+      msgEl.classList.remove('active');
+      void msgEl.offsetWidth;
+      msgEl.classList.add('active');
+      setTimeout(() => msgEl.classList.remove('active'), 2400);
+    }
+  }
+
 
   function _fireCelebration(type) {
     if (!Settings.get('celebrationEnabled')) return;
