@@ -2346,6 +2346,31 @@ body.pip-mode #settings-panel { display: none !important; }
   box-shadow: 0 0 8px rgba(145, 120, 255, 0.35);
 }
 
+/* ── Action button (Export / Import) ──────────────────────────── */
+.settings-action-btn {
+  background:    rgba(155, 135, 255, 0.10);
+  border:        1px solid rgba(155, 135, 255, 0.22);
+  border-radius: 8px;
+  color:         rgba(200, 185, 255, 0.80);
+  font-family:   'Segoe UI', system-ui, sans-serif;
+  font-size:     11px;
+  font-weight:   500;
+  letter-spacing: 0.04em;
+  padding:       5px 12px;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    background 0.15s, border-color 0.15s, color 0.15s;
+}
+.settings-action-btn:hover {
+  background:   rgba(155, 135, 255, 0.20);
+  border-color: rgba(155, 135, 255, 0.40);
+  color:        rgba(220, 210, 255, 0.95);
+}
+.settings-action-btn:disabled {
+  opacity: 0.45;
+  cursor:  not-allowed;
+}
+
 /* ── Triple-btn group (Idle Speed / Expressiveness) ───────────── */
 .settings-triple-btn {
   display: flex;

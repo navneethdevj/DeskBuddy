@@ -53,4 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Share card — copy image to clipboard / save PNG via native dialog.
   copyImage: (dataUrl) => ipcRenderer.invoke('share-card:copy-image', dataUrl),
   saveImage: (dataUrl) => ipcRenderer.invoke('share-card:save-image', dataUrl),
+
+  // Session history backup
+  exportHistory: (jsonString) => ipcRenderer.invoke('history:export', jsonString),
+  importHistory: ()           => ipcRenderer.invoke('history:import'),
 });

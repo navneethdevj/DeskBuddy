@@ -14,13 +14,13 @@
  * Breaks have no time limit — the user may take a break of any duration and
  * resume whenever they are ready.
  *
- * localStorage key: 'deskbuddy_sessions'.  Max 50 sessions; oldest dropped.
+ * localStorage key: 'deskbuddy_sessions'.  Max 365 sessions; oldest dropped.
  */
 const Session = (() => {
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const _MAX_SESSIONS          = 50;
+  const _MAX_SESSIONS          = 365;
   const _STORAGE_KEY           = 'deskbuddy_sessions';
   const _TIMELINE_INTERVAL_MS  = 5000;  // snapshot every 5 s during ACTIVE state
 
@@ -539,6 +539,61 @@ const Session = (() => {
 
   // ── Public surface ─────────────────────────────────────────────────────────
 
+  /**
+   * exportHistory() — serialise the full session history to a JSON string.
+   * Returns a wrapper object with metadata for validation on import.
+   */
+  function exportHistory() {
+    const payload = {
+      version:      1,
+      exportedAt:   new Date().toISOString(),
+      appVersion:   'DeskBuddy',
+      sessionCount: _history.length,
+      sessions:     _history.slice(),
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  /**
+   * importHistory(jsonString) — parse a JSON export and merge sessions.
+   *
+   * Merge strategy: additive by ID.
+   *   - Sessions from the file that do NOT exist locally (by id) are added.
+   *   - Sessions that already exist locally are KEPT (local wins on conflict).
+   *   - Result is sorted newest-first and capped at _MAX_SESSIONS.
+   *
+   * @returns {{ success: boolean, imported: number, total: number, reason?: string }}
+   */
+  function importHistory(jsonString) {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (_) {
+      return { success: false, reason: 'Invalid JSON file.' };
+    }
+
+    if (!parsed.sessions || !Array.isArray(parsed.sessions)) {
+      return { success: false, reason: 'File does not contain session data.' };
+    }
+
+    // Validate: each session must have at least date + outcome
+    const valid = parsed.sessions.filter(s => s.date && s.outcome !== undefined);
+    if (!valid.length) {
+      return { success: false, reason: 'No valid sessions found in file.' };
+    }
+
+    // Merge: add sessions whose IDs don't already exist locally
+    const existingIds = new Set(_history.map(s => s.id));
+    const newSessions = valid.filter(s => !existingIds.has(s.id));
+
+    _history = [...newSessions, ..._history]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, _MAX_SESSIONS);
+
+    _saveToStorage();
+    return { success: true, imported: newSessions.length, total: _history.length };
+  }
+
   return {
     init,
     startNew,
@@ -556,6 +611,8 @@ const Session = (() => {
     getTotalFocusedMinutes,
     getGoalCompletionRate,
     STATE,
+    exportHistory,
+    importHistory,
   };
 
 })();

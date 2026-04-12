@@ -297,8 +297,34 @@
         </div>
       </div>
 
+    </div><!-- /#settings-body — Shortcuts section end -->
+
+      <!-- ── BACKUP SECTION ────────────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">💾</span> Backup<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Export history</div>
+              <div class="settings-row-sublabel" id="export-session-count">0 sessions saved</div>
+            </div>
+            <button id="export-history-btn" class="settings-action-btn">export</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Import history</div>
+              <div class="settings-row-sublabel">Merge sessions from a backup file</div>
+            </div>
+            <button id="import-history-btn" class="settings-action-btn">import</button>
+          </div>
+          <div id="backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
+        </div>
+      </div>
+
     </div><!-- /#settings-body -->
-  </div><!-- /#settings-panel -->
 
   <!-- Hidden camera — face detection only, never shown to user.
        Use visibility:hidden (not display:none) so Chromium still decodes frames. -->

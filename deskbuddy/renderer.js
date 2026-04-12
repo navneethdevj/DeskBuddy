@@ -1294,6 +1294,69 @@
     // Refresh stats each time the panel opens
     gearBtn.addEventListener('click', _refreshSessionStats);
 
+    // ── Backup: export / import ──────────────────────────────────────────────
+    const exportBtn    = document.getElementById('export-history-btn');
+    const importBtn    = document.getElementById('import-history-btn');
+    const backupStatus = document.getElementById('backup-status');
+
+    function _updateExportCount() {
+      const el = document.getElementById('export-session-count');
+      if (el) el.textContent = `${Session.getHistory().length} session${Session.getHistory().length !== 1 ? 's' : ''} saved`;
+    }
+    _updateExportCount();
+    gearBtn.addEventListener('click', _updateExportCount);
+
+    function _showBackupStatus(msg, color) {
+      if (!backupStatus) return;
+      backupStatus.textContent   = msg;
+      backupStatus.style.color   = color;
+      backupStatus.style.display = '';
+      setTimeout(() => { if (backupStatus) backupStatus.style.display = 'none'; }, 4000);
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        exportBtn.disabled    = true;
+        exportBtn.textContent = 'exporting…';
+        const json   = Session.exportHistory();
+        const result = await window.electronAPI.exportHistory(json);
+        exportBtn.disabled    = false;
+        exportBtn.textContent = 'export';
+        if (result.ok) {
+          _showBackupStatus('exported ✓', 'rgba(68,232,176,0.80)');
+        } else if (result.reason !== 'cancelled') {
+          _showBackupStatus(`export failed: ${result.reason}`, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    if (importBtn) {
+      importBtn.addEventListener('click', async () => {
+        importBtn.disabled    = true;
+        importBtn.textContent = 'importing…';
+        const fileResult = await window.electronAPI.importHistory();
+        importBtn.disabled    = false;
+        importBtn.textContent = 'import';
+        if (!fileResult.ok) {
+          if (fileResult.reason !== 'cancelled') {
+            _showBackupStatus(`import failed: ${fileResult.reason}`, 'rgba(255,100,100,0.80)');
+          }
+          return;
+        }
+        const mergeResult = Session.importHistory(fileResult.data);
+        if (mergeResult.success) {
+          _updateExportCount();
+          _refreshSessionStats();
+          _showBackupStatus(
+            `imported ${mergeResult.imported} new session${mergeResult.imported !== 1 ? 's' : ''} ✓`,
+            'rgba(68,232,176,0.80)'
+          );
+        } else {
+          _showBackupStatus(mergeResult.reason, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
 
     // ── Emotion preview duration slider ─────────────────────────────────
     const previewDurSlider   = document.getElementById('preview-dur-slider');
