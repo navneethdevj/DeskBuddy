@@ -7,7 +7,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="world"></div>
+  <div id="world">
+    <!-- PiP hover controls — visible on mouse-enter in pip-mode -->
+    <div id="pip-hover-overlay" aria-hidden="true">
+      <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⛶</button>
+    </div>
+  </div>
   <div id="status-bar"></div>
 
   <!-- Compact mode: click to expand to full-screen -->

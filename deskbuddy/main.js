@@ -71,11 +71,36 @@ function _loadPos(dim) {
   return { x: 40, y: 40 };   // safe default: top-left margin
 }
 
-// ── Snap to nearest corner ────────────────────────────────────────────────────
+// ── Snap helpers ──────────────────────────────────────────────────────────────
 
 const SNAP_MARGIN = 20;   // px gap between snapped edge and screen edge
 let _snapTimer = null;
+let _isPipMode = false;   // tracks whether the compact PiP overlay is active
 
+/**
+ * WhatsApp-style edge snap: after the user releases the PiP bubble, slide it
+ * to whichever horizontal screen edge it's closest to, keeping the current
+ * vertical position (clamped to stay on screen).  This matches the behaviour
+ * of WhatsApp's floating call PiP on Android / macOS / Windows.
+ */
+function _doSnapToEdge() {
+  if (!mainWindow) return;
+  const [curX, curY] = mainWindow.getPosition();
+  const [w, h]       = mainWindow.getSize();
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const m = SNAP_MARGIN;
+
+  // Snap horizontally to the nearest edge; preserve vertical position.
+  const distLeft  = curX;
+  const distRight = sw - (curX + w);
+  const snapX     = distLeft <= distRight ? m : sw - w - m;
+  const snapY     = Math.max(m, Math.min(Math.round(curY), sh - h - m));
+
+  mainWindow.setPosition(snapX, snapY, process.platform === 'darwin');
+  store.set('windowPos', { x: snapX, y: snapY });
+}
+
+/** Legacy 5-zone corner snap — kept for full-mode resize drags. */
 function _doSnapToCorner() {
   if (!mainWindow) return;
   const [curX, curY] = mainWindow.getPosition();
@@ -83,13 +108,11 @@ function _doSnapToCorner() {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
   const m = SNAP_MARGIN;
   const zones = [
-    { x: m,                    y: m          },   // top-left
-    { x: Math.round((sw-w)/2), y: m          },   // top-center
-    { x: sw - w - m,           y: m          },   // top-right
-    { x: m,                    y: sh - w - m },   // bottom-left
-    { x: sw - w - m,           y: sh - w - m },   // bottom-right
+    { x: m,           y: m          },
+    { x: sw - w - m,  y: m          },
+    { x: m,           y: sh - w - m },
+    { x: sw - w - m,  y: sh - w - m },
   ];
-  // Pick the nearest snap zone.
   const best = zones.reduce((nearest, c) => {
     const d = Math.hypot(c.x - curX, c.y - curY);
     if (!nearest || d < nearest.dist) return { x: c.x, y: c.y, dist: d };
@@ -97,8 +120,7 @@ function _doSnapToCorner() {
   }, null);
   const safeX = Math.max(0, Math.min(best.x, sw - w));
   const safeY = Math.max(0, Math.min(best.y, sh - w));
-  // animate: true is honoured on macOS; silently ignored elsewhere
-  mainWindow.setPosition(safeX, safeY, true);
+  mainWindow.setPosition(safeX, safeY, process.platform === 'darwin');
   store.set('windowPos', { x: safeX, y: safeY });
 }
 
@@ -134,8 +156,10 @@ function createWindow() {
     },
   });
 
-  // 'floating' keeps the companion above normal windows but below system UI
-  mainWindow.setAlwaysOnTop(true, 'floating');
+  // 'floating' is only for PiP mode — the app starts in full-screen mode
+  // where alwaysOnTop must be false so other apps can be focused normally.
+  // The exit-full-mode IPC handler sets alwaysOnTop(true, 'floating') when
+  // the user collapses to the compact overlay.
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
@@ -144,12 +168,12 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Persist position every time the user moves the window; debounce snap
+  // Persist position on move; debounce-snap to nearest edge (PiP) or corner (full)
   mainWindow.on('moved', () => {
     const [x, y] = mainWindow.getPosition();
     store.set('windowPos', { x, y });
     clearTimeout(_snapTimer);
-    _snapTimer = setTimeout(_doSnapToCorner, 400);
+    _snapTimer = setTimeout(_isPipMode ? _doSnapToEdge : _doSnapToCorner, 400);
   });
 
   // Persist size when the window is resized (e.g. via drag handle on macOS).
@@ -199,6 +223,7 @@ ipcMain.on('set-ignore-mouse-events', (_event, ignore, options) => {
 
 ipcMain.on('enter-full-mode', () => {
   if (!mainWindow) return;
+  _isPipMode = false;
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   // Remove size constraints that only make sense for the compact overlay.
   mainWindow.setMinimumSize(150, 150);
@@ -214,15 +239,23 @@ ipcMain.on('enter-full-mode', () => {
 
 ipcMain.on('exit-full-mode', () => {
   if (!mainWindow) return;
+  _isPipMode = true;
   const preset = store.get('windowPreset', DEFAULT_PRESET);
   const dim    = _getDim(preset);
   const pos    = _loadPos(dim);
-  // Restore compact constraints and always-on-top.
+  // Restore compact constraints.
   mainWindow.setMinimumSize(150, 150);
   mainWindow.setMaximumSize(320, 320);
   mainWindow.setResizable(true);
   mainWindow.setBounds({ x: pos.x, y: pos.y, width: dim, height: dim }, process.platform === 'darwin');
   mainWindow.setSkipTaskbar(true);
+  mainWindow.setIgnoreMouseEvents(false);
+  // showInactive first so the window is rendered at the new size/position,
+  // then assert alwaysOnTop last — nothing after this call can reset the level.
+  mainWindow.showInactive();
+  // 'floating' keeps the PiP bubble above every normal window on all platforms,
+  // exactly like WhatsApp's call overlay. This MUST be the last OS-level call
+  // so no subsequent API resets the window level.
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.webContents.send('full-mode-exited');
 });

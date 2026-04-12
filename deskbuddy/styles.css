@@ -1767,42 +1767,139 @@ body.pip-mode #focus-timer,
 body.pip-mode #attention-bar,
 body.pip-mode #tear-overlay { display: none; }
 
-/* Floating bubble appearance.
-   Semi-transparent so macOS vibrancy / Windows acrylic shows through subtly. */
+/* ── WhatsApp-style circular floating bubble ───────────────────────
+   The entire #world is clipped to a circle. Because the Electron
+   window is transparent, the corners outside the circle are invisible
+   — giving a perfect floating bubble effect exactly like WhatsApp's
+   call PiP on Android and desktop.                                  */
 body.pip-mode #world {
-  border-radius: 20px;
-  background: radial-gradient(ellipse at 45% 40%, rgba(28, 22, 56, 0.88) 0%, rgba(10, 10, 22, 0.92) 100%);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 40% 35%, rgba(38, 30, 72, 0.96) 0%, rgba(10, 8, 22, 0.98) 100%);
   box-shadow:
-    0 0 0 1.5px rgba(120, 135, 235, 0.38),
-    0 0 14px  rgba(120, 135, 235, 0.22),
-    0 0 34px  rgba(100, 100, 200, 0.12),
-    inset 0 0 18px rgba(120, 135, 235, 0.06);
+    0 0 0 2px rgba(130, 145, 255, 0.55),
+    0 0 18px rgba(120, 135, 235, 0.30),
+    0 0 44px rgba(100, 110, 210, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.60);
   animation: pipBorderPulse 3.5s ease-in-out infinite;
+  /* Pop-in entrance when first entering PiP mode */
+  animation: pipBorderPulse 3.5s ease-in-out infinite, pipEntrance 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pipEntrance {
+  from {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes pipBorderPulse {
   0%, 100% {
     box-shadow:
-      0 0 0 1.5px rgba(120, 135, 235, 0.38),
-      0 0 14px  rgba(120, 135, 235, 0.22),
-      0 0 34px  rgba(100, 100, 200, 0.12),
-      inset 0 0 18px rgba(120, 135, 235, 0.06);
+      0 0 0 2px rgba(130, 145, 255, 0.55),
+      0 0 18px rgba(120, 135, 235, 0.30),
+      0 0 44px rgba(100, 110, 210, 0.15),
+      0 8px 32px rgba(0, 0, 0, 0.60);
   }
   50% {
     box-shadow:
-      0 0 0 1.5px rgba(150, 165, 255, 0.55),
-      0 0 20px  rgba(140, 155, 255, 0.32),
-      0 0 50px  rgba(110, 110, 220, 0.18),
-      inset 0 0 24px rgba(140, 155, 255, 0.10);
+      0 0 0 2px rgba(160, 175, 255, 0.70),
+      0 0 26px rgba(145, 160, 255, 0.42),
+      0 0 60px rgba(120, 130, 230, 0.22),
+      0 8px 36px rgba(0, 0, 0, 0.65);
   }
 }
 
+/* Emotion-reactive glow ring — JS sets data-pip-emotion on #world */
+body.pip-mode #world[data-pip-emotion="happy"],
+body.pip-mode #world[data-pip-emotion="overjoyed"],
+body.pip-mode #world[data-pip-emotion="excited"] {
+  animation: pipBorderPulseHappy 2.8s ease-in-out infinite;
+}
+@keyframes pipBorderPulseHappy {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 210, 80, 0.65), 0 0 22px rgba(255, 200, 60, 0.35), 0 8px 32px rgba(0,0,0,0.55); }
+  50%       { box-shadow: 0 0 0 2px rgba(255, 230, 100, 0.85), 0 0 34px rgba(255, 215, 80, 0.50), 0 8px 36px rgba(0,0,0,0.60); }
+}
+
+body.pip-mode #world[data-pip-emotion="suspicious"],
+body.pip-mode #world[data-pip-emotion="grumpy"],
+body.pip-mode #world[data-pip-emotion="pouty"] {
+  animation: pipBorderPulseWarn 3s ease-in-out infinite;
+}
+@keyframes pipBorderPulseWarn {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 140, 60, 0.60), 0 0 20px rgba(255, 130, 50, 0.28), 0 8px 32px rgba(0,0,0,0.55); }
+  50%       { box-shadow: 0 0 0 2px rgba(255, 165, 80, 0.80), 0 0 30px rgba(255, 145, 60, 0.42), 0 8px 36px rgba(0,0,0,0.60); }
+}
+
+body.pip-mode #world[data-pip-emotion="scared"],
+body.pip-mode #world[data-pip-emotion="sad"],
+body.pip-mode #world[data-pip-emotion="crying"] {
+  animation: pipBorderPulseSad 4s ease-in-out infinite;
+}
+@keyframes pipBorderPulseSad {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(90, 150, 255, 0.55), 0 0 18px rgba(80, 140, 255, 0.26), 0 8px 32px rgba(0,0,0,0.55); }
+  50%       { box-shadow: 0 0 0 2px rgba(110, 170, 255, 0.72), 0 0 28px rgba(100, 155, 255, 0.38), 0 8px 36px rgba(0,0,0,0.60); }
+}
+
+/* ── PiP hover overlay ─────────────────────────────────────────────
+   Semi-dark scrim + expand button — appears on mouse-enter exactly
+   like WhatsApp's hover controls on the call bubble.               */
+#pip-hover-overlay {
+  display: none;  /* hidden until pip-mode */
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0);
+  align-items: center;
+  justify-content: center;
+  z-index: 1998;
+  opacity: 0;
+  transition: opacity 0.18s ease, background 0.18s ease;
+  pointer-events: none;        /* pass-through until shown */
+  -webkit-app-region: no-drag;
+}
+
+body.pip-mode #pip-hover-overlay {
+  display: flex;
+  pointer-events: auto;
+}
+
+body.pip-mode #world:hover #pip-hover-overlay {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+#pip-expand-btn {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1.5px solid rgba(255, 255, 255, 0.30);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+#pip-expand-btn:hover {
+  background: rgba(130, 145, 255, 0.38);
+  transform: scale(1.12);
+}
+
 /* PiP window is draggable: companion body acts as the drag handle.
-   Interactive children (eye-wraps, expand button) stay as no-drag so
-   clicks still register on them. */
+   Interactive children (eye-wraps, hover overlay) stay no-drag. */
 body.pip-mode .companion    { -webkit-app-region: drag; }
 body.pip-mode .eye-wrap,
-body.pip-mode #compact-expand-btn { -webkit-app-region: no-drag; }
+body.pip-mode #compact-expand-btn,
+body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
 
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {

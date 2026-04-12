@@ -34,7 +34,7 @@ const Settings = (() => {
     keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
     // ── Window behaviour ──────────────────────────────────────────────
     autoPipOnBlur:          true,  // collapse to PiP when the user switches to another app
-    autoPipDelay:           2,     // seconds to wait before collapsing (0 = instant)
+    autoPipDelay:           0,     // seconds to wait before collapsing (0 = instant, like WhatsApp)
     autoPipRestore:         true,  // restore full mode when the user returns
     autoPipSkipSession:     false, // skip auto-collapse when a focus session is running
     // ── Buddy personality ──────────────────────────────────────────────

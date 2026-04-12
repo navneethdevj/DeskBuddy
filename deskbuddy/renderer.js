@@ -95,6 +95,13 @@
   _wireBreakReminder();
   _wireSidebar();
 
+  // 12. Sync main-process window state with the initial full-mode.
+  // Without this, createWindow()'s alwaysOnTop=false is fine but the
+  // main process doesn't know we're in full-mode until the user first
+  // manually toggles.  Sending enterFullMode() now ensures alwaysOnTop
+  // stays false in full mode and the initial skipTaskbar=false is set.
+  if (window.electronAPI) window.electronAPI.enterFullMode();
+
   // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
   // Read/write the three HH:MM:SS number fields as a single total-seconds value.
 
@@ -913,6 +920,22 @@
     if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
     if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullModeManual());
 
+    // WhatsApp-style PiP hover overlay: click the expand button to restore
+    const pipExpandBtn = document.getElementById('pip-expand-btn');
+    if (pipExpandBtn) pipExpandBtn.addEventListener('click', () => _enterFullMode());
+
+    // Clicking anywhere on the circular bubble (that isn't an eye / interactive
+    // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
+    const worldEl = document.getElementById('world');
+    if (worldEl) {
+      worldEl.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('pip-mode')) return;
+        // Don't expand if the click hit an interactive child (eye, button, etc.)
+        if (e.target !== worldEl) return;
+        _enterFullMode();
+      });
+    }
+
     // Sync mode state when main reports transitions (covers IPC-initiated toggles).
     if (window.electronAPI) {
       window.electronAPI.onFullModeEntered(() => {
@@ -978,6 +1001,21 @@
           }, 350);
         }
       });
+    }
+
+    // ── Emotion glow ring for PiP bubble ─────────────────────────────────
+    // Poll Brain's current emotion every 500 ms and mirror it onto
+    // #world[data-pip-emotion] so the CSS glow keyframes can react.
+    {
+      const worldEl = document.getElementById('world');
+      if (worldEl) {
+        setInterval(() => {
+          const em = (window._lastEmotion || 'idle').toLowerCase();
+          if (worldEl.dataset.pipEmotion !== em) {
+            worldEl.dataset.pipEmotion = em;
+          }
+        }, 500);
+      }
     }
   }
 
