@@ -210,6 +210,38 @@
               <span class="settings-toggle-track"></span>
             </label>
           </div>
+          <div class="settings-row" id="auto-pip-delay-row">
+            <div>
+              <div class="settings-row-label">Collapse delay</div>
+              <div class="settings-row-sublabel">Wait before collapsing (prevents brief alt-tabs)</div>
+            </div>
+            <select id="auto-pip-delay-select" class="settings-select">
+              <option value="0">Instant</option>
+              <option value="2">2 s</option>
+              <option value="5">5 s</option>
+              <option value="10">10 s</option>
+            </select>
+          </div>
+          <div class="settings-row" id="auto-pip-restore-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Restore on return</div>
+              <div class="settings-row-sublabel">Re-expand to full mode when you come back</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="auto-pip-restore-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row" id="auto-pip-skip-session-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Stay full during sessions</div>
+              <div class="settings-row-sublabel">Don't collapse while a focus session is active</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="auto-pip-skip-session-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
       <hr class="settings-divider">

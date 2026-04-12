@@ -2463,5 +2463,6 @@ const Brain = (() => {
            setDNDActive,
            setIdleSpeed, setExpressiveness,
            startTearEffect, stopTearEffect,
+           triggerWelcomeBack: _welcomeBackSequence,
            triggerLookSequence };
 })();

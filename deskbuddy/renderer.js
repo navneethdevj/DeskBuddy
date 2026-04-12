@@ -864,12 +864,16 @@
 
   let _isFullMode = true;  // starts in full-screen
   let _autoPipActive = false; // true when auto-PiP triggered the collapse
+  let _autoPipTimer  = null;  // pending delay timer for deferred collapse
   let _pendingShareCard = null; // queued when session ends while in PiP mode
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
 
   function _enterFullMode() {
     if (_isFullMode) return;
+    // Cancel any pending deferred auto-collapse (e.g. user expands before timer fires).
+    if (_autoPipTimer) { clearTimeout(_autoPipTimer); _autoPipTimer = null; }
+    _autoPipActive = false;
     _isFullMode = true;
     document.body.classList.remove('pip-mode');
     document.body.classList.add('full-mode');
@@ -893,6 +897,8 @@
   }
 
   function _exitFullModeManual() {
+    // Cancel any pending deferred auto-collapse timer.
+    if (_autoPipTimer) { clearTimeout(_autoPipTimer); _autoPipTimer = null; }
     // Clear auto-pip flag so a subsequent focus event doesn't auto-restore.
     _autoPipActive = false;
     _exitFullMode();
@@ -929,7 +935,25 @@
 
       // Auto-PiP: collapse to compact overlay when the user switches away
       window.electronAPI.onAppBlur(() => {
-        if (_isFullMode && Settings.get('autoPipOnBlur')) {
+        if (!_isFullMode || !Settings.get('autoPipOnBlur')) return;
+
+        // Skip collapse when a focus session is active and the user has opted in
+        if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
+            Session.getState && Session.getState() === 'ACTIVE') return;
+
+        const delaySec = Settings.get('autoPipDelay') || 0;
+        if (delaySec > 0) {
+          // Deferred collapse — cancel any previously scheduled one first
+          clearTimeout(_autoPipTimer);
+          _autoPipTimer = setTimeout(() => {
+            _autoPipTimer = null;
+            // Re-check: window may have been focused again before timer fired
+            if (_isFullMode && Settings.get('autoPipOnBlur')) {
+              _autoPipActive = true;
+              _exitFullMode();
+            }
+          }, delaySec * 1000);
+        } else {
           _autoPipActive = true;
           _exitFullMode();
         }
@@ -937,9 +961,21 @@
 
       // Auto-PiP: restore full mode when the user comes back (only if we auto-collapsed)
       window.electronAPI.onAppFocus(() => {
-        if (_autoPipActive && !_isFullMode) {
+        // Cancel a pending delayed collapse if the user returned quickly
+        if (_autoPipTimer) {
+          clearTimeout(_autoPipTimer);
+          _autoPipTimer = null;
+        }
+
+        if (_autoPipActive && !_isFullMode && Settings.get('autoPipRestore')) {
           _autoPipActive = false;
           _enterFullMode();
+          // Welcome-back reaction: give Brain a nudge so the companion reacts
+          setTimeout(() => {
+            if (typeof Brain !== 'undefined' && Brain.triggerWelcomeBack) {
+              Brain.triggerWelcomeBack();
+            }
+          }, 350);
         }
       });
     }
@@ -1120,14 +1156,63 @@
       nightToggle.addEventListener('change', () => Settings.set('nightAutoVolume', nightToggle.checked));
     }
 
-    // Auto-PiP on app switch toggle
+    // Auto-PiP on app switch toggle + sub-options
     const autoPipToggle = document.getElementById('auto-pip-toggle');
+    const autoPipDelayRow       = document.getElementById('auto-pip-delay-row');
+    const autoPipRestoreRow     = document.getElementById('auto-pip-restore-row');
+    const autoPipSkipSessionRow = document.getElementById('auto-pip-skip-session-row');
+
+    function _syncAutoPipSubrows(enabled) {
+      const display = enabled ? '' : 'none';
+      if (autoPipDelayRow)       autoPipDelayRow.style.display       = display;
+      if (autoPipRestoreRow)     autoPipRestoreRow.style.display     = display;
+      if (autoPipSkipSessionRow) autoPipSkipSessionRow.style.display = display;
+    }
+
     if (autoPipToggle) {
       autoPipToggle.checked = Settings.get('autoPipOnBlur');
-      autoPipToggle.addEventListener('change', () => Settings.set('autoPipOnBlur', autoPipToggle.checked));
+      _syncAutoPipSubrows(autoPipToggle.checked);
+      autoPipToggle.addEventListener('change', () => {
+        Settings.set('autoPipOnBlur', autoPipToggle.checked);
+        _syncAutoPipSubrows(autoPipToggle.checked);
+      });
     }
     Settings.onChange('autoPipOnBlur', (v) => {
       if (autoPipToggle) autoPipToggle.checked = v;
+      _syncAutoPipSubrows(v);
+    });
+
+    // Collapse delay select
+    const autoPipDelaySel = document.getElementById('auto-pip-delay-select');
+    if (autoPipDelaySel) {
+      autoPipDelaySel.value = String(Settings.get('autoPipDelay'));
+      autoPipDelaySel.addEventListener('change', () =>
+        Settings.set('autoPipDelay', parseInt(autoPipDelaySel.value, 10)));
+    }
+    Settings.onChange('autoPipDelay', (v) => {
+      if (autoPipDelaySel) autoPipDelaySel.value = String(v);
+    });
+
+    // Restore on return toggle
+    const autoPipRestoreToggle = document.getElementById('auto-pip-restore-toggle');
+    if (autoPipRestoreToggle) {
+      autoPipRestoreToggle.checked = Settings.get('autoPipRestore');
+      autoPipRestoreToggle.addEventListener('change', () =>
+        Settings.set('autoPipRestore', autoPipRestoreToggle.checked));
+    }
+    Settings.onChange('autoPipRestore', (v) => {
+      if (autoPipRestoreToggle) autoPipRestoreToggle.checked = v;
+    });
+
+    // Stay full during sessions toggle
+    const autoPipSkipSessionToggle = document.getElementById('auto-pip-skip-session-toggle');
+    if (autoPipSkipSessionToggle) {
+      autoPipSkipSessionToggle.checked = Settings.get('autoPipSkipSession');
+      autoPipSkipSessionToggle.addEventListener('change', () =>
+        Settings.set('autoPipSkipSession', autoPipSkipSessionToggle.checked));
+    }
+    Settings.onChange('autoPipSkipSession', (v) => {
+      if (autoPipSkipSessionToggle) autoPipSkipSessionToggle.checked = v;
     });
 
     // Sensitivity select
