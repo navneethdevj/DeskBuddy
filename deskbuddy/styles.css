@@ -1595,38 +1595,56 @@ body[data-time-period="NIGHT"] .companion {
    COZY EMOTION — long-press snuggle; warm half-lidded eyes, rose-gold glow
    ===================================================================== */
 
-/* Cozy eye: wide but half-lidded, like a cat slowly blinking at you ♡ */
+/* Cozy eye: squeezed nearly shut — blissful >w< squint from being patted */
 .companion.cozy .eye {
-  width: 36vmin; height: 22vmin;
-  border-radius: 50% 50% 50% 50% / 28% 28% 72% 72%;
+  width: 38vmin; height: 9vmin;
+  border-radius: 50% 50% 50% 50% / 80% 80% 20% 20%;
   box-shadow:
-    0 0 4vmin rgba(255,155,130,0.92),
-    0 0 12vmin rgba(255,135,110,0.44),
-    0 0 26vmin rgba(255,115, 90,0.16);
+    0 0 4vmin rgba(255,145,120,0.95),
+    0 0 12vmin rgba(255,125,100,0.48),
+    0 0 26vmin rgba(255,105, 80,0.18);
 }
-.companion.cozy { animation: glowCozy 2.2s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
+.companion.cozy { animation: glowCozy 1.8s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
 @keyframes glowCozy {
-  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,155,130,0.46)) drop-shadow(0 0 16vmin rgba(255,132,108,0.18)); }
-  50%     { filter: drop-shadow(0 0 11vmin rgba(255,172,148,0.65)) drop-shadow(0 0 28vmin rgba(255,148,122,0.26)); }
+  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,145,120,0.50)) drop-shadow(0 0 16vmin rgba(255,122,98,0.22)); }
+  50%     { filter: drop-shadow(0 0 12vmin rgba(255,165,140,0.72)) drop-shadow(0 0 28vmin rgba(255,140,115,0.30)); }
 }
-.companion.cozy .brow-left  { transform: translateY(-0.4vmin) rotate(-4deg); }
-.companion.cozy .brow-right { transform: translateY(-0.4vmin) rotate(4deg); }
-.companion.cozy .blush      { background: rgba(255, 128, 165, 0.44); }
+/* Eyebrows: inward melty tilt — angled down toward nose (>.<) */
+.companion.cozy .brow-left  { transform: translateY(0.6vmin) rotate(8deg); }
+.companion.cozy .brow-right { transform: translateY(0.6vmin) rotate(-8deg); }
+/* Deep warm blush — cheeks flushed from the affection */
+.companion.cozy .blush      { background: rgba(255, 100, 140, 0.62); }
 
 /* Cozy eye shimmer — warm rose tint */
 .companion.cozy .eye::after {
-  background: radial-gradient(circle, rgba(255,155,185,0.50) 0%, transparent 70%);
-  animation: eyeShimmer 2.4s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(255,145,175,0.55) 0%, transparent 70%);
+  animation: eyeShimmer 1.8s ease-in-out infinite;
 }
 
-/* Cozy body — settled, content, barely moving */
+/* Cozy body — rhythmic gentle bob as if responding to each pat */
 .companion.cozy .companion-inner {
-  animation: cozySettle 3.5s ease-in-out infinite;
+  animation: cozySettle 1.8s ease-in-out infinite;
 }
 @keyframes cozySettle {
-  0%, 100% { transform: scale(0.978) translateY(0.4vh) rotate(0deg); }
-  40%      { transform: scale(0.972) translateY(0.6vh) rotate(-0.25deg); }
-  70%      { transform: scale(0.975) translateY(0.5vh) rotate(0.20deg); }
+  0%   { transform: scale(0.985) translateY(0.2vh) rotate(-0.9deg); }
+  28%  { transform: scale(0.979) translateY(0.9vh) rotate(0.7deg); }
+  55%  { transform: scale(0.982) translateY(0.4vh) rotate(-0.6deg); }
+  80%  { transform: scale(0.980) translateY(0.8vh) rotate(0.8deg); }
+  100% { transform: scale(0.985) translateY(0.2vh) rotate(-0.9deg); }
+}
+
+/* Cozy nose — warm rose tint */
+.companion.cozy .nose { border-top-color: rgba(255, 130, 165, 0.72); }
+
+/* Cozy mouth — small soft content smile */
+.companion.cozy .mouth {
+  width: 9vmin; height: 3.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 130, 168, 0.80);
+  border-left-color:   rgba(255, 118, 155, 0.44);
+  border-right-color:  rgba(255, 118, 155, 0.44);
+  border-top-color:    transparent;
+  border-width: 0.35vmin;
 }
 
 /* =====================================================================
