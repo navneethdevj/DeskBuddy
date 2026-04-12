@@ -1357,6 +1357,60 @@
       });
     }
 
+    // ── Settings backup: export / import ─────────────────────────────────────
+    const exportSettingsBtn    = document.getElementById('export-settings-btn');
+    const importSettingsBtn    = document.getElementById('import-settings-btn');
+    const settingsBackupStatus = document.getElementById('settings-backup-status');
+
+    function _showSettingsBackupStatus(msg, color) {
+      if (!settingsBackupStatus) return;
+      settingsBackupStatus.textContent   = msg;
+      settingsBackupStatus.style.color   = color;
+      settingsBackupStatus.style.display = '';
+      setTimeout(() => { if (settingsBackupStatus) settingsBackupStatus.style.display = 'none'; }, 4000);
+    }
+
+    if (exportSettingsBtn) {
+      exportSettingsBtn.addEventListener('click', async () => {
+        exportSettingsBtn.disabled    = true;
+        exportSettingsBtn.textContent = 'exporting…';
+        const json   = Settings.exportSettings();
+        const result = await window.electronAPI.exportSettings(json);
+        exportSettingsBtn.disabled    = false;
+        exportSettingsBtn.textContent = 'export';
+        if (result.ok) {
+          _showSettingsBackupStatus('settings exported ✓', 'rgba(68,232,176,0.80)');
+        } else if (result.reason !== 'cancelled') {
+          _showSettingsBackupStatus(`export failed: ${result.reason}`, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    if (importSettingsBtn) {
+      importSettingsBtn.addEventListener('click', async () => {
+        importSettingsBtn.disabled    = true;
+        importSettingsBtn.textContent = 'importing…';
+        const fileResult = await window.electronAPI.importSettings();
+        importSettingsBtn.disabled    = false;
+        importSettingsBtn.textContent = 'import';
+        if (!fileResult.ok) {
+          if (fileResult.reason !== 'cancelled') {
+            _showSettingsBackupStatus(`import failed: ${fileResult.reason}`, 'rgba(255,100,100,0.80)');
+          }
+          return;
+        }
+        const mergeResult = Settings.importSettings(fileResult.data);
+        if (mergeResult.success) {
+          _showSettingsBackupStatus(
+            `${mergeResult.applied} settings applied ✓`,
+            'rgba(68,232,176,0.80)'
+          );
+        } else {
+          _showSettingsBackupStatus(mergeResult.reason, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
 
     // ── Emotion preview duration slider ─────────────────────────────────
     const previewDurSlider   = document.getElementById('preview-dur-slider');

@@ -103,5 +103,56 @@ const Settings = (() => {
     }
   }
 
-  return { init, get, set, onChange, dump };
+  // ── Export / Import ──────────────────────────────────────────────────────
+
+  /**
+   * exportSettings() — serialise the current settings to a JSON string.
+   * Returns a wrapper object with metadata for validation on import.
+   */
+  function exportSettings() {
+    const payload = {
+      version:    1,
+      exportedAt: new Date().toISOString(),
+      appVersion: 'DeskBuddy',
+      settings:   { ..._current },
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  /**
+   * importSettings(jsonString) — parse a JSON export and apply all settings.
+   * Unknown keys are ignored; known keys are merged over current values.
+   *
+   * @returns {{ success: boolean, applied: number, reason?: string }}
+   */
+  function importSettings(jsonString) {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (_) {
+      return { success: false, reason: 'Invalid JSON file.' };
+    }
+
+    if (!parsed.settings || typeof parsed.settings !== 'object' || Array.isArray(parsed.settings)) {
+      return { success: false, reason: 'File does not contain settings data.' };
+    }
+
+    // Only apply keys that exist in DEFAULTS (ignore unknown / future keys)
+    const knownKeys = Object.keys(DEFAULTS);
+    const incoming  = parsed.settings;
+    let applied = 0;
+
+    knownKeys.forEach(key => {
+      if (key in incoming) {
+        _current[key] = incoming[key];
+        _fire(key, _current[key]);
+        applied++;
+      }
+    });
+
+    _persist();
+    return { success: true, applied };
+  }
+
+  return { init, get, set, onChange, dump, exportSettings, importSettings };
 })();

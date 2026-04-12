@@ -2202,6 +2202,12 @@ body.pip-mode #settings-panel { display: none !important; }
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.settings-sub-divider {
+  margin: 8px 0 6px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
 /* ── Settings select ──────────────────────────────────────────── */
 .settings-select {
   background: rgba(255, 255, 255, 0.07);

@@ -306,6 +306,40 @@ ipcMain.handle('history:import', async () => {
   }
 });
 
+// ── Settings export — open native Save dialog ────────────────────────────────
+ipcMain.handle('settings:export', async (_event, jsonString) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title:       'Export DeskBuddy Settings',
+      defaultPath: `deskbuddy-settings-${new Date().toISOString().slice(0, 10)}.json`,
+      filters:     [{ name: 'JSON', extensions: ['json'] }],
+      buttonLabel: 'Export',
+    });
+    if (result.canceled || !result.filePath) return { ok: false, reason: 'cancelled' };
+    fs.writeFileSync(result.filePath, jsonString, 'utf8');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+});
+
+// ── Settings import — open native Open dialog ─────────────────────────────────
+ipcMain.handle('settings:import', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title:       'Import DeskBuddy Settings',
+      filters:     [{ name: 'JSON', extensions: ['json'] }],
+      properties:  ['openFile'],
+      buttonLabel: 'Import',
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, reason: 'cancelled' };
+    const data = fs.readFileSync(result.filePaths[0], 'utf8');
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+});
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {

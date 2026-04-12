@@ -57,4 +57,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Session history backup
   exportHistory: (jsonString) => ipcRenderer.invoke('history:export', jsonString),
   importHistory: ()           => ipcRenderer.invoke('history:import'),
+
+  // Settings backup
+  exportSettings: (jsonString) => ipcRenderer.invoke('settings:export', jsonString),
+  importSettings: ()           => ipcRenderer.invoke('settings:import'),
 });
