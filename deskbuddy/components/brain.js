@@ -267,6 +267,10 @@ const Brain = (() => {
   let _welcomeBackSeqId1 = null;
   let _welcomeBackSeqId2 = null;
 
+  // Away-detection: track last confirmed face-present frame
+  let _lastFacePresenceMs = 0;      // epoch ms of the last frame where facePresent was true
+  let _absenceHandled     = false;  // prevents double-firing the return reaction
+
   // Curious look loop — continuous gaze scan while in curious state
   let _curiousLookTimer  = null;
   let _curiousChirpTimer = null;
@@ -487,6 +491,12 @@ const Brain = (() => {
   function applyFocusEmotion() {
     const p   = window.perception;
     const now = Date.now();
+
+    // Track last seen — resets absence guard so next departure gets fresh handling
+    if (window.perception?.facePresent) {
+      _lastFacePresenceMs = now;
+      _absenceHandled     = false;
+    }
 
     // 1. Love hold (petting click) — most intimate, highest priority
     if (now < _loveUntil) { _setQuiet('love'); return; }
@@ -1489,42 +1499,170 @@ const Brain = (() => {
    * Guard: cancels if face disappears during the sequence.
    */
   function _welcomeBackSequence() {
-    // Cancel any previous welcome-back sequence
+    if (_absenceHandled) return;   // guard against double-fire
+    _absenceHandled = true;
+
+    // Cancel any previous welcome-back arc
     if (_welcomeBackSeqId1) { clearTimeout(_welcomeBackSeqId1); _welcomeBackSeqId1 = null; }
     if (_welcomeBackSeqId2) { clearTimeout(_welcomeBackSeqId2); _welcomeBackSeqId2 = null; }
-
-    // Cancel any lingering sulk arc from old overjoyed logic
-    if (overjoyedTimer)    { clearTimeout(overjoyedTimer);    overjoyedTimer    = null; }
-    if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+    if (overjoyedTimer)     { clearTimeout(overjoyedTimer);     overjoyedTimer     = null; }
+    if (sulkCheckInterval)  { clearInterval(sulkCheckInterval); sulkCheckInterval  = null; }
 
     currentState = 'idle';
     _stopTears();
 
-    // t=0: overjoyed
+    // Calculate how long the user was absent
+    const absenceMs = _lastFacePresenceMs > 0 ? Date.now() - _lastFacePresenceMs : 0;
+
+    // Subdue the return when a session just failed because of this absence
+    const sessionState = (typeof Session !== 'undefined') ? Session.getCurrentStats?.()?.state : null;
+    const sessionJustFailed = sessionState === 'FAILED' || sessionState === 'ABANDONED';
+    if (sessionJustFailed && absenceMs > 30000) {
+      _returnQuiet();
+      return;
+    }
+
+    // Branch on absence duration
+    if      (absenceMs < 30000)    _returnBrief();
+    else if (absenceMs < 300000)   _returnShort();
+    else if (absenceMs < 3600000)  _returnMedium(absenceMs);
+    else if (absenceMs < 21600000) _returnLong(absenceMs);
+    else                           _returnVeryLong(absenceMs);
+  }
+
+  // ── Under 30 seconds — just look happy, no fuss ──────────────────────────
+  function _returnBrief() {
+    Emotion.setState('happy');
+    window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
+    window._lastEmotion    = 'happy';
+    _welcomeBackSeqId1 = setTimeout(() => {
+      _welcomeBackSeqId1 = null;
+      if (!window.perception?.facePresent) { enterState('idle'); return; }
+      window._lastEmotion = null;
+      enterState('observe');
+    }, 1500);
+  }
+
+  // ── 30 seconds to 5 minutes — original overjoyed→happy arc ──────────────
+  function _returnShort() {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
-    // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
 
     _welcomeBackSeqId1 = setTimeout(() => {
       _welcomeBackSeqId1 = null;
-      // Guard: abort if face has gone again
       if (!window.perception?.facePresent) { enterState('idle'); return; }
-
-      // t=2000ms: happy
       Emotion.setState('happy');
       window._emotionChanged = { from: 'overjoyed', to: 'happy' };
       window._lastEmotion    = 'happy';
-      // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
-
       _welcomeBackSeqId2 = setTimeout(() => {
         _welcomeBackSeqId2 = null;
-        // t=4000ms: resume normal behaviour (guard if face left during this window)
         if (!window.perception?.facePresent) { enterState('idle'); return; }
         window._lastEmotion = null;
         enterState('observe');
       }, 2000);
     }, 2000);
+  }
+
+  // ── 5 minutes to 1 hour — overjoyed + "where did you go?" whisper ────────
+  function _returnMedium(absenceMs) {
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+
+    const mins = Math.round(absenceMs / 60000);
+    const pool = [
+      `you were gone ${mins} min ♡`,
+      '*was waiting* ~',
+      'oh! there you are ✦',
+      '*perks up* you\'re back!',
+      '...you came back ♡',
+    ];
+    setTimeout(() => showWhisper(pool[Math.floor(Math.random() * pool.length)], 5000), 400);
+
+    _welcomeBackSeqId1 = setTimeout(() => {
+      _welcomeBackSeqId1 = null;
+      if (!window.perception?.facePresent) { enterState('idle'); return; }
+      Emotion.setState('happy');
+      window._emotionChanged = { from: 'overjoyed', to: 'happy' };
+      window._lastEmotion    = 'happy';
+      _welcomeBackSeqId2 = setTimeout(() => {
+        _welcomeBackSeqId2 = null;
+        if (!window.perception?.facePresent) { enterState('idle'); return; }
+        window._lastEmotion = null;
+        enterState('observe');
+      }, 2000);
+    }, 2500);
+  }
+
+  // ── 1 to 6 hours — overjoyed + time-of-day aware message + longer arc ────
+  function _returnLong(absenceMs) {
+    Emotion.setState('overjoyed');
+    window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
+    window._lastEmotion    = 'overjoyed';
+
+    const hrs    = Math.round(absenceMs / 3600000 * 10) / 10;
+    const period = (typeof getTimePeriod === 'function') ? getTimePeriod() : 'AFTERNOON';
+    const MSGS = {
+      MORNING:   [`good morning! ☀️ ${hrs}h later~`, '*stretches* morning! ready?'],
+      AFTERNOON: [`${hrs}h later! welcome back ✦`,   '*was wondering* you\'re back!'],
+      EVENING:   [`evening~ ${hrs}h without you ♡`,  '*cozy* you came back ✦'],
+      NIGHT:     ['...you came back. it\'s late ♡',  '*quietly* welcome back~'],
+    };
+    const pool = MSGS[period] || MSGS['AFTERNOON'];
+    setTimeout(() => showWhisper(pool[Math.floor(Math.random() * pool.length)], 6000), 500);
+
+    if (typeof Sounds !== 'undefined') Sounds.play('welcomeBack');
+
+    _welcomeBackSeqId1 = setTimeout(() => {
+      _welcomeBackSeqId1 = null;
+      if (!window.perception?.facePresent) { enterState('idle'); return; }
+      Emotion.setState('happy');
+      window._emotionChanged = { from: 'overjoyed', to: 'happy' };
+      window._lastEmotion    = 'happy';
+      _welcomeBackSeqId2 = setTimeout(() => {
+        _welcomeBackSeqId2 = null;
+        if (!window.perception?.facePresent) { enterState('idle'); return; }
+        if (period === 'MORNING') { doMorningGreeting(); return; }
+        window._lastEmotion = null;
+        enterState('observe');
+      }, 3000);
+    }, 3000);
+  }
+
+  // ── Over 6 hours — quiet warmth, not big fanfare ─────────────────────────
+  function _returnVeryLong(absenceMs) {  // eslint-disable-line no-unused-vars
+    void absenceMs;  // absenceMs available for future locale-formatted display
+    Emotion.setState('happy');
+    window._emotionChanged = { from: window._lastEmotion, to: 'happy' };
+    window._lastEmotion    = 'happy';
+
+    const period = (typeof getTimePeriod === 'function') ? getTimePeriod() : 'AFTERNOON';
+    const MSGS = {
+      MORNING:   ['good morning ✦', 'new day. let\'s go ✦', '...morning ☀️'],
+      AFTERNOON: ['*looks up* you\'re here ♡',  '...hi again ✦'],
+      EVENING:   ['...you came back ♡',          '*quietly pleased*'],
+      NIGHT:     ['...still here ♡',              'it\'s late. welcome back~'],
+    };
+    const pool = MSGS[period] || MSGS['AFTERNOON'];
+    setTimeout(() => showWhisper(pool[Math.floor(Math.random() * pool.length)], 6000), 800);
+
+    if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
+
+    _welcomeBackSeqId1 = setTimeout(() => {
+      _welcomeBackSeqId1 = null;
+      if (!window.perception?.facePresent) { enterState('idle'); return; }
+      window._lastEmotion = null;
+      if (period === 'MORNING') { doMorningGreeting(); return; }
+      enterState('observe');
+    }, 3500);
+  }
+
+  // ── Quiet return — used when session failed during absence ───────────────
+  function _returnQuiet() {
+    Emotion.setState('idle');
+    window._lastEmotion = null;
+    _welcomeBackSeqId1  = setTimeout(() => { _welcomeBackSeqId1 = null; enterState('idle'); }, 500);
   }
 
   // ── WHISPER TEXT ──────────────────────────────────────────────────────────
