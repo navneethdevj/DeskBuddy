@@ -724,8 +724,48 @@
   <!-- Attention bar — EyeOnTask concept, barely visible -->
   <div id="attention-bar"><div id="attention-fill"></div></div>
 
-  <!-- DND indicator — shown when Do Not Disturb is active; click to cancel -->
-  <div id="dnd-indicator" aria-live="polite" aria-label="Do Not Disturb active — click to cancel"></div>
+  <!-- DND indicator — shown when Do Not Disturb is active; click to cancel.
+       SVG arc ring depletes clockwise as time passes. Infinite mode spins. -->
+  <div id="dnd-indicator" role="button" tabindex="-1"
+       aria-live="polite" aria-label="Do Not Disturb active — click to cancel">
+
+    <!-- SVG ring (rotated -90° so arc starts at 12 o'clock) -->
+    <svg id="dnd-ring-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="dnd-grad" x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#c4b5fd"/>
+          <stop offset="45%"  stop-color="#8b5cf6"/>
+          <stop offset="100%" stop-color="#4338ca"/>
+        </linearGradient>
+        <!-- Soft outer glow filter applied to the glow copy arc -->
+        <filter id="dnd-glow-filter" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <!-- Faint background track -->
+      <circle id="dnd-ring-track" cx="32" cy="32" r="26"/>
+      <!-- Blurred glow layer behind the main arc -->
+      <circle id="dnd-ring-glow"  cx="32" cy="32" r="26"/>
+      <!-- Main gradient progress arc -->
+      <circle id="dnd-ring-arc"   cx="32" cy="32" r="26"/>
+      <!-- Bright leading-edge dot at the arc tip -->
+      <circle id="dnd-ring-dot" cx="32" cy="6" r="2.8"/>
+    </svg>
+
+    <!-- Glass-morphism center face -->
+    <div id="dnd-ring-face">
+      <span id="dnd-time-val">--:--</span>
+      <span id="dnd-mode-label">focus lock</span>
+    </div>
+
+    <!-- Hover overlay — morphs center to show cancel action -->
+    <div id="dnd-cancel-hint">
+      <span id="dnd-cancel-icon">✕</span>
+      <span id="dnd-cancel-text">end</span>
+    </div>
+
+  </div>
 
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
        Electron renderer (nodeIntegration:false) does not provide -->

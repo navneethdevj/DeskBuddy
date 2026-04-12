@@ -4329,96 +4329,230 @@ body.pip-mode #break-card { display: none !important; }
 }
 
 
+
 /* ══════════════════════════════════════════════════════════════════════
-   DND — DO NOT DISTURB
+   DND — DO NOT DISTURB   ·   Arc Progress Ring Indicator
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ── Indicator pill ──────────────────────────────────────────────────── */
+/* ── Outer container ──────────────────────────────────────────────────── */
 #dnd-indicator {
   position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-60px);
+  top: 12px;
+  right: 52px;          /* sits left of the collapse button (top: 8px / right: 8px) */
 
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  width:  76px;
+  height: 76px;
 
-  padding: 5px 14px 5px 12px;
-  border-radius: 20px;
+  /* Grid so SVG and face stack in the same cell */
+  display:          grid;
+  place-items:      center;
 
-  background: rgba(30, 20, 50, 0.78);
-  border: 1px solid rgba(160, 130, 255, 0.22);
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  /* Hidden: drop above viewport, slightly scaled down */
+  opacity:          0;
+  transform:        translateY(-88px) scale(0.72);
+  pointer-events:   none;
+  cursor:           default;
+  z-index:          3200;
 
-  color: rgba(200, 185, 255, 0.55);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  user-select: none;
-  cursor: default;
-
-  opacity: 0;
-  pointer-events: none;
-  z-index: 3200;
-
+  /* Spring entrance */
   transition:
-    transform  0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity    0.30s ease;
+    transform  0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity    0.35s ease,
+    filter     0.35s ease;
+
+  -webkit-app-region: no-drag;
 }
 
-/* Active state — slide in and become interactive */
+/* Active: drop into view */
 #dnd-indicator.dnd-on {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
+  opacity:        1;
+  transform:      translateY(0) scale(1);
   pointer-events: auto;
-  cursor: pointer;
-  color: rgba(210, 195, 255, 0.90);
-  border-color: rgba(180, 150, 255, 0.38);
-  animation: dndPulse 3s ease-in-out infinite;
+  cursor:         pointer;
+  /* Breathing outer glow */
+  animation: dndContainerBreath 4s ease-in-out infinite;
 }
 
+@keyframes dndContainerBreath {
+  0%, 100% { filter: drop-shadow(0 0  6px rgba(118,  87, 200, 0.18))
+                     drop-shadow(0 4px 16px rgba(  0,  0,  0, 0.35)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(130, 100, 230, 0.42))
+                     drop-shadow(0 4px 20px rgba(  0,  0,  0, 0.40)); }
+}
+
+/* Hover: glow intensifies — cursor prompt handled by cancel hint overlay */
 #dnd-indicator.dnd-on:hover {
-  background: rgba(50, 35, 80, 0.88);
-  border-color: rgba(200, 170, 255, 0.55);
-  color: #fff;
   animation: none;
+  filter: drop-shadow(0 0 22px rgba(150, 115, 255, 0.60))
+          drop-shadow(0 4px 18px rgba(0, 0, 0, 0.50));
 }
 
-/* Subtle breathing glow when active */
-@keyframes dndPulse {
-  0%, 100% { box-shadow: 0 2px 12px rgba(130, 100, 220, 0.12); }
-  50%       { box-shadow: 0 2px 20px rgba(140, 110, 240, 0.26); }
+/* ── SVG ring ──────────────────────────────────────────────────────────── */
+#dnd-ring-svg {
+  position:  absolute;
+  inset:     0;
+  width:     100%;
+  height:    100%;
+  /* Start arc from 12 o'clock (SVG circles default to 3 o'clock) */
+  transform: rotate(-90deg);
+  overflow:  visible;   /* let the glow bleed outside the viewBox */
 }
+
+/* Faint background track */
+#dnd-ring-track {
+  fill:         none;
+  stroke:       rgba(100, 75, 180, 0.18);
+  stroke-width: 3.5;
+}
+
+/* Blurred glow layer (painted first, visually behind arc) */
+#dnd-ring-glow {
+  fill:              none;
+  stroke:            rgba(167, 139, 250, 0.50);
+  stroke-width:      8;
+  stroke-linecap:    round;
+  stroke-dasharray:  163.36;
+  stroke-dashoffset: 0;
+  filter:            url(#dnd-glow-filter);
+  transition:        stroke-dashoffset 1.05s linear;
+}
+
+/* Main gradient progress arc */
+#dnd-ring-arc {
+  fill:              none;
+  stroke:            url(#dnd-grad);
+  stroke-width:      3.5;
+  stroke-linecap:    round;
+  stroke-dasharray:  163.36;
+  stroke-dashoffset: 0;
+  transition:        stroke-dashoffset 1.05s linear;
+}
+
+/* Leading-edge bright dot at the arc tip */
+#dnd-ring-dot {
+  fill:   #e0d4ff;
+  r:      2.8;
+  filter: drop-shadow(0 0 3px rgba(200, 180, 255, 0.90));
+  /* JS moves cx/cy; transition makes it glide smoothly */
+  transition: cx 1.05s linear, cy 1.05s linear, opacity 0.4s ease;
+}
+
+/* ── Infinite mode — spinning gradient ring ──────────────────────────── */
+/* When _endsAt === 0: rotate the whole SVG continuously */
+#dnd-indicator.dnd-infinite #dnd-ring-svg {
+  animation: dndInfSpin 2.6s linear infinite;
+}
+@keyframes dndInfSpin {
+  from { transform: rotate(-90deg); }
+  to   { transform: rotate(270deg); }
+}
+
+/* ── Glass-morphism center face ─────────────────────────────────────── */
+#dnd-ring-face {
+  position:       relative;
+  z-index:        1;
+  width:          50px;
+  height:         50px;
+  border-radius:  50%;
+  background:     rgba(12, 8, 28, 0.80);
+  border:         1px solid rgba(120, 90, 200, 0.18);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  box-shadow:     inset 0 0 18px rgba(100, 70, 200, 0.10);
+
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  gap:            2px;
+
+  transition: opacity 0.20s ease;
+}
+
+#dnd-time-val {
+  font-family:    'SF Mono', 'Consolas', 'Courier New', monospace;
+  font-size:      13px;
+  font-weight:    700;
+  letter-spacing: 0.03em;
+  color:          rgba(224, 212, 255, 0.97);
+  line-height:    1;
+}
+
+/* ∞ symbol is bigger */
+#dnd-indicator.dnd-infinite #dnd-time-val {
+  font-size:   18px;
+  line-height: 1;
+}
+
+#dnd-mode-label {
+  font-size:      7px;
+  font-weight:    600;
+  letter-spacing: 0.16em;
+  color:          rgba(155, 130, 210, 0.60);
+  text-transform: uppercase;
+  line-height:    1;
+}
+
+/* ── Cancel hint overlay ─────────────────────────────────────────────── */
+#dnd-cancel-hint {
+  position:       absolute;
+  inset:          0;
+  border-radius:  50%;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  gap:            1px;
+  background:     rgba(35, 8, 30, 0.86);
+  opacity:        0;
+  transition:     opacity 0.22s ease;
+  z-index:        2;
+  backdrop-filter: blur(4px);
+}
+
+#dnd-cancel-icon {
+  font-size:      14px;
+  font-weight:    700;
+  color:          rgba(255, 145, 170, 0.96);
+  line-height:    1;
+}
+
+#dnd-cancel-text {
+  font-size:      7.5px;
+  font-weight:    600;
+  letter-spacing: 0.14em;
+  color:          rgba(255, 160, 180, 0.75);
+  text-transform: uppercase;
+  line-height:    1;
+}
+
+/* Show cancel overlay on hover */
+#dnd-indicator.dnd-on:hover #dnd-cancel-hint { opacity: 1; }
+#dnd-indicator.dnd-on:hover #dnd-ring-face   { opacity: 0; }
 
 /* ── Companion stillness in DND mode ─────────────────────────────────── */
-/* Freeze idle sway and any bounce animations while DND is active */
 body.dnd-active .companion-inner {
   animation-play-state: paused !important;
 }
 
 body.dnd-active .companion {
-  /* Subtle desaturation to signal "quiet mode" without hiding the buddy */
-  filter: saturate(0.65) brightness(0.92);
-  transition: filter 0.8s ease;
+  filter:     saturate(0.60) brightness(0.90);
+  transition: filter 0.9s ease;
 }
 
-/* Dim the session panel decorations slightly during DND */
 body.dnd-active #session-panel {
-  opacity: 0.72;
-  transition: opacity 0.5s ease;
+  opacity:    0.70;
+  transition: opacity 0.55s ease;
 }
 
-/* Don't show DND indicator in pip/compact mode (no room) */
+/* Hide in pip/compact mode — no room */
 body.pip-mode #dnd-indicator {
   display: none !important;
 }
 
 /* ── Toggle button active state in settings panel ─────────────────────── */
 .settings-action-btn.dnd-btn-active {
-  background: rgba(100, 75, 160, 0.45);
-  border-color: rgba(170, 140, 255, 0.55);
-  color: rgba(220, 205, 255, 0.95);
+  background:   rgba(100, 75, 160, 0.42);
+  border-color: rgba(170, 140, 255, 0.52);
+  color:        rgba(220, 205, 255, 0.95);
 }

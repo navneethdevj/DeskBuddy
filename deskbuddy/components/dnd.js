@@ -23,9 +23,13 @@ const DND = (() => {
 
   let _active      = false;
   let _endsAt      = 0;        // epoch ms; 0 = infinite
+  let _totalMs     = 0;        // total duration in ms (for ring progress calc)
   let _timerId     = null;     // auto-deactivation setTimeout handle
   let _tickId      = null;     // indicator update setInterval handle
   let _savedPreset = null;     // mute preset saved before DND started
+
+  // SVG ring — circumference of r=26 circle
+  const _CIRC = 2 * Math.PI * 26; // ≈ 163.36
 
   const _callbacks = { onActivate: [], onDeactivate: [] };
 
@@ -45,8 +49,9 @@ const DND = (() => {
     if (_active) deactivate();   // restart cleanly if already running
 
     const mins = (parseInt(durationMinutes, 10) || 0);
-    _active = true;
-    _endsAt = mins > 0 ? Date.now() + mins * 60 * 1000 : 0;
+    _active  = true;
+    _endsAt  = mins > 0 ? Date.now() + mins * 60 * 1000 : 0;
+    _totalMs = mins > 0 ? mins * 60 * 1000 : 0;
 
     document.body.classList.add('dnd-active');
 
@@ -118,21 +123,56 @@ const DND = (() => {
     if (!el) return;
 
     if (!_active) {
-      el.classList.remove('dnd-on');
+      el.classList.remove('dnd-on', 'dnd-infinite');
       el.removeAttribute('title');
       return;
     }
 
     el.classList.add('dnd-on');
-    el.title = 'Focus lock active — click to cancel';
+
+    const arcEl  = document.getElementById('dnd-ring-arc');
+    const glowEl = document.getElementById('dnd-ring-glow');
+    const dotEl  = document.getElementById('dnd-ring-dot');
+    const timeEl = document.getElementById('dnd-time-val');
 
     if (_endsAt === 0) {
-      el.textContent = '⊘  focus lock';
+      // ── Infinite mode — spinning ring, ∞ symbol ──────────────────────────
+      el.classList.add('dnd-infinite');
+      el.title = 'Focus lock — click to end';
+      if (timeEl) timeEl.textContent = '∞';
+      // Leave arc full; CSS animation on #dnd-ring-svg handles the spin
+      if (arcEl)  { arcEl.style.strokeDashoffset  = '0'; }
+      if (glowEl) { glowEl.style.strokeDashoffset = '0'; }
+      if (dotEl)  { dotEl.style.opacity = '0'; }  // hide dot in spin mode
+
     } else {
+      // ── Timed mode — depleting arc + MM:SS countdown ─────────────────────
+      el.classList.remove('dnd-infinite');
+      el.title = 'Focus lock active — click to cancel';
+
       const remaining = Math.max(0, _endsAt - Date.now());
       const m = String(Math.floor(remaining / 60000)).padStart(2, '0');
       const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
-      el.textContent = `⊘  ${m}:${s}`;
+      if (timeEl) timeEl.textContent = `${m}:${s}`;
+
+      // Progress: 1.0 = just started (full ring), 0.0 = finished (empty ring)
+      const progress = _totalMs > 0 ? remaining / _totalMs : 1;
+      const offset   = _CIRC * (1 - progress);
+
+      if (arcEl)  { arcEl.style.strokeDashoffset  = String(offset); }
+      if (glowEl) { glowEl.style.strokeDashoffset = String(offset); }
+
+      // Move the leading-edge dot to the current arc tip position
+      // The arc tip angle (in degrees, 0° = 12 o'clock) = progress * 360
+      if (dotEl && _totalMs > 0) {
+        const angleDeg = progress * 360;            // degrees from 12 o'clock
+        const angleRad = (angleDeg - 90) * (Math.PI / 180);  // convert to math radians
+        const cx = 32 + 26 * Math.cos(angleRad);
+        const cy = 32 + 26 * Math.sin(angleRad);
+        dotEl.setAttribute('cx', String(cx));
+        dotEl.setAttribute('cy', String(cy));
+        dotEl.style.opacity = progress > 0.01 ? '1' : '0';
+      }
     }
   }
 
