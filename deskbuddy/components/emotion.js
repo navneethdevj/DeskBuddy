@@ -12,6 +12,7 @@ const Emotion = (() => {
     'shy',       // prolonged direct eye contact
     'love',      // click-to-pet interaction
     'startled',  // sudden large mouse jerk
+    'cozy',      // long-press snuggle / being held
   ];
   let currentState = null;
   let element = null;

@@ -236,6 +236,21 @@ const Brain = (() => {
   // Love (petting) — click interaction
   let _loveUntil = 0;            // epoch ms when love state expires
 
+  // Cozy (long-press snuggle) — hold mouse near companion
+  let _cozyUntil       = 0;      // epoch ms when cozy state expires
+  let _mousedownNear   = false;  // true if mousedown happened near companion
+  let _mousedownTime   = 0;      // epoch ms when mousedown near companion started
+  const LONG_PRESS_MS  = 800;    // ms held = long press → cozy
+  const COZY_HOLD_MS   = 5000;   // cozy lasts this long after release
+
+  // Rapid-pet burst — multiple quick clicks
+  let _petClickTimes      = [];  // rolling timestamps of pet-zone clicks
+  const PET_BURST_COUNT   = 3;   // clicks within window → burst reaction
+  const PET_BURST_WINDOW_MS = 1500; // rolling window (ms)
+
+  // Status text cache — avoids redundant DOM writes
+  let _lastStatusText = '';
+
   // Startled — sudden mouse jerk
   let _startledUntil = 0;        // epoch ms when startled state expires
   let _prevMouseX    = -1000;    // previous mousemove X for speed detection
@@ -303,6 +318,8 @@ const Brain = (() => {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('click', _onScreenClick);
+    document.addEventListener('mousedown', _onMouseDown);
+    document.addEventListener('mouseup', _onMouseUp);
     Movement.init();
     enterState('idle');
     tick();
@@ -468,8 +485,49 @@ const Brain = (() => {
   }
 
   /**
+   * Update the status bar to reflect the currently displayed emotion.
+   * Throttled via string comparison — only writes to DOM when text changes.
+   */
+  function _updateStatus(emotion) {
+    const labels = {
+      idle:        'Idle',
+      focused:     'Focused',
+      curious:     'Curious',
+      sleepy:      'Sleepy',
+      happy:       'Happy',
+      scared:      'Scared',
+      sad:         'Sad',
+      crying:      'Crying',
+      grumpy:      'Grumpy',
+      pouty:       'Pouty',
+      suspicious:  'Suspicious',
+      sulking:     'Sulking',
+      overjoyed:   'Overjoyed',
+      excited:     'Excited',
+      shy:         'Shy >/<',
+      love:        'Loved ♡',
+      startled:    'Startled !',
+      cozy:        'Cozy ♡',
+      embarrassed: 'Embarrassed',
+      forgiven:    'Forgiven ♡',
+    };
+    const eLabel = labels[emotion] || emotion || 'Idle';
+    const p = window.perception;
+    const rhythmTag = _keyRhythmState === 'flow'
+      ? ' · ' + _getTypingWpm() + ' wpm'
+      : (_keyRhythmState === 'frustrated' ? ' · struggling...' : '');
+    const text = (window.cameraAvailable && p && p.facePresent)
+      ? eLabel + ' · ' + p.attentionScore + '%' + rhythmTag
+      : eLabel + rhythmTag;
+    if (text !== _lastStatusText) {
+      _lastStatusText = text;
+      Status.setText(text);
+    }
+  }
+
+  /**
    * Quietly set an emotion without triggering the emotion-change arc logic.
-   * Used for timed override states (love, startled, excited, shy) so normal
+   * Used for timed override states (love, startled, excited, shy, cozy) so normal
    * transition side-effects (overjoyed arc, tears, etc.) don't fire.
    */
   function _setQuiet(emotion) {
@@ -478,6 +536,7 @@ const Brain = (() => {
       window._lastEmotion    = emotion;
     }
     Emotion.setState(emotion);
+    _updateStatus(emotion);
   }
 
   /**
@@ -502,6 +561,9 @@ const Brain = (() => {
 
     // 1. Love hold (petting click) — most intimate, highest priority
     if (now < _loveUntil) { _setQuiet('love'); return; }
+
+    // 1b. Cozy (long-press snuggle) — deep affection hold
+    if (now < _cozyUntil) { _setQuiet('cozy'); return; }
 
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
@@ -659,39 +721,6 @@ const Brain = (() => {
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
 
-      // Keep status text in sync with the actual displayed emotion
-      const emotionLabels = {
-        idle:       'Idle',
-        focused:    'Focused',
-        curious:    'Curious',
-        sleepy:     'Sleepy',
-        happy:      'Happy',
-        scared:     'Scared',
-        sad:        'Sad',
-        crying:     'Crying',
-        grumpy:     'Grumpy',
-        pouty:      'Pouty',
-        suspicious: 'Suspicious',
-        sulking:    'Sulking',
-        overjoyed:  'Overjoyed',
-        excited:    'Excited',
-        shy:        'Shy',
-        love:       'Loved',
-        startled:   'Startled',
-      };
-      const eLabel = emotionLabels[emotion] || emotion;
-      if (window.cameraAvailable && p && p.facePresent) {
-        const rhythmTag = _keyRhythmState === 'flow'
-          ? ' · ' + _getTypingWpm() + ' wpm'
-          : (_keyRhythmState === 'frustrated' ? ' · struggling...' : '');
-        Status.setText(eLabel + ' · Attention ' + p.attentionScore + '%' + rhythmTag);
-      } else {
-        const rhythmTag = _keyRhythmState === 'flow'
-          ? ' · ' + _getTypingWpm() + ' wpm'
-          : (_keyRhythmState === 'frustrated' ? ' · struggling...' : '');
-        Status.setText('Status: ' + eLabel + rhythmTag);
-      }
-
       // Start tears on crying, stop on any other emotion
       if (emotion === 'crying') {
         _startTears();
@@ -701,6 +730,7 @@ const Brain = (() => {
     }
 
     Emotion.setState(emotion);
+    _updateStatus(emotion);
 
     // ── Typing pause detection ────────────────────────────────────────────────
     // Detects: was typing recently, now stopped, face is still present.
@@ -731,49 +761,70 @@ const Brain = (() => {
     const map = {
       curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?',
                    'ooh?', '*squints curiously*', 'wait...', '...interesting.',
-                   '*perks up*', 'tell me more~'],
+                   '*perks up*', 'tell me more~', '...oh?', 'i see something~',
+                   '*ears perk up*', 'hmmmm...', '( •᷅ ᵕ •᷄ )?', '*leans forward*'],
       happy:      ['✨', '~♪', 'hehe~', '*tail wag*',
                    ':)', '*bounces*', 'yay~', '(*^▽^*)',
-                   'this is nice~', '♪ la la~'],
+                   'this is nice~', '♪ la la~', 'i\'m happy~',
+                   'everything is good ✦', '*glows softly*', '(◕‿◕)✨',
+                   '...life is good~', 'wheee~♡'],
       scared:     ['...!', '*hides*', 'eep!',
                    '*clings to corner*', 'too scary...', 'w-wait...',
-                   '*shaking*', 'i don\'t like this...', 'please no.'],
+                   '*shaking*', 'i don\'t like this...', 'please no.',
+                   '(´• ω •`)...', '*holds breath*', 'don\'t leave me here...'],
       sad:        ['...', '*sniffles*', 'come back...', '...please',
                    '*hugs knees*', 'i miss you...', 'don\'t leave.',
-                   'it\'s so quiet...', '(╥_╥)', '*wipes eyes*'],
+                   'it\'s so quiet...', '(╥_╥)', '*wipes eyes*',
+                   '...lonely.', '*stares at the door*', 'where did you go...'],
       crying:     ['*sobbing quietly*', 'please...',  'don\'t go...',
                    'come back...', '*tears*', 'i can\'t stop...',
-                   'why...', '*hiccups*', 'it\'s too much...'],
+                   'why...', '*hiccups*', 'it\'s too much...',
+                   '...i tried to be good...', '*gasps*', 'it hurts...'],
       grumpy:     ['hmph.', '*huffs*', '...fine.',
                    'whatever.', '*tail flick*', 'don\'t talk to me.',
-                   '...annoying.', '*looks away*', 'i\'m fine. (i\'m not)'],
+                   '...annoying.', '*looks away*', 'i\'m fine. (i\'m not)',
+                   '*grumbles*', 'not in the mood.', '...leave me alone.'],
       pouty:      ['hmph.', '...rude.', '*crosses arms*',
                    'that\'s not fair.', '*pouts*', 'you owe me.',
-                   '...i\'m pouting.', '*sulk*', 'apologize first.'],
+                   '...i\'m pouting.', '*sulk*', 'apologize first.',
+                   'this is protest.', '*sticks tongue out*', 'nope.'],
       sulking:    ['*stares at wall*', 'i\'m not upset.', '...',
                    'don\'t look at me.', '*ignoring you*', 'totally fine.',
-                   '...........', '*turns away*', 'just leave me alone.'],
+                   '...........', '*turns away*', 'just leave me alone.',
+                   '*silence*', '...', '*very fine*'],
       sleepy:     ['*yawns*', 'zzz...', 'so sleepy...',
                    '*heavy eyelids*', 'five more minutes...', '...mmh.',
-                   '*dozes off*', 'can\'t... keep... eyes... open...', 'zZz~'],
+                   '*dozes off*', 'can\'t... keep... eyes... open...', 'zZz~',
+                   '*blinks slowly*', '...tired...', '...just a nap~'],
       suspicious: ['...?', '*narrows eyes*', 'hmm.',
                    'something\'s off.', '*watches carefully*', 'i see you.',
-                   '...sus.', '*squint*', 'explain.', 'not sure about this.'],
+                   '...sus.', '*squint*', 'explain.', 'not sure about this.',
+                   '*slow blink*', '...i\'m watching you.', 'seems off...'],
       overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*',
                    'YAAAY!!', '*happy spinning*', 'i missed you so much!!',
-                   'eeeee!!', '(≧▽≦)/', '*cannot contain excitement*'],
+                   'eeeee!!', '(≧▽≦)/', '*cannot contain excitement*',
+                   'best day EVER!!', '*happy tears*', '!!!!!'],
       excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!',
                    'omg omg omg', '*bouncing off walls*', 'THIS IS AMAZING',
-                   '(*≧▽≦)', 'so excited!!', 'LETSGOOO!!'],
+                   '(*≧▽≦)', 'so excited!!', 'LETSGOOO!!',
+                   '*zooms*', '!!!!!!!', '*literally cannot*'],
       shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
                    '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
-                   'h-hello...', '(*ノωノ)'],
+                   'h-hello...', '(*ノωノ)', 'n-not like that...',
+                   '*covers face*', '...you\'re looking at me...', '>///<'],
       love:       ['♡', '*purrs*', '*nuzzles*', '...♡',
                    'i like you~', '*rubs head on you*', 'stay forever.',
-                   '♡♡♡', '*happy purr*', 'you\'re warm~'],
+                   '♡♡♡', '*happy purr*', 'you\'re warm~',
+                   '*slow blink* ♡', 'mine~', '...you smell nice.',
+                   '*kneads happily*', 'i choose you.', '♡ always ♡'],
       startled:   ['!!', '*jumps*', 'w-what?!',
                    'AH!', '*startled floof*', 'you scared me!!',
-                   '(*o*)!', 'don\'t do that!!', 'my heart...'],
+                   '(*o*)!', 'don\'t do that!!', 'my heart...',
+                   '*fur stands up*', 'WARNING!!', 'not cool!!!'],
+      cozy:       ['...♡', 'mmh~', '*melts*', 'safe here.',
+                   'don\'t move...', '...warm.', '*purrs softly*',
+                   'this is perfect.', '...never leave.', '♡ cozy ♡',
+                   '*snuggles deeper*', '...home.', 'staying like this forever~'],
     };
     return map[emotion] || null;
   }
@@ -901,14 +952,10 @@ const Brain = (() => {
 
     currentState = state;
 
-    // Build status text including perception info when camera is active
-    var label = STATE_LABELS[state] || state;
-    var p = window.perception;
-    if (window.cameraAvailable && p && p.facePresent) {
-      Status.setText(label + ' · Attention ' + p.attentionScore + '%');
-    } else {
-      Status.setText('Status: ' + label);
-    }
+    // Status text is driven by the active emotion, not the brain state name.
+    // _updateStatus is called by applyFocusEmotion / _setQuiet on each frame.
+    // Refresh once here so the bar is never stale after a state transition.
+    _updateStatus(window._lastEmotion || 'idle');
 
     if (stateTimer) {
       clearTimeout(stateTimer);
@@ -1737,22 +1784,88 @@ const Brain = (() => {
     }, durationMs);
   }
 
-  // ── CLICK-TO-PET INTERACTION ───────────────────────────────────────────────
-  // Clicking near the companion (within PET_RADIUS px of centre) triggers love.
+  // ── CLICK-TO-PET & LONG-PRESS SNUGGLE INTERACTIONS ───────────────────────
+  // Single click near companion → love.
+  // 3+ quick clicks within 1.5 s → burst love overload.
+  // Hold mousedown ≥ 800 ms near companion → cozy snuggle.
   function _onScreenClick(e) {
     const c    = Companion.getCenter();
     const dx   = e.clientX - c.x;
     const dy   = e.clientY - c.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < PET_RADIUS) {
-      const now = Date.now();
-      _loveUntil = now + LOVE_HOLD_MS;
-      const msgs = ['♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡',
-                    'i like you~', '*rubs head on you*', 'stay forever.',
-                    '♡♡♡', '*happy purr*'];
-      if (Math.random() < 0.75) {
-        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
+    if (dist >= PET_RADIUS) return;
+
+    const now = Date.now();
+
+    // Track rapid pet clicks
+    _petClickTimes.push(now);
+    _petClickTimes = _petClickTimes.filter(t => now - t < PET_BURST_WINDOW_MS);
+
+    if (_petClickTimes.length >= PET_BURST_COUNT) {
+      // Rapid-tap burst — super hyper love overload
+      _petClickTimes = [];
+      _loveUntil     = now + LOVE_HOLD_MS + 2000;
+      const burstMsgs = [
+        'hehehehe~!!', '!!♡♡♡', '*wags tail rapidly*',
+        'stop stop stop im melting~', '(≧◡≦)',
+        'TOO MUCH LOVE!!', 'aaaaa~♡', '*happy overload*',
+        '(♡▿♡)!!!', '*vibrating with joy*', 'nooo i\'m gonna explode~♡',
+        '*spins uncontrollably*', 'you\'re so sweet!!',
+      ];
+      showWhisper(burstMsgs[Math.floor(Math.random() * burstMsgs.length)], 3500);
+      const el = Companion.getElement();
+      if (el) {
+        el.classList.add('shiver');
+        setTimeout(() => el.classList.remove('shiver'), 450);
       }
+      if (typeof Particles !== 'undefined') Particles.burst(Companion.getCenter(), 'happy');
+      return;
+    }
+
+    // Normal single pet
+    _loveUntil = now + LOVE_HOLD_MS;
+    const msgs = [
+      '♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡',
+      'i like you~', '*rubs head on you*', 'stay forever.',
+      '♡♡♡', '*happy purr*', 'teehee~♡', '...warm~',
+      '*leans into you*', 'don\'t stop~', 'you\'re warm ♡',
+      '*slow blink* ...♡', 'mhmmm~', '♡ yes please ♡',
+      '*happy sigh*', 'more more more~', 'besties forever ♡',
+      '...i feel safe.', '*buries face in you*',
+    ];
+    if (Math.random() < 0.82) {
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
+    }
+  }
+
+  function _onMouseDown(e) {
+    const c    = Companion.getCenter();
+    const dx   = e.clientX - c.x;
+    const dy   = e.clientY - c.y;
+    if (Math.sqrt(dx * dx + dy * dy) < PET_RADIUS) {
+      _mousedownNear = true;
+      _mousedownTime = Date.now();
+    }
+  }
+
+  function _onMouseUp(e) {
+    if (!_mousedownNear) return;
+    const held = Date.now() - _mousedownTime;
+    _mousedownNear = false;
+    if (held >= LONG_PRESS_MS) {
+      // Long press — trigger cozy snuggle state
+      _cozyUntil = Date.now() + COZY_HOLD_MS;
+      const cozyMsgs = [
+        '...♡ cozy', '*nuzzles closer*', 'don\'t let go~',
+        'safe here...', '...warm and soft', 'mmh~♡',
+        '*contented purr*', 'staying here forever~',
+        '*eyes slowly closing*', 'like this~', 'you\'re my favourite~',
+        '...home ♡', '*melts*', 'this is everything.',
+      ];
+      showWhisper(cozyMsgs[Math.floor(Math.random() * cozyMsgs.length)], 4500);
+      // Brief nuzzle lean to signal the snuggle
+      const el = Companion.getElement();
+      if (el) { el.classList.add('nuzzling'); setTimeout(() => el.classList.remove('nuzzling'), 900); }
     }
   }
 
@@ -1786,16 +1899,19 @@ const Brain = (() => {
 
     // Weighted random selection (sum = 100)
     const r = Math.random() * 100;
-    if      (r < 20) _doIdleLook();        // look around (20%)
-    else if (r < 34) _doDoubleBlink();     // quick double blink (14%)
-    else if (r < 46) _doHeadTilt();        // cute head tilt (12%)
-    else if (r < 55) _doStretch();         // yawn + stretch (9%)
-    else if (r < 67) _doWhisperCoo();      // murmur something (12%)
-    else if (r < 76) _doWink();            // cheeky wink (9%)
-    else if (r < 83) _doPeek();            // look far away, snap back (7%)
-    else if (r < 90) _doHappyFlash();      // brief joyful expression (7%)
-    else if (r < 96) _doShiver();          // tiny excited shiver (6%)
-    else             _doTripleBlink();     // three rapid blinks — extra expressive (4%)
+    if      (r < 17) _doIdleLook();        // look around (17%)
+    else if (r < 29) _doDoubleBlink();     // quick double blink (12%)
+    else if (r < 40) _doHeadTilt();        // cute head tilt (11%)
+    else if (r < 48) _doStretch();         // yawn + stretch (8%)
+    else if (r < 59) _doWhisperCoo();      // murmur something (11%)
+    else if (r < 67) _doWink();            // cheeky wink (8%)
+    else if (r < 73) _doPeek();            // look far away, snap back (6%)
+    else if (r < 80) _doHappyFlash();      // brief joyful expression (7%)
+    else if (r < 85) _doShiver();          // tiny excited shiver (5%)
+    else if (r < 88) _doTripleBlink();     // three rapid blinks (3%)
+    else if (r < 92) _doNuzzle();          // lean toward screen (4%)
+    else if (r < 96) _doDaydream();        // look up dreamily (4%)
+    else             _doSpinOnce();        // gleeful tiny spin (4%)
   }
 
   /** Look in a random direction then drift back */
@@ -1935,6 +2051,37 @@ const Brain = (() => {
       }, 110 + Math.random() * 40);
     };
     doBlink();
+  }
+
+  /** Lean toward the screen — a nuzzle/snuggle gesture */
+  function _doNuzzle() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('nuzzling');
+    const msgs = ['*nuzzles screen*', '...hi ♡', '*leans in*', '(◡‿◡)', '*presses closer*', '...cozy here'];
+    if (Math.random() < 0.5) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2400);
+    setTimeout(() => el.classList.remove('nuzzling'), 900);
+  }
+
+  /** Look up dreamily for a moment, soft wistful sigh */
+  function _doDaydream() {
+    const c = Companion.getCenter();
+    Companion.lookAt(c.x + (Math.random() - 0.5) * 80, c.y - 280);
+    const msgs = ['...✦', '...☁', '...♡', '*daydreams*', 'la la la~', '...hm~', '...✧', '*wanders off mentally*'];
+    showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
+    setTimeout(() => Companion.resetLook(), 2200 + Math.random() * 900);
+  }
+
+  /** Brief gleeful spin — shows joy without restraint */
+  function _doSpinOnce() {
+    const el = Companion.getElement();
+    if (!el) return;
+    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad'];
+    if (_blocked.includes(window._lastEmotion)) return;
+    el.classList.add('spinning');
+    const msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*'];
+    if (Math.random() < 0.5) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 1800);
+    setTimeout(() => el.classList.remove('spinning'), 660);
   }
 
   /** Enable or disable phone-detection posture heuristic. */

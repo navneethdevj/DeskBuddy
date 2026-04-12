@@ -1565,6 +1565,85 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 /* =====================================================================
+   COZY EMOTION — long-press snuggle; warm half-lidded eyes, rose-gold glow
+   ===================================================================== */
+
+/* Cozy eye: wide but half-lidded, like a cat slowly blinking at you ♡ */
+.companion.cozy .eye {
+  width: 36vmin; height: 22vmin;
+  border-radius: 50% 50% 50% 50% / 28% 28% 72% 72%;
+  box-shadow:
+    0 0 4vmin rgba(255,155,130,0.92),
+    0 0 12vmin rgba(255,135,110,0.44),
+    0 0 26vmin rgba(255,115, 90,0.16);
+}
+.companion.cozy { animation: glowCozy 2.2s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
+@keyframes glowCozy {
+  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,155,130,0.46)) drop-shadow(0 0 16vmin rgba(255,132,108,0.18)); }
+  50%     { filter: drop-shadow(0 0 11vmin rgba(255,172,148,0.65)) drop-shadow(0 0 28vmin rgba(255,148,122,0.26)); }
+}
+.companion.cozy .brow-left  { transform: translateY(-0.4vmin) rotate(-4deg); }
+.companion.cozy .brow-right { transform: translateY(-0.4vmin) rotate(4deg); }
+.companion.cozy .blush      { background: rgba(255, 128, 165, 0.44); }
+
+/* Cozy eye shimmer — warm rose tint */
+.companion.cozy .eye::after {
+  background: radial-gradient(circle, rgba(255,155,185,0.50) 0%, transparent 70%);
+  animation: eyeShimmer 2.4s ease-in-out infinite;
+}
+
+/* Cozy body — settled, content, barely moving */
+.companion.cozy .companion-inner {
+  animation: cozySettle 3.5s ease-in-out infinite;
+}
+@keyframes cozySettle {
+  0%, 100% { transform: scale(0.978) translateY(0.4vh) rotate(0deg); }
+  40%      { transform: scale(0.972) translateY(0.6vh) rotate(-0.25deg); }
+  70%      { transform: scale(0.975) translateY(0.5vh) rotate(0.20deg); }
+}
+
+/* =====================================================================
+   LOVE EMOTION ENHANCEMENTS — stronger blush + pink eye shimmer
+   ===================================================================== */
+
+/* Love eye shimmer — warm heart-pink tint */
+.companion.love .eye::after {
+  background: radial-gradient(circle, rgba(255,150,190,0.52) 0%, transparent 70%);
+  animation: eyeShimmer 1.3s ease-in-out infinite;
+}
+
+/* =====================================================================
+   HAPPY EMOTION ENHANCEMENTS — slightly warmer blush
+   ===================================================================== */
+.companion.happy .blush { background: rgba(255, 112, 155, 0.30); }
+
+/* =====================================================================
+   NUZZLE HELPER — lean toward screen (affectionate forward tilt)
+   ===================================================================== */
+.companion.nuzzling .companion-inner {
+  animation: companionNuzzle 0.9s cubic-bezier(.4,0,.2,1) forwards !important;
+}
+@keyframes companionNuzzle {
+  0%   { transform: scale(1) translateY(0); }
+  35%  { transform: scale(1.058) translateY(1.1vh); }
+  65%  { transform: scale(1.026) translateY(0.5vh); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+/* =====================================================================
+   SPIN HELPER — brief gleeful spin
+   ===================================================================== */
+.companion.spinning .companion-inner {
+  animation: companionSpin 0.65s cubic-bezier(.35,0,.2,1) forwards !important;
+}
+@keyframes companionSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  35%  { transform: rotate(195deg) scale(1.06); }
+  70%  { transform: rotate(345deg) scale(1.02); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* =====================================================================
    (breathe keyframe defined earlier, near top of file)
    ===================================================================== */
 
