@@ -36,129 +36,6 @@ const ShareCard = (() => {
     return 'STRANGERS';
   }
 
-  // ── Companion glyph drawing ───────────────────────────────────────────────
-
-  // Per-emotion eye/brow/mouth descriptors for a minimal canvas glyph.
-  const GLYPHS = {
-    happy:      { ew: 1.05, eh: 0.55, brow: -8,  mouth: 'smile'    },
-    overjoyed:  { ew: 1.10, eh: 1.10, brow: -10, mouth: 'bigsmile' },
-    sad:        { ew: 0.90, eh: 0.90, brow:  10, mouth: 'frown'    },
-    crying:     { ew: 0.80, eh: 0.70, brow:  14, mouth: 'dfrown'   },
-    grumpy:     { ew: 0.80, eh: 0.65, brow:  16, mouth: 'flat'     },
-    suspicious: { ew: 0.85, eh: 0.55, brow:  10, mouth: 'flat'     },
-    curious:    { ew: 1.00, eh: 1.25, brow:  -3, mouth: 'open'     },
-    focused:    { ew: 0.75, eh: 0.60, brow:   5, mouth: null       },
-    sleepy:     { ew: 0.90, eh: 0.18, brow:   3, mouth: null       },
-    scared:     { ew: 1.10, eh: 1.30, brow:  -5, mouth: 'o'        },
-    excited:    { ew: 1.05, eh: 1.10, brow: -10, mouth: 'bigsmile' },
-    idle:       { ew: 1.00, eh: 0.92, brow:  -1, mouth: null       },
-  };
-
-  function _drawBrow(ctx, cx, topY, w, angleDeg) {
-    const rad = angleDeg * Math.PI / 180;
-    const hw  = w / 2;
-    const dx  = hw * Math.cos(rad);
-    const dy  = hw * Math.sin(rad);
-    ctx.beginPath();
-    ctx.moveTo(cx - dx, topY + dy);
-    ctx.lineTo(cx + dx, topY - dy);
-    ctx.strokeStyle = 'rgba(200, 200, 255, 0.70)';
-    ctx.lineWidth   = 2;
-    ctx.lineCap     = 'round';
-    ctx.stroke();
-  }
-
-  function _drawMouth(ctx, cx, y, type) {
-    ctx.strokeStyle = 'rgba(200, 200, 255, 0.70)';
-    ctx.lineWidth   = 2;
-    ctx.lineCap     = 'round';
-    switch (type) {
-      case 'smile':
-        ctx.beginPath();
-        ctx.arc(cx, y - 4, 8, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
-        break;
-      case 'bigsmile':
-        ctx.beginPath();
-        ctx.arc(cx, y - 5, 11, 0.10 * Math.PI, 0.90 * Math.PI);
-        ctx.stroke();
-        break;
-      case 'frown':
-        ctx.beginPath();
-        ctx.arc(cx, y + 6, 8, 1.15 * Math.PI, 1.85 * Math.PI);
-        ctx.stroke();
-        break;
-      case 'dfrown':
-        ctx.beginPath();
-        ctx.arc(cx, y + 8, 10, 1.15 * Math.PI, 1.85 * Math.PI);
-        ctx.stroke();
-        break;
-      case 'flat':
-        ctx.beginPath();
-        ctx.moveTo(cx - 7, y);
-        ctx.lineTo(cx + 7, y);
-        ctx.stroke();
-        break;
-      case 'open':
-        ctx.beginPath();
-        ctx.arc(cx, y, 5, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-      case 'o':
-        ctx.beginPath();
-        ctx.arc(cx, y, 7, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-    }
-  }
-
-  function _drawCompanionGlyph(ctx, emotion, cx, cy) {
-    const g = GLYPHS[emotion] || GLYPHS.idle;
-
-    const EYE_BASE_W = 18, EYE_BASE_H = 20;
-    const eyeW    = EYE_BASE_W * g.ew;
-    const eyeH    = EYE_BASE_H * g.eh;
-    const spacing = 26;
-
-    // Soft outer glow
-    const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, 42);
-    grd.addColorStop(0, 'rgba(160,140,255,0.12)');
-    grd.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(cx - 50, cy - 50, 100, 100);
-
-    // Eyes
-    ctx.fillStyle   = 'rgba(190, 180, 255, 0.88)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-    ctx.lineWidth   = 0.8;
-
-    ctx.beginPath();
-    ctx.ellipse(cx - spacing / 2, cy, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(cx + spacing / 2, cy, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-
-    // Pupils
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.beginPath(); ctx.arc(cx - spacing / 2, cy + 1, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + spacing / 2, cy + 1, 4.5, 0, Math.PI * 2); ctx.fill();
-
-    // Eye glints
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.beginPath(); ctx.arc(cx - spacing / 2 - 2, cy - 2, 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + spacing / 2 - 2, cy - 2, 1.5, 0, Math.PI * 2); ctx.fill();
-
-    // Eyebrows
-    const browTopY = cy - eyeH / 2 - 5;
-    _drawBrow(ctx, cx - spacing / 2, browTopY, eyeW * 0.9,  g.brow);
-    _drawBrow(ctx, cx + spacing / 2, browTopY, eyeW * 0.9, -g.brow);
-
-    // Mouth
-    if (g.mouth) _drawMouth(ctx, cx, cy + eyeH / 2 + 10, g.mouth);
-  }
-
   // ── Shared drawing utilities ─────────────────────────────────────────────
 
   function _roundRect(ctx, x, y, w, h, r) {
@@ -282,209 +159,343 @@ const ShareCard = (() => {
 
   // ── Card renderer ─────────────────────────────────────────────────────────
 
-  function _renderCard(sessionData, emotion) {
-    const W = 400, H = 240;
+  /** Format a date as "Apr 12, 2026". */
+  function _fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (_) { return ''; }
+  }
+
+  /**
+   * Motivational phrase based on focus score.
+   * Keeps the card feeling personal and rewarding.
+   */
+  function _phrase(score) {
+    if (score >= 92) return 'absolutely locked in ✦';
+    if (score >= 80) return 'incredible focus! ✨';
+    if (score >= 68) return 'great work! ⚡';
+    if (score >= 50) return 'solid session ✦';
+    if (score >= 30) return 'keep it up! 💙';
+    return 'you showed up — that counts ✦';
+  }
+
+  function _renderCard(sessionData) {
+    const W = 400, H = 252;   // slightly taller for breathing room
     const canvas = document.createElement('canvas');
-    canvas.width  = W;
-    canvas.height = H;
+    canvas.width  = W * 2;    // 2× for HiDPI / export quality
+    canvas.height = H * 2;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
     const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);           // draw at logical px; export at 2× resolution
 
     const focusedMins  = Math.floor((sessionData.actualFocusedSeconds  || 0) / 60);
     const longestMins  = Math.floor((sessionData.longestFocusStreakSeconds || 0) / 60);
-    const distractions = sessionData.distractionCount || 0;
-    const totalSecs    = (sessionData.durationMinutes || 0) * 60;
+    const distractions = sessionData.distractionCount  || 0;
+    const durationMins = Math.round(sessionData.durationMinutes || 0);
+    const totalSecs    = durationMins * 60;
     const focusScore   = totalSecs > 0
       ? Math.round(((sessionData.actualFocusedSeconds || 0) / totalSecs) * 100)
       : 0;
 
+    // ── Palette helpers ───────────────────────────────────────────────────
+    // Arc ring colour changes with focus quality
+    const ringColor = focusScore >= 80
+      ? 'rgba(72, 214, 150, 0.92)'
+      : focusScore >= 55
+        ? 'rgba(218, 184, 52,  0.92)'
+        : 'rgba(218, 110, 72,  0.88)';
+
     // ── Background ────────────────────────────────────────────────────────
-
-    // Base fill — deep dark indigo
-    ctx.fillStyle = '#0c0a1a';
+    ctx.fillStyle = '#0b0919';
     ctx.fillRect(0, 0, W, H);
 
-    // Warm gold beacon behind stat area (trophy glow)
-    const warmGlow = ctx.createRadialGradient(85, 95, 0, 85, 95, 165);
-    warmGlow.addColorStop(0,    'rgba(215, 150,  28, 0.11)');
-    warmGlow.addColorStop(0.45, 'rgba(150,  75, 200, 0.05)');
-    warmGlow.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.fillStyle = warmGlow;
+    // Warm amber radial beacon (left-center, behind hero stat)
+    const ga = ctx.createRadialGradient(120, 100, 0, 120, 100, 190);
+    ga.addColorStop(0,    'rgba(215, 148, 28,  0.12)');
+    ga.addColorStop(0.50, 'rgba(145,  68, 200, 0.05)');
+    ga.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = ga;
     ctx.fillRect(0, 0, W, H);
 
-    // Cool lavender glow on companion side
-    const lavGlow = ctx.createRadialGradient(318, 112, 0, 318, 112, 105);
-    lavGlow.addColorStop(0, 'rgba(150, 120, 255, 0.11)');
-    lavGlow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = lavGlow;
+    // Cool right-edge glow (behind ring area)
+    const gb = ctx.createRadialGradient(360, 90, 0, 360, 90, 130);
+    gb.addColorStop(0, 'rgba(80, 200, 168, 0.09)');
+    gb.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gb;
     ctx.fillRect(0, 0, W, H);
 
-    // Top purple-to-transparent band
-    const topBand = ctx.createLinearGradient(0, 0, 0, 58);
-    topBand.addColorStop(0, 'rgba(88, 48, 168, 0.28)');
-    topBand.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = topBand;
-    ctx.fillRect(0, 0, W, 58);
+    // Top purple wash
+    const gc = ctx.createLinearGradient(0, 0, 0, 62);
+    gc.addColorStop(0, 'rgba(80, 42, 162, 0.32)');
+    gc.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gc;
+    ctx.fillRect(0, 0, W, 62);
 
-    // Bottom fade
-    const botFade = ctx.createLinearGradient(0, H - 46, 0, H);
-    botFade.addColorStop(0, 'rgba(0,0,0,0)');
-    botFade.addColorStop(1, 'rgba(0,0,0,0.38)');
-    ctx.fillStyle = botFade;
-    ctx.fillRect(0, H - 46, W, 46);
+    // Bottom dark fade
+    const gd = ctx.createLinearGradient(0, H - 52, 0, H);
+    gd.addColorStop(0, 'rgba(0,0,0,0)');
+    gd.addColorStop(1, 'rgba(0,0,0,0.42)');
+    ctx.fillStyle = gd;
+    ctx.fillRect(0, H - 52, W, 52);
 
-    // Outer border — subtle lavender rim
-    ctx.strokeStyle = 'rgba(175, 135, 255, 0.22)';
+    // Outer border — lavender rim
+    ctx.strokeStyle = 'rgba(172, 132, 255, 0.26)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
     // Inner inset border
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth   = 1;
     ctx.strokeRect(3, 3, W - 6, H - 6);
 
-    // Top edge gradient line (purple → gold → transparent)
-    const topLine = ctx.createLinearGradient(0, 0, W, 0);
-    topLine.addColorStop(0,    'rgba(0,0,0,0)');
-    topLine.addColorStop(0.18, 'rgba(175,135,255,0.50)');
-    topLine.addColorStop(0.62, 'rgba(215,168,48, 0.38)');
-    topLine.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.strokeStyle = topLine;
+    // Top accent gradient line (lavender → gold)
+    const tl = ctx.createLinearGradient(0, 0, W, 0);
+    tl.addColorStop(0,    'rgba(0,0,0,0)');
+    tl.addColorStop(0.16, 'rgba(172,132,255,0.55)');
+    tl.addColorStop(0.65, 'rgba(218,168,46, 0.42)');
+    tl.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.strokeStyle = tl;
     ctx.lineWidth   = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 1);
-    ctx.lineTo(W, 1);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(W, 1); ctx.stroke();
 
-    // ── Background sparkle decorations ────────────────────────────────────
-    _drawSparkle(ctx, 358, 17,  3.8, 'rgba(255,210,75,0.20)');
-    _drawSparkle(ctx, 387, 56,  2.2, 'rgba(255,210,75,0.12)');
-    _drawSparkle(ctx, 378, 202, 2.0, 'rgba(255,210,75,0.10)');
-    _drawSparkle(ctx, 21,  220, 2.5, 'rgba(160,128,255,0.15)');
-    _drawSparkle(ctx, 214, 13,  1.8, 'rgba(255,255,255,0.10)');
+    // ── Confetti dots (fixed pattern, celebratory) ────────────────────────
+    const DOTS = [
+      [340, 22, 2.2, 'rgba(255,185,58, 0.34)'],
+      [362, 46, 1.6, 'rgba(155,115,255,0.28)'],
+      [384, 20, 1.9, 'rgba(72, 214,150, 0.28)'],
+      [376, 68, 2.4, 'rgba(255,140,80, 0.26)'],
+      [395, 94, 1.7, 'rgba(255,225,98, 0.30)'],
+      [356,110, 1.5, 'rgba(180,130,255,0.24)'],
+      [388,132, 1.9, 'rgba(72, 214,150, 0.22)'],
+      [372,158, 1.6, 'rgba(255,185,58, 0.20)'],
+      [393,180, 2.1, 'rgba(155,115,255,0.22)'],
+      [14, 148, 1.6, 'rgba(255,225,98, 0.16)'],
+      [22, 230, 1.8, 'rgba(155,115,255,0.16)'],
+      [397,220, 1.9, 'rgba(255,225,98, 0.16)'],
+      [380,205, 1.4, 'rgba(72, 214,150, 0.18)'],
+      [210, 13, 1.7, 'rgba(255,255,255,0.10)'],
+    ];
+    DOTS.forEach(([x, y, r, c]) => {
+      ctx.save(); ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+
+    // Background sparkle glyphs
+    _drawSparkle(ctx, 352, 15,  3.8, 'rgba(255,210,75,0.22)');
+    _drawSparkle(ctx, 390, 52,  2.2, 'rgba(255,210,75,0.14)');
+    _drawSparkle(ctx, 380, 205, 2.0, 'rgba(255,210,75,0.12)');
+    _drawSparkle(ctx, 19,  224, 2.6, 'rgba(165,132,255,0.16)');
+    _drawSparkle(ctx, 215, 13,  1.7, 'rgba(255,255,255,0.10)');
 
     // ── Header ────────────────────────────────────────────────────────────
     ctx.font      = '600 10px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(160,128,255,0.68)';
-    ctx.fillText('✦  DESKBUDDY', 22, 23);
+    ctx.fillStyle = 'rgba(162, 130, 255, 0.72)';
+    ctx.fillText('✦  DESKBUDDY', 22, 22);
 
-    // "SESSION COMPLETE" pill badge
+    // Date — right-aligned, dim
+    const dateStr = sessionData.date ? _fmtDate(sessionData.date) : '';
+    if (dateStr) {
+      ctx.font      = '400 9px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      const dw = ctx.measureText(dateStr).width;
+      ctx.fillText(dateStr, W - 20 - dw, 22);
+    }
+
+    // SESSION COMPLETE badge (centred in header)
     ctx.font = '600 9px "Segoe UI", system-ui, sans-serif';
-    const badgeW = ctx.measureText('SESSION COMPLETE').width + 18;
-    _drawBadge(ctx, 22, 30, badgeW, 15, 'SESSION COMPLETE',
-      'rgba(218,162,38,0.14)',
-      'rgba(218,162,38,0.40)',
-      'rgba(232,192,76,0.90)',
-      9);
+    const scW = ctx.measureText('SESSION COMPLETE').width + 20;
+    _drawBadge(ctx, Math.round((W - scW) / 2), 11, scW, 16, 'SESSION COMPLETE',
+      'rgba(218,162,38,0.16)', 'rgba(218,162,38,0.44)', 'rgba(234,194,78,0.94)', 9);
 
-    // ── Left vertical gold accent bar ─────────────────────────────────────
-    const accentG = ctx.createLinearGradient(0, 52, 0, 136);
-    accentG.addColorStop(0,   'rgba(218,168,46,0.72)');
-    accentG.addColorStop(0.5, 'rgba(232,190,70,0.95)');
-    accentG.addColorStop(1,   'rgba(218,168,46,0.18)');
-    ctx.fillStyle = accentG;
-    ctx.fillRect(14, 52, 2.5, 84);
+    // Header separator
+    const hs = ctx.createLinearGradient(0, 0, W, 0);
+    hs.addColorStop(0,    'rgba(0,0,0,0)');
+    hs.addColorStop(0.12, 'rgba(218,168,46,0.32)');
+    hs.addColorStop(0.88, 'rgba(172,130,255,0.24)');
+    hs.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.strokeStyle = hs; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(14, 35); ctx.lineTo(W - 14, 35); ctx.stroke();
 
-    // ── Primary stat: focused minutes — large gold number ─────────────────
+    // ── Left gold accent bar ───────────────────────────────────────────────
+    const ab = ctx.createLinearGradient(0, 42, 0, 126);
+    ab.addColorStop(0,   'rgba(218,168,46,0.82)');
+    ab.addColorStop(0.5, 'rgba(234,192,72,0.96)');
+    ab.addColorStop(1,   'rgba(218,168,46,0.12)');
+    ctx.fillStyle = ab;
+    ctx.fillRect(14, 42, 2.5, 84);
+
+    // ── Hero stat — focused minutes (giant gold number) ────────────────────
     ctx.save();
-    const numGrad = ctx.createLinearGradient(22, 56, 22, 110);
-    numGrad.addColorStop(0, 'rgba(255,234,125,0.98)');
-    numGrad.addColorStop(1, 'rgba(218,172, 38,0.92)');
-    ctx.fillStyle = numGrad;
-    ctx.font      = '200 52px "Segoe UI", system-ui, sans-serif';
+    const ng = ctx.createLinearGradient(22, 46, 22, 114);
+    ng.addColorStop(0, 'rgba(255,236,128,0.98)');
+    ng.addColorStop(1, 'rgba(218,172, 38,0.92)');
+    ctx.fillStyle = ng;
+    ctx.font      = '200 54px "Segoe UI", system-ui, sans-serif';
     const numStr  = String(focusedMins);
-    ctx.fillText(numStr, 22, 108);
+    ctx.fillText(numStr, 22, 112);
     const numW = ctx.measureText(numStr).width;
     ctx.restore();
 
-    // "min focused" label floated right of the big number
-    ctx.font      = '300 12px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.76)';
-    ctx.fillText('min focused', 28 + numW, 86);
+    // "min" / "focused" labels stacked right of the big number
+    ctx.font      = '400 13px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.fillText('min', 30 + numW, 90);
+    ctx.font      = '300 11px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.50)';
+    ctx.fillText('focused', 30 + numW, 108);
 
-    // ── Secondary stats ───────────────────────────────────────────────────
-    const GOLD_DOT = 'rgba(218,168,46,0.68)';
-    ctx.font       = '300 12px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle  = 'rgba(255,255,255,0.44)';
+    // ── Focus-score ring (right of hero) ───────────────────────────────────
+    const RCX = 332, RCY = 83, RR = 30;
 
-    _dot(ctx, 28, 124, GOLD_DOT);
-    ctx.fillText(`${distractions} distraction${distractions !== 1 ? 's' : ''}`, 37, 127);
+    // Dim background ring
+    ctx.beginPath();
+    ctx.arc(RCX, RCY, RR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth   = 5;
+    ctx.stroke();
 
-    _dot(ctx, 28, 141, GOLD_DOT);
-    ctx.fillText(`longest streak: ${longestMins} min`, 37, 144);
+    // Coloured fill arc (clockwise from top)
+    if (focusScore > 0) {
+      const sa = -0.5 * Math.PI;
+      const ea = sa + (Math.min(focusScore, 100) / 100) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(RCX, RCY, RR, sa, ea);
+      ctx.strokeStyle = ringColor;
+      ctx.lineWidth   = 5;
+      ctx.lineCap     = 'round';
+      ctx.stroke();
+    }
 
-    // ── Focus score bar ───────────────────────────────────────────────────
-    ctx.font      = '400 9.5px "Segoe UI", system-ui, sans-serif';
+    // Small inner glow circle
+    const ig = ctx.createRadialGradient(RCX, RCY, 0, RCX, RCY, RR - 6);
+    ig.addColorStop(0, 'rgba(255,255,255,0.04)');
+    ig.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ig;
+    ctx.beginPath(); ctx.arc(RCX, RCY, RR - 5, 0, Math.PI * 2); ctx.fill();
+
+    // Percentage text (centred in ring)
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font         = '700 17px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle    = 'rgba(255,255,255,0.94)';
+    ctx.fillText(`${focusScore}%`, RCX, RCY - 1);
+    ctx.font         = '500 7.5px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle    = 'rgba(255,255,255,0.38)';
+    ctx.fillText('FOCUS', RCX, RCY + 13);
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    // ── Stat chips row ─────────────────────────────────────────────────────
+    const CHIP_H = 18, CHIP_Y = 124, GAP = 8;
+    ctx.font = '400 10px "Segoe UI", system-ui, sans-serif';
+
+    const chipDefs = [
+      {
+        label: distractions === 0 ? '✓  no distractions!' : `◈  ${distractions} distraction${distractions !== 1 ? 's' : ''}`,
+        tc: distractions === 0 ? 'rgba(72,215,148,0.90)' : 'rgba(255,255,255,0.55)',
+        bg: distractions === 0 ? 'rgba(72,215,148,0.10)' : 'rgba(255,255,255,0.06)',
+        bd: distractions === 0 ? 'rgba(72,215,148,0.30)' : 'rgba(255,255,255,0.10)',
+      },
+      {
+        label: `◈  ${longestMins} min streak`,
+        tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)',
+      },
+      {
+        label: `◈  ${durationMins} min session`,
+        tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)',
+      },
+    ];
+
+    // Measure all chips, then distribute evenly
+    const chipWidths = chipDefs.map(c => ctx.measureText(c.label).width + 18);
+    const totalChipW = chipWidths.reduce((s, w) => s + w, 0) + GAP * (chipDefs.length - 1);
+    let chipX = Math.max(22, Math.round((W - totalChipW) / 2));   // centre the row
+
+    chipDefs.forEach((chip, i) => {
+      const cw = chipWidths[i];
+      ctx.save();
+      ctx.fillStyle = chip.bg;
+      _roundRect(ctx, chipX, CHIP_Y, cw, CHIP_H, CHIP_H / 2);
+      ctx.fill();
+      ctx.strokeStyle = chip.bd; ctx.lineWidth = 0.75;
+      _roundRect(ctx, chipX, CHIP_Y, cw, CHIP_H, CHIP_H / 2);
+      ctx.stroke();
+      ctx.fillStyle    = chip.tc;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(chip.label, chipX + 9, CHIP_Y + CHIP_H / 2 + 0.5);
+      ctx.textBaseline = 'alphabetic';
+      ctx.restore();
+      chipX += cw + GAP;
+    });
+
+    // ── Focus score bar ────────────────────────────────────────────────────
+    ctx.font      = '400 9px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.fillText('FOCUS', 22, 162);
-    ctx.font      = '600 9.5px "Segoe UI", system-ui, sans-serif';
+    const fsLabelW = ctx.measureText('FOCUS SCORE').width;
+    ctx.fillText('FOCUS SCORE', 22, 160);
+    ctx.font      = '600 9px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = 'rgba(225,184,72,0.90)';
-    ctx.fillText(`${focusScore}%`, 57, 162);
-    _drawFocusBar(ctx, 22, 167, 198, 4, focusScore / 100);
+    ctx.fillText(`  ${focusScore}%`, 22 + fsLabelW, 160);
+    _drawFocusBar(ctx, 22, 165, W - 44, 4, focusScore / 100);
 
     // ── Goal line ─────────────────────────────────────────────────────────
     if (sessionData.goalText) {
       const achieved  = sessionData.goalAchieved;
       const mark      = achieved === true ? ' ✓' : achieved === false ? ' ✗' : '';
-      const goalColor = achieved === true
-        ? 'rgba(75,215,120,0.92)'
-        : achieved === false
-          ? 'rgba(255,100,100,0.82)'
-          : 'rgba(255,255,255,0.40)';
       ctx.font      = 'italic 11px "Segoe UI", system-ui, sans-serif';
-      ctx.fillStyle = goalColor;
+      ctx.fillStyle = achieved === true
+        ? 'rgba(72,215,148,0.92)'
+        : achieved === false
+          ? 'rgba(255,100,100,0.84)'
+          : 'rgba(255,255,255,0.42)';
 
       let goalTxt = `"${sessionData.goalText}"${mark}`;
       ctx.save();
-      const MAX_W = 198;
-      if (ctx.measureText(goalTxt).width > MAX_W) {
+      const MAX_GW = W - 44;
+      if (ctx.measureText(goalTxt).width > MAX_GW) {
         let base = sessionData.goalText;
-        while (ctx.measureText(`"${base}…"${mark}`).width > MAX_W && base.length > 1) {
+        while (ctx.measureText(`"${base}…"${mark}`).width > MAX_GW && base.length > 1)
           base = base.slice(0, -1);
-        }
         goalTxt = `"${base}…"${mark}`;
       }
-      ctx.fillText(goalTxt, 22, 186);
+      ctx.fillText(goalTxt, 22, 184);
       ctx.restore();
     }
 
-    // ── Companion glyph (right side) ──────────────────────────────────────
-    _drawCompanionGlyph(ctx, emotion || 'happy', 318, 112);
-
-    // ── Trophy watermark beneath companion ────────────────────────────────
-    _drawTrophy(ctx, 318, 168, 0.86, 'rgba(218,168,46,0.18)');
+    // ── Trophy watermark (right side, behind ring area, faint) ────────────
+    _drawTrophy(ctx, 332, 170, 0.82, 'rgba(218,168,46,0.12)');
 
     // ── Footer ────────────────────────────────────────────────────────────
     const streak    = (typeof Session !== 'undefined' && Session.computeDayStreak?.()) || 0;
     const totalMins = (typeof Session !== 'undefined' && Session.getTotalFocusedMinutes?.()) || 0;
     const tier      = _getBondingTier(streak, totalMins);
 
-    // Footer separator — gold-to-lavender gradient line
-    const footLine = ctx.createLinearGradient(0, 0, W, 0);
-    footLine.addColorStop(0,    'rgba(0,0,0,0)');
-    footLine.addColorStop(0.14, 'rgba(218,168,46,0.28)');
-    footLine.addColorStop(0.86, 'rgba(175,135,255,0.20)');
-    footLine.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.strokeStyle = footLine;
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    ctx.moveTo(14, H - 32);
-    ctx.lineTo(W - 14, H - 32);
-    ctx.stroke();
+    // Footer gradient separator
+    const fl = ctx.createLinearGradient(0, 0, W, 0);
+    fl.addColorStop(0,    'rgba(0,0,0,0)');
+    fl.addColorStop(0.12, 'rgba(218,168,46,0.32)');
+    fl.addColorStop(0.88, 'rgba(172,130,255,0.24)');
+    fl.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.strokeStyle = fl; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(14, 196); ctx.lineTo(W - 14, 196); ctx.stroke();
 
-    // Streak label
+    // Motivational phrase
+    ctx.font      = 'italic 400 10px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(225,192,100,0.62)';
+    ctx.fillText(_phrase(focusScore), 22, 213);
+
+    // Day streak (left of footer bottom row)
     const streakLabel = streak > 0 ? `Day ${streak} streak` : 'first session ✦';
     ctx.font      = '400 10px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.32)';
-    ctx.fillText(streakLabel, 22, H - 14);
+    ctx.fillText(streakLabel, 22, 234);
 
-    // Tier badge — pill on right side of footer
+    // Tier badge (right of footer bottom row)
     ctx.font     = '600 9px "Segoe UI", system-ui, sans-serif';
     const tierW  = ctx.measureText(tier).width + 18;
-    _drawBadge(ctx, W - 18 - tierW, H - 28, tierW, 14, tier,
-      'rgba(135,100,255,0.15)',
-      'rgba(135,100,255,0.34)',
-      'rgba(192,168,255,0.82)',
-      9);
+    _drawBadge(ctx, W - 18 - tierW, H - 28, tierW, 15, tier,
+      'rgba(138,102,255,0.16)', 'rgba(138,102,255,0.36)', 'rgba(194,170,255,0.84)', 9);
 
     return canvas;
   }
@@ -559,48 +570,71 @@ const ShareCard = (() => {
       modal.querySelector('#share-card-goal-prompt').style.display = 'none';
     });
 
-    // Copy to clipboard
+    // Copy to clipboard — use Electron native API, fall back to Web Clipboard API
     modal.querySelector('#share-card-copy').addEventListener('click', async () => {
       if (!_canvasCache) return;
       const statusEl = modal.querySelector('#share-card-status');
       try {
-        _canvasCache.toBlob(async blob => {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob }),
-            ]);
-            statusEl.textContent = '✓ copied!';
-          } catch (_) {
-            statusEl.textContent = 'clipboard not available — try save PNG';
-          }
-          setTimeout(() => { statusEl.textContent = ''; }, 2200);
-        }, 'image/png');
+        const dataUrl = _canvasCache.toDataURL('image/png');
+        if (window.electronAPI?.copyImage) {
+          // Electron path: route through main process → clipboard.writeImage()
+          const res = await window.electronAPI.copyImage(dataUrl);
+          statusEl.textContent = res?.ok ? '✓ copied to clipboard!' : 'could not copy — try save PNG';
+        } else {
+          // Web fallback (non-Electron context)
+          await new Promise((resolve, reject) => {
+            _canvasCache.toBlob(async blob => {
+              try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                resolve();
+              } catch (e) { reject(e); }
+            }, 'image/png');
+          });
+          statusEl.textContent = '✓ copied!';
+        }
       } catch (_) {
-        statusEl.textContent = 'could not copy';
-        setTimeout(() => { statusEl.textContent = ''; }, 2200);
+        statusEl.textContent = 'could not copy — try save PNG';
       }
+      setTimeout(() => { statusEl.textContent = ''; }, 2400);
     });
 
-    // Download PNG
-    modal.querySelector('#share-card-download').addEventListener('click', () => {
+    // Save PNG — use Electron native save dialog, fall back to <a> download
+    modal.querySelector('#share-card-download').addEventListener('click', async () => {
       if (!_canvasCache) return;
-      const a  = document.createElement('a');
-      a.href   = _canvasCache.toDataURL('image/png');
-      a.download = `deskbuddy-session-${new Date().toISOString().slice(0, 10)}.png`;
-      a.click();
+      const statusEl = modal.querySelector('#share-card-status');
+      try {
+        const dataUrl = _canvasCache.toDataURL('image/png');
+        if (window.electronAPI?.saveImage) {
+          // Electron path: opens native OS Save dialog
+          const res = await window.electronAPI.saveImage(dataUrl);
+          if (res?.ok) {
+            statusEl.textContent = '✓ saved!';
+            setTimeout(() => { statusEl.textContent = ''; }, 2400);
+          }
+          // If canceled, show nothing
+        } else {
+          // Web fallback
+          const a      = document.createElement('a');
+          a.href       = dataUrl;
+          a.download   = `deskbuddy-session-${new Date().toISOString().slice(0, 10)}.png`;
+          a.click();
+        }
+      } catch (_) {
+        statusEl.textContent = 'could not save';
+        setTimeout(() => { statusEl.textContent = ''; }, 2400);
+      }
     });
   }
 
   /** Re-render the card canvas after a goal-achieved answer. */
   function _rerenderCard() {
     if (!_sessionDataRef) return;
-    const emotion = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
-    _canvasCache = _renderCard(_sessionDataRef, emotion);
+    _canvasCache = _renderCard(_sessionDataRef);
     const wrap = document.getElementById('share-card-canvas-wrap');
     if (wrap) {
       wrap.innerHTML = '';
-      _canvasCache.style.maxWidth    = '100%';
-      _canvasCache.style.height      = 'auto';
+      _canvasCache.style.maxWidth     = '100%';
+      _canvasCache.style.height       = 'auto';
       _canvasCache.style.borderRadius = '8px';
       wrap.appendChild(_canvasCache);
     }
@@ -609,22 +643,20 @@ const ShareCard = (() => {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
-   * show(sessionData, emotion) — render the card and open the modal.
+   * show(sessionData) — render the card and open the modal.
    * @param {object} sessionData — session history entry
-   * @param {string} emotion     — companion emotion at session end
+   * @param {string} _emotion    — kept for call-site compatibility; unused
    */
-  function show(sessionData, emotion) {
+  function show(sessionData, _emotion) {
     _ensureModal();
-    _sessionDataRef = sessionData;  // keep mutable ref for goal-answer re-render
-    _canvasCache = _renderCard(sessionData, emotion);
+    _sessionDataRef = sessionData;  // mutable ref so goal-answer can re-render
+    _canvasCache    = _renderCard(sessionData);
 
     const wrap = document.getElementById('share-card-canvas-wrap');
     if (wrap) {
       wrap.innerHTML = '';
-      // Scale the 400×240 canvas to fit the modal with CSS — the canvas
-      // pixel dimensions stay at 400×240 for export quality.
-      _canvasCache.style.maxWidth  = '100%';
-      _canvasCache.style.height    = 'auto';
+      _canvasCache.style.maxWidth     = '100%';
+      _canvasCache.style.height       = 'auto';
       _canvasCache.style.borderRadius = '8px';
       wrap.appendChild(_canvasCache);
     }

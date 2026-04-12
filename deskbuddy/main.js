@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, session, ipcMain, screen, clipboard, nativeImage, dialog } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 
@@ -241,6 +241,35 @@ ipcMain.handle('settings:get', () => {
 
 ipcMain.on('settings:set', (_event, obj) => {
   store.set('settings', { ...SETTINGS_DEFAULTS, ...obj });
+});
+
+// ── Share-card IPC handlers ───────────────────────────────────────────────────
+
+// Copy the card image to the system clipboard using Electron's native API.
+ipcMain.handle('share-card:copy-image', (_event, dataUrl) => {
+  try {
+    const img = nativeImage.createFromDataURL(dataUrl);
+    clipboard.writeImage(img);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+// Open a native Save dialog and write the PNG to disk.
+ipcMain.handle('share-card:save-image', async (_event, dataUrl) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: `deskbuddy-session-${new Date().toISOString().slice(0, 10)}.png`,
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    });
+    if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+    fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'));
+    return { ok: true, filePath: result.filePath };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────

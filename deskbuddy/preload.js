@@ -49,4 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings persistence — survives localStorage clear.
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (obj) => ipcRenderer.send('settings:set', obj),
+
+  // Share card — copy image to clipboard / save PNG via native dialog.
+  copyImage: (dataUrl) => ipcRenderer.invoke('share-card:copy-image', dataUrl),
+  saveImage: (dataUrl) => ipcRenderer.invoke('share-card:save-image', dataUrl),
 });

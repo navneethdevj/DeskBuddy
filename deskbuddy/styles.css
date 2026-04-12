@@ -3508,3 +3508,46 @@ body.pip-mode #break-card { display: none !important; }
   min-height: 14px;
   transition: opacity 0.2s;
 }
+
+/* Goal-achieved prompt inside share card */
+#share-card-goal-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(218,162,38,0.08);
+  border: 1px solid rgba(218,162,38,0.20);
+  border-radius: 10px;
+}
+
+.sc-goal-question {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.70);
+  flex: 1;
+}
+
+.sc-goal-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.sc-btn-yes {
+  background: rgba(72,215,148,0.14);
+  color: rgba(72,215,148,0.92);
+  border: 1px solid rgba(72,215,148,0.28);
+}
+.sc-btn-yes:hover {
+  background: rgba(72,215,148,0.26);
+}
+
+.sc-btn-no {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sc-btn-no:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.80);
+}
