@@ -37,6 +37,7 @@ const Settings = (() => {
     autoPipDelay:           0,     // seconds to wait before collapsing (0 = instant, like WhatsApp)
     autoPipRestore:         true,  // restore full mode when the user returns
     autoPipSkipSession:     false, // skip auto-collapse when a focus session is running
+    pipShape:               'square', // 'square' | 'circle' — overlay window shape in PiP mode
     // ── Buddy personality ──────────────────────────────────────────────
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)

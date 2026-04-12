@@ -900,6 +900,9 @@
     _isFullMode = false;
     document.body.classList.remove('full-mode');
     document.body.classList.add('pip-mode');
+    // Apply the one-shot entrance animation class; remove it after the animation duration.
+    document.body.classList.add('pip-entering');
+    setTimeout(() => document.body.classList.remove('pip-entering'), 400);
     if (window.electronAPI) window.electronAPI.exitFullMode();
   }
 
@@ -1251,6 +1254,23 @@
     }
     Settings.onChange('autoPipSkipSession', (v) => {
       if (autoPipSkipSessionToggle) autoPipSkipSessionToggle.checked = v;
+    });
+
+    // PiP overlay shape
+    function _applyPipShape(shape) {
+      document.body.classList.toggle('pip-shape-circle', shape === 'circle');
+      document.body.classList.toggle('pip-shape-square', shape !== 'circle');
+    }
+    _applyPipShape(Settings.get('pipShape'));
+    const pipShapeSel = document.getElementById('pip-shape-select');
+    if (pipShapeSel) {
+      pipShapeSel.value = Settings.get('pipShape');
+      pipShapeSel.addEventListener('change', () =>
+        Settings.set('pipShape', pipShapeSel.value));
+    }
+    Settings.onChange('pipShape', (v) => {
+      _applyPipShape(v);
+      if (pipShapeSel) pipShapeSel.value = v;
     });
 
     // Sensitivity select
