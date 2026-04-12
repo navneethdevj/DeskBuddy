@@ -248,11 +248,12 @@ ipcMain.on('exit-full-mode', () => {
   mainWindow.setMaximumSize(320, 320);
   mainWindow.setResizable(true);
   mainWindow.setBounds({ x: pos.x, y: pos.y, width: dim, height: dim }, process.platform === 'darwin');
-  mainWindow.setSkipTaskbar(true);
+  mainWindow.setSkipTaskbar(false);  // Keep visible in Win+Tab Task View
   mainWindow.setIgnoreMouseEvents(false);
   // showInactive first so the window is rendered at the new size/position,
   // then assert alwaysOnTop last — nothing after this call can reset the level.
   mainWindow.showInactive();
+  // Keep the PiP bubble visible in Win+Tab / Task View by NOT skipping the taskbar.
   // 'floating' keeps the PiP bubble above every normal window on all platforms,
   // exactly like WhatsApp's call overlay. This MUST be the last OS-level call
   // so no subsequent API resets the window level.

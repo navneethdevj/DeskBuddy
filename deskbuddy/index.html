@@ -562,7 +562,17 @@
 
   <!-- History icon button — top-left, next to gear, full-mode only -->
   <button id="history-btn" title="Session history (Ctrl+Shift+H)" aria-label="Open history panel">
-    <span class="history-btn-glyph">◉</span>
+    <svg class="history-btn-glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Clock face -->
+      <circle cx="8.5" cy="9" r="5.5" stroke="currentColor" stroke-width="1.4"/>
+      <!-- Clock hands -->
+      <line x1="8.5" y1="9" x2="8.5" y2="6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="8.5" y1="9" x2="11" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <!-- Anti-clockwise arrow arc -->
+      <path d="M 5 3.5 A 5.5 5.5 0 0 0 3 7" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <!-- Arrow head -->
+      <polyline points="3,5.2 3,3.5 4.8,3.5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
     <span id="history-btn-ring"></span>
   </button>
 
@@ -726,103 +736,185 @@
 
     <div id="history-card">
 
-      <!-- ── HEADER ─────────────────────────────────────────────────── -->
+      <!-- ── HEADER with view pills ──────────────────────────────────── -->
       <div class="hp-header">
         <div class="hp-header-left">
-          <span class="hp-title-gem">◉</span>
-          <span class="hp-title">Session History</span>
+          <span class="hp-title">Focus Stats</span>
+        </div>
+        <div class="hgraph-pills">
+          <button class="hgraph-pill active" data-view="daily">Daily</button>
+          <button class="hgraph-pill" data-view="weekly">Weekly</button>
+          <button class="hgraph-pill" data-view="monthly">Monthly</button>
+          <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
         </div>
         <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
       </div>
 
-      <!-- ── 1. STAT CARDS (2×2) ─────────────────────────────────────── -->
-      <div class="hp-stat-cards">
-        <div class="hp-sc hp-sc-today">
-          <div class="hp-sc-val" id="hsc-today-focused">—</div>
-          <div class="hp-sc-lbl">today focused</div>
-        </div>
-        <div class="hp-sc hp-sc-sessions">
-          <div class="hp-sc-val" id="hsc-today-sessions">0</div>
-          <div class="hp-sc-lbl">today sessions</div>
-        </div>
-        <div class="hp-sc hp-sc-week">
-          <div class="hp-sc-val" id="hsc-week-focused">—</div>
-          <div class="hp-sc-lbl">this week</div>
-        </div>
-        <div class="hp-sc hp-sc-lifetime">
-          <div class="hp-sc-val" id="hsc-lifetime-focused">—</div>
-          <div class="hp-sc-lbl">lifetime</div>
-        </div>
-      </div>
-
-      <!-- ── 1b. PERSONAL BESTS ROW ─────────────────────────────────── -->
-      <div class="hp-best-row">
-        <div class="hp-best-item">
-          <div class="hp-best-val" id="hsb-this-month">—</div>
-          <div class="hp-best-lbl">this month</div>
-        </div>
-        <div class="hp-best-div"></div>
-        <div class="hp-best-item">
-          <div class="hp-best-val" id="hsb-best-day">—</div>
-          <div class="hp-best-lbl">🏆 best day</div>
-        </div>
-        <div class="hp-best-div"></div>
-        <div class="hp-best-item">
-          <div class="hp-best-val" id="hsb-best-week">—</div>
-          <div class="hp-best-lbl">🏆 best week</div>
-        </div>
-        <div class="hp-best-div"></div>
-        <div class="hp-best-item">
-          <div class="hp-best-val" id="hsb-best-month">—</div>
-          <div class="hp-best-lbl">🏆 best month</div>
-        </div>
-      </div>
-
-      <!-- ── 2. STREAK ROW ──────────────────────────────────────────── -->
-      <div class="hp-streak-row">
-        <div class="hp-sr-item">
-          <div class="hp-sr-val" id="hsr-current-streak">0</div>
-          <div class="hp-sr-lbl">🔥 streak</div>
-        </div>
-        <div class="hp-sr-div"></div>
-        <div class="hp-sr-item">
-          <div class="hp-sr-val" id="hsr-longest-streak">0</div>
-          <div class="hp-sr-lbl">🔥 longest</div>
-        </div>
-        <div class="hp-sr-div"></div>
-        <div class="hp-sr-item">
-          <div class="hp-sr-val" id="hsr-avg-score">—</div>
-          <div class="hp-sr-lbl">avg focus</div>
-        </div>
-      </div>
-
-      <!-- ── 3. STREAK CALENDAR (canvas 16×7) ───────────────────────── -->
-      <div class="hp-section">
-        <div class="hp-section-head">
-          <span class="hp-slabel">streak calendar</span>
-        </div>
-        <div class="hp-cal-day-labels">
-          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-        </div>
-        <canvas id="hp-streak-canvas" class="hp-streak-canvas"></canvas>
-      </div>
-
-      <!-- ── 4. BAR CHART (canvas) ──────────────────────────────────── -->
-      <div class="hp-section">
-        <div class="hp-section-head">
-          <div class="hgraph-pills">
-            <button class="hgraph-pill active" data-view="daily">daily</button>
-            <button class="hgraph-pill" data-view="weekly">weekly</button>
-            <button class="hgraph-pill" data-view="monthly">monthly</button>
-            <button class="hgraph-pill" data-view="lifetime">lifetime</button>
+      <!-- ── VIEW: DAILY ────────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="daily">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-today-focused">—</div>
+            <div class="hp-sc-lbl">today focused</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-today-sessions">0</div>
+            <div class="hp-sc-lbl">sessions today</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-today-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-dur">
+            <div class="hp-sc-val" id="hsc-today-longest">—</div>
+            <div class="hp-sc-lbl">longest session</div>
           </div>
         </div>
-        <div class="hp-chart-wrap">
-          <canvas id="history-chart-canvas"></canvas>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-daily">Today · hourly breakdown</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-daily"></canvas>
+          </div>
         </div>
       </div>
 
-      <!-- ── 5. RECENT SESSIONS (last 7) ───────────────────────────── -->
+      <!-- ── VIEW: WEEKLY ───────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="weekly">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-week">
+            <div class="hp-sc-val" id="hsc-week-focused">—</div>
+            <div class="hp-sc-lbl">this week</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-week-sessions">0</div>
+            <div class="hp-sc-lbl">sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-week-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-week-best-day">—</div>
+            <div class="hp-sc-lbl">best day</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-weekly">This week · Mon → Sun</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-weekly"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: MONTHLY ──────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="monthly">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-month">
+            <div class="hp-sc-val" id="hsc-month-focused">—</div>
+            <div class="hp-sc-lbl">this month</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-month-sessions">0</div>
+            <div class="hp-sc-lbl">sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-month-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-lifetime">
+            <div class="hp-sc-val" id="hsc-month-best">—</div>
+            <div class="hp-sc-lbl">🏆 best day</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-monthly">This month · day by day</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-monthly"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: LIFETIME ─────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="lifetime">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-lifetime">
+            <div class="hp-sc-val" id="hsc-lifetime-focused">—</div>
+            <div class="hp-sc-lbl">lifetime total</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-lifetime-sessions">0</div>
+            <div class="hp-sc-lbl">total sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-lifetime-best-day">—</div>
+            <div class="hp-sc-lbl">🏆 best day</div>
+          </div>
+          <div class="hp-sc hp-sc-week">
+            <div class="hp-sc-val" id="hsc-lifetime-streak">—</div>
+            <div class="hp-sc-lbl">🔥 longest streak</div>
+          </div>
+        </div>
+        <!-- Personal bests row -->
+        <div class="hp-best-row">
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-this-month">—</div>
+            <div class="hp-best-lbl">this month</div>
+          </div>
+          <div class="hp-best-div"></div>
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-best-week">—</div>
+            <div class="hp-best-lbl">🏆 best week</div>
+          </div>
+          <div class="hp-best-div"></div>
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-best-month">—</div>
+            <div class="hp-best-lbl">🏆 best month</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label">All time · monthly</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-lifetime"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STREAK SECTION (always visible) ───────────────────────── -->
+      <div class="hp-section hp-streak-section">
+        <div class="hp-streak-row">
+          <div class="hp-sr-item">
+            <div class="hp-sr-fires" id="hsr-fires"></div>
+            <div class="hp-sr-val" id="hsr-current-streak">0</div>
+            <div class="hp-sr-lbl">day streak</div>
+          </div>
+          <div class="hp-sr-div"></div>
+          <div class="hp-sr-item">
+            <div class="hp-sr-fires hp-sr-fires-dim" id="hsr-fires-longest"></div>
+            <div class="hp-sr-val" id="hsr-longest-streak">0</div>
+            <div class="hp-sr-lbl">longest</div>
+          </div>
+          <div class="hp-sr-div"></div>
+          <div class="hp-sr-item">
+            <div class="hp-sr-val hp-sr-val-score" id="hsr-avg-score">—</div>
+            <div class="hp-sr-lbl">avg focus</div>
+          </div>
+        </div>
+        <div class="hp-section-head" style="margin-top:4px">
+          <span class="hp-slabel">streak calendar</span>
+          <span class="hp-slabel" id="hp-cal-months-label" style="font-size:8px;opacity:0.55;letter-spacing:0.04em"></span>
+        </div>
+        <div class="hp-cal-wrap">
+          <div class="hp-cal-day-col">
+            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+          </div>
+          <div class="hp-cal-graph-wrap">
+            <div class="hp-cal-month-labels" id="hp-cal-months"></div>
+            <canvas id="hp-streak-canvas" class="hp-streak-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RECENT SESSIONS (last 7) ──────────────────────────────── -->
       <div class="hp-section">
         <div class="hp-section-head">
           <span class="hp-slabel">recent sessions</span>
