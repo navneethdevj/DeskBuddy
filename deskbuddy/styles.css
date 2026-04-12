@@ -2941,7 +2941,7 @@ body.pip-mode  #history-btn { display: none !important; }
   right: 0;
   top: calc(50% + 28px);
   transform: translateX(calc(100% + 8px));
-  width: 210px;
+  width: 222px;
   max-height: calc(100vh - 80px);
   z-index: 2490;
   display: none;
@@ -2960,46 +2960,54 @@ body.pip-mode  #history-panel { display: none !important; }
   transform: translateX(0);
 }
 
-/* ── Glass card — identical recipe to session panel cards ─────────── */
+/* ── Glass card ───────────────────────────────────────────────────── */
 #history-card {
-  background: rgba(22, 18, 40, 0.78);
-  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
-  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
-  border-left: 1px solid rgba(255, 255, 255, 0.09);
-  border-right: 1px solid rgba(0, 0, 0, 0.18);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 22px;
-  padding: 14px 14px 16px;
+  background: rgba(14, 11, 30, 0.88);
+  backdrop-filter: blur(80px) saturate(2.2) brightness(1.15);
+  -webkit-backdrop-filter: blur(80px) saturate(2.2) brightness(1.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.30);
+  border-radius: 20px;
+  padding: 14px 13px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   overscroll-behavior: contain;
   max-height: calc(100vh - 100px);
   scrollbar-width: thin;
-  scrollbar-color: rgba(155, 135, 255, 0.15) transparent;
+  scrollbar-color: rgba(155, 135, 255, 0.12) transparent;
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.32),
-    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
-    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+    0 28px 70px rgba(0, 0, 0, 0.65),
+    0 8px 28px rgba(0, 0, 0, 0.40),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 40px rgba(100, 80, 200, 0.08);
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
 .hp-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(155, 135, 255, 0.12);
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(155, 135, 255, 0.10);
 }
 .hp-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(200, 185, 255, 0.55);
+  color: rgba(200, 185, 255, 0.50);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hp-title-gem {
+  font-size: 8px;
+  color: rgba(155, 135, 255, 0.70);
+  filter: drop-shadow(0 0 4px rgba(155, 135, 255, 0.50));
 }
 
 /* ── Sections ────────────────────────────────────────────────────── */
@@ -3008,57 +3016,208 @@ body.pip-mode  #history-panel { display: none !important; }
   flex-direction: column;
   gap: 6px;
 }
+
+/* ── Section header badge ────────────────────────────────────────── */
+.hp-sh {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 1px;
+}
+.hp-sh-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(155, 135, 255, 0.14), transparent);
+  border-radius: 1px;
+}
+.hp-sh-badge {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.hp-sh-today {
+  color: rgba(140, 210, 255, 0.80);
+  border-color: rgba(100, 180, 255, 0.22);
+  background: rgba(100, 180, 255, 0.06);
+}
+.hp-sh-week {
+  color: rgba(155, 135, 255, 0.85);
+  border-color: rgba(155, 135, 255, 0.22);
+  background: rgba(155, 135, 255, 0.07);
+}
+.hp-sh-month {
+  color: rgba(200, 140, 255, 0.85);
+  border-color: rgba(200, 140, 255, 0.22);
+  background: rgba(200, 140, 255, 0.06);
+}
+.hp-sh-lifetime {
+  color: rgba(255, 165, 80, 0.75);
+  border-color: rgba(255, 165, 80, 0.18);
+  background: rgba(255, 165, 80, 0.05);
+}
+
+/* ── Section label (used in graph header) ────────────────────────── */
 .hp-section-label {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: rgba(155, 135, 255, 0.40);
+  color: rgba(155, 135, 255, 0.42);
 }
 
-/* ── Stat cards ──────────────────────────────────────────────────── */
+/* ── Stat rows & cards ───────────────────────────────────────────── */
 .hp-stat-row {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 .hp-stat-card {
   flex: 1;
-  background: rgba(155, 135, 255, 0.06);
-  border: 1px solid rgba(155, 135, 255, 0.12);
-  border-radius: 12px;
-  padding: 8px 10px;
+  position: relative;
+  border-radius: 11px;
+  padding: 9px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  overflow: hidden;
+  border: 1px solid;
+  transition: border-color 0.2s;
 }
 .hp-stat-card-wide {
   flex: 1 1 100%;
 }
-.hp-stat-val {
-  font-size: 18px;
-  font-weight: 700;
-  color: rgba(210, 195, 255, 0.90);
-  line-height: 1;
-  letter-spacing: -0.02em;
+
+/* Color variants */
+.hp-sc-purple {
+  background: rgba(120, 100, 220, 0.08);
+  border-color: rgba(155, 135, 255, 0.16);
 }
+.hp-sc-blue {
+  background: rgba(60, 140, 240, 0.07);
+  border-color: rgba(80, 160, 255, 0.15);
+}
+.hp-sc-amber {
+  background: rgba(240, 140, 40, 0.07);
+  border-color: rgba(255, 165, 80, 0.18);
+}
+.hp-sc-amber-dim {
+  background: rgba(200, 130, 40, 0.05);
+  border-color: rgba(220, 155, 80, 0.12);
+}
+.hp-sc-green {
+  background: rgba(40, 200, 140, 0.07);
+  border-color: rgba(60, 210, 150, 0.16);
+}
+
+/* Top accent bar inside each card */
+.hp-sc-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 11px 11px 0 0;
+}
+.hp-sc-purple .hp-sc-bar  { background: linear-gradient(90deg, rgba(155,135,255,0.55), rgba(155,135,255,0.10)); }
+.hp-sc-blue   .hp-sc-bar  { background: linear-gradient(90deg, rgba(80,160,255,0.55),  rgba(80,160,255,0.10)); }
+.hp-sc-amber  .hp-sc-bar  { background: linear-gradient(90deg, rgba(255,165,80,0.55),  rgba(255,165,80,0.10)); }
+.hp-sc-amber-dim .hp-sc-bar { background: linear-gradient(90deg, rgba(220,150,70,0.35), rgba(220,150,70,0.06)); }
+.hp-sc-green  .hp-sc-bar  { background: linear-gradient(90deg, rgba(60,210,150,0.55),  rgba(60,210,150,0.10)); }
+
+/* Values */
+.hp-stat-val {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.hp-sc-purple .hp-stat-val { color: rgba(195, 180, 255, 0.92); }
+.hp-sc-blue   .hp-stat-val { color: rgba(120, 185, 255, 0.90); }
+.hp-sc-amber  .hp-stat-val { color: rgba(255, 185, 100, 0.92); }
+.hp-sc-amber-dim .hp-stat-val { color: rgba(230, 170, 100, 0.75); }
+.hp-sc-green  .hp-stat-val { color: rgba(80, 220, 170, 0.90); }
+
+.hp-stat-val-lg {
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
 .hp-stat-unit {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  color: rgba(175, 160, 255, 0.55);
+  opacity: 0.60;
 }
 .hp-stat-lbl {
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  opacity: 0.50;
+  margin-top: 1px;
+}
+.hp-sc-purple .hp-stat-lbl { color: rgba(180, 165, 255, 1); }
+.hp-sc-blue   .hp-stat-lbl { color: rgba(120, 180, 255, 1); }
+.hp-sc-amber  .hp-stat-lbl { color: rgba(255, 180, 90, 1); }
+.hp-sc-amber-dim .hp-stat-lbl { color: rgba(220, 165, 90, 1); }
+.hp-sc-green  .hp-stat-lbl { color: rgba(60, 210, 155, 1); }
+
+/* ── Graph section headers ────────────────────────────────────────── */
+.hp-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hp-graph-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.hp-graph-icon {
   font-size: 9px;
-  color: rgba(155, 135, 255, 0.45);
-  letter-spacing: 0.04em;
-  margin-top: 2px;
+  color: rgba(155, 135, 255, 0.40);
+  line-height: 1;
+}
+
+/* ── View pills ──────────────────────────────────────────────────── */
+.hgraph-pills {
+  display: flex;
+  gap: 2px;
+}
+.hgraph-pill, .hcal-pill {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2.5px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(155, 135, 255, 0.14);
+  background: transparent;
+  color: rgba(155, 135, 255, 0.38);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  -webkit-app-region: no-drag;
+}
+.hgraph-pill:hover, .hcal-pill:hover {
+  background: rgba(155, 135, 255, 0.08);
+  color: rgba(195, 180, 255, 0.78);
+  border-color: rgba(155, 135, 255, 0.22);
+}
+.hgraph-pill.active, .hcal-pill.active {
+  background: rgba(155, 135, 255, 0.15);
+  color: rgba(215, 200, 255, 0.95);
+  border-color: rgba(155, 135, 255, 0.38);
+  box-shadow: 0 0 8px rgba(155, 135, 255, 0.18);
 }
 
 /* ── Streak calendar ─────────────────────────────────────────────── */
 .hp-calendar-wrap {
-  background: rgba(155, 135, 255, 0.04);
-  border: 1px solid rgba(155, 135, 255, 0.10);
+  background: rgba(155, 135, 255, 0.03);
+  border: 1px solid rgba(155, 135, 255, 0.09);
   border-radius: 10px;
-  padding: 8px;
+  padding: 9px;
   display: flex;
   justify-content: center;
 }
@@ -3067,43 +3226,13 @@ body.pip-mode  #history-panel { display: none !important; }
   image-rendering: pixelated;
 }
 
-/* ── Chart ───────────────────────────────────────────────────────── */
-.hp-graph-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.hgraph-pills {
-  display: flex;
-  gap: 3px;
-}
-.hgraph-pill, .hcal-pill {
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  border-radius: 5px;
-  border: 1px solid rgba(155, 135, 255, 0.18);
-  background: transparent;
-  color: rgba(155, 135, 255, 0.45);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  -webkit-app-region: no-drag;
-}
-.hgraph-pill:hover, .hcal-pill:hover {
-  background: rgba(155, 135, 255, 0.10);
-  color: rgba(195, 180, 255, 0.80);
-}
-.hgraph-pill.active, .hcal-pill.active {
-  background: rgba(155, 135, 255, 0.18);
-  color: rgba(215, 200, 255, 0.92);
-  border-color: rgba(155, 135, 255, 0.35);
-}
+/* ── Focus chart ─────────────────────────────────────────────────── */
 .hp-chart-wrap {
-  background: rgba(155, 135, 255, 0.04);
-  border: 1px solid rgba(155, 135, 255, 0.10);
+  background: rgba(155, 135, 255, 0.03);
+  border: 1px solid rgba(155, 135, 255, 0.09);
   border-radius: 10px;
   overflow: hidden;
+  padding: 4px 0 0;
 }
 #history-chart-canvas {
   display: block;

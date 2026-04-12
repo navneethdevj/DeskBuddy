@@ -682,18 +682,25 @@
 
       <!-- ── Header ─────────────────────────────────────────────────── -->
       <div class="hp-header">
-        <span class="hp-title">✦ history</span>
+        <span class="hp-title">
+          <span class="hp-title-gem">◆</span> history
+        </span>
       </div>
 
       <!-- ── TODAY ──────────────────────────────────────────────────── -->
       <div class="hp-section">
-        <div class="hp-section-label">today</div>
+        <div class="hp-sh">
+          <span class="hp-sh-badge hp-sh-today">today</span>
+          <div class="hp-sh-rule"></div>
+        </div>
         <div class="hp-stat-row">
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-purple">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-today-focused" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">focused</div>
           </div>
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-blue">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-today-sessions" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">sessions</div>
           </div>
@@ -702,63 +709,98 @@
 
       <!-- ── THIS WEEK ──────────────────────────────────────────────── -->
       <div class="hp-section">
-        <div class="hp-section-label">this week</div>
+        <div class="hp-sh">
+          <span class="hp-sh-badge hp-sh-week">this week</span>
+          <div class="hp-sh-rule"></div>
+        </div>
         <div class="hp-stat-row">
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-purple">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-week-focused" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">focused</div>
           </div>
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-blue">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-week-sessions" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">sessions</div>
           </div>
         </div>
-        <div class="hp-stat-row" style="margin-top:6px">
-          <div class="hp-stat-card hp-stat-card-wide">
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-sc-amber">
+            <div class="hp-sc-bar"></div>
             <div class="hp-stat-val"><span id="hstat-week-streak">0</span><span class="hp-stat-unit"> d</span></div>
-            <div class="hp-stat-lbl">🔥 current streak</div>
+            <div class="hp-stat-lbl">🔥 streak</div>
+          </div>
+          <div class="hp-stat-card hp-sc-green">
+            <div class="hp-sc-bar"></div>
+            <div id="hstat-week-avg-score" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">avg score</div>
           </div>
         </div>
       </div>
 
       <!-- ── THIS MONTH ─────────────────────────────────────────────── -->
       <div class="hp-section">
-        <div class="hp-section-label">this month</div>
+        <div class="hp-sh">
+          <span class="hp-sh-badge hp-sh-month">this month</span>
+          <div class="hp-sh-rule"></div>
+        </div>
         <div class="hp-stat-row">
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-purple">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-month-focused" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">focused</div>
           </div>
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-blue">
+            <div class="hp-sc-bar"></div>
             <div id="hstat-month-sessions" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">sessions</div>
+          </div>
+        </div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-sc-amber">
+            <div class="hp-sc-bar"></div>
+            <div class="hp-stat-val"><span id="hstat-month-streak">0</span><span class="hp-stat-unit"> d</span></div>
+            <div class="hp-stat-lbl">🔥 streak</div>
+          </div>
+          <div class="hp-stat-card hp-sc-green">
+            <div class="hp-sc-bar"></div>
+            <div id="hstat-month-avg-score" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">avg score</div>
           </div>
         </div>
       </div>
 
       <!-- ── LIFETIME + STREAKS ─────────────────────────────────────── -->
       <div class="hp-section">
-        <div class="hp-section-label">lifetime</div>
+        <div class="hp-sh">
+          <span class="hp-sh-badge hp-sh-lifetime">lifetime</span>
+          <div class="hp-sh-rule"></div>
+        </div>
         <div class="hp-stat-row">
-          <div class="hp-stat-card hp-stat-card-wide">
-            <div id="hstat-lifetime-focused" class="hp-stat-val">—</div>
-            <div class="hp-stat-lbl">total focused</div>
+          <div class="hp-stat-card hp-sc-purple hp-stat-card-wide">
+            <div class="hp-sc-bar"></div>
+            <div id="hstat-lifetime-focused" class="hp-stat-val hp-stat-val-lg">—</div>
+            <div class="hp-stat-lbl">total focused time</div>
           </div>
         </div>
-        <div class="hp-stat-row" style="margin-top:6px">
-          <div class="hp-stat-card">
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-sc-amber">
+            <div class="hp-sc-bar"></div>
             <div class="hp-stat-val"><span id="hstat-streak-current">0</span><span class="hp-stat-unit"> d</span></div>
             <div class="hp-stat-lbl">🔥 streak</div>
           </div>
-          <div class="hp-stat-card">
+          <div class="hp-stat-card hp-sc-amber hp-sc-amber-dim">
+            <div class="hp-sc-bar"></div>
             <div class="hp-stat-val"><span id="hstat-streak-longest">0</span><span class="hp-stat-unit"> d</span></div>
             <div class="hp-stat-lbl">best streak</div>
           </div>
         </div>
-        <div class="hp-stat-row" style="margin-top:6px">
-          <div class="hp-stat-card hp-stat-card-wide">
-            <div id="hstat-focus-score-avg" class="hp-stat-val">—</div>
-            <div class="hp-stat-lbl">avg focus score</div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card hp-sc-green hp-stat-card-wide">
+            <div class="hp-sc-bar"></div>
+            <div id="hstat-focus-score-avg" class="hp-stat-val hp-stat-val-lg">—</div>
+            <div class="hp-stat-lbl">avg focus score (all time)</div>
           </div>
         </div>
       </div>
@@ -766,7 +808,10 @@
       <!-- ── STREAK CALENDAR ────────────────────────────────────────── -->
       <div class="hp-section">
         <div class="hp-graph-header">
-          <span class="hp-section-label">activity</span>
+          <div class="hp-graph-title">
+            <span class="hp-graph-icon">▦</span>
+            <span class="hp-section-label">activity</span>
+          </div>
           <div class="hgraph-pills">
             <button class="hcal-pill active" data-calview="activity">16w</button>
             <button class="hcal-pill" data-calview="month">mo</button>
@@ -781,7 +826,10 @@
       <!-- ── CHART ──────────────────────────────────────────────────── -->
       <div class="hp-section">
         <div class="hp-graph-header">
-          <span class="hp-section-label">focus time</span>
+          <div class="hp-graph-title">
+            <span class="hp-graph-icon">▋</span>
+            <span class="hp-section-label">focus time</span>
+          </div>
           <div class="hgraph-pills">
             <button class="hgraph-pill active" data-view="daily">day</button>
             <button class="hgraph-pill" data-view="weekly">wk</button>

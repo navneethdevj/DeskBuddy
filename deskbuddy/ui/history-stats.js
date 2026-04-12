@@ -43,6 +43,18 @@ const HistoryStats = (() => {
     return history.filter(s => s.date && new Date(s.date) >= start);
   }
 
+  /** Returns the average focus score (0–100) for completed sessions, or null if none. */
+  function getAvgFocusScore(sessions) {
+    const completed = sessions.filter(s => s.outcome === 'COMPLETED');
+    if (!completed.length) return null;
+    const sum = completed.reduce((acc, s) => {
+      const total   = (s.durationMinutes || 0) * 60;
+      const focused = s.actualFocusedSeconds || 0;
+      return acc + (total > 0 ? (focused / total) * 100 : 0);
+    }, 0);
+    return Math.round(sum / completed.length);
+  }
+
   // ── Bar chart data builders ───────────────────────────────────────────────
 
   /** Last N days. Returns array of { label, focusedMs, sessionCount, isToday }. */
@@ -133,6 +145,7 @@ const HistoryStats = (() => {
   return {
     formatFocusTime,
     getFocusedMs,
+    getAvgFocusScore,
     getSessionsForToday,
     getSessionsForWeek,
     getSessionsForMonth,
