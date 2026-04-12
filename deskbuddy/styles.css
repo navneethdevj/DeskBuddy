@@ -2861,7 +2861,7 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
 
 #history-btn {
   position: fixed;
-  right: 10px;
+  left: 10px;
   top: calc(50% + 56px);
   width: 36px;
   height: 36px;
@@ -2938,15 +2938,15 @@ body.pip-mode  #history-btn { display: none !important; }
 
 #history-panel {
   position: fixed;
-  right: 0;
-  top: calc(50% + 28px);
-  transform: translateX(calc(100% + 8px));
-  width: 262px;
-  max-height: calc(100vh - 80px);
+  left: 0;
+  top: calc(50% - 50px);
+  transform: translateX(calc(-100% - 8px));
+  width: 420px;
+  max-height: calc(100vh - 60px);
   z-index: 2490;
   display: none;
   flex-direction: column;
-  padding-right: 10px;
+  padding-left: 10px;
   pointer-events: auto;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -3450,6 +3450,287 @@ body.pip-mode  #history-panel { display: none !important; }
   letter-spacing: -0.02em;
   flex-shrink: 0;
 }
+
+/* ── Period tabs ─────────────────────────────────────────────────────── */
+.hp-period-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(139, 118, 255, 0.12);
+  border-radius: 14px;
+}
+.hp-period-tab {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 7px 4px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(155, 140, 220, 0.50);
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s, border-color 0.16s, box-shadow 0.16s;
+  -webkit-app-region: no-drag;
+  text-align: center;
+}
+.hp-period-tab:hover {
+  color: rgba(200, 185, 255, 0.80);
+  background: rgba(139, 118, 255, 0.10);
+}
+.hp-period-tab.active {
+  background: rgba(139, 118, 255, 0.22);
+  color: rgba(225, 215, 255, 0.98);
+  border-color: rgba(139, 118, 255, 0.38);
+  box-shadow: 0 0 12px rgba(139, 118, 255, 0.22), 0 1px 0 rgba(255,255,255,0.10) inset;
+}
+
+/* ── Hero card (simplified — no ring) ─────────────────────────────────── */
+.hp-hero-period-badge {
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(139, 118, 255, 0.18);
+  border: 1px solid rgba(139, 118, 255, 0.30);
+  color: rgba(185, 170, 255, 0.90);
+}
+.hp-hero-chip-streak {
+  color: rgba(251, 191, 36, 0.90);
+  background: rgba(251, 191, 36, 0.10);
+  border-color: rgba(251, 191, 36, 0.22);
+}
+.hp-chip-streak {
+  color: rgba(251, 191, 36, 0.88);
+  background: rgba(251, 191, 36, 0.09);
+  border-color: rgba(251, 191, 36, 0.20);
+}
+.hp-hero-motivation {
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(180, 165, 255, 0.52);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  min-height: 12px;
+}
+
+/* ── Stats row (horizontal 4-up) ──────────────────────────────────────── */
+.hp-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 14px;
+  padding: 12px 6px;
+}
+.hp-stat-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+}
+.hp-stat-divider {
+  background: rgba(139, 118, 255, 0.12);
+  border-radius: 1px;
+  align-self: stretch;
+  margin: 4px 0;
+}
+.hp-stat-val {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: rgba(220, 210, 255, 0.94);
+}
+.hp-stat-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(155, 140, 220, 0.48);
+  margin-top: 1px;
+}
+.hp-stat-sub {
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(140, 125, 200, 0.34);
+}
+.hp-stat-today .hp-stat-val  { color: rgba(130, 195, 255, 0.94); }
+.hp-stat-week  .hp-stat-val  { color: rgba(167, 139, 250, 0.94); }
+.hp-stat-month .hp-stat-val  { color: rgba(52,  211, 153, 0.94); }
+.hp-stat-lifetime .hp-stat-val { color: rgba(251, 191, 36, 0.90); }
+
+/* ── Calendar: HTML grid ───────────────────────────────────────────────── */
+.hp-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hp-cal-month-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(200, 185, 255, 0.75);
+  min-width: 74px;
+  text-align: center;
+}
+.hp-cal-nav-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 118, 255, 0.18);
+  background: rgba(139, 118, 255, 0.06);
+  color: rgba(155, 135, 255, 0.60);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.hp-cal-nav-btn:hover {
+  background: rgba(139, 118, 255, 0.16);
+  color: rgba(210, 195, 255, 0.90);
+  border-color: rgba(139, 118, 255, 0.36);
+}
+.hp-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(139, 118, 255, 0.10);
+  border-radius: 14px;
+  padding: 10px;
+}
+.hp-cal-dow {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(139, 118, 255, 0.40);
+  text-align: center;
+  padding: 0 0 4px;
+}
+.hp-cal-day {
+  aspect-ratio: 1;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: default;
+  position: relative;
+  transition: background 0.14s, box-shadow 0.14s;
+}
+.hp-cal-day-empty {
+  /* placeholder for days before month starts */
+}
+.hp-cal-num {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(180, 165, 255, 0.42);
+}
+/* Day with any session */
+.hp-cal-day.hp-cal-has-session {
+  background: rgba(139, 118, 255, 0.12);
+}
+.hp-cal-day.hp-cal-has-session .hp-cal-num {
+  color: rgba(200, 185, 255, 0.75);
+}
+/* Day with completed session */
+.hp-cal-day.hp-cal-completed {
+  background: rgba(139, 118, 255, 0.22);
+}
+.hp-cal-day.hp-cal-completed .hp-cal-num {
+  color: rgba(225, 215, 255, 0.95);
+  font-weight: 800;
+}
+/* Today */
+.hp-cal-day.hp-cal-today {
+  background: rgba(139, 118, 255, 0.34);
+  box-shadow: 0 0 12px rgba(139, 118, 255, 0.36), 0 0 0 1px rgba(167, 139, 250, 0.50);
+}
+.hp-cal-day.hp-cal-today .hp-cal-num {
+  color: rgba(240, 230, 255, 0.99);
+  font-weight: 900;
+}
+/* Future dates */
+.hp-cal-day.hp-cal-future .hp-cal-num {
+  color: rgba(139, 118, 255, 0.18);
+}
+/* Session count dot */
+.hp-cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(139, 118, 255, 0.55);
+  flex-shrink: 0;
+}
+.hp-cal-completed .hp-cal-dot {
+  background: rgba(52, 211, 153, 0.75);
+  box-shadow: 0 0 4px rgba(52, 211, 153, 0.50);
+}
+.hp-cal-today .hp-cal-dot {
+  background: rgba(255, 255, 255, 0.80);
+}
+
+/* ── Graph label ──────────────────────────────────────────────────────── */
+#hp-graph-label {
+  text-transform: none;
+  letter-spacing: 0.03em;
+}
+
+/* ── More button ──────────────────────────────────────────────────────── */
+.hp-more-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 118, 255, 0.15);
+  background: rgba(139, 118, 255, 0.06);
+  color: rgba(155, 135, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hp-more-btn:hover {
+  background: rgba(139, 118, 255, 0.13);
+  color: rgba(200, 180, 255, 0.80);
+  border-color: rgba(139, 118, 255, 0.30);
+}
+
+/* ── Trend badges ─────────────────────────────────────────────────────── */
+.hp-trend {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.hp-trend-up   { color: rgba(52, 211, 153, 0.90); background: rgba(52, 211, 153, 0.12); }
+.hp-trend-down { color: rgba(248, 113, 113, 0.85); background: rgba(248, 113, 113, 0.10); }
+
+/* ── Misc removed elements (kept for safety) ──────────────────────────── */
+.hp-quick-grid,
+.hp-qcard,
+.hp-hero-deco,
+.hp-hero-ring-outer,
+.hp-hero-ring-inner { display: none !important; }
 
 /* ── Panel container ────────────────────────────────────────────────── */
 #session-panel {
