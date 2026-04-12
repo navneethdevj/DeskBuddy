@@ -1116,7 +1116,10 @@ const Brain = (() => {
     _rhythmHoldTimer = setTimeout(() => {
       if (_dndActive) return;  // DND suppresses rhythm reactions
 
-      const n        = Date.now();  // fresh timestamp inside callback — not stale closure
+      // Reference the LAST keypress, not Date.now() — the debounce fires 1s after the
+      // last key so using Date.now() shifts the 2s window forward by 1s, leaving only
+      // ~1s of actual keys visible and effectively doubling every threshold.
+      const n        = _rhythmKeyTimes.length > 0 ? _rhythmKeyTimes[_rhythmKeyTimes.length - 1] : Date.now();
       const keys2s   = _rhythmKeyTimes.filter(t => n - t < 2000).length;
       const del2s    = _backspaceTimes.filter(t => n - t < 2000).length;
       const keysPerSec  = keys2s / 2;
