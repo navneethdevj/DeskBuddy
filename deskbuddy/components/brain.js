@@ -99,10 +99,43 @@ const Brain = (() => {
   const MILESTONE_MAX_MINUTES      = 25;
 
   // Sensitivity presets — used by timer.js via Brain.getSensitivityThresholds()
+  // Thresholds: recalibrated so NORMAL/GENTLE tolerate natural study pauses.
+  // Hold timers: how many seconds focus must stay below threshold before state
+  //   transitions — longer for GENTLE (more patience), shorter for STRICT.
+  // nofaceGraceMs: how long the face can be absent before focusLevel decays.
+  // readingPitchMax: max head-pitch (°) treated as reading-a-book rather than
+  //   phone use.  Students at a desk commonly reach 25–35°, so GENTLE and
+  //   NORMAL widen this window well beyond the old hard-coded 20° limit.
+  // readingPostureGraceMs: after leaving reading posture the focusLevel is
+  //   held steady for this long before decay begins (covers glancing back up
+  //   between paragraphs — "timer freeze delay" requested for book-studiers).
+  // phoneDetectMs: sustained ms of headPitch > readingPitchMax required before
+  //   the companion shows a suspicious reaction (phone-check animation).
   const SENSITIVITY_PRESETS = {
-    GENTLE: { drifting: 25, distracted: 15, critical: 10 },
-    NORMAL: { drifting: 40, distracted: 35, critical: 20 },
-    STRICT: { drifting: 55, distracted: 45, critical: 30 },
+    GENTLE: {
+      drifting: 20, distracted: 12, critical: 8,
+      holdDrifting: 12, holdDistracted: 18, holdCritical: 35, holdFailed: 90,
+      nofaceGraceMs: 15000,         // 15s — very forgiving
+      readingPitchMax: 40,          // up to 40° = textbook on desk, wide lap reading
+      readingPostureGraceMs: 10000, // 10s grace after looking back up
+      phoneDetectMs: 8000,          // 8s before triggering suspicious reaction
+    },
+    NORMAL: {
+      drifting: 30, distracted: 20, critical: 12,
+      holdDrifting: 7,  holdDistracted: 12, holdCritical: 25, holdFailed: 60,
+      nofaceGraceMs: 8000,          // 8s — reasonable
+      readingPitchMax: 30,          // up to 30° = notes/tablet reading at a desk
+      readingPostureGraceMs: 5000,  // 5s grace after looking back up
+      phoneDetectMs: 5000,          // 5s before triggering suspicious reaction
+    },
+    STRICT: {
+      drifting: 50, distracted: 38, critical: 25,
+      holdDrifting: 4,  holdDistracted: 7,  holdCritical: 15, holdFailed: 40,
+      nofaceGraceMs: 3000,          // 3s — quick to notice absence
+      readingPitchMax: 20,          // 20° — original limit, phone detection is tight
+      readingPostureGraceMs: 0,     // no grace — decay starts immediately on exit
+      phoneDetectMs: 3000,          // 3s — quick phone detection (original)
+    },
   };
 
   const STATE_LABELS = {
@@ -148,6 +181,15 @@ const Brain = (() => {
   let _focusSecs  = 0;
   let _nofaceSecs = 0;
   let _timerInt   = null;
+
+  // NoFace grace: ms the camera has had no face — focusLevel is frozen until
+  // the grace period (from sensitivity preset) expires, then starts decaying.
+  let _nofaceGraceMs = 0;
+
+  // Reading-posture grace: track the post-reading cooldown so focusLevel is
+  // held steady for readingPostureGraceMs after the student stops reading.
+  let _readingPostureGraceMs = 0;   // accumulated ms since reading posture ended
+  let _wasInReadingPosture   = false; // true if posture was active last frame
 
   // Whisper queue
   let _whisperQueue = [];
@@ -349,17 +391,57 @@ const Brain = (() => {
     if (keyActive)   focusLevel = Math.min(100, focusLevel + FOCUS_INCREASE_KEY);
 
     if (!mouseActive && !keyActive) {
-      // When the camera confirms the user is facing forward with eyes open,
-      // slowly build focus instead of decaying — covers physical book reading
-      // and any screen activity that doesn't involve keyboard/mouse input.
       const p = window.perception;
-      const cameraFocused = window.cameraAvailable && p?.facePresent
-                         && p.userState === 'Focused' && p.attentionScore > 35;
-      if (cameraFocused) {
-        // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
-        focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+      const thr = SENSITIVITY_PRESETS[_runtimeSensitivity || _sensitivityLevel]
+               || SENSITIVITY_PRESETS['NORMAL'];
+
+      // Determine whether the camera currently sees the user's face
+      const facePresent = window.cameraAvailable ? (p?.facePresent ?? true) : true;
+
+      if (!facePresent) {
+        // NoFace grace: freeze focusLevel for a sensitivity-dependent window
+        // before we start penalising absence (handles looking away to write notes).
+        _nofaceGraceMs += 16;  // ~60fps frame ≈ 16ms
+        if (_nofaceGraceMs > thr.nofaceGraceMs) {
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
+        // During grace: hold steady — do not build, do not decay.
       } else {
-        focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        _nofaceGraceMs = 0;  // reset grace timer whenever face is present
+
+        // When the camera confirms the user is facing forward with eyes open,
+        // slowly build focus — covers physical book reading and any screen
+        // activity that doesn't involve keyboard/mouse input.
+        const cameraFocused = window.cameraAvailable && p?.facePresent
+                           && p.userState === 'Focused' && p.attentionScore > 35;
+
+        // Reading posture: head pitched between 10° and readingPitchMax downward.
+        // readingPitchMax is sensitivity-dependent: GENTLE=40°, NORMAL=30°, STRICT=20°.
+        // This covers students reading physical textbooks (typically 20–35° on a desk).
+        // Phone detection starts above readingPitchMax, not at the old hard-coded 20°.
+        // Treat as soft focus: freeze focusLevel (no reward, no penalty).
+        const isReadingPosture = window.cameraAvailable && p?.facePresent
+                              && p.headPitch > 10 && p.headPitch < thr.readingPitchMax;
+
+        if (cameraFocused) {
+          // Caps at 80 — leaves room for keyboard/mouse to push to 100 (deep focus)
+          _wasInReadingPosture   = false;
+          _readingPostureGraceMs = 0;
+          focusLevel = Math.min(80, focusLevel + FOCUS_DECAY_RATE * 0.4);
+        } else if (isReadingPosture) {
+          // Reading notes — hold steady, neither reward nor penalise.
+          // Reset grace accumulator while actively in reading posture.
+          _wasInReadingPosture   = true;
+          _readingPostureGraceMs = 0;
+        } else if (_wasInReadingPosture && _readingPostureGraceMs < thr.readingPostureGraceMs) {
+          // Just looked back up — hold focus steady for the grace window
+          // (covers glancing up between paragraphs in a book).
+          _readingPostureGraceMs += 16;  // ~60fps frame ≈ 16ms
+        } else {
+          // Grace expired (or never started) — normal focus decay.
+          _wasInReadingPosture = false;
+          focusLevel = Math.max(0, focusLevel - FOCUS_DECAY_RATE);
+        }
       }
     }
   }
@@ -883,7 +965,7 @@ const Brain = (() => {
 
     // Randomly vocalise on about 1-in-4 glances
     if (Math.random() < 0.25 && typeof Sounds !== 'undefined') {
-      Sounds.play('curious');
+      Sounds.play('curious_ooh');
     }
 
     // Vary hold time: quick flick (400-700ms) or lingering stare (900-1800ms)
@@ -1119,8 +1201,7 @@ const Brain = (() => {
     p.style.left = px + 'px';
     p.style.top  = py + 'px';
     // Color matches current timer state
-    const timerState = window.Timer?.getState?.() || 'FOCUSED';
-    const palette = { FOCUSED: '160,190,255', DRIFTING: '255,190,70', DISTRACTED: '255,80,80', CRITICAL: '255,50,50', FAILED: '130,130,150' };
+    const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
     const rgb = palette[timerState] || '160,190,255';
     p.style.background = `rgba(${rgb},0.85)`;
     p.style.boxShadow  = `0 0 4px rgba(${rgb},0.55)`;
@@ -1159,7 +1240,7 @@ const Brain = (() => {
         timerEl.textContent = `focus ${m}:${s}`;
 
         // Update color to reflect session timer state
-        const timerState = window.Timer?.getState?.() || 'FOCUSED';
+        const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
         if (timerState !== _lastFocusTimerState) {
           _lastFocusTimerState = timerState;
           const c = _focusTimerColors[timerState] || _focusTimerColors.FOCUSED;
@@ -1180,14 +1261,20 @@ const Brain = (() => {
       }
 
       // ── Phone detection ─────────────────────────────────────────────────
-      // Trigger: head bowed ≥ PHONE_PITCH_THRESHOLD degrees for 3s.
+      // Trigger: head bowed above readingPitchMax (sensitivity-dependent) for
+      // phoneDetectMs (also sensitivity-dependent).  Using readingPitchMax as
+      // the phone threshold ensures students reading books at GENTLE/NORMAL
+      // sensitivity are NOT flagged as phone-users until they bow far beyond
+      // the expected reading angle.
       // We intentionally do NOT check correctedGazeY here — it is head-pose
       // compensated and actively removes the downward-gaze signal we need.
       if (_phoneDetectionEnabled && window.cameraAvailable) {
         const p = window.perception;
-        if (p?.facePresent && p.headPitch > PHONE_PITCH_THRESHOLD) {
+        const phoneThr = SENSITIVITY_PRESETS[_runtimeSensitivity || _sensitivityLevel]
+                      || SENSITIVITY_PRESETS['NORMAL'];
+        if (p?.facePresent && p.headPitch > phoneThr.readingPitchMax) {
           _phoneCheckMs += 1000;
-          if (_phoneCheckMs >= PHONE_DETECT_SUSTAIN_MS && window._lastEmotion !== 'suspicious') {
+          if (_phoneCheckMs >= phoneThr.phoneDetectMs && window._lastEmotion !== 'suspicious') {
             // Jump straight to suspicious — skip DRIFTING arc
             window._emotionChanged = { from: window._lastEmotion, to: 'suspicious' };
             window._lastEmotion    = 'suspicious';
@@ -1204,8 +1291,8 @@ const Brain = (() => {
 
       // ── Milestone tracking ──────────────────────────────────────────────
       // Only count when a session is actively running in FOCUSED timer state
-      const timerState   = window.Timer?.getState?.();
-      const sessionState = window.Session?.getCurrentStats?.()?.state;
+      const timerState   = typeof Timer   !== 'undefined' ? Timer.getState?.()                      : undefined;
+      const sessionState = typeof Session !== 'undefined' ? Session.getCurrentStats?.()?.state : undefined;
       if (timerState === 'FOCUSED' && sessionState === 'ACTIVE') {
         _continuousFocusedMs += 1000;
         const minutesMark = Math.floor(_continuousFocusedMs / 60000);
@@ -1276,7 +1363,7 @@ const Brain = (() => {
 
   /** True if study encouragement conditions are all met. */
   function _isEncouragementEligible() {
-    if (!window.Timer?.getState || window.Timer.getState() !== 'FOCUSED') return false;
+    if (typeof Timer === 'undefined' || !Timer.getState || Timer.getState() !== 'FOCUSED') return false;
     if (focusLevel < ENCOURAGEMENT_FOCUS_MIN) return false;
     if ((Date.now() - _lastEncouragementTime) < ENCOURAGEMENT_GAP_MS) return false;
     const distress = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
@@ -1316,7 +1403,7 @@ const Brain = (() => {
     showWhisper(pool[Math.floor(Math.random() * pool.length)], 3500);
     const c = Companion.getCenter();
     Companion.lookAt(c.x, c.y);
-    if (window.Sounds) Sounds.play('happy_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
     setTimeout(() => Companion.resetLook(), 2000);
   }
 
@@ -1487,7 +1574,7 @@ const Brain = (() => {
     if (!el) return;
     el.classList.add('stretching');
     showWhisper('*stretches*', 2200);
-    if (window.Sounds) Sounds.play('stretch_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('stretch_coo');
     setTimeout(() => el.classList.remove('stretching'), 1500);
   }
 
@@ -1521,7 +1608,7 @@ const Brain = (() => {
     if (!el) return;
     const cls = Math.random() < 0.5 ? 'wink-left' : 'wink-right';
     el.classList.add(cls);
-    if (window.Sounds) Sounds.play('wink_blip');
+    if (typeof Sounds !== 'undefined') Sounds.play('wink_blip');
     setTimeout(() => el.classList.remove(cls), 340);
   }
 
@@ -1607,7 +1694,7 @@ const Brain = (() => {
     const gainMap = { MORNING: 1.0, AFTERNOON: 1.0, EVENING: 1.0, NIGHT: 0.8 };
     const nightEnabled = window.Settings ? Settings.get('nightAutoVolume') : true;
     const gainMult = nightEnabled ? (gainMap[period] || 1.0) : 1.0;
-    if (window.Sounds) Sounds.setNightGainMult(gainMult);
+    if (typeof Sounds !== 'undefined') Sounds.setNightGainMult(gainMult);
 
     // Sensitivity runtime override — NIGHT auto-gentle (doesn't touch localStorage)
     if (period === 'NIGHT') {
@@ -1691,7 +1778,7 @@ const Brain = (() => {
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
 
-    if (window.Sounds) Sounds.play('happy_coo');
+    if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
 
     const morningGreets = [
       'good morning! ✦', 'rise and grind! ☀️', 'morning~ let\'s do this! ✧',

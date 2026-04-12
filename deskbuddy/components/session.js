@@ -20,8 +20,9 @@ const Session = (() => {
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const _MAX_SESSIONS = 50;
-  const _STORAGE_KEY  = 'deskbuddy_sessions';
+  const _MAX_SESSIONS          = 50;
+  const _STORAGE_KEY           = 'deskbuddy_sessions';
+  const _TIMELINE_INTERVAL_MS  = 5000;  // snapshot every 5 s during ACTIVE state
 
   const STATE = {
     IDLE:      'IDLE',
@@ -34,13 +35,17 @@ const Session = (() => {
 
   // ── Private state ──────────────────────────────────────────────────────────
 
-  let _state      = STATE.IDLE;
-  let _current    = null;   // session object in progress
-  let _breakStartMs = null; // wall-clock ms when break began
+  let _state        = STATE.IDLE;
+  let _current      = null;   // session object in progress
+  let _breakStartMs = null;   // wall-clock ms when break began
 
   // Focus tracking (only during ACTIVE state)
   let _focusedSince = null;  // ms when current FOCUSED timer-state began
   let _streakStart  = null;  // ms when current focused streak began (resets on distraction)
+
+  // Timeline sampling
+  let _timelineIntervalId = null;  // setInterval id for periodic snapshots
+  let _sessionStartMs     = null;  // wall-clock ms when current session started
 
   let _history  = [];  // array of completed session objects loaded from localStorage
 
@@ -59,6 +64,33 @@ const Session = (() => {
     _callbacks.onSessionStateChange.forEach(fn => {
       try { fn(newState, oldState); } catch (_) {}
     });
+  }
+
+  // ── Timeline helpers ───────────────────────────────────────────────────────
+
+  /** Seconds elapsed since the session started (used as the `t` coordinate). */
+  function _elapsedSeconds() {
+    return _sessionStartMs ? Math.round((_now() - _sessionStartMs) / 1000) : 0;
+  }
+
+  /** Push one focus-level snapshot to the timeline. */
+  function _recordSnapshot() {
+    if (!_current) return;
+    const level = (typeof Brain !== 'undefined' && Brain.getFocusLevel) ? Brain.getFocusLevel() : 50;
+    const state = (typeof Timer !== 'undefined' && Timer.getState)      ? Timer.getState()      : 'FOCUSED';
+    _current.focusTimeline.push({ t: _elapsedSeconds(), level, state });
+  }
+
+  function _startTimeline() {
+    _stopTimeline();
+    _timelineIntervalId = setInterval(_recordSnapshot, _TIMELINE_INTERVAL_MS);
+  }
+
+  function _stopTimeline() {
+    if (_timelineIntervalId !== null) {
+      clearInterval(_timelineIntervalId);
+      _timelineIntervalId = null;
+    }
   }
 
   // ── Storage ────────────────────────────────────────────────────────────────
@@ -160,7 +192,7 @@ const Session = (() => {
       _streakStart  = _now();
       // Warm re-focus sound when returning from degraded state
       if (oldState === TIMER_DISTRACTED || oldState === TIMER_CRITICAL) {
-        if (window.Sounds) Sounds.play('refocus');
+        if (typeof Sounds !== 'undefined') Sounds.play('refocus');
       }
     }
 
@@ -168,13 +200,15 @@ const Session = (() => {
     if ((newState === TIMER_DISTRACTED || newState === TIMER_CRITICAL) &&
         (oldState === TIMER_FOCUSED || oldState === TIMER_DRIFTING)) {
       _current.distractionCount++;
+      // Record distraction milestone for the post-session graph
+      _current.milestones.push({ t: _elapsedSeconds(), type: 'distraction' });
     }
 
     // ── Terminal: timer FAILED ────────────────────────────────────────────────
     if (newState === TIMER_FAILED) {
       // If the timer's remaining time reached zero it's a natural expiry → always COMPLETED.
       // CRITICAL held 45 s with time still on the clock → distraction failure → FAILED.
-      const naturalExpiry = !!(window.Timer && Timer.getRemainingSeconds() === 0);
+      const naturalExpiry = !!(typeof Timer !== 'undefined' && Timer.getRemainingSeconds() === 0);
       _endSession((naturalExpiry || oldState !== TIMER_CRITICAL) ? 'COMPLETED' : 'FAILED');
     }
   }
@@ -192,19 +226,24 @@ const Session = (() => {
     _closeFocusedStreak();
     _clearBreakStart();
 
+    // Stop timeline sampling and push a final snapshot
+    _stopTimeline();
+    _recordSnapshot();
+
     _current.outcome = outcome;
     _pushSession(Object.assign({}, _current));
 
     // Play appropriate lifecycle sound
-    if (window.Sounds) {
+    if (typeof Sounds !== 'undefined') {
       if (outcome === 'COMPLETED') Sounds.play('session_complete');
       else if (outcome === 'FAILED') Sounds.play('session_fail');
       // ABANDONED: silent — user chose to quit
     }
 
-    _current      = null;
-    _focusedSince = null;
-    _streakStart  = null;
+    _current        = null;
+    _focusedSince   = null;
+    _streakStart    = null;
+    _sessionStartMs = null;
 
     _setState(STATE[outcome]);
   }
@@ -217,8 +256,16 @@ const Session = (() => {
    */
   function init() {
     _loadFromStorage();
-    if (window.Timer && Timer.onStateChange) {
+    if (typeof Timer !== 'undefined' && Timer.onStateChange) {
       Timer.onStateChange(_onTimerStateChange);
+    }
+    // Record 5-minute milestones from Brain for the post-session graph
+    if (typeof Brain !== 'undefined' && Brain.onMilestone) {
+      Brain.onMilestone(() => {
+        if (_state === STATE.ACTIVE && _current) {
+          _current.milestones.push({ t: _elapsedSeconds(), type: 'milestone_5m' });
+        }
+      });
     }
   }
 
@@ -240,20 +287,28 @@ const Session = (() => {
       outcome:                   null,
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
+      moodRating:                null,
+      focusTimeline:             [],   // { t: elapsedSecs, level: 0-100, state: timerState }
+      milestones:                [],   // { t: elapsedSecs, type: 'distraction'|'milestone_5m' }
     };
+
+    // Record t=0 baseline snapshot then start periodic sampling
+    _sessionStartMs = _now();
+    _recordSnapshot();
+    _startTimeline();
 
     // Start counting focused time from session start (assume user is focused)
     _focusedSince = _now();
     _streakStart  = _now();
 
     _setState(STATE.ACTIVE);
-    if (window.Sounds) Sounds.play('session_start');
+    if (typeof Sounds !== 'undefined') Sounds.play('session_start');
 
     // ── Time-of-day awareness ──────────────────────────────────────────────
-    if (window.Brain) {
+    if (typeof Brain !== 'undefined') {
       const period = Brain.getTimePeriod();
       Brain.applyTimePeriod(period);
-      if (window.Soundscape) Soundscape.setTimeTint(period);
+      if (typeof Soundscape !== 'undefined') Soundscape.setTimeTint(period);
 
       if (period === 'NIGHT') {
         Brain.trackNightSession();
@@ -263,8 +318,8 @@ const Session = (() => {
       }
 
       if (period === 'MORNING') {
-        // Small delay so session_start sound plays first
-        setTimeout(() => Brain.doMorningGreeting(), 600);
+        // Short delay so the start animation fires first, then morning whisper follows
+        setTimeout(() => Brain.doMorningGreeting(), 100);
       }
     }
   }
@@ -280,10 +335,14 @@ const Session = (() => {
     _closeFocusedStreak();
     _streakStart = null;
 
+    // Snapshot current state before pausing, then stop sampling during break
+    _recordSnapshot();
+    _stopTimeline();
+
     _breakStartMs = _now();
 
     _setState(STATE.PAUSED);
-    if (window.Sounds) Sounds.play('break_start');
+    if (typeof Sounds !== 'undefined') Sounds.play('break_start');
   }
 
   /**
@@ -298,8 +357,11 @@ const Session = (() => {
     _focusedSince = _now();
     _streakStart  = _now();
 
+    // Restart timeline sampling
+    _startTimeline();
+
     _setState(STATE.ACTIVE);
-    if (window.Sounds) Sounds.play('break_end');
+    if (typeof Sounds !== 'undefined') Sounds.play('break_over');
   }
 
   /**
@@ -356,7 +418,7 @@ const Session = (() => {
 
     // Elapsed: derive from Timer if available; else 0 (caller can compute)
     let elapsed = 0;
-    if (window.Timer && Timer.getRemainingSeconds) {
+    if (typeof Timer !== 'undefined' && Timer.getRemainingSeconds) {
       const totalSeconds = _current.durationMinutes * 60;
       elapsed = Math.max(0, totalSeconds - Timer.getRemainingSeconds());
     }
@@ -390,15 +452,87 @@ const Session = (() => {
   }
 
   /**
+   * computeDayStreak() — count consecutive days ending today that each have at
+   * least one COMPLETED or FAILED (not ABANDONED) session recorded.
+   * @returns {number}
+   */
+  function computeDayStreak() {
+    const history = getHistory();
+    if (!history.length) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak   = 0;
+    let checking = new Date(today);
+
+    while (true) {
+      const dayStart  = checking.getTime();
+      const dayEnd    = dayStart + 86400000;
+      const hasSession = history.some(s => {
+        const ts = s.date ? new Date(s.date).getTime() : 0;
+        return ts >= dayStart && ts < dayEnd && s.outcome !== 'ABANDONED';
+      });
+      if (!hasSession) break;
+      streak++;
+      checking.setDate(checking.getDate() - 1);
+      if (streak > 365) break;  // safety cap
+    }
+
+    return streak;
+  }
+
+  /**
+   * getTotalFocusedMinutes() — sum of actualFocusedSeconds across all
+   * COMPLETED sessions in history, converted to minutes (floored).
+   * @returns {number}
+   */
+  function getTotalFocusedMinutes() {
+    const history = getHistory();
+    const totalSecs = history.reduce((acc, s) => {
+      return acc + (s.outcome === 'COMPLETED' ? (s.actualFocusedSeconds || 0) : 0);
+    }, 0);
+    return Math.floor(totalSecs / 60);
+  }
+
+  /**
+   * getGoalCompletionRate() — statistics on answered goal sessions.
+   * Only counts sessions where goalText was set AND the user answered
+   * the "did you finish it?" prompt (goalAchieved is not null).
+   * @returns {{ total: number, achieved: number, rate: number }}
+   */
+  function getGoalCompletionRate() {
+    const history  = getHistory();
+    const answered = history.filter(s => s.goalText && s.goalAchieved !== null);
+    const achieved = answered.filter(s => s.goalAchieved === true).length;
+    const rate     = answered.length > 0 ? Math.round((achieved / answered.length) * 100) : 0;
+    return { total: answered.length, achieved, rate };
+  }
+
+
+  /**
+   * setMoodRating(rating) — record a post-session energy/mood rating (1–5)
+   * for the most recent session. Called when the user answers the mood prompt
+   * on sessions that had no goal set.
+   * @param {number} rating — integer 1 (drained) … 5 (on fire)
+   */
+  function setMoodRating(rating) {
+    if (!_history.length) return;
+    _history[0].moodRating = rating;
+    _saveToStorage();
+  }
+
+  /**
    * reset() — return to IDLE so the user can start a fresh session.
    * Safe to call only after a terminal state (COMPLETED / FAILED / ABANDONED).
    * No-op if already IDLE or if a session is in progress.
    */
   function reset() {
     if (_state === STATE.ACTIVE || _state === STATE.PAUSED) return;
-    _current      = null;
-    _focusedSince = null;
-    _streakStart  = null;
+    _current        = null;
+    _focusedSince   = null;
+    _streakStart    = null;
+    _sessionStartMs = null;
+    _stopTimeline();
     _clearBreakStart();
     _setState(STATE.IDLE);
   }
@@ -413,10 +547,14 @@ const Session = (() => {
     abandon,
     reset,
     setGoalAchieved,
+    setMoodRating,
     getHistory,
     getCurrentStats,
     getBreakElapsedMs,
     onSessionStateChange,
+    computeDayStreak,
+    getTotalFocusedMinutes,
+    getGoalCompletionRate,
     STATE,
   };
 

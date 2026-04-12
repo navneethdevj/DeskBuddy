@@ -185,7 +185,7 @@
       });
     }
 
-    // "New session" button on the outcome screen → reset back to IDLE
+    // "New session" button on the outcome screen (FAILED / ABANDONED) → reset back to IDLE
     const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
@@ -399,15 +399,22 @@
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
 
   function _wireSessionToUI() {
-    Session.onSessionStateChange((newState) => {
+    Session.onSessionStateChange((newState, oldState) => {
       const stats = Session.getCurrentStats();
 
-      // Panel visibility
+      // Panel visibility (sidebar panels)
       _setVisible('session-idle',    newState === 'IDLE');
       _setVisible('session-active',  newState === 'ACTIVE');
       _setVisible('session-paused',  newState === 'PAUSED');
-      _setVisible('outcome-screen',
-        newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
+
+      // Outcome popup — shown only for FAILED / ABANDONED.
+      // COMPLETED uses the share-card modal instead (see below).
+      const outcomeEl = document.getElementById('outcome-screen');
+      if (outcomeEl) {
+        const isOutcome = newState === 'FAILED' || newState === 'ABANDONED';
+        outcomeEl.classList.toggle('outcome-visible', isOutcome);
+        outcomeEl.setAttribute('aria-hidden', String(!isOutcome));
+      }
 
       // Session countdown timer — show during active/paused, hide otherwise
       const sessionTimerEl = document.getElementById('session-timer');
@@ -426,21 +433,29 @@
         if (inlineTimer) {
           inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
         }
+
+        // Immediate companion reaction — only on a fresh start (not resume from pause)
+        if (oldState === 'IDLE') _fireSessionStartAnim();
       }
 
       // Break countdown — start/stop the live update interval
       if (newState === 'PAUSED') {
         _startBreakCountdown();
-        // Teal glow sweeps up from the bottom
-        const glow = document.getElementById('break-glow');
-        if (glow) {
-          glow.classList.add('active');
-          setTimeout(() => glow.classList.remove('active'), 3500);
+        if (Settings.get('breakAnimEnabled')) {
+          // Teal glow sweeps up from the bottom
+          const glow = document.getElementById('break-glow');
+          if (glow) {
+            glow.classList.add('active');
+            setTimeout(() => glow.classList.remove('active'), 3500);
+          }
+          // Context-aware break card overlay + companion emotion
+          _fireBreakCard(stats);
         }
-        // Context-aware break card overlay + companion emotion
-        _fireBreakCard(stats);
         // Auto-open panel so user sees the break countdown
         _panelOpen();
+      } else if (newState === 'ACTIVE' && oldState === 'PAUSED') {
+        _stopBreakCountdown();
+        _fireBreakEndAnim();
       } else {
         _stopBreakCountdown();
       }
@@ -453,11 +468,11 @@
         goalDisplay.style.display = (newState === 'ACTIVE' && txt) ? '' : 'none';
       }
 
-      // Goal achievement prompt on outcome screen
+      // Goal achievement prompt on outcome screen (only for FAILED — goal still relevant)
       const goalPrompt = document.getElementById('goal-prompt');
       if (goalPrompt) {
         const hasGoal = !!(stats?.goalText || Session.getHistory()[0]?.goalText);
-        const isEnd   = newState === 'COMPLETED' || newState === 'FAILED';
+        const isEnd   = newState === 'FAILED';
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
@@ -465,24 +480,44 @@
       const outcomeLabel = document.getElementById('outcome-label');
       if (outcomeLabel) {
         if      (newState === 'COMPLETED')  outcomeLabel.textContent = '✦ session complete!';
+        // Both FAILED and ABANDONED share the same user-facing message intentionally —
+        // the distinction (distraction vs. manual exit) is captured in session history.
         else if (newState === 'FAILED')     outcomeLabel.textContent = 'session ended early.';
-        else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session abandoned.';
+        else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session ended early.';
         else                                outcomeLabel.textContent = '';
       }
 
       if (newState === 'COMPLETED') {
-        _fireCelebration('complete');
-        _panelOpen();
+        // Capture session data + emotion snapshot before reset
+        const lastSession = Session.getHistory()[0];
+        const emotion     = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
+
+        // Confetti celebration
+        setTimeout(() => _fireCelebration('complete'), 400);
+
+        // Auto-reset to IDLE so the session panel is immediately ready for a new session
+        setTimeout(() => {
+          Session.reset();
+          Timer.reset();
+        }, 50);
+
+        // Show share card modal slightly after celebration fires
+        setTimeout(() => {
+          if (typeof ShareCard !== 'undefined' && lastSession) {
+            ShareCard.show(lastSession, emotion);
+          }
+        }, 700);
       }
 
       if (newState === 'FAILED' || newState === 'ABANDONED') {
-        // Companion shows sad/crying (FAILED) or idle (ABANDONED)
-        if (newState === 'FAILED') Emotion.setState('crying');
-        _panelOpen();
+        // Companion shows sad/crying for both failed and abandoned sessions
+        Emotion.setState('crying');
+        // session.js plays no sound for ABANDONED — renderer fills the gap here.
+        if (newState === 'ABANDONED' && typeof Sounds !== 'undefined') Sounds.play('session_fail');
       }
 
       // Reset timer state body attribute when session ends
-      if (newState === 'IDLE' || newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+      if (newState === 'IDLE' || newState === 'FAILED' || newState === 'ABANDONED') {
         delete document.body.dataset.timerState;
       }
     });
@@ -510,9 +545,60 @@
     if (icon)  icon.classList.add('sp-icon-hidden');
   }
 
-  // ── Celebration — confetti falls from above + banner + companion overjoyed ─
+  // ── Session-start animation — fires immediately when a new session begins ──
+  // Gives the companion an instant, rewarding reaction with zero lag.
+
+  function _fireSessionStartAnim() {
+    // Companion goes excited immediately — no setTimeout, no lag
+    if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2800);
+
+    // Particle burst — spawn multiple excited particles in a rapid staggered burst
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => Particles.spawn('excited'), i * 55);
+      }
+    }
+
+    // Companion bounce — force-retrigger even if class is already set
+    const buddy = typeof Companion !== 'undefined' ? Companion.getElement() : null;
+    if (buddy) {
+      buddy.classList.remove('session-start-bounce');
+      void buddy.offsetWidth; // reflow so animation re-triggers cleanly
+      buddy.classList.add('session-start-bounce');
+      setTimeout(() => buddy.classList.remove('session-start-bounce'), 900);
+    }
+
+    // Gold radial flash across the screen
+    const flash = document.getElementById('session-start-flash');
+    if (flash) {
+      flash.classList.remove('active');
+      void flash.offsetWidth;
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 1200);
+    }
+
+    // Time-of-day aware banner text
+    const msgEl = document.getElementById('session-start-msg');
+    if (msgEl) {
+      const period = (typeof Brain !== 'undefined' && Brain.getTimePeriod)
+        ? Brain.getTimePeriod() : 'AFTERNOON';
+      const MSGS = {
+        MORNING:   'good morning ✦ let\'s focus!',
+        AFTERNOON: 'let\'s focus! ✦',
+        EVENING:   'time to focus ✦',
+        NIGHT:     'late-night grind ✦',
+      };
+      msgEl.textContent = MSGS[period] || 'let\'s go! ✦';
+      msgEl.classList.remove('active');
+      void msgEl.offsetWidth;
+      msgEl.classList.add('active');
+      setTimeout(() => msgEl.classList.remove('active'), 2400);
+    }
+  }
+
 
   function _fireCelebration(type) {
+    if (!Settings.get('celebrationEnabled')) return;
     const overlay = document.getElementById('celebration-overlay');
     const msg     = document.getElementById('celebration-message');
     const world   = document.getElementById('world');
@@ -614,7 +700,7 @@
     if (!card) return;
 
     // ── Context resolution ──────────────────────────────────────────────────
-    const period  = (window.Brain && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
+    const period  = (typeof Brain !== 'undefined' && Brain.getTimePeriod) ? Brain.getTimePeriod() : 'AFTERNOON';
     const elapsed = stats ? (stats.elapsed || 0) : 0;           // wall-clock seconds
     const focused = stats ? (stats.focusedSeconds || 0) : 0;    // seconds in focused state
     const focusPct = elapsed > 0 ? (focused / elapsed) : 0;
@@ -684,8 +770,8 @@
       budgetEl.textContent = `on break · ${bm}:${bs}`;
     }
 
-    // Companion — warm + happy
-    Emotion.preview('love', 3000);
+    // Companion — enthusiastic, celebratory start to the break
+    Emotion.preview('overjoyed', 3000);
 
     // Show card
     card.setAttribute('aria-hidden', 'false');
@@ -707,6 +793,27 @@
       dismissBtn.removeEventListener('click', _dismissBreakCard); // guard
       dismissBtn.addEventListener('click', _dismissBreakCard, { once: true });
     }
+  }
+
+  // ── Break-end animation — fired when the user resumes from a break ─────────
+
+  function _fireBreakEndAnim() {
+    // Teal flash across the screen
+    const flash = document.getElementById('break-end-flash');
+    if (flash) {
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 1200);
+    }
+
+    // "welcome back ✦" text overlay
+    const msg = document.getElementById('break-end-msg');
+    if (msg) {
+      msg.classList.add('active');
+      setTimeout(() => msg.classList.remove('active'), 2600);
+    }
+
+    // Companion perks up
+    if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2500);
   }
 
   // ── Break countdown helpers ───────────────────────────────────────────────
@@ -980,6 +1087,20 @@
       phoneToggle.addEventListener('change', () => Settings.set('phoneDetection', phoneToggle.checked));
     }
 
+    // Celebration toggle
+    const celebrationToggle = document.getElementById('celebration-toggle');
+    if (celebrationToggle) {
+      celebrationToggle.checked = Settings.get('celebrationEnabled');
+      celebrationToggle.addEventListener('change', () => Settings.set('celebrationEnabled', celebrationToggle.checked));
+    }
+
+    // Break animation toggle
+    const breakAnimToggle = document.getElementById('break-anim-toggle');
+    if (breakAnimToggle) {
+      breakAnimToggle.checked = Settings.get('breakAnimEnabled');
+      breakAnimToggle.addEventListener('change', () => Settings.set('breakAnimEnabled', breakAnimToggle.checked));
+    }
+
     // ── Live change listeners ────────────────────────────────────────────
     Settings.onChange('mutePreset', (v) => {
       Sounds.setMutePreset(v);
@@ -998,7 +1119,7 @@
     });
 
     Settings.onChange('phoneDetection', (v) => {
-      if (window.Brain?.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(v);
+      if (typeof Brain !== 'undefined' && Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(v);
       if (phoneToggle) phoneToggle.checked = v;
     });
 

@@ -2500,8 +2500,7 @@ body.pip-mode  #session-panel { display: none !important; }
 */
 #session-idle,
 #session-active,
-#session-paused,
-#outcome-screen {
+#session-paused {
   background: rgba(22, 18, 40, 0.78);
   backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
   -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
@@ -3043,13 +3042,14 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 
 /* =====================================================================
    CELEBRATION OVERLAY — confetti + banner on session complete
+   z-index 3160 — above outcome popup (3150) so confetti falls over the card
    ===================================================================== */
 
 #celebration-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 3000;
+  z-index: 3160;
   /* particles are absolutely positioned children */
 }
 
@@ -3067,14 +3067,14 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
   100% { opacity: 0;    transform: translate(var(--dx, 0px), var(--dy, 800px))     rotate(var(--rot, 540deg)) scale(0.45); }
 }
 
-/* Banner that floats up during celebration */
+/* Banner that floats up during celebration — above outcome popup (3150) and confetti (3160) */
 #celebration-message {
   position: fixed;
   top: 42%;
   left: 50%;
   transform: translateX(-50%) translateY(-8px) scale(0.88);
   opacity: 0;
-  z-index: 3001;
+  z-index: 3165;
   pointer-events: none;
   text-align: center;
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -3121,8 +3121,134 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 }
 
 /* =====================================================================
-   BREAK GLOW — soft teal pulse when user starts a break
+   BREAK-END FLASH + WELCOME-BACK MESSAGE — fired when user resumes
    ===================================================================== */
+
+/* Full-screen teal ripple that fades in and out quickly */
+@keyframes breakEndFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+#break-end-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 160% 120% at 50% 50%,
+    rgba(60, 220, 160, 0.18) 0%,
+    rgba(40, 180, 140, 0.10) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 3155;
+  opacity: 0;
+}
+#break-end-flash.active {
+  animation: breakEndFlash 1.2s ease forwards;
+}
+
+/* "welcome back ✦" banner — floats up from centre */
+@keyframes breakEndMsgIn {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(4px)  scale(0.90); }
+  30%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.94); }
+}
+#break-end-msg {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px) scale(0.90);
+  opacity: 0;
+  z-index: 3156;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  letter-spacing: 0.20em;
+  color: rgba(160, 240, 200, 0.95);
+  text-shadow:
+    0 0 24px rgba(60, 220, 160, 0.60),
+    0 0 55px rgba(60, 220, 160, 0.25);
+  white-space: nowrap;
+}
+#break-end-msg.active {
+  animation: breakEndMsgIn 2.6s ease forwards;
+}
+
+/* =====================================================================
+   SESSION-START FLASH + BANNER — fire immediately when a new session begins
+   ===================================================================== */
+
+/* Gold radial burst — energetic, rewarding */
+@keyframes sessionStartFlash {
+  0%   { opacity: 0;    transform: scale(0.85); }
+  8%   { opacity: 1;    transform: scale(1.02); }
+  100% { opacity: 0;    transform: scale(1.06); }
+}
+#session-start-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 170% 130% at 50% 50%,
+    rgba(218, 168, 46, 0.26) 0%,
+    rgba(172, 130, 255, 0.12) 42%,
+    transparent 68%
+  );
+  pointer-events: none;
+  z-index: 3155;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+#session-start-flash.active {
+  animation: sessionStartFlash 1.0s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+/* "let's go!" banner — pops in fast then fades */
+@keyframes sessionStartMsgIn {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.82); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1.04); }
+  24%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(0px)  scale(1);    }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.94); }
+}
+#session-start-msg {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px) scale(0.82);
+  opacity: 0;
+  z-index: 3156;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  color: rgba(245, 215, 110, 0.97);
+  text-shadow:
+    0 0 22px rgba(218, 168, 46, 0.70),
+    0 0 52px rgba(218, 168, 46, 0.30);
+  white-space: nowrap;
+  will-change: opacity, transform;
+}
+#session-start-msg.active {
+  animation: sessionStartMsgIn 2.2s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+/* Companion bounce on session start — snappy pop with spring overshoot */
+.companion.session-start-bounce .companion-inner {
+  animation: sessionStartBounce 0.72s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes sessionStartBounce {
+  0%   { transform: scale(1)    translateY(0);    }
+  30%  { transform: scale(1.12) translateY(-8px); }
+  60%  { transform: scale(0.96) translateY(2px);  }
+  80%  { transform: scale(1.04) translateY(-3px); }
+  100% { transform: scale(1)    translateY(0);    }
+}
+
+
 
 #break-glow {
   position: fixed;
@@ -3242,3 +3368,412 @@ body[data-timer-state="CRITICAL"]   .sp-ring-state-label::before { content: 'cri
 .bk-dismiss:active { transform: scale(0.96); }
 
 body.pip-mode #break-card { display: none !important; }
+
+/* =====================================================================
+   OUTCOME POPUP — standalone centered card on session end
+   z-index 3150 — above break-card (3100), below celebration (3160–3165)
+   Works in both full-mode and pip-mode.
+   ===================================================================== */
+
+#outcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 3150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.38s ease, background 0.38s ease;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#outcome-screen.outcome-visible {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+/* Inner frosted-glass card */
+#outcome-card {
+  width: min(260px, calc(100vw - 40px));
+  background: rgba(14, 10, 28, 0.88);
+  backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(72px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.20);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 26px;
+  padding: 22px 20px 22px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Slide up when appearing */
+  transform: translateY(16px);
+  transition: transform 0.44s cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+#outcome-screen.outcome-visible #outcome-card {
+  transform: translateY(0);
+}
+
+
+/* ── Share Card button (inside outcome-card) ───────────────────────────── */
+.sc-share-btn {
+  margin-top: -4px;   /* tighten gap below "new session" */
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  opacity: 0.72;
+}
+.sc-share-btn:hover {
+  opacity: 1;
+}
+
+/* ── Share Card modal overlay ────────────────────────────────────────────── */
+#share-card-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s ease, background 0.32s ease;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#share-card-modal.sc-visible {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Inner dialog — two-column when graph is present */
+#share-card-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  background: rgba(14, 10, 28, 0.92);
+  backdrop-filter: blur(72px) saturate(1.8) brightness(1.15);
+  -webkit-backdrop-filter: blur(72px) saturate(1.8) brightness(1.15);
+  border-top:    1px solid rgba(255,255,255,0.22);
+  border-left:   1px solid rgba(255,255,255,0.09);
+  border-right:  1px solid rgba(0,0,0,0.20);
+  border-bottom: 1px solid rgba(0,0,0,0.28);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.70),
+    0 12px 32px rgba(0,0,0,0.40),
+    0 0 0 0.5px rgba(255,255,255,0.07) inset;
+  max-width: calc(100vw - 32px);
+  transform: translateY(14px) scale(0.97);
+  transition: transform 0.40s cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+
+/* Left column: existing session card content */
+#share-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 440px;
+  flex-shrink: 0;
+}
+
+#share-card-modal.sc-visible #share-card-inner {
+  transform: translateY(0) scale(1);
+}
+
+/* Header row */
+#share-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#share-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+#share-card-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.30);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+#share-card-close:hover {
+  color: rgba(255,255,255,0.80);
+  background: rgba(255,255,255,0.08);
+}
+
+/* Canvas wrapper */
+#share-card-canvas-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;           /* remove gap under inline canvas */
+  border: 1px solid rgba(255,255,255,0.06);
+}
+#share-card-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Action buttons row */
+#share-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sc-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.sc-btn-primary {
+  background: rgba(140,110,255,0.22);
+  color: rgba(200,190,255,0.95);
+  border: 1px solid rgba(140,110,255,0.28);
+}
+.sc-btn-primary:hover {
+  background: rgba(140,110,255,0.34);
+}
+
+.sc-btn-secondary {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.60);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sc-btn-secondary:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+}
+
+/* Status feedback text */
+#share-card-status {
+  font-size: 11px;
+  color: rgba(100,220,100,0.80);
+  text-align: center;
+  min-height: 14px;
+  transition: opacity 0.2s;
+}
+
+/* Goal-achieved prompt + mood prompt — shared container style */
+#share-card-goal-prompt,
+#share-card-mood-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(218,162,38,0.08);
+  border: 1px solid rgba(218,162,38,0.20);
+  border-radius: 10px;
+}
+
+#share-card-mood-prompt {
+  background: rgba(138,102,255,0.08);
+  border-color: rgba(138,102,255,0.20);
+}
+
+/* Goal prompt content layout (icon + label stack) */
+.sc-goal-prompt-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-prompt-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+/* Shared prompt label */
+.sc-prompt-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.72);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+/* Goal insight — shown after the user answers yes/no */
+#share-card-goal-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 10px;
+  animation: scInsightIn 0.32s cubic-bezier(0.34,1.36,0.64,1) both;
+}
+
+@keyframes scInsightIn {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+.sc-insight-msg {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.88);
+  letter-spacing: 0.01em;
+}
+
+.sc-insight-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.42);
+  letter-spacing: 0.01em;
+}
+
+/* Goal yes/no buttons row */
+.sc-prompt-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-btn-yes {
+  background: rgba(72,215,148,0.14);
+  color: rgba(72,215,148,0.92);
+  border: 1px solid rgba(72,215,148,0.28);
+}
+.sc-btn-yes:hover {
+  background: rgba(72,215,148,0.26);
+}
+
+.sc-btn-no {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sc-btn-no:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.80);
+}
+
+/* Mood emoji buttons row */
+.sc-mood-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.sc-mood-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, transform 0.12s, border-color 0.14s;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+  padding: 0;
+}
+.sc-mood-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.28);
+  transform: scale(1.22);
+}
+.sc-mood-btn:active {
+  transform: scale(1.08);
+}
+
+/* ── Focus graph right column ─────────────────────────────────────────────── */
+
+#share-card-graph-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Vertical divider from the left column */
+  border-left: 1px solid rgba(255,255,255,0.08);
+  padding-left: 20px;
+  /* Align vertically with the top of the left column */
+  align-self: stretch;
+  justify-content: center;
+}
+
+.sc-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sc-graph-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.30);
+  letter-spacing: 0.07em;
+  text-transform: lowercase;
+}
+
+.sc-graph-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.04em;
+}
+
+.sc-graph-legend-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+.sc-graph-legend-green { background: rgba( 74, 222, 128, 0.90); }
+.sc-graph-legend-amber { background: rgba(251, 191,  36, 0.90); }
+.sc-graph-legend-red   { background: rgba(248, 113, 113, 0.90); }
+
+#share-card-graph-canvas {
+  display: block;
+  border-radius: 10px;
+  /* canvas element itself has inline width/height set by FocusGraph.draw() */
+}

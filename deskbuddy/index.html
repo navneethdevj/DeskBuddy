@@ -96,6 +96,16 @@
               <option value="60">60 min</option>
             </select>
           </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Break animation</div>
+              <div class="settings-row-sublabel">Glow + card when a break starts</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="break-anim-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
@@ -133,6 +143,16 @@
               <option value="15">15 min</option>
               <option value="30">30 min</option>
             </select>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Session celebration</div>
+              <div class="settings-row-sublabel">Confetti + banner on completion</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="celebration-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
           </div>
           <div class="settings-row settings-row-hint" id="session-stats-row">
             <div>
@@ -426,8 +446,11 @@
       </div>
     </div>
 
-    <!-- ── Outcome screen ────────────────────────────────────────── -->
-    <div id="outcome-screen" style="display:none">
+  </div><!-- /#session-panel -->
+
+  <!-- Outcome popup — standalone centered overlay, visible in any mode -->
+  <div id="outcome-screen" role="dialog" aria-modal="true" aria-label="Session outcome" aria-hidden="true">
+    <div id="outcome-card">
       <div id="outcome-label" class="sp-outcome-label"></div>
       <div id="goal-prompt" class="sp-goal-prompt" style="display:none">
         <div class="sp-label" style="text-align:center;margin-bottom:2px">did you finish it?</div>
@@ -439,9 +462,11 @@
       <button id="new-session-btn" class="sp-btn sp-btn-primary">
         ✦ new session
       </button>
+      <button id="share-session-btn" class="sp-btn sp-btn-ghost sc-share-btn" style="display:none">
+        share card
+      </button>
     </div>
-
-  </div><!-- /#session-panel -->
+  </div>
 
   <!-- Session completion celebration overlay — confetti + banner -->
   <div id="celebration-overlay" aria-hidden="true"></div>
@@ -449,6 +474,14 @@
     <div class="cel-title">✦ session complete ✦</div>
     <div class="cel-sub">great work — you did it</div>
   </div>
+
+  <!-- Break-end flash + welcome-back message — shown when user resumes from break -->
+  <div id="break-end-flash" aria-hidden="true"></div>
+  <div id="break-end-msg" aria-hidden="true">welcome back ✦</div>
+
+  <!-- Session-start flash + banner — fires immediately when a new session begins -->
+  <div id="session-start-flash" aria-hidden="true"></div>
+  <div id="session-start-msg"   aria-hidden="true"></div>
 
   <!-- Break ambient glow — pulses once when user takes a break -->
   <div id="break-glow" aria-hidden="true"></div>
@@ -511,6 +544,8 @@
   <script src="components/settings.js"></script>
   <script src="components/keybinds.js"></script>
   <script src="components/break-reminder.js"></script>
+  <script src="ui/focus-graph.js"></script>
+  <script src="ui/share-card.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
