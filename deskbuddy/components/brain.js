@@ -77,8 +77,8 @@ const Brain = (() => {
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
-  const IDLE_LIFE_MIN_WAIT     = 5000;  // 5s minimum between behaviors
-  const IDLE_LIFE_MAX_WAIT     = 13000; // 13s maximum
+  const IDLE_LIFE_MIN_WAIT     = 4000;  // 4s minimum between behaviors
+  const IDLE_LIFE_MAX_WAIT     = 10000; // 10s maximum
 
   // ── CHUNK 5 — new feature constants ───────────────────────────────────────
 
@@ -1818,7 +1818,7 @@ const Brain = (() => {
         el.classList.add('shiver');
         setTimeout(() => el.classList.remove('shiver'), 450);
       }
-      if (typeof Particles !== 'undefined') Particles.burst(Companion.getCenter(), 'happy');
+      if (typeof Particles !== 'undefined') Particles.burst('happy', 10);
       return;
     }
 
@@ -1863,9 +1863,12 @@ const Brain = (() => {
         '...home ♡', '*melts*', 'this is everything.',
       ];
       showWhisper(cozyMsgs[Math.floor(Math.random() * cozyMsgs.length)], 4500);
-      // Brief nuzzle lean to signal the snuggle
+      // Brief nuzzle lean + rose-gold particle burst to signal the snuggle
       const el = Companion.getElement();
       if (el) { el.classList.add('nuzzling'); setTimeout(() => el.classList.remove('nuzzling'), 900); }
+      if (typeof Particles !== 'undefined') Particles.burst('cozy', 7);
+      // Slow double-blink (the "cat I love you" blink)
+      setTimeout(_doSlowBlink, 600);
     }
   }
 
@@ -1909,9 +1912,10 @@ const Brain = (() => {
     else if (r < 80) _doHappyFlash();      // brief joyful expression (7%)
     else if (r < 85) _doShiver();          // tiny excited shiver (5%)
     else if (r < 88) _doTripleBlink();     // three rapid blinks (3%)
-    else if (r < 92) _doNuzzle();          // lean toward screen (4%)
-    else if (r < 96) _doDaydream();        // look up dreamily (4%)
-    else             _doSpinOnce();        // gleeful tiny spin (4%)
+    else if (r < 91) _doNuzzle();          // lean toward screen (3%)
+    else if (r < 94) _doDaydream();        // look up dreamily (3%)
+    else if (r < 97) _doSpinOnce();        // gleeful tiny spin (3%)
+    else             _doSlowBlink();       // cat slow-blink — "I love you" (3%)
   }
 
   /** Look in a random direction then drift back */
@@ -2058,18 +2062,32 @@ const Brain = (() => {
     const el = Companion.getElement();
     if (!el) return;
     el.classList.add('nuzzling');
-    const msgs = ['*nuzzles screen*', '...hi ♡', '*leans in*', '(◡‿◡)', '*presses closer*', '...cozy here'];
-    if (Math.random() < 0.5) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2400);
-    setTimeout(() => el.classList.remove('nuzzling'), 900);
+    const msgs = ['*nuzzles screen*', '...hi ♡', '*leans in*', '(◡‿◡)', '*presses closer*', '...cozy here', '*rubs against screen*', '♡', '...warm here'];
+    if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2800);
+    setTimeout(() => {
+      el.classList.remove('nuzzling');
+      // After nuzzle, do a slow content blink
+      setTimeout(_doDoubleBlink, 200);
+    }, 900);
   }
 
   /** Look up dreamily for a moment, soft wistful sigh */
   function _doDaydream() {
     const c = Companion.getCenter();
-    Companion.lookAt(c.x + (Math.random() - 0.5) * 80, c.y - 280);
-    const msgs = ['...✦', '...☁', '...♡', '*daydreams*', 'la la la~', '...hm~', '...✧', '*wanders off mentally*'];
-    showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
-    setTimeout(() => Companion.resetLook(), 2200 + Math.random() * 900);
+    // Look up and slightly to a random side
+    Companion.lookAt(c.x + (Math.random() - 0.5) * 100, c.y - 320);
+    const msgs = [
+      '...✦', '...☁', '...♡', '*daydreams*', 'la la la~',
+      '...hm~', '...✧', '*wanders off mentally*', '...i wonder...',
+      '...someday~', '*stares into space*', '...if only~',
+    ];
+    showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3600);
+    // Hold the dreamy gaze for 2.5–3.5s then slowly return
+    setTimeout(() => {
+      Companion.resetLook();
+      // A soft blink when coming back from the daydream
+      setTimeout(_doDoubleBlink, 300);
+    }, 2500 + Math.random() * 1000);
   }
 
   /** Brief gleeful spin — shows joy without restraint */
@@ -2079,9 +2097,13 @@ const Brain = (() => {
     const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad'];
     if (_blocked.includes(window._lastEmotion)) return;
     el.classList.add('spinning');
-    const msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*'];
-    if (Math.random() < 0.5) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 1800);
-    setTimeout(() => el.classList.remove('spinning'), 660);
+    const msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*', 'yay~!', '*goes round*'];
+    if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
+    setTimeout(() => {
+      el.classList.remove('spinning');
+      // Flash happy right after the spin
+      setTimeout(_doHappyFlash, 100);
+    }, 660);
   }
 
   /** Enable or disable phone-detection posture heuristic. */
