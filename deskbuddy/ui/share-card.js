@@ -576,37 +576,50 @@ const ShareCard = (() => {
     modal.setAttribute('aria-hidden', 'true');
     modal.innerHTML = `
       <div id="share-card-inner">
-        <div id="share-card-header">
-          <span id="share-card-title">session summary</span>
-          <button id="share-card-close" title="Close" aria-label="Close share card">✕</button>
-        </div>
-        <div id="share-card-canvas-wrap"></div>
-        <div id="share-card-goal-prompt" style="display:none">
-          <div class="sc-goal-prompt-content">
-            <span class="sc-prompt-icon">🎯</span>
-            <span id="share-card-goal-label" class="sc-prompt-label">did you complete your goal?</span>
+        <div id="share-card-left">
+          <div id="share-card-header">
+            <span id="share-card-title">session summary</span>
+            <button id="share-card-close" title="Close" aria-label="Close share card">✕</button>
           </div>
-          <div class="sc-prompt-btns">
-            <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes! ✓</button>
-            <button id="share-card-goal-no"  class="sc-btn sc-btn-no">not yet</button>
+          <div id="share-card-canvas-wrap"></div>
+          <div id="share-card-goal-prompt" style="display:none">
+            <div class="sc-goal-prompt-content">
+              <span class="sc-prompt-icon">🎯</span>
+              <span id="share-card-goal-label" class="sc-prompt-label">did you complete your goal?</span>
+            </div>
+            <div class="sc-prompt-btns">
+              <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes! ✓</button>
+              <button id="share-card-goal-no"  class="sc-btn sc-btn-no">not yet</button>
+            </div>
           </div>
-        </div>
-        <div id="share-card-goal-insight" style="display:none" aria-live="polite"></div>
-        <div id="share-card-mood-prompt" style="display:none">
-          <span class="sc-prompt-label">how did this session feel?</span>
-          <div class="sc-mood-btns">
-            <button class="sc-mood-btn" data-rating="1" title="Drained">😩</button>
-            <button class="sc-mood-btn" data-rating="2" title="Meh">😕</button>
-            <button class="sc-mood-btn" data-rating="3" title="Okay">😐</button>
-            <button class="sc-mood-btn" data-rating="4" title="Good">🙂</button>
-            <button class="sc-mood-btn" data-rating="5" title="On fire!">🔥</button>
+          <div id="share-card-goal-insight" style="display:none" aria-live="polite"></div>
+          <div id="share-card-mood-prompt" style="display:none">
+            <span class="sc-prompt-label">how did this session feel?</span>
+            <div class="sc-mood-btns">
+              <button class="sc-mood-btn" data-rating="1" title="Drained">😩</button>
+              <button class="sc-mood-btn" data-rating="2" title="Meh">😕</button>
+              <button class="sc-mood-btn" data-rating="3" title="Okay">😐</button>
+              <button class="sc-mood-btn" data-rating="4" title="Good">🙂</button>
+              <button class="sc-mood-btn" data-rating="5" title="On fire!">🔥</button>
+            </div>
           </div>
+          <div id="share-card-actions">
+            <button id="share-card-copy"     class="sc-btn sc-btn-primary">copy image</button>
+            <button id="share-card-download" class="sc-btn sc-btn-secondary">save PNG</button>
+          </div>
+          <div id="share-card-status" aria-live="polite" aria-atomic="true"></div>
         </div>
-        <div id="share-card-actions">
-          <button id="share-card-copy"     class="sc-btn sc-btn-primary">copy image</button>
-          <button id="share-card-download" class="sc-btn sc-btn-secondary">save PNG</button>
+        <div id="share-card-graph-col" style="display:none">
+          <div class="sc-graph-header">
+            <span class="sc-graph-title">focus timeline</span>
+            <span class="sc-graph-legend">
+              <span class="sc-graph-legend-dot sc-graph-legend-green"></span>focused
+              <span class="sc-graph-legend-dot sc-graph-legend-amber"></span>drifting
+              <span class="sc-graph-legend-dot sc-graph-legend-red"></span>distracted
+            </span>
+          </div>
+          <canvas id="share-card-graph-canvas"></canvas>
         </div>
-        <div id="share-card-status" aria-live="polite" aria-atomic="true"></div>
       </div>
     `;
     document.body.appendChild(modal);
@@ -824,12 +837,29 @@ const ShareCard = (() => {
     // Clear any old status text
     const statusEl = document.getElementById('share-card-status');
     if (statusEl) statusEl.textContent = '';
+
+    // ── Focus graph — show right column and start draw-in animation ──────────
+    const graphCol    = document.getElementById('share-card-graph-col');
+    const graphCanvas = document.getElementById('share-card-graph-canvas');
+    const timeline    = sessionData.focusTimeline;
+    const hasGraph    = Array.isArray(timeline) && timeline.length >= 2;
+
+    if (graphCol) graphCol.style.display = hasGraph ? '' : 'none';
+    if (hasGraph && graphCanvas && typeof FocusGraph !== 'undefined') {
+      // Small delay so the modal fade-in completes before animation starts
+      setTimeout(() => {
+        FocusGraph.draw(graphCanvas, sessionData.focusTimeline, sessionData.milestones || []);
+      }, 150);
+    }
   }
 
   /**
-   * hide() — close the modal.
+   * hide() — close the modal and stop any running graph animation.
    */
   function hide() {
+    // Cancel graph animation before hiding
+    if (typeof FocusGraph !== 'undefined') FocusGraph.cancel();
+
     const modal = document.getElementById('share-card-modal');
     if (modal) {
       modal.classList.remove('sc-visible');

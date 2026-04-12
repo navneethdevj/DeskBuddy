@@ -20,8 +20,9 @@ const Session = (() => {
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const _MAX_SESSIONS   = 50;
-  const _STORAGE_KEY    = 'deskbuddy_sessions';
+  const _MAX_SESSIONS          = 50;
+  const _STORAGE_KEY           = 'deskbuddy_sessions';
+  const _TIMELINE_INTERVAL_MS  = 5000;  // snapshot every 5 s during ACTIVE state
 
   const STATE = {
     IDLE:      'IDLE',
@@ -42,6 +43,10 @@ const Session = (() => {
   let _focusedSince = null;  // ms when current FOCUSED timer-state began
   let _streakStart  = null;  // ms when current focused streak began (resets on distraction)
 
+  // Timeline sampling
+  let _timelineIntervalId = null;  // setInterval id for periodic snapshots
+  let _sessionStartMs     = null;  // wall-clock ms when current session started
+
   let _history  = [];  // array of completed session objects loaded from localStorage
 
   // Callbacks registered by external callers
@@ -59,6 +64,33 @@ const Session = (() => {
     _callbacks.onSessionStateChange.forEach(fn => {
       try { fn(newState, oldState); } catch (_) {}
     });
+  }
+
+  // ── Timeline helpers ───────────────────────────────────────────────────────
+
+  /** Seconds elapsed since the session started (used as the `t` coordinate). */
+  function _elapsedSeconds() {
+    return _sessionStartMs ? Math.round((_now() - _sessionStartMs) / 1000) : 0;
+  }
+
+  /** Push one focus-level snapshot to the timeline. */
+  function _recordSnapshot() {
+    if (!_current) return;
+    const level = (typeof Brain !== 'undefined' && Brain.getFocusLevel) ? Brain.getFocusLevel() : 50;
+    const state = (typeof Timer !== 'undefined' && Timer.getState)      ? Timer.getState()      : 'FOCUSED';
+    _current.focusTimeline.push({ t: _elapsedSeconds(), level, state });
+  }
+
+  function _startTimeline() {
+    _stopTimeline();
+    _timelineIntervalId = setInterval(_recordSnapshot, _TIMELINE_INTERVAL_MS);
+  }
+
+  function _stopTimeline() {
+    if (_timelineIntervalId !== null) {
+      clearInterval(_timelineIntervalId);
+      _timelineIntervalId = null;
+    }
   }
 
   // ── Storage ────────────────────────────────────────────────────────────────
@@ -168,6 +200,8 @@ const Session = (() => {
     if ((newState === TIMER_DISTRACTED || newState === TIMER_CRITICAL) &&
         (oldState === TIMER_FOCUSED || oldState === TIMER_DRIFTING)) {
       _current.distractionCount++;
+      // Record distraction milestone for the post-session graph
+      _current.milestones.push({ t: _elapsedSeconds(), type: 'distraction' });
     }
 
     // ── Terminal: timer FAILED ────────────────────────────────────────────────
@@ -192,6 +226,10 @@ const Session = (() => {
     _closeFocusedStreak();
     _clearBreakStart();
 
+    // Stop timeline sampling and push a final snapshot
+    _stopTimeline();
+    _recordSnapshot();
+
     _current.outcome = outcome;
     _pushSession(Object.assign({}, _current));
 
@@ -202,9 +240,10 @@ const Session = (() => {
       // ABANDONED: silent — user chose to quit
     }
 
-    _current      = null;
-    _focusedSince = null;
-    _streakStart  = null;
+    _current        = null;
+    _focusedSince   = null;
+    _streakStart    = null;
+    _sessionStartMs = null;
 
     _setState(STATE[outcome]);
   }
@@ -219,6 +258,14 @@ const Session = (() => {
     _loadFromStorage();
     if (typeof Timer !== 'undefined' && Timer.onStateChange) {
       Timer.onStateChange(_onTimerStateChange);
+    }
+    // Record 5-minute milestones from Brain for the post-session graph
+    if (typeof Brain !== 'undefined' && Brain.onMilestone) {
+      Brain.onMilestone(() => {
+        if (_state === STATE.ACTIVE && _current) {
+          _current.milestones.push({ t: _elapsedSeconds(), type: 'milestone_5m' });
+        }
+      });
     }
   }
 
@@ -241,7 +288,14 @@ const Session = (() => {
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
       moodRating:                null,
+      focusTimeline:             [],   // { t: elapsedSecs, level: 0-100, state: timerState }
+      milestones:                [],   // { t: elapsedSecs, type: 'distraction'|'milestone_5m' }
     };
+
+    // Record t=0 baseline snapshot then start periodic sampling
+    _sessionStartMs = _now();
+    _recordSnapshot();
+    _startTimeline();
 
     // Start counting focused time from session start (assume user is focused)
     _focusedSince = _now();
@@ -281,6 +335,10 @@ const Session = (() => {
     _closeFocusedStreak();
     _streakStart = null;
 
+    // Snapshot current state before pausing, then stop sampling during break
+    _recordSnapshot();
+    _stopTimeline();
+
     _breakStartMs = _now();
 
     _setState(STATE.PAUSED);
@@ -298,6 +356,9 @@ const Session = (() => {
     // Resume focused tracking from this moment
     _focusedSince = _now();
     _streakStart  = _now();
+
+    // Restart timeline sampling
+    _startTimeline();
 
     _setState(STATE.ACTIVE);
     if (typeof Sounds !== 'undefined') Sounds.play('break_over');
@@ -467,9 +528,11 @@ const Session = (() => {
    */
   function reset() {
     if (_state === STATE.ACTIVE || _state === STATE.PAUSED) return;
-    _current      = null;
-    _focusedSince = null;
-    _streakStart  = null;
+    _current        = null;
+    _focusedSince   = null;
+    _streakStart    = null;
+    _sessionStartMs = null;
+    _stopTimeline();
     _clearBreakStart();
     _setState(STATE.IDLE);
   }
