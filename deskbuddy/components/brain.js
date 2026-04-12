@@ -16,7 +16,7 @@
 const Brain = (() => {
   const STATES = ['observe', 'curious', 'idle', 'sleepy'];
   const STATE_MIN = 2000;
-  const STATE_MAX = 5000;
+  const STATE_MAX = 3800;
   const MAX_DRIFT = 40;
 
   // Face gaze — two layer system (face position + iris direction)
@@ -45,8 +45,8 @@ const Brain = (() => {
   const IDLE_LOOK_MAX_DURATION = 2000;
 
   // Curious trigger: sustained focused attention for this long → curious state
-  const CURIOUS_ATTENTION_MS  = 22000;  // 22s focused + high attention → curious
-  const CURIOUS_COOLDOWN_MS   = 90000;  // 90s before curious can fire again after exiting
+  const CURIOUS_ATTENTION_MS  = 14000;  // 14s focused + high attention → curious
+  const CURIOUS_COOLDOWN_MS   = 50000;  // 50s before curious can fire again after exiting
 
   // Emotion timing thresholds (ms) — tuned for snappy, responsive feel
   const LOOKING_AWAY_SUSPICIOUS_MS =  4000;   //  4s → suspicious
@@ -64,7 +64,7 @@ const Brain = (() => {
   const EXCITED_HOLD_MS        = 3200;  // stays excited this long after last burst
 
   // Shy: sustained eye contact triggers it
-  const EYE_CONTACT_SHY_MS     = 13000; // 13s continuous direct gaze → shy
+  const EYE_CONTACT_SHY_MS     = 10000; // 10s continuous direct gaze → shy
   const SHY_HOLD_MS            = 4500;  // shy lasts this long before resolving
   const SHY_COOLDOWN_MS        = 20000; // min gap before triggering shy again
 
@@ -77,8 +77,8 @@ const Brain = (() => {
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
-  const IDLE_LIFE_MIN_WAIT     = 10000; // 10s minimum between behaviors
-  const IDLE_LIFE_MAX_WAIT     = 22000; // 22s maximum
+  const IDLE_LIFE_MIN_WAIT     = 5000;  // 5s minimum between behaviors
+  const IDLE_LIFE_MAX_WAIT     = 13000; // 13s maximum
 
   // ── CHUNK 5 — new feature constants ───────────────────────────────────────
 
@@ -257,6 +257,8 @@ const Brain = (() => {
 
   // Sleepy-user nudge — rate-limit wake-up whispers to avoid spam
   let _lastSleepyNudge = 0;
+  // Happy flash during observe state — rate-limit so it stays special
+  let _lastHappyFlashTime = 0;
 
   // Milestone celebration
   let _continuousFocusedMs    = 0;
@@ -544,11 +546,17 @@ const Brain = (() => {
         // userSurprised from perception.js maps jawOpen+eyeWide blendshapes (face-api: surprise)
         // Both surprise (instant) and sustained attention trigger curious —
         // surprise is an immediate "what?" reaction, sustained is "you've been watching me"
-        if (p.userSurprised && now >= _curiousCooldownUntil) emotion = 'curious';
-        else if (tms >= CURIOUS_ATTENTION_MS
+        if (p.userSurprised && now >= _curiousCooldownUntil) {
+          emotion = 'curious';
+          // Stamp cooldown here so the emotion path doesn't loop curious every frame
+          _curiousCooldownUntil = now + 18000;
+        } else if (tms >= CURIOUS_ATTENTION_MS
               && p.attentionScore > 40
-              && now >= _curiousCooldownUntil)             emotion = 'curious';
-        else {
+              && now >= _curiousCooldownUntil) {
+          emotion = 'curious';
+          // Stamp cooldown here so the emotion path doesn't loop curious every frame
+          _curiousCooldownUntil = now + 18000;
+        } else {
           // Shy trigger — sustained eye contact while companion would normally be 'focused'
           if (p.eyeContact) {
             if (!_eyeContactStart) _eyeContactStart = now;
@@ -582,14 +590,21 @@ const Brain = (() => {
         break;
 
       case 'Sleepy':
-        // Companion stays wide-awake and motivates the user — don't mirror sleepiness
-        emotion = 'curious';
+        // Companion stays wide-awake and motivates the user — alternate emotions
+        // to feel more alive rather than locked to a single expression.
+        // Cycle: curious 10s → focused 8s → happy 4s → repeat (22s period)
+        { const slot = Math.floor(now / 1000) % 22;
+          if      (slot < 10) emotion = 'curious';
+          else if (slot < 18) emotion = 'focused';
+          else                emotion = 'happy';
+        }
         if ((now - _lastSleepyNudge) >= 30000) {
           _lastSleepyNudge = now;
           const wakeUpMsgs = [
             'hey, don\'t sleep!', '*nudges you*', 'stay awake! 💪',
             'you can do it!', '*waves paw*', 'almost there, keep going!',
             'zzz? no no no!', '...hey!', '*pokes*', 'need a break?',
+            'you\'re so close!', '*worried chirp*', 'don\'t give up!',
           ];
           if (Math.random() < 0.65) {
             showWhisper(wakeUpMsgs[Math.floor(Math.random() * wakeUpMsgs.length)], 4000);
@@ -912,6 +927,7 @@ const Brain = (() => {
       case 'observe':
         Emotion.setState('focused');
         SpriteAnimator.play('idle');
+        _scheduleObserveHappyFlash();
         break;
       case 'curious':
         Emotion.setState('curious');
@@ -962,8 +978,12 @@ const Brain = (() => {
        && p.timeInStateMs >= CURIOUS_ATTENTION_MS
        && p.attentionScore > 50
        && Date.now() >= _curiousCooldownUntil) { enterState('curious'); return; }
-      if (p.userState === 'Focused'
-       || p.userState === 'LookingAway') { enterState('observe'); return; }
+      if (p.userState === 'Focused' || p.userState === 'LookingAway') {
+        // Sprinkle in 'idle' 25% of the time for visual variety — prevents
+        // the companion looking rigidly locked to 'observe' forever.
+        enterState(Math.random() < 0.25 ? 'idle' : 'observe');
+        return;
+      }
     }
     // Fallback: random (original behavior, used when camera unavailable)
     var next = STATES[Math.floor(Math.random() * STATES.length)];
@@ -1048,7 +1068,7 @@ const Brain = (() => {
       if (currentState !== 'curious') return;
       if (typeof Sounds !== 'undefined') Sounds.play('curious_ooh');
       _scheduleCuriousChirps();
-    }, 4000 + Math.random() * 4000);
+    }, 2500 + Math.random() * 2500);
   }
 
   /** Briefly flash a happy expression during idle. */
@@ -1060,6 +1080,30 @@ const Brain = (() => {
       setTimeout(function () {
         if (currentState === 'idle') Emotion.setState('idle');
       }, 700);
+    }, delay);
+  }
+
+  /**
+   * Schedule a brief happy flash while in the observe/focused state.
+   * Fires once per observe entry with a 10-20s delay and focusLevel guard.
+   * Rate-limited by _lastHappyFlashTime (min 18s between flashes).
+   */
+  function _scheduleObserveHappyFlash() {
+    var delay = 10000 + Math.random() * 10000; // 10-20s into observe period
+    setTimeout(function () {
+      if (currentState !== 'observe') return;
+      if (focusLevel < 55) return;
+      const now = Date.now();
+      if ((now - _lastHappyFlashTime) < 18000) return;
+      _lastHappyFlashTime = now;
+      Emotion.setState('happy');
+      if (Math.random() < 0.35) {
+        const msgs = ['✨', '~♪', '*happy wiggle*', 'hehe~', '(*^▽^*)', '♪'];
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
+      }
+      setTimeout(function () {
+        if (currentState === 'observe') Emotion.setState('focused');
+      }, 900 + Math.random() * 400);
     }, delay);
   }
 
@@ -1742,14 +1786,16 @@ const Brain = (() => {
 
     // Weighted random selection (sum = 100)
     const r = Math.random() * 100;
-    if      (r < 26) _doIdleLook();        // look around (26%)
-    else if (r < 44) _doDoubleBlink();     // quick double blink (18%)
-    else if (r < 57) _doHeadTilt();        // cute head tilt (13%)
-    else if (r < 67) _doStretch();         // yawn + stretch (10%)
-    else if (r < 78) _doWhisperCoo();      // murmur something (11%)
-    else if (r < 87) _doWink();            // cheeky wink (9%)
-    else if (r < 94) _doPeek();            // look far away, snap back (7%)
-    else             _doShiver();          // tiny excited shiver (6%)
+    if      (r < 20) _doIdleLook();        // look around (20%)
+    else if (r < 34) _doDoubleBlink();     // quick double blink (14%)
+    else if (r < 46) _doHeadTilt();        // cute head tilt (12%)
+    else if (r < 55) _doStretch();         // yawn + stretch (9%)
+    else if (r < 67) _doWhisperCoo();      // murmur something (12%)
+    else if (r < 76) _doWink();            // cheeky wink (9%)
+    else if (r < 83) _doPeek();            // look far away, snap back (7%)
+    else if (r < 90) _doHappyFlash();      // brief joyful expression (7%)
+    else if (r < 96) _doShiver();          // tiny excited shiver (6%)
+    else             _doTripleBlink();     // three rapid blinks — extra expressive (4%)
   }
 
   /** Look in a random direction then drift back */
@@ -1783,9 +1829,9 @@ const Brain = (() => {
 
   /** Tilt head to one side for a moment */
   function _doHeadTilt() {
-    const deg = 9 * (Math.random() > 0.5 ? 1 : -1);
+    const deg = (10 + Math.random() * 4) * (Math.random() > 0.5 ? 1 : -1);
     Companion.setRotation(deg);
-    setTimeout(() => Companion.setRotation(0), 1600 + Math.random() * 600);
+    setTimeout(() => Companion.setRotation(0), 1600 + Math.random() * 800);
   }
 
   /** Add stretching class for the stretch animation */
@@ -1810,6 +1856,13 @@ const Brain = (() => {
       '...still here ♡', '*peeks at you*', 'don\'t mind me~',
       '...you okay?', '*quiet hum*', '( •̀ ω •́ )✧',
       '*sits nearby*', '...i\'m here.', '~', '*cozy*',
+      // Livelier additions
+      '*perks up*', 'ooh~', 'hm!', '*tail swish*',
+      '*nudges you*', 'focus~ ✦', 'you\'ve got this.', '...✦ nice.',
+      '*happy sigh*', '( ´ ▽ ` )', '*spins once*', 'wheee~',
+      '...watching~', '*curious chirp*', '꒰⑅•ᴗ•⑅꒱', '*leans in*',
+      '...so interesting.', '*bright eyes*', 'hi hi~', '*paw tap*',
+      '(๑˃ᴗ˂)ﻭ', '*wags tail*', '!', '...ooh.',
     ];
     showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
   }
@@ -1842,7 +1895,47 @@ const Brain = (() => {
     }, 700 + Math.random() * 400);
   }
 
-  // ── CHUNK 5 — new public API ───────────────────────────────────────────────
+  /**
+   * Brief happy expression flash — companion lights up with joy for ~1s.
+   * Rate-limited by _lastHappyFlashTime so it doesn't spam.
+   */
+  function _doHappyFlash() {
+    const now = Date.now();
+    if ((now - _lastHappyFlashTime) < 12000) { _doWhisperCoo(); return; }
+    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
+    if (_blocked.includes(window._lastEmotion)) return;
+    _lastHappyFlashTime = now;
+    const prev = window._lastEmotion || 'focused';
+    Emotion.setState('happy');
+    if (Math.random() < 0.5) {
+      const msgs = ['✨', 'hehe~', '~♪', '*happy wiggle*', '(*^▽^*)',
+                    '♡', '✦', ':)', '*bounces*', 'yay~'];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2200);
+    }
+    setTimeout(() => {
+      // Restore previous emotion if nothing else has taken over
+      if (window._lastEmotion === 'happy') Emotion.setState(prev === 'happy' ? 'focused' : prev);
+    }, 900 + Math.random() * 400);
+  }
+
+  /**
+   * Three rapid blinks in a row — more expressive than double blink.
+   */
+  function _doTripleBlink() {
+    const el = Companion.getElement();
+    if (!el) return;
+    let count = 0;
+    const doBlink = () => {
+      if (count >= 3) return;
+      count++;
+      el.classList.add('blink');
+      setTimeout(() => {
+        el.classList.remove('blink');
+        if (count < 3) setTimeout(doBlink, 150 + Math.random() * 60);
+      }, 110 + Math.random() * 40);
+    };
+    doBlink();
+  }
 
   /** Enable or disable phone-detection posture heuristic. */
   function setPhoneDetectionEnabled(bool) {
