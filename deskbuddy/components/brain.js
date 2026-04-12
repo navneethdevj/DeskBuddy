@@ -77,8 +77,12 @@ const Brain = (() => {
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
-  const IDLE_LIFE_MIN_WAIT     = 4000;  // 4s minimum between behaviors
-  const IDLE_LIFE_MAX_WAIT     = 10000; // 10s maximum
+  const IDLE_LIFE_MIN_WAIT     = 4000;  // 4s minimum between behaviors (at idleSpeed=2)
+  const IDLE_LIFE_MAX_WAIT     = 10000; // 10s maximum (at idleSpeed=2)
+
+  // ── Runtime-adjustable personality knobs (set via setIdleSpeed / setExpressiveness)
+  let _idleSpeedMult     = 1.0;   // 1 = default; <1 = slower, >1 = faster
+  let _expressMult       = 1.0;   // scales random thresholds in spontaneous pool
 
   // ── CHUNK 5 — new feature constants ───────────────────────────────────────
 
@@ -1833,7 +1837,7 @@ const Brain = (() => {
       '*happy sigh*', 'more more more~', 'besties forever ♡',
       '...i feel safe.', '*buries face in you*',
     ];
-    if (Math.random() < 0.82) {
+    if (Math.random() < Math.min(0.97, 0.82 * _expressMult)) {
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
     }
   }
@@ -1878,7 +1882,11 @@ const Brain = (() => {
 
   function _startIdleLife() {
     const schedule = () => {
-      const wait = IDLE_LIFE_MIN_WAIT + Math.random() * (IDLE_LIFE_MAX_WAIT - IDLE_LIFE_MIN_WAIT);
+      // Apply idleSpeed multiplier: speed=1→slow (÷0.6), speed=3→fast (÷1.6)
+      const speedDiv = 0.6 + (_idleSpeedMult - 1) * 0.5;
+      const minWait  = Math.round(IDLE_LIFE_MIN_WAIT  / Math.max(0.4, speedDiv));
+      const maxWait  = Math.round(IDLE_LIFE_MAX_WAIT  / Math.max(0.4, speedDiv));
+      const wait = minWait + Math.random() * (maxWait - minWait);
       _idleLifeTimer = setTimeout(() => {
         _spontaneousBehavior();
         schedule();
@@ -2402,6 +2410,25 @@ const Brain = (() => {
     }
   }
 
+  /**
+   * Set how frequently the buddy does spontaneous idle behaviors.
+   * level: 1 = slow & calm, 2 = default, 3 = hyper & frequent
+   */
+  function setIdleSpeed(level) {
+    _idleSpeedMult = Math.max(0.4, Math.min(3, Number(level) || 1));
+    // Restart idle-life scheduler immediately so new timing takes effect
+    if (_idleLifeTimer) { clearTimeout(_idleLifeTimer); _idleLifeTimer = null; }
+    _startIdleLife();
+  }
+
+  /**
+   * Set how expressive (big reactions, frequent whispers) the buddy is.
+   * level: 1 = subtle, 2 = default, 3 = maximum drama
+   */
+  function setExpressiveness(level) {
+    _expressMult = Math.max(0.3, Math.min(3, Number(level) || 1));
+  }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
@@ -2410,5 +2437,6 @@ const Brain = (() => {
            getNightSessionCount, trackNightSession, resetNightSessions,
            checkNightWhisper, doMorningGreeting,
            setDNDActive,
+           setIdleSpeed, setExpressiveness,
            triggerLookSequence };
 })();

@@ -32,6 +32,10 @@ const Settings = (() => {
     celebrationEnabled: true,       // confetti + banner on session complete
     breakAnimEnabled:   true,       // teal glow + break card when break starts
     keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
+    // ── Buddy personality ──────────────────────────────────────────────
+    idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
+    expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
+    emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
   };
 
   let _current = { ...DEFAULTS };

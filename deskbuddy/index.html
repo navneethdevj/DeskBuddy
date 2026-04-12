@@ -29,7 +29,7 @@
       <!-- ── SOUND SECTION ─────────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Sound<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">♪</span> Sound<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -72,7 +72,7 @@
       <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">☕</span> Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -113,7 +113,7 @@
       <!-- ── SESSION SECTION ──────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Session<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">⏱</span> Session<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -167,7 +167,7 @@
       <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Display<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">✧</span> Display<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -207,7 +207,7 @@
       <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Behaviour<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">◎</span> Behaviour<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -231,16 +231,57 @@
         </div>
       </div>
 
+      <!-- ── BUDDY PERSONALITY SECTION ────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">✦</span> Buddy Personality<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Idle speed</div>
+              <div class="settings-row-sublabel" id="idle-speed-sublabel">Default</div>
+            </div>
+            <div class="settings-triple-btn" id="idle-speed-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Slow & calm">🐢 Calm</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Default rhythm">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Hyper & frequent">⚡ Hyper</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Expressiveness</div>
+              <div class="settings-row-sublabel" id="express-sublabel">Default</div>
+            </div>
+            <div class="settings-triple-btn" id="express-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Subtle reactions">🌸 Subtle</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Default vibes">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Maximum drama">💥 Drama</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── EXPRESSIONS SECTION ──────────────────────────────────── -->
       <hr class="settings-divider">
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Expressions<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">◕</span> Expressions<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
-          <div class="settings-row-sublabel" style="padding:0 10px 8px;font-size:11px;color:rgba(255,255,255,0.28);">
-            tap any state to preview it for 3 s
+          <div class="settings-row" style="align-items:center;">
+            <div>
+              <div class="settings-row-label">Preview duration</div>
+              <div class="settings-row-sublabel" id="preview-dur-sublabel">3 s</div>
+            </div>
+            <input type="range" id="preview-dur-slider" class="settings-slider"
+              min="1" max="10" step="1" value="3" style="width:90px;">
           </div>
+          <div class="settings-row-sublabel" id="emotion-grid-hint" style="padding:4px 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.26);">
+            tap to preview · hold to keep playing
+          </div>
+          <!-- Category groups built dynamically by renderer.js -->
           <div id="emotion-grid"></div>
         </div>
       </div>
@@ -249,7 +290,7 @@
       <hr class="settings-divider">
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">⌨</span> Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div id="shortcuts-list"></div>

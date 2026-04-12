@@ -56,6 +56,8 @@
   // Apply saved sensitivity and phone-detection from Settings
   Brain.setSensitivity(Settings.get('sensitivity'));
   if (Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(Settings.get('phoneDetection'));
+  if (Brain.setIdleSpeed)      Brain.setIdleSpeed(Settings.get('idleSpeed') || 2);
+  if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 2);
 
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
@@ -1293,6 +1295,84 @@
     gearBtn.addEventListener('click', _refreshSessionStats);
 
 
+    // ── Emotion preview duration slider ─────────────────────────────────
+    const previewDurSlider   = document.getElementById('preview-dur-slider');
+    const previewDurSubLabel = document.getElementById('preview-dur-sublabel');
+
+    function _applyPreviewDur(v) {
+      const n = parseInt(v, 10) || 3;
+      if (previewDurSlider)   previewDurSlider.value = n;
+      if (previewDurSubLabel) previewDurSubLabel.textContent = `${n} s`;
+    }
+    _applyPreviewDur(Settings.get('emotionPreviewDuration'));
+
+    if (previewDurSlider) {
+      previewDurSlider.addEventListener('input', () => {
+        const v = parseInt(previewDurSlider.value, 10);
+        Settings.set('emotionPreviewDuration', v);
+        _applyPreviewDur(v);
+      });
+    }
+
+    // ── Idle speed triple-btn ────────────────────────────────────────────
+    const IDLE_SPEED_LABELS = { 1: 'Calm', 2: 'Default', 3: 'Hyper' };
+    const idleSpeedBtns   = document.getElementById('idle-speed-btns');
+    const idleSpeedLabel  = document.getElementById('idle-speed-sublabel');
+
+    function _applyIdleSpeed(v) {
+      const n = parseInt(v, 10) || 2;
+      if (idleSpeedLabel) idleSpeedLabel.textContent = IDLE_SPEED_LABELS[n] || 'Default';
+      if (idleSpeedBtns) {
+        idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setIdleSpeed) Brain.setIdleSpeed(n);
+    }
+
+    _applyIdleSpeed(Settings.get('idleSpeed'));
+
+    if (idleSpeedBtns) {
+      idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('idleSpeed', v);
+        });
+      });
+    }
+
+    Settings.onChange('idleSpeed', (v) => _applyIdleSpeed(v));
+
+    // ── Expressiveness triple-btn ────────────────────────────────────────
+    const EXPRESS_LABELS = { 1: 'Subtle', 2: 'Default', 3: 'Maximum drama' };
+    const expressBtns  = document.getElementById('express-btns');
+    const expressLabel = document.getElementById('express-sublabel');
+
+    function _applyExpressiveness(v) {
+      const n = parseInt(v, 10) || 2;
+      if (expressLabel) expressLabel.textContent = EXPRESS_LABELS[n] || 'Default';
+      if (expressBtns) {
+        expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setExpressiveness) Brain.setExpressiveness(n);
+    }
+
+    _applyExpressiveness(Settings.get('expressiveness'));
+
+    if (expressBtns) {
+      expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('expressiveness', v);
+        });
+      });
+    }
+
+    Settings.onChange('expressiveness', (v) => _applyExpressiveness(v));
+
+    // ── Emotion grid — categorised with emoji icons ──────────────────────
     const emotionGrid = document.getElementById('emotion-grid');
     if (emotionGrid) {
       const GLOW = {
@@ -1302,7 +1382,14 @@
         pouty: '255,188,118', grumpy: '255,138,128', overjoyed: '255,240,198',
         sulking: '205,138,192', embarrassed: '255,120,155', forgiven: '255,160,190',
         excited: '255,228,120', shy: '255,142,198', love: '255,138,180',
-        startled: '200,220,255',
+        startled: '200,220,255', cozy: '255,155,130',
+      };
+      const EMOJI = {
+        idle: '○', curious: '◉', focused: '◎', sleepy: '◔',
+        suspicious: '👁', happy: '◕‿◕', scared: '○!', sad: '◕︵◕',
+        crying: '😢', pouty: '◣', grumpy: '◤', overjoyed: '★',
+        sulking: '◷', embarrassed: '◕///◕', forgiven: '♡✓', excited: '◕!',
+        shy: '///◕', love: '♡', startled: '◕‼', cozy: '◕‿◕♡',
       };
       const SOUND_MAP = {
         happy: 'happy_coo', curious: 'curious_ooh', overjoyed: 'overjoyed_chirp',
@@ -1311,29 +1398,64 @@
         scared: 'scared_eep', sad: 'sad_whimper', crying: 'crying_sob',
         startled: 'startled_gasp',
       };
+
+      // Emotional categories
+      const CATEGORIES = [
+        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'shy', 'forgiven'] },
+        { label: '◎ Neutral',   states: ['idle', 'focused', 'curious', 'sleepy', 'embarrassed'] },
+        { label: '◤ Negative',  states: ['suspicious', 'pouty', 'grumpy', 'sulking', 'scared', 'sad', 'crying', 'startled'] },
+      ];
+
       let _activeBtn = null;
 
-      emotionGrid.style.cssText =
-        'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 10px 10px;';
+      emotionGrid.style.cssText = 'padding: 0 10px 10px;';
 
-      Emotion.getStates().forEach(state => {
-        const btn = document.createElement('button');
-        btn.className = 'emotion-test-btn';
-        btn.textContent = state;
-        btn.title = `Preview: ${state}`;
-        btn.style.setProperty('--glow-color', GLOW[state] || '155,135,255');
-        btn.addEventListener('click', () => {
-          if (_activeBtn) _activeBtn.classList.remove('active');
-          btn.classList.add('active');
-          _activeBtn = btn;
-          const sound = SOUND_MAP[state];
-          if (sound) Sounds.play(sound);
-          Emotion.preview(state, 3000, () => {
-            btn.classList.remove('active');
-            if (_activeBtn === btn) _activeBtn = null;
+      CATEGORIES.forEach(cat => {
+        // Category label
+        const catLabel = document.createElement('div');
+        catLabel.className = 'emotion-category-label';
+        catLabel.textContent = cat.label;
+        emotionGrid.appendChild(catLabel);
+
+        // Grid row for this category
+        const grid = document.createElement('div');
+        grid.className = 'emotion-category-grid';
+        emotionGrid.appendChild(grid);
+
+        cat.states.forEach(state => {
+          const btn = document.createElement('button');
+          btn.className = 'emotion-test-btn';
+          btn.dataset.emotion = state;
+          btn.style.setProperty('--glow-color', GLOW[state] || '155,135,255');
+
+          const icon = document.createElement('span');
+          icon.className = 'emotion-btn-icon';
+          icon.textContent = EMOJI[state] || '○';
+          icon.setAttribute('aria-hidden', 'true');
+
+          const name = document.createElement('span');
+          name.className = 'emotion-btn-name';
+          name.textContent = state;
+
+          btn.appendChild(icon);
+          btn.appendChild(name);
+          btn.title = `Preview: ${state}`;
+
+          btn.addEventListener('click', () => {
+            if (_activeBtn) _activeBtn.classList.remove('active');
+            btn.classList.add('active');
+            _activeBtn = btn;
+            const sound = SOUND_MAP[state];
+            if (sound) Sounds.play(sound);
+            const durMs = (Settings.get('emotionPreviewDuration') || 3) * 1000;
+            Emotion.preview(state, durMs, () => {
+              btn.classList.remove('active');
+              if (_activeBtn === btn) _activeBtn = null;
+            });
           });
+
+          grid.appendChild(btn);
         });
-        emotionGrid.appendChild(btn);
       });
     }
 

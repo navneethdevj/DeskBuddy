@@ -2328,6 +2328,61 @@ body.pip-mode #settings-panel { display: none !important; }
   box-shadow: 0 0 8px rgba(145, 120, 255, 0.35);
 }
 
+/* ── Triple-btn group (Idle Speed / Expressiveness) ───────────── */
+.settings-triple-btn {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.settings-triple-btn-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  color: rgba(200, 185, 255, 0.55);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 4px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.settings-triple-btn-item:hover {
+  background: rgba(160, 140, 255, 0.12);
+  border-color: rgba(160, 140, 255, 0.28);
+  color: rgba(230, 220, 255, 0.90);
+}
+.settings-triple-btn-item.active {
+  background: linear-gradient(135deg, rgba(155, 130, 255, 0.60), rgba(110, 85, 225, 0.60));
+  border-color: rgba(165, 145, 255, 0.55);
+  color: rgba(245, 240, 255, 1);
+  box-shadow: 0 0 8px rgba(150, 125, 255, 0.32);
+}
+
+/* ── Section header icon ──────────────────────────────────────── */
+.settings-section-icon {
+  font-size: 11px;
+  margin-right: 5px;
+  opacity: 0.55;
+}
+
+/* ── Emotion category grouping ────────────────────────────────── */
+.emotion-category-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(200, 185, 255, 0.35);
+  padding: 8px 2px 4px;
+  margin-top: 2px;
+}
+.emotion-category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
 /* ── Companion size scale (applied via body class) ─────────── */
 body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
 body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
@@ -2376,30 +2431,46 @@ body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom 
 .emotion-test-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 7px;
+  border-radius: 8px;
   color: rgba(215, 205, 255, 0.60);
   font-family: inherit;
-  font-size: 10.5px;
-  padding: 5px 3px;
+  font-size: 10px;
+  padding: 6px 4px 5px;
   cursor: pointer;
   text-align: center;
   text-transform: lowercase;
-  line-height: 1;
-  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s, transform 0.12s;
   --glow-color: 155, 135, 255;
   -webkit-app-region: no-drag;
 }
+.emotion-btn-icon {
+  font-size: 11px;
+  line-height: 1;
+  display: block;
+  opacity: 0.75;
+}
+.emotion-btn-name {
+  font-size: 9.5px;
+  display: block;
+}
 .emotion-test-btn:hover {
-  background: rgba(var(--glow-color), 0.12);
-  border-color: rgba(var(--glow-color), 0.28);
-  box-shadow: 0 0 7px rgba(var(--glow-color), 0.22);
+  background: rgba(var(--glow-color), 0.13);
+  border-color: rgba(var(--glow-color), 0.30);
+  box-shadow: 0 0 8px rgba(var(--glow-color), 0.22);
   color: rgba(255, 255, 255, 0.90);
+  transform: translateY(-1px) scale(1.04);
 }
 .emotion-test-btn.active {
-  background: rgba(var(--glow-color), 0.20);
-  border-color: rgba(var(--glow-color), 0.45);
-  box-shadow: 0 0 12px rgba(var(--glow-color), 0.38);
+  background: rgba(var(--glow-color), 0.22);
+  border-color: rgba(var(--glow-color), 0.50);
+  box-shadow: 0 0 14px rgba(var(--glow-color), 0.40);
   color: rgba(255, 255, 255, 1);
+  transform: scale(1.06);
 }
 
 /* =====================================================================
