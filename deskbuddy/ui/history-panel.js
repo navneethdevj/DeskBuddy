@@ -272,11 +272,11 @@ const HistoryPanel = (() => {
 
     const WEEKS = 16;
     const DAYS  = 7;
-    const GAP   = 2;
+    const GAP   = 3;
 
     // Compute cell size to fill the canvas wrapper width
-    const wrapW = (canvas.parentElement?.clientWidth || 240);
-    const CELL  = Math.max(8, Math.floor((wrapW - (WEEKS - 1) * GAP) / WEEKS));
+    const wrapW = (canvas.parentElement?.clientWidth || 280);
+    const CELL  = Math.max(10, Math.floor((wrapW - (WEEKS - 1) * GAP) / WEEKS));
     const UNIT  = CELL + GAP;
 
     const W = WEEKS * UNIT - GAP;
@@ -291,43 +291,44 @@ const HistoryPanel = (() => {
     const dayColEl = document.getElementById('hp-cal-day-col');
     if (dayColEl) {
       Array.from(dayColEl.querySelectorAll('span')).forEach(span => {
-        span.style.height      = CELL + 'px';
+        span.style.height       = CELL + 'px';
         span.style.marginBottom = GAP + 'px';
-        span.style.lineHeight  = CELL + 'px';
+        span.style.lineHeight   = CELL + 'px';
+        span.style.fontSize     = Math.max(7, Math.floor(CELL * 0.55)) + 'px';
       });
     }
 
     const ctx = canvas.getContext('2d');
     ctx.scale(2, 2);
 
-    // Build day map: isoDay → { hasCompleted, hasAttempted }
+    // Build day map: isoDay → { hasCompleted, hasAttempted, totalFocusedMs }
     const dayMap = new Map();
     history.forEach(s => {
       if (!s.date) return;
       const d   = new Date(s.date);
       const key = _isoDay(d);
-      if (!dayMap.has(key)) dayMap.set(key, { hasCompleted: false, hasAttempted: false });
+      if (!dayMap.has(key)) dayMap.set(key, { hasCompleted: false, hasAttempted: false, focusedMs: 0 });
       const e = dayMap.get(key);
       if (s.outcome === 'COMPLETED') e.hasCompleted = true;
       else if (s.outcome === 'FAILED' || s.outcome === 'ABANDONED') e.hasAttempted = true;
+      e.focusedMs += Math.max(0, (s.actualFocusedSeconds || 0)) * 1000;
     });
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const todayDow = (now.getDay() + 6) % 7; // 0=Mon…6=Sun
 
-    // Sunday of current week (end of week for boundary check)
     const thisMonday = new Date(now);
     thisMonday.setDate(now.getDate() - todayDow);
 
     for (let col = 0; col < WEEKS; col++) {
-      // col 0 = oldest week (left), col WEEKS-1 = current week (right)
       const weekOffset = WEEKS - 1 - col;
       for (let row = 0; row < DAYS; row++) {
         const d = new Date(thisMonday);
         d.setDate(thisMonday.getDate() - weekOffset * 7 + row);
 
         const isFuture   = d > now;
+        const isToday    = d.getTime() === now.getTime();
         const isCurrent  = weekOffset === 0;
         const key        = _isoDay(d);
         const info       = dayMap.get(key);
@@ -339,26 +340,40 @@ const HistoryPanel = (() => {
         if (isFuture) {
           fillColor = 'rgba(255,255,255,0.02)';
         } else if (!info) {
-          fillColor = 'rgba(255,255,255,0.05)';
+          fillColor = 'rgba(255,255,255,0.055)';
         } else if (info.hasCompleted) {
+          // Intensity based on focus time (more focus = brighter cell)
+          const intensityHours = Math.min(4, info.focusedMs / 3600000);
+          const alpha = 0.45 + intensityHours * 0.13;
           fillColor = isCurrent
-            ? 'rgba(155,135,255,0.95)'
-            : 'rgba(139,118,255,0.65)';
+            ? `rgba(175,155,255,0.95)`
+            : `rgba(139,118,255,${alpha.toFixed(2)})`;
         } else {
-          fillColor = 'rgba(139,118,255,0.22)';
+          fillColor = 'rgba(139,118,255,0.20)';
         }
 
+        // Cell fill
         ctx.fillStyle = fillColor;
         ctx.beginPath();
-        ctx.roundRect(x, y, CELL, CELL, 2);
+        ctx.roundRect(x, y, CELL, CELL, Math.max(2, CELL * 0.2));
         ctx.fill();
 
-        // Highlight today with a subtle outline
-        if (d.getTime() === now.getTime()) {
-          ctx.strokeStyle = 'rgba(210,195,255,0.80)';
-          ctx.lineWidth   = 1;
+        // Glow for current week completed cells
+        if (!isFuture && info?.hasCompleted && isCurrent) {
+          ctx.shadowColor = 'rgba(175,155,255,0.45)';
+          ctx.shadowBlur  = 4;
           ctx.beginPath();
-          ctx.roundRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1, 2);
+          ctx.roundRect(x, y, CELL, CELL, Math.max(2, CELL * 0.2));
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // Highlight today with a bright outline
+        if (isToday) {
+          ctx.strokeStyle = 'rgba(220,205,255,0.90)';
+          ctx.lineWidth   = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(x + 0.75, y + 0.75, CELL - 1.5, CELL - 1.5, Math.max(2, CELL * 0.18));
           ctx.stroke();
         }
       }
@@ -505,8 +520,8 @@ const HistoryPanel = (() => {
       xLabelMode = 'month';
     }
 
-    const W = (canvas.parentElement?.clientWidth || 360);
-    const H = 120;
+    const W = (canvas.parentElement?.clientWidth || 460);
+    const H = 148;
     canvas.width        = W * 2;
     canvas.height       = H * 2;
     canvas.style.width  = W + 'px';
@@ -515,13 +530,15 @@ const HistoryPanel = (() => {
     const ctx = canvas.getContext('2d');
     ctx.scale(2, 2);
 
-    const PAD    = { top: 12, right: 8, bottom: 24, left: 8 };
+    const PAD    = { top: 14, right: 10, bottom: 26, left: 34 };
     const innerW = W - PAD.left - PAD.right;
     const innerH = H - PAD.top  - PAD.bottom;
 
+    const maxMs = bars && bars.length ? Math.max(...bars.map(b => b.focusedMs), 1) : 1;
+
     if (!bars || !bars.length || bars.every(b => b.focusedMs === 0)) {
       ctx.clearRect(0, 0, W, H);
-      _drawChartBg(ctx, W, H, PAD, innerW, innerH);
+      _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs);
       ctx.font      = '9px "Segoe UI", sans-serif';
       ctx.fillStyle = 'rgba(139,118,255,0.30)';
       ctx.textAlign = 'center';
@@ -531,16 +548,15 @@ const HistoryPanel = (() => {
     }
 
     const n     = bars.length;
-    const maxMs = Math.max(...bars.map(b => b.focusedMs), 1);
     const barW  = Math.max(3, Math.floor((innerW / n) * 0.72));
     const gap   = innerW / n;
 
     // Label frequency: show label every N bars to avoid crowding
-    const labelEvery = n <= 7 ? 1 : n <= 12 ? 1 : n <= 24 ? 4 : n <= 31 ? 5 : 3;
+    const labelEvery = n <= 7 ? 1 : n <= 12 ? 1 : n <= 24 ? 3 : n <= 31 ? 4 : 3;
 
     const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    const DURATION = 550;
+    const DURATION = 600;
     let   startTs  = null;
 
     function _frame(ts) {
@@ -549,7 +565,7 @@ const HistoryPanel = (() => {
       const eased = 1 - Math.pow(1 - raw, 3); // cubic ease-out
 
       ctx.clearRect(0, 0, W, H);
-      _drawChartBg(ctx, W, H, PAD, innerW, innerH);
+      _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs);
 
       // Collect bar center points for the line overlay
       const pts = [];
@@ -566,20 +582,20 @@ const HistoryPanel = (() => {
         if (!isFuture && bar.focusedMs > 0) {
           const grad = ctx.createLinearGradient(0, y, 0, PAD.top + innerH);
           if (isCur) {
-            grad.addColorStop(0, 'rgba(195,175,255,0.95)');
-            grad.addColorStop(1, 'rgba(139,118,255,0.75)');
+            grad.addColorStop(0, 'rgba(210,190,255,0.97)');
+            grad.addColorStop(1, 'rgba(139,118,255,0.80)');
           } else {
-            grad.addColorStop(0, 'rgba(155,135,255,0.55)');
-            grad.addColorStop(1, 'rgba(120,100,220,0.35)');
+            grad.addColorStop(0, 'rgba(165,145,255,0.65)');
+            grad.addColorStop(1, 'rgba(120,100,220,0.38)');
           }
           ctx.fillStyle = grad;
-          ctx.shadowColor = isCur ? 'rgba(155,135,255,0.55)' : 'transparent';
-          ctx.shadowBlur  = isCur ? 8 : 0;
+          ctx.shadowColor = isCur ? 'rgba(175,155,255,0.70)' : 'transparent';
+          ctx.shadowBlur  = isCur ? 10 : 0;
         } else if (isFuture) {
           ctx.fillStyle  = 'rgba(255,255,255,0.04)';
           ctx.shadowBlur = 0;
         } else {
-          ctx.fillStyle  = 'rgba(255,255,255,0.05)';
+          ctx.fillStyle  = 'rgba(255,255,255,0.06)';
           ctx.shadowBlur = 0;
         }
 
@@ -590,7 +606,7 @@ const HistoryPanel = (() => {
           ctx.shadowBlur = 0;
         }
 
-        // Collect point for line (only non-future bars with data)
+        // Collect point for line (only non-future bars)
         if (!isFuture) {
           pts.push({
             x: cx,
@@ -604,10 +620,10 @@ const HistoryPanel = (() => {
           let label = '';
           if (xLabelMode === 'hour') {
             const h = bar.label;
-            if (h === 0) label = '12am';
-            else if (h < 12) label = `${h}am`;
-            else if (h === 12) label = '12pm';
-            else label = `${h - 12}pm`;
+            if (h === 0) label = '12a';
+            else if (h < 12) label = `${h}a`;
+            else if (h === 12) label = '12p';
+            else label = `${h - 12}p`;
           } else if (xLabelMode === 'weekday') {
             label = bar.isToday ? 'Today' : bar.displayLabel || String(bar.label);
           } else if (xLabelMode === 'date') {
@@ -619,17 +635,17 @@ const HistoryPanel = (() => {
 
           ctx.font      = '6.5px "Segoe UI", sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillStyle = isCur ? 'rgba(210,195,255,0.92)'
+          ctx.fillStyle = isCur ? 'rgba(220,205,255,0.95)'
                         : isFuture ? 'rgba(139,118,255,0.18)'
-                        : 'rgba(139,118,255,0.52)';
-          ctx.fillText(label, cx, H - 7);
+                        : 'rgba(155,135,255,0.55)';
+          ctx.fillText(label, cx, H - 8);
           ctx.textAlign = 'left';
         }
       });
 
-      // Draw line/curve overlay connecting bar tops (only when animation is ≥50% done)
-      if (eased > 0.3 && pts.length >= 2) {
-        const lineAlpha = Math.min(1, (eased - 0.3) / 0.7);
+      // Draw filled area + line curve overlay (starts appearing at 40% animation progress)
+      if (eased > 0.25 && pts.length >= 2) {
+        const lineAlpha = Math.min(1, (eased - 0.25) / 0.75);
         _drawLineOverlay(ctx, pts, lineAlpha, PAD, innerH);
       }
 
@@ -646,14 +662,9 @@ const HistoryPanel = (() => {
   function _drawLineOverlay(ctx, pts, alpha, PAD, innerH) {
     if (pts.length < 2) return;
 
-    // Draw bezier curve through bar tops
     ctx.save();
-    ctx.strokeStyle = `rgba(200,185,255,${(0.60 * alpha).toFixed(2)})`;
-    ctx.lineWidth   = 1.5;
-    ctx.lineJoin    = 'round';
-    ctx.lineCap     = 'round';
-    ctx.setLineDash([]);
 
+    // Build bezier path through bar tops
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) {
@@ -662,14 +673,43 @@ const HistoryPanel = (() => {
       const cpX  = (prev.x + cur.x) / 2;
       ctx.bezierCurveTo(cpX, prev.y, cpX, cur.y, cur.x, cur.y);
     }
+
+    // Close path downward to fill area under curve
+    const baseY = PAD.top + innerH;
+    ctx.lineTo(pts[pts.length - 1].x, baseY);
+    ctx.lineTo(pts[0].x, baseY);
+    ctx.closePath();
+
+    // Gradient fill under the curve
+    const fillGrad = ctx.createLinearGradient(0, PAD.top, 0, baseY);
+    fillGrad.addColorStop(0,   `rgba(155,135,255,${(0.18 * alpha).toFixed(2)})`);
+    fillGrad.addColorStop(0.6, `rgba(120,100,220,${(0.08 * alpha).toFixed(2)})`);
+    fillGrad.addColorStop(1,   `rgba(90,70,180,0)`);
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+
+    // Draw the actual line on top
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const cur  = pts[i];
+      const cpX  = (prev.x + cur.x) / 2;
+      ctx.bezierCurveTo(cpX, prev.y, cpX, cur.y, cur.x, cur.y);
+    }
+    ctx.strokeStyle = `rgba(210,195,255,${(0.72 * alpha).toFixed(2)})`;
+    ctx.lineWidth   = 1.5;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.setLineDash([]);
     ctx.stroke();
 
     // Draw dots at each data point
     pts.forEach(p => {
       if (p.hasData) {
-        ctx.fillStyle = `rgba(210,195,255,${(0.85 * alpha).toFixed(2)})`;
+        ctx.fillStyle = `rgba(225,210,255,${(0.90 * alpha).toFixed(2)})`;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
     });
@@ -677,22 +717,41 @@ const HistoryPanel = (() => {
     ctx.restore();
   }
 
-  function _drawChartBg(ctx, W, H, PAD, innerW, innerH) {
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  function _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs) {
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
     ctx.beginPath();
     ctx.roundRect(PAD.left, PAD.top, innerW, innerH, 6);
     ctx.fill();
 
-    // Faint horizontal guide lines
-    ctx.strokeStyle = 'rgba(139,118,255,0.07)';
+    // Faint horizontal guide lines + Y-axis time labels
+    ctx.strokeStyle = 'rgba(139,118,255,0.08)';
     ctx.lineWidth   = 0.5;
     ctx.setLineDash([3, 5]);
-    [0.25, 0.50, 0.75].forEach(frac => {
+    const fracs = [0.25, 0.50, 0.75, 1.0];
+    fracs.forEach(frac => {
       const y = PAD.top + innerH * (1 - frac);
       ctx.beginPath();
       ctx.moveTo(PAD.left, y);
       ctx.lineTo(PAD.left + innerW, y);
       ctx.stroke();
+
+      // Y-axis label (time value)
+      if (maxMs && maxMs > 0) {
+        const labelMs  = maxMs * frac;
+        const labelMin = Math.round(labelMs / 60000);
+        let yLabel = labelMin >= 60
+          ? `${Math.floor(labelMin / 60)}h${labelMin % 60 > 0 ? (labelMin % 60) + 'm' : ''}`
+          : labelMin > 0 ? `${labelMin}m` : '';
+        if (yLabel) {
+          ctx.font      = '5.5px "Segoe UI", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = 'rgba(139,118,255,0.38)';
+          ctx.setLineDash([]);
+          ctx.fillText(yLabel, PAD.left - 3, y + 2);
+          ctx.setLineDash([3, 5]);
+          ctx.textAlign = 'left';
+        }
+      }
     });
     ctx.setLineDash([]);
   }
@@ -787,7 +846,7 @@ const HistoryPanel = (() => {
     const container = document.getElementById('hp-recent-list');
     if (!container) return;
 
-    const recent = history.slice(0, 7);
+    const recent = history.slice(0, 10);
 
     if (!recent.length) {
       container.innerHTML = '<div class="hp-recent-empty">✨ No sessions yet — start your first one!</div>';
@@ -800,7 +859,7 @@ const HistoryPanel = (() => {
     container.innerHTML = recent.map((s, idx) => {
       const outcome = String(s.outcome || 'ABANDONED').toUpperCase();
 
-      // Date: "Mon Apr 12" format
+      // Date: "Mon Apr 12" format + time
       const dateStr = (() => {
         if (!s.date) return '—';
         const d = new Date(s.date);
@@ -808,6 +867,18 @@ const HistoryPanel = (() => {
         const isToday = new Date(d).setHours(0,0,0,0) === new Date().setHours(0,0,0,0);
         if (isToday) return 'Today';
         return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+      })();
+
+      // Time of day
+      const timeStr = (() => {
+        if (!s.date) return '';
+        const d = new Date(s.date);
+        if (!isFinite(d.getTime())) return '';
+        const h = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const ampm = h >= 12 ? 'pm' : 'am';
+        const h12 = h % 12 || 12;
+        return `${h12}:${m}${ampm}`;
       })();
 
       // Duration
@@ -831,7 +902,7 @@ const HistoryPanel = (() => {
       // Goal display
       const goalStr = (() => {
         if (!s.goalText) return '';
-        const trunc = s.goalText.length > 36 ? s.goalText.slice(0, 36) + '…' : s.goalText;
+        const trunc = s.goalText.length > 42 ? s.goalText.slice(0, 42) + '…' : s.goalText;
         if (s.goalAchieved === true)  return `"${trunc}" ✓`;
         if (s.goalAchieved === false) return `"${trunc}" ✗`;
         return `"${trunc}"`;
@@ -850,17 +921,25 @@ const HistoryPanel = (() => {
                        ? ' · <span class="hp-ri-outcome-tag hp-ri-failed-tag" title="Session ended due to distraction">failed</span>'
                        : ' · <span class="hp-ri-outcome-tag hp-ri-abandoned-tag" title="Session was ended early">abandoned</span>';
 
+      // Focus bar (inline progress)
+      const focusBarHtml = scoreNum > 0 ? `
+        <div class="hp-rr-focus-bar" title="Focus: ${scoreNum}%">
+          <div class="hp-rr-focus-fill" style="width:${scoreNum}%;background:${ratingColor}"></div>
+        </div>` : '';
+
       return `
-        <div class="hp-recent-row ${outCls}" style="animation-delay:${idx * 35}ms" title="${outcome === 'COMPLETED' ? 'Completed session' : outcome === 'FAILED' ? 'Session failed (too many distractions)' : 'Session abandoned early'}">
+        <div class="hp-recent-row ${outCls}" style="animation-delay:${idx * 30}ms" title="${outcome === 'COMPLETED' ? 'Completed session' : outcome === 'FAILED' ? 'Session failed (too many distractions)' : 'Session abandoned early'}">
           <div class="hp-rr-left">
             ${catEmoji ? `<span class="hp-rr-cat" title="${_esc(s.category || '')}">${catEmoji}</span>` : ''}
             <span class="hp-rr-date">${_esc(dateStr)}</span>
+            ${timeStr ? `<span class="hp-rr-time">${_esc(timeStr)}</span>` : ''}
             <span class="hp-rr-sep">·</span>
             <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
             ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused">${scoreNum}%</span>` : ''}
             ${outLabel}
           </div>
           <div class="hp-rr-right">
+            ${focusBarHtml}
             ${goalStr ? `<span class="hp-rr-goal" title="Session goal">${_esc(goalStr)}</span>` : ''}
             ${rating ? `<span class="hp-rr-rating" style="color:${ratingColor}" title="Focus grade (A+ = excellent, F = poor)">${rating}</span>` : ''}
           </div>

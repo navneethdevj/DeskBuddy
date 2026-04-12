@@ -2443,7 +2443,9 @@
 
       panel.classList.add('history-panel-visible');
       if (btn) btn.classList.add('history-panel-open');
-      HistoryPanel.refresh();
+      // Defer refresh by one animation frame so the browser has finished
+      // layout (clientWidth is valid for canvas sizing) before drawing.
+      requestAnimationFrame(() => HistoryPanel.refresh());
     }
 
     function _close() {

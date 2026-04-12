@@ -1925,26 +1925,27 @@ body.pip-mode .eyes {
 /* Mini timer — bottom-center, readable at all preset sizes */
 body.pip-mode #session-timer {
   position: fixed;
-  bottom: 7px;
+  bottom: 8px;
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  opacity: 0.88;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(120, 135, 235, 0.4);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.95;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.95), 0 0 16px rgba(120, 135, 235, 0.55);
   pointer-events: none;
   -webkit-user-select: none;
   z-index: 1001;
   animation: none;
-  padding: 2px 8px;
-  background: rgba(0,0,0,0.28);
-  border-radius: 6px;
+  padding: 3px 10px;
+  background: rgba(0,0,0,0.38);
+  border-radius: 8px;
+  white-space: nowrap;
 }
 /* In circle/rounded mode pull the timer up so it doesn't clip outside the curve */
 body.pip-shape-circle.pip-mode  #session-timer,
-body.pip-shape-rounded.pip-mode #session-timer { bottom: 13px; }
+body.pip-shape-rounded.pip-mode #session-timer { bottom: 16px; }
 
 /* ── Full-screen mode ─────────────────────────────────────────────── */
 body.full-mode {
@@ -2950,7 +2951,7 @@ body.pip-mode  #history-btn { display: none !important; }
   position: fixed;
   top: 58px;
   left: 14px;
-  width: 420px;
+  width: 500px;
   max-height: calc(100vh - 80px);
   z-index: 2990;
   display: none;
@@ -3427,6 +3428,7 @@ body.pip-mode  #history-panel { display: none !important; }
   border-radius: 12px;
   overflow: hidden;
   position: relative;
+  width: 100%;
 }
 #history-chart-canvas,
 #hp-chart-daily,
@@ -3436,7 +3438,7 @@ body.pip-mode  #history-panel { display: none !important; }
   display: block;
   width: 100%;
   border-radius: 12px;
-  min-height: 80px;
+  min-height: 100px;
 }
 
 /* ── 5. Recent sessions list ─────────────────────────────────────── */
@@ -3491,6 +3493,12 @@ body.pip-mode  #history-panel { display: none !important; }
   font-weight: 700;
   color: rgba(210, 200, 255, 0.88);
 }
+.hp-rr-time {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(155, 140, 220, 0.50);
+  letter-spacing: 0.02em;
+}
 .hp-rr-sep {
   color: rgba(139, 118, 255, 0.30);
   font-weight: 400;
@@ -3521,9 +3529,9 @@ body.pip-mode  #history-panel { display: none !important; }
 }
 .hp-rr-right {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
 .hp-rr-goal {
   font-size: 10px;
@@ -3543,6 +3551,20 @@ body.pip-mode  #history-panel { display: none !important; }
   flex-shrink: 0;
   min-width: 22px;
   text-align: right;
+}
+/* Mini focus progress bar inside each session row */
+.hp-rr-focus-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(139, 118, 255, 0.12);
+  overflow: hidden;
+  width: 100%;
+}
+.hp-rr-focus-fill {
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.75;
+  transition: width 0.5s ease;
 }
 
 /* ── Panel container ────────────────────────────────────────────────── */
