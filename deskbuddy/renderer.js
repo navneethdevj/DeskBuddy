@@ -501,12 +501,12 @@
           Timer.reset();
         }, 50);
 
-        // Show share card modal slightly after celebration fires
+        // Show share card modal after the companion's celebration animation has room to play
         setTimeout(() => {
           if (typeof ShareCard !== 'undefined' && lastSession) {
             ShareCard.show(lastSession, emotion);
           }
-        }, 700);
+        }, 1800);
       }
 
       if (newState === 'FAILED' || newState === 'ABANDONED') {
