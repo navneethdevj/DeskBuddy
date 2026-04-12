@@ -704,9 +704,34 @@
       <div class="hp-section">
         <div class="hp-section-label">this week</div>
         <div class="hp-stat-row">
-          <div class="hp-stat-card hp-stat-card-wide">
+          <div class="hp-stat-card">
             <div id="hstat-week-focused" class="hp-stat-val">—</div>
             <div class="hp-stat-lbl">focused</div>
+          </div>
+          <div class="hp-stat-card">
+            <div id="hstat-week-sessions" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">sessions</div>
+          </div>
+        </div>
+        <div class="hp-stat-row" style="margin-top:6px">
+          <div class="hp-stat-card hp-stat-card-wide">
+            <div class="hp-stat-val"><span id="hstat-week-streak">0</span><span class="hp-stat-unit"> d</span></div>
+            <div class="hp-stat-lbl">🔥 current streak</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── THIS MONTH ─────────────────────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-label">this month</div>
+        <div class="hp-stat-row">
+          <div class="hp-stat-card">
+            <div id="hstat-month-focused" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">focused</div>
+          </div>
+          <div class="hp-stat-card">
+            <div id="hstat-month-sessions" class="hp-stat-val">—</div>
+            <div class="hp-stat-lbl">sessions</div>
           </div>
         </div>
       </div>
@@ -740,7 +765,14 @@
 
       <!-- ── STREAK CALENDAR ────────────────────────────────────────── -->
       <div class="hp-section">
-        <div class="hp-section-label">16-week activity</div>
+        <div class="hp-graph-header">
+          <span class="hp-section-label">activity</span>
+          <div class="hgraph-pills">
+            <button class="hcal-pill active" data-calview="activity">16w</button>
+            <button class="hcal-pill" data-calview="month">mo</button>
+            <button class="hcal-pill" data-calview="week">wk</button>
+          </div>
+        </div>
         <div class="hp-calendar-wrap">
           <canvas id="streak-calendar-canvas"></canvas>
         </div>

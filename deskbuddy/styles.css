@@ -3077,7 +3077,7 @@ body.pip-mode  #history-panel { display: none !important; }
   display: flex;
   gap: 3px;
 }
-.hgraph-pill {
+.hgraph-pill, .hcal-pill {
   font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -3090,11 +3090,11 @@ body.pip-mode  #history-panel { display: none !important; }
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   -webkit-app-region: no-drag;
 }
-.hgraph-pill:hover {
+.hgraph-pill:hover, .hcal-pill:hover {
   background: rgba(155, 135, 255, 0.10);
   color: rgba(195, 180, 255, 0.80);
 }
-.hgraph-pill.active {
+.hgraph-pill.active, .hcal-pill.active {
   background: rgba(155, 135, 255, 0.18);
   color: rgba(215, 200, 255, 0.92);
   border-color: rgba(155, 135, 255, 0.35);
