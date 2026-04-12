@@ -1321,9 +1321,13 @@ const Brain = (() => {
       // Update focus timer display
       const timerEl = document.getElementById('focus-timer');
       if (timerEl) {
-        const m = String(Math.floor(_focusSecs / 60)).padStart(2, '0');
-        const s = String(_focusSecs % 60).padStart(2, '0');
-        timerEl.textContent = `focus ${m}:${s}`;
+        const h = Math.floor(_focusSecs / 3600);
+        const m = Math.floor((_focusSecs % 3600) / 60);
+        const s = _focusSecs % 60;
+        const timeStr = h > 0
+          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+          : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        timerEl.textContent = `focus ${timeStr}`;
 
         // Update color to reflect session timer state
         const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';

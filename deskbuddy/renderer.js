@@ -501,10 +501,16 @@
           Timer.reset();
         }, 50);
 
-        // Show share card modal after the companion's celebration animation has room to play
+        // Show share card modal after the companion's celebration animation has room to play.
+        // If in PiP mode, defer until the user returns to full-screen so the modal
+        // doesn't cover the PiP window and block the expand button.
         setTimeout(() => {
           if (typeof ShareCard !== 'undefined' && lastSession) {
-            ShareCard.show(lastSession, emotion);
+            if (_isFullMode) {
+              ShareCard.show(lastSession, emotion);
+            } else {
+              _pendingShareCard = { sessionData: lastSession, emotion };
+            }
           }
         }, 1800);
       }
@@ -855,6 +861,7 @@
   // The window is always interactive in PiP mode — no click-through.
 
   let _isFullMode = true;  // starts in full-screen
+  let _pendingShareCard = null; // queued when session ends while in PiP mode
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
 
@@ -864,6 +871,14 @@
     document.body.classList.remove('pip-mode');
     document.body.classList.add('full-mode');
     if (window.electronAPI) window.electronAPI.enterFullMode();
+    // Show share card that was deferred because the session ended while in PiP mode
+    if (_pendingShareCard) {
+      const { sessionData, emotion } = _pendingShareCard;
+      _pendingShareCard = null;
+      setTimeout(() => {
+        if (typeof ShareCard !== 'undefined') ShareCard.show(sessionData, emotion);
+      }, 400);
+    }
   }
 
   function _exitFullMode() {
@@ -889,6 +904,13 @@
         _isFullMode = true;
         document.body.classList.remove('pip-mode');
         document.body.classList.add('full-mode');
+        if (_pendingShareCard) {
+          const { sessionData, emotion } = _pendingShareCard;
+          _pendingShareCard = null;
+          setTimeout(() => {
+            if (typeof ShareCard !== 'undefined') ShareCard.show(sessionData, emotion);
+          }, 400);
+        }
       });
       window.electronAPI.onFullModeExited(() => {
         _isFullMode = false;
