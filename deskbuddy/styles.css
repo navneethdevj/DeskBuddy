@@ -1758,6 +1758,9 @@ body.pip-mode {
 
 /* Show compact-only controls, hide full-mode controls */
 body.pip-mode #compact-expand-btn { display: block; }
+/* In circular PiP the hover overlay's expand button is sufficient —
+   hide the always-visible button to keep the bubble clean. */
+body.pip-shape-circle.pip-mode #compact-expand-btn { display: none; }
 
 /* Hide full-mode button and non-essential UI in compact */
 body.pip-mode #full-collapse-btn,
@@ -1767,82 +1770,84 @@ body.pip-mode #focus-timer,
 body.pip-mode #attention-bar,
 body.pip-mode #tear-overlay { display: none; }
 
-/* ── WhatsApp-style circular floating bubble ───────────────────────
-   The entire #world is clipped to a circle. Because the Electron
-   window is transparent, the corners outside the circle are invisible
-   — giving a perfect floating bubble effect exactly like WhatsApp's
-   call PiP on Android and desktop.                                  */
+/* ── PiP floating bubble — base shape & glow ───────────────────────
+   `body.pip-mode #world` is the bubble container.
+   Shape is driven by the `pip-shape-*` body class (circle / square).
+   Glow colours are driven by CSS custom-properties that are set by
+   the emotion attribute-selectors below; only the COLOURS change,
+   not the animation name → no animation restart → no flash.        */
 body.pip-mode #world {
-  border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(ellipse at 40% 35%, rgba(38, 30, 72, 0.96) 0%, rgba(10, 8, 22, 0.98) 100%);
-  box-shadow:
-    0 0 0 2px rgba(130, 145, 255, 0.55),
-    0 0 18px rgba(120, 135, 235, 0.30),
-    0 0 44px rgba(100, 110, 210, 0.15),
-    0 8px 32px rgba(0, 0, 0, 0.60);
-  animation: pipBorderPulse 3.5s ease-in-out infinite;
-  /* Pop-in entrance when first entering PiP mode */
-  animation: pipBorderPulse 3.5s ease-in-out infinite, pipEntrance 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  /* The glow animation reads --pip-glow-a/b custom properties.
+     Because the animation name never changes, swapping colours
+     only updates the animated property value in-place — no flash. */
+  animation: pipGlow 3.5s ease-in-out infinite;
+  /* Default glow colours (purple/default emotion) */
+  --pip-glow-a: 0 0 0 2px rgba(130, 145, 255, 0.55), 0 0 18px rgba(120, 135, 235, 0.30), 0 0 44px rgba(100, 110, 210, 0.15), 0 8px 32px rgba(0, 0, 0, 0.60);
+  --pip-glow-b: 0 0 0 2px rgba(160, 175, 255, 0.70), 0 0 26px rgba(145, 160, 255, 0.42), 0 0 60px rgba(120, 130, 230, 0.22), 0 8px 36px rgba(0, 0, 0, 0.65);
+}
+
+/* ── Shape variants ─────────────────────────────────────────────── */
+/* Circle (default, WhatsApp-style) */
+body.pip-shape-circle.pip-mode #world {
+  border-radius: 50%;
+}
+/* Square (rounded-rectangle) */
+body.pip-shape-square.pip-mode #world {
+  border-radius: 16px;
+}
+/* Fallback when no shape class is set yet */
+body.pip-mode #world {
+  border-radius: 50%;
+}
+
+/* ── Entrance animation ─────────────────────────────────────────────
+   Applied via the one-shot `pip-entering` body class, which JS adds
+   when collapsing to PiP and removes after the animation completes.
+   This keeps `pipEntrance` completely separate from the glow cycle
+   so emotion changes never restart the entrance animation.          */
+body.pip-entering.pip-mode #world {
+  animation: pipGlow 3.5s ease-in-out infinite, pipEntrance 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @keyframes pipEntrance {
-  from {
-    transform: scale(0.55);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.55); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
-@keyframes pipBorderPulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 2px rgba(130, 145, 255, 0.55),
-      0 0 18px rgba(120, 135, 235, 0.30),
-      0 0 44px rgba(100, 110, 210, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.60);
-  }
-  50% {
-    box-shadow:
-      0 0 0 2px rgba(160, 175, 255, 0.70),
-      0 0 26px rgba(145, 160, 255, 0.42),
-      0 0 60px rgba(120, 130, 230, 0.22),
-      0 8px 36px rgba(0, 0, 0, 0.65);
-  }
+/* Single glow keyframe — colours come from the CSS custom-properties
+   set by the emotion-attribute selectors below.                     */
+@keyframes pipGlow {
+  0%, 100% { box-shadow: var(--pip-glow-a); }
+  50%       { box-shadow: var(--pip-glow-b); }
 }
 
-/* Emotion-reactive glow ring — JS sets data-pip-emotion on #world */
+/* ── Emotion-reactive glow colours ──────────────────────────────────
+   Only the CSS custom properties change; the animation name stays
+   `pipGlow` → no restart → no flash/disappear on emotion change.   */
 body.pip-mode #world[data-pip-emotion="happy"],
 body.pip-mode #world[data-pip-emotion="overjoyed"],
 body.pip-mode #world[data-pip-emotion="excited"] {
-  animation: pipBorderPulseHappy 2.8s ease-in-out infinite;
-}
-@keyframes pipBorderPulseHappy {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 210, 80, 0.65), 0 0 22px rgba(255, 200, 60, 0.35), 0 8px 32px rgba(0,0,0,0.55); }
-  50%       { box-shadow: 0 0 0 2px rgba(255, 230, 100, 0.85), 0 0 34px rgba(255, 215, 80, 0.50), 0 8px 36px rgba(0,0,0,0.60); }
+  animation-duration: 2.8s;
+  --pip-glow-a: 0 0 0 2px rgba(255, 210, 80, 0.65), 0 0 22px rgba(255, 200, 60, 0.35), 0 8px 32px rgba(0,0,0,0.55);
+  --pip-glow-b: 0 0 0 2px rgba(255, 230, 100, 0.85), 0 0 34px rgba(255, 215, 80, 0.50), 0 8px 36px rgba(0,0,0,0.60);
 }
 
 body.pip-mode #world[data-pip-emotion="suspicious"],
 body.pip-mode #world[data-pip-emotion="grumpy"],
 body.pip-mode #world[data-pip-emotion="pouty"] {
-  animation: pipBorderPulseWarn 3s ease-in-out infinite;
-}
-@keyframes pipBorderPulseWarn {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 140, 60, 0.60), 0 0 20px rgba(255, 130, 50, 0.28), 0 8px 32px rgba(0,0,0,0.55); }
-  50%       { box-shadow: 0 0 0 2px rgba(255, 165, 80, 0.80), 0 0 30px rgba(255, 145, 60, 0.42), 0 8px 36px rgba(0,0,0,0.60); }
+  animation-duration: 3s;
+  --pip-glow-a: 0 0 0 2px rgba(255, 140, 60, 0.60), 0 0 20px rgba(255, 130, 50, 0.28), 0 8px 32px rgba(0,0,0,0.55);
+  --pip-glow-b: 0 0 0 2px rgba(255, 165, 80, 0.80), 0 0 30px rgba(255, 145, 60, 0.42), 0 8px 36px rgba(0,0,0,0.60);
 }
 
 body.pip-mode #world[data-pip-emotion="scared"],
 body.pip-mode #world[data-pip-emotion="sad"],
 body.pip-mode #world[data-pip-emotion="crying"] {
-  animation: pipBorderPulseSad 4s ease-in-out infinite;
-}
-@keyframes pipBorderPulseSad {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(90, 150, 255, 0.55), 0 0 18px rgba(80, 140, 255, 0.26), 0 8px 32px rgba(0,0,0,0.55); }
-  50%       { box-shadow: 0 0 0 2px rgba(110, 170, 255, 0.72), 0 0 28px rgba(100, 155, 255, 0.38), 0 8px 36px rgba(0,0,0,0.60); }
+  animation-duration: 4s;
+  --pip-glow-a: 0 0 0 2px rgba(90, 150, 255, 0.55), 0 0 18px rgba(80, 140, 255, 0.26), 0 8px 32px rgba(0,0,0,0.55);
+  --pip-glow-b: 0 0 0 2px rgba(110, 170, 255, 0.72), 0 0 28px rgba(100, 155, 255, 0.38), 0 8px 36px rgba(0,0,0,0.60);
 }
 
 /* ── PiP hover overlay ─────────────────────────────────────────────
