@@ -165,6 +165,38 @@
               <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
             </div>
           </div>
+
+          <!-- Daily focus goal -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Daily focus goal</div>
+              <div class="settings-row-sublabel">Screen Time-style daily progress arc</div>
+            </div>
+            <select id="daily-goal-select" class="settings-select">
+              <option value="0">Off</option>
+              <option value="60">1 h</option>
+              <option value="90">1.5 h</option>
+              <option value="120">2 h</option>
+              <option value="180">3 h</option>
+              <option value="240">4 h</option>
+            </select>
+          </div>
+
+          <!-- Distraction budget -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Distraction budget</div>
+              <div class="settings-row-sublabel">Warn after N distractions per session</div>
+            </div>
+            <select id="distraction-budget-select" class="settings-select">
+              <option value="0">Unlimited</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+
         </div>
       </div>
       <hr class="settings-divider">
@@ -589,6 +621,17 @@
                     aria-label="increase break">+</button>
           </div>
         </div>
+        <!-- Session category selector — Screen Time-style activity tag -->
+        <div class="sp-category-row">
+          <label class="sp-label">category</label>
+          <div class="sp-category-pills" id="sp-category-pills">
+            <button class="sp-cat-pill active" data-cat="study"    title="Study">📚 study</button>
+            <button class="sp-cat-pill"        data-cat="work"     title="Work">💼 work</button>
+            <button class="sp-cat-pill"        data-cat="creative" title="Creative">🎨 create</button>
+            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">📖 read</button>
+            <button class="sp-cat-pill"        data-cat="other"    title="Other">⚙️ other</button>
+          </div>
+        </div>
         <div class="sp-goal-row">
           <input type="text" id="goal-input" class="sp-goal-input"
             placeholder="what are you working on?" maxlength="80" autocomplete="off">
@@ -596,6 +639,18 @@
         <button id="start-session" class="sp-btn sp-btn-primary">
           ✦ begin session
         </button>
+
+        <!-- Daily focus goal progress — Screen Time-style daily target arc -->
+        <div class="sp-daily-goal-row" id="sp-daily-goal-row" style="display:none">
+          <svg class="sp-dg-svg" viewBox="0 0 44 44" aria-hidden="true">
+            <circle class="sp-dg-track" cx="22" cy="22" r="18"/>
+            <circle id="sp-dg-fill"  class="sp-dg-fill"  cx="22" cy="22" r="18"/>
+          </svg>
+          <div class="sp-dg-text">
+            <div id="sp-dg-today" class="sp-dg-today">0m today</div>
+            <div id="sp-dg-goal"  class="sp-dg-goal">— goal</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -626,6 +681,12 @@
           <div id="sp-focus-stat-fill" class="sp-focus-stat-fill"></div>
         </div>
         <div id="sp-focus-stat-pct" class="sp-focus-stat-pct">–</div>
+      </div>
+      <!-- Distraction budget — Screen Time App Limits style -->
+      <div class="sp-budget-row" id="sp-budget-row" style="display:none">
+        <div class="sp-budget-label">budget</div>
+        <div class="sp-budget-dots" id="sp-budget-dots"></div>
+        <div id="sp-budget-count" class="sp-budget-count"></div>
       </div>
       <div class="sp-controls">
         <button id="pause-session" class="sp-btn sp-btn-secondary">
@@ -882,6 +943,41 @@
       <span id="dnd-cancel-text">end</span>
     </div>
 
+  </div>
+
+  <!-- Weekly Report modal — Screen Time-style weekly summary, auto-shown on new week -->
+  <div id="weekly-report-modal" role="dialog" aria-modal="true"
+       aria-label="Weekly focus report" aria-hidden="true">
+    <div id="weekly-report-card">
+      <div class="wr-header">
+        <div class="wr-subtitle">✦ weekly report</div>
+        <div id="wr-date-range" class="wr-date-range"></div>
+      </div>
+      <div class="wr-hero">
+        <div id="wr-total-time" class="wr-big-val">0h</div>
+        <div class="wr-big-lbl">total focus time</div>
+        <div id="wr-change" class="wr-change"></div>
+      </div>
+      <div class="wr-stats-grid">
+        <div class="wr-stat">
+          <div id="wr-sessions"  class="wr-sv">0</div>
+          <div class="wr-sl">sessions</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-avg-focus" class="wr-sv">—</div>
+          <div class="wr-sl">avg focus</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-best-day"  class="wr-sv">—</div>
+          <div class="wr-sl">best day</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-top-cat"   class="wr-sv">—</div>
+          <div class="wr-sl">top category</div>
+        </div>
+      </div>
+      <button id="wr-close-btn" class="sp-btn sp-btn-primary">✦ got it</button>
+    </div>
   </div>
 
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that

@@ -5079,3 +5079,324 @@ body.pip-mode #dnd-indicator {
   border-color: rgba(170, 140, 255, 0.52);
   color:        rgba(220, 205, 255, 0.95);
 }
+
+/* =====================================================================
+   SCREEN TIME — CATEGORY PILLS
+   ===================================================================== */
+
+.sp-category-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sp-category-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  -webkit-app-region: no-drag;
+}
+
+.sp-cat-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  color: rgba(195, 182, 255, 0.48);
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+}
+
+.sp-cat-pill:hover {
+  background: rgba(155, 135, 255, 0.12);
+  border-color: rgba(155, 135, 255, 0.28);
+  color: rgba(220, 210, 255, 0.80);
+}
+
+.sp-cat-pill.active {
+  background: rgba(155, 135, 255, 0.20);
+  border-color: rgba(165, 145, 255, 0.50);
+  color: rgba(230, 222, 255, 0.95);
+  box-shadow: 0 0 8px rgba(145, 120, 255, 0.18) inset;
+}
+
+/* category emoji in history recent-sessions row */
+.hp-rr-cat {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* =====================================================================
+   SCREEN TIME — DAILY FOCUS GOAL ARC
+   ===================================================================== */
+
+.sp-daily-goal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 2px;
+}
+
+/* SVG arc — rotated so arc begins at 12 o'clock */
+.sp-dg-svg {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.sp-dg-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3.5;
+}
+
+.sp-dg-fill {
+  fill: none;
+  stroke: rgba(155, 135, 255, 0.80);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 113.1;
+  stroke-dashoffset: 113.1;   /* fully empty by default */
+  transition: stroke-dashoffset 1.2s ease, stroke 0.6s ease;
+  filter: drop-shadow(0 0 3px rgba(145, 120, 255, 0.32));
+}
+
+/* Gold when goal is reached */
+.sp-dg-fill.sp-dg-fill-done {
+  stroke: rgba(255, 215, 80, 0.92);
+  filter: drop-shadow(0 0 5px rgba(255, 210, 60, 0.42));
+}
+
+.sp-dg-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-dg-today {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(225, 215, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-dg-goal {
+  font-size: 9.5px;
+  color: rgba(175, 162, 255, 0.42);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* Goal-reached state: gold text */
+#sp-daily-goal-row.goal-reached .sp-dg-today {
+  color: rgba(255, 218, 90, 0.95);
+}
+#sp-daily-goal-row.goal-reached .sp-dg-goal {
+  color: rgba(255, 210, 70, 0.55);
+}
+
+/* =====================================================================
+   SCREEN TIME — DISTRACTION BUDGET
+   ===================================================================== */
+
+.sp-budget-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0 2px;
+  opacity: 0.82;
+}
+
+.sp-budget-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(200, 220, 255, 0.50);
+  flex-shrink: 0;
+  min-width: 40px;
+}
+
+.sp-budget-dots {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  align-items: center;
+}
+
+.sp-budget-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(80, 220, 170, 0.70);
+  box-shadow: 0 0 4px rgba(60, 200, 150, 0.30);
+  transition: background 0.4s ease, box-shadow 0.4s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sp-budget-dot.used {
+  background: rgba(255, 90, 90, 0.70);
+  box-shadow: 0 0 4px rgba(255, 60, 60, 0.30);
+}
+
+.sp-budget-dot.over {
+  background: rgba(255, 60, 60, 0.90);
+  box-shadow: 0 0 6px rgba(255, 40, 40, 0.50);
+  animation: budgetDotPulse 0.7s ease-in-out infinite;
+}
+
+@keyframes budgetDotPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.25); }
+}
+
+.sp-budget-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(200, 220, 255, 0.52);
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Budget exceeded flash */
+.sp-budget-row.budget-exceeded {
+  animation: budgetRowFlash 0.5s ease-in-out;
+}
+
+@keyframes budgetRowFlash {
+  0%, 100% { opacity: 0.82; }
+  40%       { opacity: 1; }
+}
+
+/* =====================================================================
+   SCREEN TIME — WEEKLY REPORT MODAL
+   ===================================================================== */
+
+#weekly-report-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 20, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 3200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.30s ease;
+  -webkit-app-region: no-drag;
+}
+
+#weekly-report-modal[aria-hidden="false"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#weekly-report-card {
+  background: linear-gradient(155deg, rgba(26, 20, 50, 0.96), rgba(18, 14, 36, 0.98));
+  border: 1px solid rgba(165, 145, 255, 0.22);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  width: 240px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55),
+              0 0 0 1px rgba(155, 135, 255, 0.10) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transform: scale(0.92) translateY(8px);
+  transition: transform 0.30s cubic-bezier(0.34, 1.48, 0.64, 1);
+}
+
+#weekly-report-modal[aria-hidden="false"] #weekly-report-card {
+  transform: scale(1) translateY(0);
+}
+
+.wr-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wr-subtitle {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.55);
+}
+
+.wr-date-range {
+  font-size: 11px;
+  color: rgba(210, 200, 255, 0.62);
+}
+
+.wr-hero {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.wr-big-val {
+  font-size: 32px;
+  font-weight: 200;
+  letter-spacing: 0.04em;
+  color: rgba(240, 232, 255, 0.96);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.wr-big-lbl {
+  font-size: 10px;
+  color: rgba(175, 162, 255, 0.45);
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+
+.wr-change {
+  font-size: 11px;
+  margin-top: 6px;
+  font-weight: 500;
+  color: rgba(200, 190, 255, 0.65);
+}
+
+.wr-change.up   { color: rgba(68, 220, 165, 0.92); }
+.wr-change.down { color: rgba(255, 110, 110, 0.85); }
+.wr-change.same { color: rgba(175, 162, 255, 0.55); }
+
+.wr-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.wr-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.wr-sv {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(225, 215, 255, 0.90);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-sl {
+  font-size: 9px;
+  color: rgba(175, 162, 255, 0.42);
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}

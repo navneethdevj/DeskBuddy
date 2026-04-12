@@ -431,6 +431,10 @@ const HistoryPanel = (() => {
         return `"${trunc}"`;
       })();
 
+      // Category emoji
+      const CATEGORY_EMOJI = { study: '📚', work: '💼', creative: '🎨', reading: '📖', other: '⚙️' };
+      const catEmoji = s.category ? (CATEGORY_EMOJI[s.category] || '') : '';
+
       // Outcome colour class
       const outCls = outcome === 'COMPLETED' ? 'hp-ri-completed'
                    : outcome === 'FAILED'    ? 'hp-ri-failed'
@@ -444,6 +448,7 @@ const HistoryPanel = (() => {
       return `
         <div class="hp-recent-row ${outCls}" style="animation-delay:${idx * 35}ms">
           <div class="hp-rr-left">
+            ${catEmoji ? `<span class="hp-rr-cat" title="${_esc(s.category || '')}">${catEmoji}</span>` : ''}
             <span class="hp-rr-date">${_esc(dateStr)}</span>
             <span class="hp-rr-sep">·</span>
             <span class="hp-rr-dur">${durMins}m</span>

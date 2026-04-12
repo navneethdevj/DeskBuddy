@@ -270,11 +270,12 @@ const Session = (() => {
   }
 
   /**
-   * startNew(mins, goal?) — begin a new session.
-   * @param {number} mins   — intended session duration in minutes
-   * @param {string} [goal] — optional goal text (max 100 chars)
+   * startNew(mins, goal?, category?) — begin a new session.
+   * @param {number} mins      — intended session duration in minutes
+   * @param {string} [goal]    — optional goal text (max 100 chars)
+   * @param {string} [category] — activity category: 'study'|'work'|'creative'|'reading'|'other'
    */
-  function startNew(mins, goal) {
+  function startNew(mins, goal, category) {
     if (_state === STATE.ACTIVE || _state === STATE.PAUSED) return;
 
     _current = {
@@ -288,6 +289,8 @@ const Session = (() => {
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
       moodRating:                null,
+      category:                  (category && ['study','work','creative','reading','other'].includes(category))
+                                   ? category : null,
       focusTimeline:             [],   // { t: elapsedSecs, level: 0-100, state: timerState }
       milestones:                [],   // { t: elapsedSecs, type: 'distraction'|'milestone_5m' }
     };

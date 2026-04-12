@@ -149,7 +149,11 @@
         BreakReminder.setInterval(_getBreakMinutes());
 
         Timer.init(mins);
-        Session.startNew(mins, goal);
+        // Read currently selected category pill
+        const activeCatPill = document.querySelector('.sp-cat-pill.active');
+        const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
+        Settings.set('sessionCategory', category);
+        Session.startNew(mins, goal, category);
         Timer.start();
         const overlay = document.getElementById('goal-overlay');
         if (overlay) overlay.style.display = 'none';
@@ -223,6 +227,29 @@
       sensitivitySel.value = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
       sensitivitySel.addEventListener('change', (e) => Brain.setSensitivity(e.target.value));
     }
+
+    // ── Category pills ─────────────────────────────────────────────────────
+    // Wire activity category buttons, pre-select saved category, and update daily goal arc.
+    const catPillsContainer = document.getElementById('sp-category-pills');
+    if (catPillsContainer) {
+      const savedCat = Settings.get('sessionCategory') || 'study';
+      catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.cat === savedCat);
+        pill.addEventListener('click', () => {
+          catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          Settings.set('sessionCategory', pill.dataset.cat);
+        });
+      });
+    }
+
+    // ── Daily goal arc — initial render ───────────────────────────────────
+    _updateDailyGoalArc();
+
+    // ── Quick-preset duration pills (mouseenter on session icon triggers panel open)
+    // Re-render the daily goal whenever the panel becomes visible (via mouseover)
+    const spIcon = document.getElementById('sp-icon');
+    if (spIcon) spIcon.addEventListener('mouseenter', () => _updateDailyGoalArc());
   }
 
   // ── Stepper helpers ───────────────────────────────────────────────────────
@@ -411,6 +438,8 @@
 
   let _breakCountdownInterval = null;
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
+  let _dailyGoalLastTick      = 0;   // throttle daily goal arc updates during sessions
+  let _budgetWarnedAt         = -1;  // distraction count at which we last warned
 
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState, oldState) => {
@@ -457,6 +486,12 @@
 
         // Immediate companion reaction — only on a fresh start (not resume from pause)
         if (oldState === 'IDLE') _fireSessionStartAnim();
+
+        // Initialize distraction budget display
+        if (oldState === 'IDLE') {
+          const budget = Settings.get('distractionBudget') || 0;
+          _renderBudgetDots(0, budget);
+        }
       }
 
       // Break countdown — start/stop the live update interval
@@ -489,11 +524,11 @@
         goalDisplay.style.display = (newState === 'ACTIVE' && txt) ? '' : 'none';
       }
 
-      // Goal achievement prompt on outcome screen (only for FAILED — goal still relevant)
+      // Goal achievement prompt on outcome screen (FAILED and ABANDONED — goal still relevant)
       const goalPrompt = document.getElementById('goal-prompt');
       if (goalPrompt) {
         const hasGoal = !!(stats?.goalText || Session.getHistory()[0]?.goalText);
-        const isEnd   = newState === 'FAILED';
+        const isEnd   = newState === 'FAILED' || newState === 'ABANDONED';
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
@@ -543,6 +578,13 @@
         if (newState === 'ABANDONED' && typeof Sounds !== 'undefined') Sounds.play('session_fail');
       }
 
+      // After any session end, refresh the daily goal arc and hide budget display
+      if (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+        setTimeout(() => _updateDailyGoalArc(), 200);
+        const budgetRow = document.getElementById('sp-budget-row');
+        if (budgetRow) budgetRow.style.display = 'none';
+      }
+
       // Reset timer state body attribute when session ends
       if (newState === 'IDLE' || newState === 'FAILED' || newState === 'ABANDONED') {
         delete document.body.dataset.timerState;
@@ -571,6 +613,39 @@
         if (fill) fill.style.width = `${pct}%`;
         if (pctEl) pctEl.textContent = `${pct}%`;
       }
+
+      // Distraction budget live update
+      const budget = Settings.get('distractionBudget') || 0;
+      if (budget > 0 && stats) {
+        _renderBudgetDots(stats.distractionCount || 0, budget);
+      }
+
+      // Daily goal arc live update (only every 30s to avoid redraws on every tick)
+      if (!_dailyGoalLastTick || Date.now() - _dailyGoalLastTick > 30000) {
+        _dailyGoalLastTick = Date.now();
+        _updateDailyGoalArc();
+      }
+    });
+
+    // ── Distraction budget: warn when new distraction crosses the budget threshold ──
+    Timer.onStateChange((newState, oldState) => {
+      const budget = Settings.get('distractionBudget') || 0;
+      if (budget <= 0) return;
+      const isDistraction = (newState === 'DISTRACTED' || newState === 'CRITICAL') &&
+                            (oldState === 'FOCUSED'    || oldState === 'DRIFTING');
+      if (!isDistraction) return;
+
+      // Give session.js a tick to increment the count first, then check
+      setTimeout(() => {
+        const s = Session.getCurrentStats ? Session.getCurrentStats() : null;
+        if (!s) return;
+        const used = s.distractionCount || 0;
+        _renderBudgetDots(used, budget);
+        if (used >= budget && used !== _budgetWarnedAt) {
+          _budgetWarnedAt = used;
+          _fireBudgetExceeded();
+        }
+      }, 50);
     });
   }
 
@@ -1083,6 +1158,13 @@
     });
 
     Keybinds.register({
+      id: 'toggle-history',
+      label: 'Open / close history',
+      defaultKey: 'Ctrl+Shift+H',
+      fn: () => document.getElementById('history-btn')?.click(),
+    });
+
+    Keybinds.register({
       id: 'toggle-dnd',
       label: 'Toggle Do Not Disturb',
       defaultKey: 'Ctrl+Shift+D',
@@ -1471,6 +1553,32 @@
     }
     Settings.onChange('timerStep', (v) => {
       if (timerStepSel) timerStepSel.value = String(v);
+    });
+
+    // ── Daily focus goal ─────────────────────────────────────────────────
+    const dailyGoalSel = document.getElementById('daily-goal-select');
+    if (dailyGoalSel) {
+      dailyGoalSel.value = String(Settings.get('dailyFocusGoalMins') || 0);
+      dailyGoalSel.addEventListener('change', (e) => {
+        Settings.set('dailyFocusGoalMins', parseInt(e.target.value, 10));
+        _updateDailyGoalArc();
+      });
+    }
+    Settings.onChange('dailyFocusGoalMins', (v) => {
+      if (dailyGoalSel) dailyGoalSel.value = String(v);
+      _updateDailyGoalArc();
+    });
+
+    // ── Distraction budget ───────────────────────────────────────────────
+    const distractionBudgetSel = document.getElementById('distraction-budget-select');
+    if (distractionBudgetSel) {
+      distractionBudgetSel.value = String(Settings.get('distractionBudget') || 0);
+      distractionBudgetSel.addEventListener('change', (e) => {
+        Settings.set('distractionBudget', parseInt(e.target.value, 10));
+      });
+    }
+    Settings.onChange('distractionBudget', (v) => {
+      if (distractionBudgetSel) distractionBudgetSel.value = String(v);
     });
 
     // ── Session stats (today) ────────────────────────────────────────────
@@ -1901,6 +2009,330 @@
   // Wire the DND Settings section: toggle button, duration selector,
   // and live UI sync when DND activates / deactivates.
 
+  // ── Screen Time helpers ───────────────────────────────────────────────────
+
+  /**
+   * _updateDailyGoalArc()
+   * Reads today's total focused time (history + live session) and renders the
+   * Screen Time-style progress arc and labels in the session idle panel.
+   */
+  function _updateDailyGoalArc() {
+    const row     = document.getElementById('sp-daily-goal-row');
+    const arcFill = document.getElementById('sp-dg-fill');
+    const todayEl = document.getElementById('sp-dg-today');
+    const goalEl  = document.getElementById('sp-dg-goal');
+    if (!row) return;
+
+    const goalMins = Settings.get('dailyFocusGoalMins') || 0;
+
+    if (goalMins <= 0) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+
+    // Today's accumulated focus from completed/active sessions
+    const history    = Session.getHistory ? Session.getHistory() : [];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayMs    = todayStart.getTime();
+
+    const historySecs = history.reduce((acc, s) => {
+      if (!s.date || new Date(s.date).getTime() < todayMs) return acc;
+      return acc + (s.actualFocusedSeconds || 0);
+    }, 0);
+
+    // Add the currently active session's live focused seconds
+    const live    = Session.getCurrentStats ? Session.getCurrentStats() : null;
+    const liveSecs = (live && live.state === 'ACTIVE') ? (live.focusedSeconds || 0) : 0;
+
+    const totalSecs = historySecs + liveSecs;
+    const totalMins = Math.floor(totalSecs / 60);
+
+    // Format label: "1h 25m today"
+    const th = Math.floor(totalMins / 60);
+    const tm = totalMins % 60;
+    const timeStr = th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`;
+    if (todayEl) todayEl.textContent = `${timeStr} today`;
+
+    // Goal label: "/ 2h goal"
+    const gh = Math.floor(goalMins / 60);
+    const gm = goalMins % 60;
+    const goalStr = gh > 0 ? (gm > 0 ? `${gh}h ${gm}m` : `${gh}h`) : `${gm}m`;
+    if (goalEl) goalEl.textContent = `/ ${goalStr} goal`;
+
+    // Arc fill: circumference = 2π × 18 ≈ 113.1
+    const CIRC     = 113.1;
+    const fraction = Math.min(1, totalMins / goalMins);
+    if (arcFill) {
+      arcFill.style.strokeDasharray  = String(CIRC);
+      arcFill.style.strokeDashoffset = String(CIRC * (1 - fraction));
+      arcFill.classList.toggle('sp-dg-fill-done', fraction >= 1);
+    }
+    row.classList.toggle('goal-reached', fraction >= 1);
+
+    // Celebrate the moment the goal is first reached today
+    if (fraction >= 1 && !_dailyGoalCelebratedToday) {
+      _dailyGoalCelebratedToday = true;
+      _fireDailyGoalReached();
+    }
+  }
+
+  let _dailyGoalCelebratedToday = (() => {
+    // Reset on new day
+    const key = 'deskbuddy_goal_celebrated';
+    const stored = sessionStorage.getItem(key);
+    const today = new Date().toDateString();
+    if (stored === today) return true;
+    // On each init, clear stale date and return false so goal can re-celebrate
+    sessionStorage.removeItem(key);
+    return false;
+  })();
+
+  function _fireDailyGoalReached() {
+    sessionStorage.setItem('deskbuddy_goal_celebrated', new Date().toDateString());
+
+    const badge = document.getElementById('milestone-badge');
+    if (badge) {
+      badge.textContent = '🎯 daily goal reached!';
+      badge.classList.add('visible');
+      setTimeout(() => badge.classList.remove('visible'), 4500);
+    }
+
+    if (typeof Sounds !== 'undefined')    Sounds.play('overjoyed_chirp');
+    if (typeof Emotion !== 'undefined')   Emotion.preview('overjoyed', 3500);
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 12; i++) {
+        setTimeout(() => Particles.spawn('excited'), i * 60);
+      }
+    }
+  }
+
+  /**
+   * _renderBudgetDots(used, budget)
+   * Renders the distraction budget dot row in the active session panel.
+   * Green dots = remaining; red dots = used; nothing shown if budget = 0.
+   */
+  function _renderBudgetDots(used, budget) {
+    const row       = document.getElementById('sp-budget-row');
+    const dotsEl    = document.getElementById('sp-budget-dots');
+    const countEl   = document.getElementById('sp-budget-count');
+    if (!row) return;
+
+    if (!budget || budget <= 0) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+
+    if (dotsEl) {
+      dotsEl.innerHTML = '';
+      const MAX_DOTS = Math.min(budget, 10); // cap visual dots at 10
+      for (let i = 0; i < MAX_DOTS; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'sp-budget-dot' +
+          (i < used && used > budget  ? ' over' :
+           i < used                   ? ' used' : '');
+        dotsEl.appendChild(dot);
+      }
+    }
+
+    const remaining = Math.max(0, budget - used);
+    if (countEl) {
+      countEl.textContent = `${remaining}/${budget}`;
+      countEl.style.color = remaining === 0
+        ? 'rgba(255, 90, 90, 0.80)'
+        : remaining <= Math.ceil(budget * 0.4)
+          ? 'rgba(255, 190, 60, 0.80)'
+          : 'rgba(200, 220, 255, 0.55)';
+    }
+  }
+
+  /**
+   * _fireBudgetExceeded()
+   * Flash a warning when the user has used all distraction budget slots.
+   */
+  function _fireBudgetExceeded() {
+    const row = document.getElementById('sp-budget-row');
+    if (row) {
+      row.classList.remove('budget-exceeded');
+      // Force reflow to restart animation
+      void row.offsetWidth;
+      row.classList.add('budget-exceeded');
+    }
+
+    if (typeof Sounds !== 'undefined')  Sounds.play('pouty_mweh');
+    if (typeof Emotion !== 'undefined') Emotion.preview('pouty', 2200);
+
+    const badge = document.getElementById('milestone-badge');
+    if (badge) {
+      badge.textContent = '⚠ distraction budget spent';
+      badge.classList.add('visible');
+      setTimeout(() => badge.classList.remove('visible'), 3000);
+    }
+  }
+
+  /**
+   * _getWeekBounds(weeksAgo)
+   * Returns { start, end } for a calendar week (Mon–Sun) N weeks in the past.
+   */
+  function _getWeekBounds(weeksAgo) {
+    const now     = new Date();
+    const dow     = (now.getDay() + 6) % 7; // Mon=0 … Sun=6
+    const monday  = new Date(now);
+    monday.setDate(now.getDate() - dow - weeksAgo * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday  = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { start: monday, end: sunday };
+  }
+
+  /**
+   * _checkWeeklyReport()
+   * Shows the weekly report modal once per calendar week (Mon–Sun).
+   * Report covers the previous completed week. Skips if no sessions that week.
+   */
+  function _checkWeeklyReport() {
+    const now     = new Date();
+    const dow     = (now.getDay() + 6) % 7;
+    const monday  = new Date(now);
+    monday.setDate(now.getDate() - dow);
+    monday.setHours(0, 0, 0, 0);
+    const thisWeekKey = monday.toDateString();
+
+    const lastShown = Settings.get('weeklyReportLastShown') || '';
+    if (lastShown === thisWeekKey) return; // already shown this week
+
+    const history = Session.getHistory ? Session.getHistory() : [];
+    if (!history.length) return;
+
+    // Get previous week sessions
+    const prev = _getWeekBounds(1);
+    const prevSessions = history.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= prev.start.getTime() && t <= prev.end.getTime();
+    });
+
+    if (!prevSessions.length) return; // nothing to report
+
+    // Mark as shown for this week
+    Settings.set('weeklyReportLastShown', thisWeekKey);
+
+    // Populate and show the modal (slight delay so history panel animates in first)
+    setTimeout(() => _showWeeklyReport(prevSessions, prev.start, prev.end, history), 500);
+  }
+
+  function _showWeeklyReport(sessions, weekStart, weekEnd, allHistory) {
+    const modal = document.getElementById('weekly-report-modal');
+    if (!modal) return;
+
+    // Date range label: "Apr 7 – Apr 13"
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fmtDate = d => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+    const dateRangeEl = document.getElementById('wr-date-range');
+    if (dateRangeEl) dateRangeEl.textContent = `${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`;
+
+    // Total focus time
+    const totalSecs = sessions.reduce((a, s) => a + (s.actualFocusedSeconds || 0), 0);
+    const totalMins = Math.floor(totalSecs / 60);
+    const th = Math.floor(totalMins / 60);
+    const tm = totalMins % 60;
+    const timeStr = th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`;
+    const totalEl = document.getElementById('wr-total-time');
+    if (totalEl) totalEl.textContent = totalMins > 0 ? timeStr : '0m';
+
+    // Comparison: previous-previous week
+    const pp = _getWeekBounds(2);
+    const ppSessions = allHistory.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= pp.start.getTime() && t <= pp.end.getTime();
+    });
+    const ppSecs = ppSessions.reduce((a, s) => a + (s.actualFocusedSeconds || 0), 0);
+    const changeEl = document.getElementById('wr-change');
+    if (changeEl) {
+      const diffMins = Math.round((totalSecs - ppSecs) / 60);
+      const dh = Math.floor(Math.abs(diffMins) / 60);
+      const dm = Math.abs(diffMins) % 60;
+      const diffStr = dh > 0 ? (dm > 0 ? `${dh}h ${dm}m` : `${dh}h`) : `${dm}m`;
+      if (diffMins > 5) {
+        changeEl.textContent = `↑ ${diffStr} more than last week`;
+        changeEl.className   = 'wr-change up';
+      } else if (diffMins < -5) {
+        changeEl.textContent = `↓ ${diffStr} less than last week`;
+        changeEl.className   = 'wr-change down';
+      } else {
+        changeEl.textContent = '→ similar to last week';
+        changeEl.className   = 'wr-change same';
+      }
+    }
+
+    // Sessions count
+    const sessionsEl = document.getElementById('wr-sessions');
+    if (sessionsEl) sessionsEl.textContent = String(sessions.length);
+
+    // Average focus score
+    const completed = sessions.filter(s => s.outcome === 'COMPLETED');
+    let avgScore = null;
+    if (completed.length) {
+      const sum = completed.reduce((acc, s) => {
+        const total   = (s.durationMinutes || 0) * 60;
+        const focused = s.actualFocusedSeconds || 0;
+        return acc + (total > 0 ? (focused / total) * 100 : 0);
+      }, 0);
+      avgScore = Math.round(sum / completed.length);
+    }
+    const avgEl = document.getElementById('wr-avg-focus');
+    if (avgEl) avgEl.textContent = avgScore !== null ? `${avgScore}%` : '—';
+
+    // Best day
+    const byDay = {};
+    sessions.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const key = d.toDateString();
+      byDay[key] = (byDay[key] || 0) + (s.actualFocusedSeconds || 0);
+    });
+    let bestDay = null, bestDaySecs = 0;
+    Object.entries(byDay).forEach(([day, secs]) => {
+      if (secs > bestDaySecs) { bestDaySecs = secs; bestDay = new Date(day); }
+    });
+    const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const bestDayEl = document.getElementById('wr-best-day');
+    if (bestDayEl) bestDayEl.textContent = bestDay ? DAYS[bestDay.getDay()] : '—';
+
+    // Top category
+    const CATEGORY_EMOJI = { study: '📚', work: '💼', creative: '🎨', reading: '📖', other: '⚙️' };
+    const catCounts = {};
+    sessions.forEach(s => {
+      const c = s.category || 'other';
+      catCounts[c] = (catCounts[c] || 0) + 1;
+    });
+    let topCat = null, topCatCount = 0;
+    Object.entries(catCounts).forEach(([cat, cnt]) => {
+      if (cnt > topCatCount) { topCatCount = cnt; topCat = cat; }
+    });
+    const topCatEl = document.getElementById('wr-top-cat');
+    if (topCatEl) {
+      topCatEl.textContent = topCat
+        ? `${CATEGORY_EMOJI[topCat] || '⚙️'} ${topCat}`
+        : '—';
+    }
+
+    // Wire close button (once)
+    const closeBtn = document.getElementById('wr-close-btn');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.setAttribute('aria-hidden', 'true');
+      };
+    }
+
+    // Show
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
   function _wireDND() {
     const toggleBtn  = document.getElementById('dnd-toggle-btn');
     const durSelect  = document.getElementById('dnd-duration-select');
@@ -2036,16 +2468,13 @@
       if (e.key === 'Escape' && _isOpen) _close();
     });
 
-    // Ctrl+Shift+H
-    document.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
-        e.preventDefault();
-        _toggle();
-      }
-    });
+    // Ctrl+Shift+H is handled via Keybinds.register in _wireKeybinds()
 
     // Init pill click handlers
     HistoryPanel.init();
+
+    // Check for weekly report on each open
+    _checkWeeklyReport();
   }
 
 })();

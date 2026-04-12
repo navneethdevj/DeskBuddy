@@ -44,6 +44,11 @@ const Settings = (() => {
     emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
     // ── DND (Do Not Disturb) ──────────────────────────────────────────────
     dndDuration:            25,  // default duration in minutes (0 = infinite / until cancelled)
+    // ── Screen Time-inspired features ────────────────────────────────────
+    dailyFocusGoalMins:     0,   // 0 = disabled; else daily focus target in minutes
+    distractionBudget:      0,   // 0 = unlimited; max distractions allowed per session
+    sessionCategory:        'study', // last-used category pre-selects the pill
+    weeklyReportLastShown:  '',  // toDateString() of Monday when report was last shown
   };
 
   let _current = { ...DEFAULTS };
