@@ -140,25 +140,31 @@ const HistoryPanel = (() => {
       return;
     }
 
+    // Known outcome values — anything else is treated as abandoned
+    const KNOWN_OUTCOMES = new Set(['completed', 'failed', 'abandoned']);
+
     container.innerHTML = recent.map(s => {
-      const outcome   = (s.outcome || 'ABANDONED').toLowerCase();
-      const icon      = outcome === 'completed' ? '✓' : outcome === 'failed' ? '✕' : '~';
-      const badgeTxt  = outcome === 'completed' ? 'done' : outcome === 'failed' ? 'failed' : 'quit';
-      const durMins   = s.durationMinutes || 0;
-      const durLabel  = durMins >= 60
+      const rawOutcome = String(s.outcome || 'ABANDONED').toLowerCase();
+      const outcome    = KNOWN_OUTCOMES.has(rawOutcome) ? rawOutcome : 'abandoned';
+      const icon       = outcome === 'completed' ? '✓' : outcome === 'failed' ? '✕' : '~';
+      const badgeTxt   = outcome === 'completed' ? 'done' : outcome === 'failed' ? 'failed' : 'quit';
+      const durMins    = Math.max(0, parseInt(s.durationMinutes, 10) || 0);
+      const durLabel   = durMins >= 60
         ? `${Math.floor(durMins / 60)}h ${durMins % 60 > 0 ? (durMins % 60) + 'm' : ''}`.trim()
         : `${durMins}m`;
 
       const score = (() => {
         if (outcome !== 'completed') return '';
         const total   = durMins * 60;
-        const focused = s.actualFocusedSeconds || 0;
+        const focused = Math.max(0, parseInt(s.actualFocusedSeconds, 10) || 0);
         return total > 0 ? `${Math.round((focused / total) * 100)}%` : '';
       })();
 
       const timeAgo = (() => {
         if (!s.date) return '';
-        const diff = Date.now() - new Date(s.date).getTime();
+        const t = new Date(s.date).getTime();
+        if (!isFinite(t)) return '';
+        const diff = Date.now() - t;
         const mins  = Math.floor(diff / 60000);
         if (mins < 60)          return `${mins}m ago`;
         const hrs = Math.floor(mins / 60);
@@ -175,12 +181,12 @@ const HistoryPanel = (() => {
           <div class="hp-ri-outcome hp-ri-outcome-${outcome}">${icon}</div>
           <div class="hp-ri-info">
             <div class="hp-ri-top">
-              <span class="hp-ri-duration">${durLabel}</span>
+              <span class="hp-ri-duration">${_esc(durLabel)}</span>
               <span class="hp-ri-badge hp-ri-badge-${outcome}">${badgeTxt}</span>
             </div>
-            <div class="hp-ri-sub">${timeAgo}</div>
+            <div class="hp-ri-sub">${_esc(timeAgo)}</div>
           </div>
-          ${score ? `<div class="hp-ri-score">${score}</div>` : ''}
+          ${score ? `<div class="hp-ri-score">${_esc(score)}</div>` : ''}
         </div>`;
     }).join('');
   }
@@ -498,6 +504,15 @@ const HistoryPanel = (() => {
   function _setText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+  }
+
+  function _esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   return { init, refresh };
