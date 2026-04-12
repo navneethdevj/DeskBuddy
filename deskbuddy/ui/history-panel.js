@@ -56,6 +56,9 @@ const HistoryPanel = (() => {
     { id: 'consistent', icon: '📅', name: 'Consistent',    test: (h, s) => s >= 5  },
   ];
 
+  // Active requestAnimationFrame handle for the line graph animation
+  let _chartRafId = null;
+
   // ── Init ─────────────────────────────────────────────────────────────────
 
   function init() {
@@ -662,22 +665,30 @@ const HistoryPanel = (() => {
     }
   }
 
-  // ── Bar chart ─────────────────────────────────────────────────────────────
+  // ── Line graph (FocusGraph-style) ────────────────────────────────────────
 
+  /**
+   * _drawChart(view) — animated bezier line graph, left-to-right reveal.
+   *
+   * Visual recipe mirrors FocusGraph:
+   *  • Dark plot-area background + faint dashed guide lines
+   *  • Smooth bezier S-curves between data points (horizontal mid-point CPs)
+   *  • Gradient area fill under the curve (purple → transparent)
+   *  • Glowing dot on the current / today data point
+   *  • Axis labels revealed as the animation sweeps right
+   *  • Ease-out cubic timing (matches FocusGraph feel)
+   */
   function _drawChart(view) {
     const canvas = document.getElementById('history-chart-canvas');
     if (!canvas) return;
-    const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
 
-    const W = canvas.parentElement?.clientWidth || 220;
-    const H = 120;
-    canvas.width        = W * 2;
-    canvas.height       = H * 2;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-    ctx.clearRect(0, 0, W, H);
+    // Cancel any in-progress animation before starting a new one
+    if (_chartRafId !== null) {
+      cancelAnimationFrame(_chartRafId);
+      _chartRafId = null;
+    }
+
+    const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
 
     let bars;
     if      (view === 'daily')   bars = HistoryStats.buildDailyBars(history, 30);
@@ -685,79 +696,265 @@ const HistoryPanel = (() => {
     else if (view === 'monthly') bars = HistoryStats.buildMonthlyBars(history, 12);
     else                         bars = HistoryStats.buildLifetimeBars(history);
 
-    if (!bars.length) return;
+    // Size canvas at 2× for HiDPI sharpness (same technique as FocusGraph)
+    const W = canvas.parentElement?.clientWidth || 230;
+    const H = 130;
+    canvas.width        = W * 2;
+    canvas.height       = H * 2;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
 
-    const PAD   = { top: 10, right: 8, bottom: 22, left: 8 };
+    const PAD    = { top: 14, right: 14, bottom: 24, left: 14 };
+    const innerW = W - PAD.left - PAD.right;
+    const innerH = H - PAD.top  - PAD.bottom;
+
+    // Draw empty state and bail if there's nothing to show
+    if (!bars || !bars.length || bars.every(b => b.focusedMs === 0)) {
+      ctx.clearRect(0, 0, W, H);
+      _gDrawBackground(ctx, W, H, PAD, innerW, innerH);
+      ctx.font      = '8px "Segoe UI", sans-serif';
+      ctx.fillStyle = 'rgba(139,118,255,0.22)';
+      ctx.textAlign = 'center';
+      ctx.fillText('no data yet', W / 2, H / 2 + 3);
+      ctx.textAlign = 'left';
+      return;
+    }
+
+    const n     = bars.length;
     const maxMs = Math.max(...bars.map(b => b.focusedMs), 1);
-    const barW  = Math.max(2, (W - PAD.left - PAD.right) / bars.length - 2);
-    const areaH = H - PAD.top - PAD.bottom;
 
-    // Subtle horizontal reference line at 75%
-    const refY = PAD.top + areaH * 0.25;
-    ctx.strokeStyle = 'rgba(139,118,255,0.07)';
+    // Pre-compute pixel (x, y) for each data point
+    const pts = bars.map((bar, i) => ({
+      x:     PAD.left + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW),
+      y:     PAD.top  + innerH - (bar.focusedMs / maxMs) * innerH,
+      ms:    bar.focusedMs,
+      isCur: bar.isToday || bar.isCurrent,
+      label: bar.label,
+    }));
+
+    const DURATION = 1500; // ms — same as FocusGraph
+    let startTs    = null;
+
+    function _frame(ts) {
+      if (!startTs) startTs = ts;
+      const raw      = Math.min(1, (ts - startTs) / DURATION);
+      const eased    = 1 - Math.pow(1 - raw, 3);          // ease-out cubic
+      const revealX  = PAD.left + innerW * eased;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // 1. Static background + guide lines (always full-width)
+      _gDrawBackground(ctx, W, H, PAD, innerW, innerH);
+
+      // 2. Clip everything dynamic to the swept region
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PAD.left - 2, 0, (revealX - PAD.left) + 4, H);
+      ctx.clip();
+
+      // 3. Gradient area fill under the curve
+      _gDrawArea(ctx, pts, PAD, innerH);
+
+      // 4. Bezier line curve
+      _gDrawLine(ctx, pts);
+
+      ctx.restore();
+
+      // 5. Data-point dots — appear as the sweep reaches them
+      _gDrawDots(ctx, pts, revealX);
+
+      // 6. Axis labels — same progressive reveal
+      _gDrawLabels(ctx, pts, revealX, W, H, PAD, view);
+
+      if (raw < 1) {
+        _chartRafId = requestAnimationFrame(_frame);
+      } else {
+        _chartRafId = null;
+      }
+    }
+
+    _chartRafId = requestAnimationFrame(_frame);
+  }
+
+  // ── Graph drawing helpers ─────────────────────────────────────────────────
+
+  /** Dark plot area + faint dashed horizontal guide lines (25 / 50 / 75 %). */
+  function _gDrawBackground(ctx, W, H, PAD, innerW, innerH) {
+    // Plot area fill
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.roundRect(PAD.left, PAD.top, innerW, innerH, 4);
+    ctx.fill();
+
+    // Horizontal guide lines
+    ctx.strokeStyle = 'rgba(139,118,255,0.08)';
     ctx.lineWidth   = 0.5;
     ctx.setLineDash([3, 4]);
-    ctx.beginPath();
-    ctx.moveTo(PAD.left, refY);
-    ctx.lineTo(W - PAD.right, refY);
-    ctx.stroke();
+    [0.25, 0.5, 0.75].forEach(frac => {
+      const y = PAD.top + innerH * (1 - frac);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left,           y);
+      ctx.lineTo(PAD.left + innerW,  y);
+      ctx.stroke();
+    });
     ctx.setLineDash([]);
+  }
 
-    bars.forEach((bar, i) => {
-      const x     = PAD.left + i * ((W - PAD.left - PAD.right) / bars.length);
-      const barH  = bar.focusedMs > 0 ? Math.max(3, (bar.focusedMs / maxMs) * areaH) : 0;
-      const y     = PAD.top + areaH - barH;
-      const isCur = bar.isToday || bar.isCurrent;
+  /** Filled gradient area under the bezier curve. */
+  function _gDrawArea(ctx, pts, PAD, innerH) {
+    if (pts.length < 2) return;
+    const baseY = PAD.top + innerH;
 
-      if (barH > 0) {
-        // Gradient fill
-        const grad = ctx.createLinearGradient(x, y, x, y + barH);
-        if (isCur) {
-          grad.addColorStop(0, 'rgba(139,118,255,0.95)');
-          grad.addColorStop(1, 'rgba(88,60,200,0.45)');
-        } else {
-          grad.addColorStop(0, 'rgba(139,118,255,0.55)');
-          grad.addColorStop(1, 'rgba(88,60,200,0.18)');
-        }
-        ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, baseY);
+    ctx.lineTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], c = pts[i];
+      const mx = (p.x + c.x) / 2;
+      ctx.bezierCurveTo(mx, p.y, mx, c.y, c.x, c.y);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, baseY);
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(0, PAD.top, 0, baseY);
+    grad.addColorStop(0,   'rgba(139,118,255,0.30)');
+    grad.addColorStop(0.55,'rgba(88,60,200,0.12)');
+    grad.addColorStop(1,   'rgba(40,20,100,0.02)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  /** Smooth bezier line with purple glow (mirrors FocusGraph stroke style). */
+  function _gDrawLine(ctx, pts) {
+    if (pts.length < 2) return;
+
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.strokeStyle = 'rgba(167,139,250,0.92)';
+    ctx.shadowColor = 'rgba(139,118,255,0.60)';
+    ctx.shadowBlur  = 7;
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], c = pts[i];
+      const mx = (p.x + c.x) / 2;
+      ctx.bezierCurveTo(mx, p.y, mx, c.y, c.x, c.y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  /** Dots at each data point; glowing larger dot for the current period. */
+  function _gDrawDots(ctx, pts, revealX) {
+    pts.forEach(pt => {
+      if (pt.x > revealX + 2) return;
+      if (pt.ms === 0) return;
+
+      if (pt.isCur) {
+        // Outer glow halo
+        ctx.fillStyle   = 'rgba(139,118,255,0.18)';
+        ctx.shadowColor = 'rgba(139,118,255,0.75)';
+        ctx.shadowBlur  = 12;
         ctx.beginPath();
-        ctx.roundRect(x, y, barW, barH, [2, 2, 0, 0]);
+        ctx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Top glow on current bar
-        if (isCur) {
-          ctx.shadowColor = 'rgba(139,118,255,0.60)';
-          ctx.shadowBlur  = 6;
-          ctx.fillStyle   = 'rgba(139,118,255,0.90)';
-          ctx.beginPath();
-          ctx.roundRect(x, y, barW, Math.min(4, barH), [2, 2, 0, 0]);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
+        // Bright centre
+        ctx.fillStyle   = 'rgba(225,215,255,0.98)';
+        ctx.shadowColor = 'rgba(167,139,250,0.90)';
+        ctx.shadowBlur  = 8;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.fillStyle = 'rgba(139,118,255,0.60)';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+        ctx.fill();
       }
     });
+  }
 
-    const labelEvery = bars.length <= 7 ? 1 : bars.length <= 14 ? 2 : bars.length <= 30 ? 5 : 4;
+  /** Axis labels — shown progressively as the animation sweeps right. */
+  function _gDrawLabels(ctx, pts, revealX, W, H, PAD, view) {
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const n           = pts.length;
+    const every       = n <= 7 ? 1 : n <= 14 ? 2 : n <= 30 ? 5 : 4;
+
     ctx.font      = '7px "Segoe UI", sans-serif';
-    ctx.fillStyle = 'rgba(139,118,255,0.40)';
     ctx.textAlign = 'center';
 
-    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    bars.forEach((bar, i) => {
-      if (i % labelEvery !== 0) return;
-      const x = PAD.left + i * ((W - PAD.left - PAD.right) / bars.length) + barW / 2;
-      const d = bar.label;
-      let label;
-      if      (view === 'daily')  label = String(d.getDate());
-      else if (view === 'weekly') label = `${d.getDate()}/${d.getMonth() + 1}`;
-      else                        label = MONTH_NAMES[d.getMonth()];
+    pts.forEach((pt, i) => {
+      if (i % every !== 0) return;
+      if (pt.x > revealX + 2) return;
 
-      // Highlight current bar label
-      const isCur = bar.isToday || bar.isCurrent;
-      ctx.fillStyle = isCur ? 'rgba(200,185,255,0.75)' : 'rgba(139,118,255,0.38)';
-      ctx.fillText(label, x, H - 6);
+      const d = pt.label;
+      let label;
+      if      (view === 'daily')   label = String(d.getDate());
+      else if (view === 'weekly')  label = `${d.getDate()}/${d.getMonth() + 1}`;
+      else                         label = MONTH_NAMES[d.getMonth()];
+
+      ctx.fillStyle = pt.isCur ? 'rgba(210,195,255,0.88)' : 'rgba(139,118,255,0.40)';
+      ctx.fillText(label, pt.x, H - 6);
     });
+
     ctx.textAlign = 'left';
+  }
+
+  // ── Period helpers ────────────────────────────────────────────────────────
+
+  function _getSessionsForYesterday(history) {
+    const yest    = new Date(); yest.setDate(yest.getDate() - 1); yest.setHours(0, 0, 0, 0);
+    const yestEnd = new Date(yest); yestEnd.setHours(23, 59, 59, 999);
+    return history.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= yest.getTime() && t <= yestEnd.getTime();
+    });
+  }
+
+  function _getSessionsForLastWeek(history) {
+    const now           = new Date();
+    const dow           = (now.getDay() + 6) % 7;
+    const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - dow); thisWeekStart.setHours(0, 0, 0, 0);
+    const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+    const lastWeekEnd   = new Date(thisWeekStart.getTime() - 1);
+    return history.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= lastWeekStart.getTime() && t <= lastWeekEnd.getTime();
+    });
+  }
+
+  function _getSessionsForLastMonth(history) {
+    const now            = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd   = new Date(thisMonthStart.getTime() - 1);
+    return history.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= lastMonthStart.getTime() && t <= lastMonthEnd.getTime();
+    });
+  }
+
+  function _computeTrend(currentMs, previousMs) {
+    if (previousMs === 0) return null;
+    return Math.round(((currentMs - previousMs) / previousMs) * 100);
+  }
+
+  function _setTrend(id, trend) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (trend === null) { el.textContent = ''; el.className = 'hp-trend'; return; }
+    const sign   = trend >= 0 ? '+' : '';
+    el.textContent = `${sign}${trend}%`;
+    el.className   = `hp-trend ${trend >= 0 ? 'hp-trend-up' : 'hp-trend-down'}`;
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────

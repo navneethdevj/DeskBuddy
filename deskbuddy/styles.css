@@ -3329,15 +3329,17 @@ body.pip-mode  #history-panel { display: none !important; }
 
 /* ── Focus chart ─────────────────────────────────────────────────── */
 .hp-chart-wrap {
-  background: rgba(139, 118, 255, 0.03);
-  border: 1px solid rgba(139, 118, 255, 0.10);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(139, 118, 255, 0.13);
   border-radius: 12px;
   overflow: hidden;
-  padding: 6px 0 0;
+  padding: 0;
+  position: relative;
 }
 #history-chart-canvas {
   display: block;
   width: 100%;
+  border-radius: 12px;
 }
 
 /* ── Recent sessions list ─────────────────────────────────────────── */
