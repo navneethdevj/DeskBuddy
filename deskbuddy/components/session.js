@@ -240,6 +240,7 @@ const Session = (() => {
       outcome:                   null,
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
+      moodRating:                null,
     };
 
     // Start counting focused time from session start (assume user is focused)
@@ -448,6 +449,18 @@ const Session = (() => {
 
 
   /**
+   * setMoodRating(rating) — record a post-session energy/mood rating (1–5)
+   * for the most recent session. Called when the user answers the mood prompt
+   * on sessions that had no goal set.
+   * @param {number} rating — integer 1 (drained) … 5 (on fire)
+   */
+  function setMoodRating(rating) {
+    if (!_history.length) return;
+    _history[0].moodRating = rating;
+    _saveToStorage();
+  }
+
+  /**
    * reset() — return to IDLE so the user can start a fresh session.
    * Safe to call only after a terminal state (COMPLETED / FAILED / ABANDONED).
    * No-op if already IDLE or if a session is in progress.
@@ -471,6 +484,7 @@ const Session = (() => {
     abandon,
     reset,
     setGoalAchieved,
+    setMoodRating,
     getHistory,
     getCurrentStats,
     getBreakElapsedMs,

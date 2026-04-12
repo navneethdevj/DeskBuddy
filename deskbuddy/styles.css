@@ -3568,26 +3568,34 @@ body.pip-mode #break-card { display: none !important; }
   transition: opacity 0.2s;
 }
 
-/* Goal-achieved prompt inside share card */
-#share-card-goal-prompt {
+/* Goal-achieved prompt + mood prompt — shared container style */
+#share-card-goal-prompt,
+#share-card-mood-prompt {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: rgba(218,162,38,0.08);
   border: 1px solid rgba(218,162,38,0.20);
   border-radius: 10px;
 }
 
-.sc-goal-question {
+#share-card-mood-prompt {
+  background: rgba(138,102,255,0.08);
+  border-color: rgba(138,102,255,0.20);
+}
+
+/* Shared prompt label */
+.sc-prompt-label {
   font-size: 12px;
   font-weight: 400;
-  color: rgba(255,255,255,0.70);
+  color: rgba(255,255,255,0.72);
   flex: 1;
 }
 
-.sc-goal-btns {
+/* Goal yes/no buttons row */
+.sc-prompt-btns {
   display: flex;
   gap: 6px;
 }
@@ -3609,4 +3617,35 @@ body.pip-mode #break-card { display: none !important; }
 .sc-btn-no:hover {
   background: rgba(255,255,255,0.12);
   color: rgba(255,255,255,0.80);
+}
+
+/* Mood emoji buttons row */
+.sc-mood-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.sc-mood-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, transform 0.12s, border-color 0.14s;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+  padding: 0;
+}
+.sc-mood-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.28);
+  transform: scale(1.22);
+}
+.sc-mood-btn:active {
+  transform: scale(1.08);
 }

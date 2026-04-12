@@ -390,18 +390,34 @@ const ShareCard = (() => {
     const CHIP_H = 18, CHIP_Y = 124, GAP = 8;
     ctx.font = '400 10px "Segoe UI", system-ui, sans-serif';
 
-    // Third chip: show goal result if the user answered "did you finish it?",
-    // otherwise fall back to session duration.
-    const goalAchieved = sessionData.goalAchieved;
+    // Mood metadata (used for both chip and goal-line slot)
+    const MOOD_META = [
+      null, // index 0 unused
+      { label: 'drained',  tc: 'rgba(255,100,100,0.84)', bg: 'rgba(255,60,60,0.08)',   bd: 'rgba(255,60,60,0.22)'  },
+      { label: 'meh',      tc: 'rgba(255,175,80,0.84)',  bg: 'rgba(255,140,40,0.08)',  bd: 'rgba(255,140,40,0.22)' },
+      { label: 'okay',     tc: 'rgba(220,215,100,0.84)', bg: 'rgba(200,190,40,0.08)',  bd: 'rgba(200,190,40,0.20)' },
+      { label: 'good',     tc: 'rgba(90,215,160,0.90)',  bg: 'rgba(72,215,148,0.10)',  bd: 'rgba(72,215,148,0.28)' },
+      { label: 'on fire!', tc: 'rgba(255,210,60,0.96)',  bg: 'rgba(218,168,46,0.14)',  bd: 'rgba(218,168,46,0.34)' },
+    ];
+
+    // Third chip: goal result if answered, mood if rated, else duration
+    const goalAchieved  = sessionData.goalAchieved;
+    const moodRating    = sessionData.moodRating;
     const hasGoalAnswer = sessionData.goalText && goalAchieved !== null && goalAchieved !== undefined;
+    const hasMood       = !sessionData.goalText && moodRating >= 1 && moodRating <= 5;
+    const moodMeta      = hasMood ? MOOD_META[moodRating] : null;
+
     const thirdChip = hasGoalAnswer
       ? goalAchieved === true
         ? { label: '✓  goal achieved!',
             tc: 'rgba(72,215,148,0.90)', bg: 'rgba(72,215,148,0.10)', bd: 'rgba(72,215,148,0.30)' }
         : { label: '✗  goal incomplete',
             tc: 'rgba(255,120,100,0.84)', bg: 'rgba(255,80,60,0.08)', bd: 'rgba(255,80,60,0.22)' }
-      : { label: `◈  ${durationMins} min session`,
-          tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)' };
+      : hasMood
+        ? { label: `◈  vibe: ${moodMeta.label}`,
+            tc: moodMeta.tc, bg: moodMeta.bg, bd: moodMeta.bd }
+        : { label: `◈  ${durationMins} min session`,
+            tc: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)', bd: 'rgba(255,255,255,0.10)' };
 
     const chipDefs = [
       {
@@ -449,8 +465,9 @@ const ShareCard = (() => {
     ctx.fillText(`  ${focusScore}%`, 22 + fsLabelW, 160);
     _drawFocusBar(ctx, 22, 165, W - 44, 4, focusScore / 100);
 
-    // ── Goal line ─────────────────────────────────────────────────────────
+    // ── Goal line OR mood line (y=184 slot) ────────────────────────────────
     if (sessionData.goalText) {
+      // Session had a goal — show it with completion mark
       const achieved  = sessionData.goalAchieved;
       const mark      = achieved === true ? ' ✓' : achieved === false ? ' ✗' : '';
       ctx.font      = 'italic 11px "Segoe UI", system-ui, sans-serif';
@@ -470,6 +487,17 @@ const ShareCard = (() => {
         goalTxt = `"${base}…"${mark}`;
       }
       ctx.fillText(goalTxt, 22, 184);
+      ctx.restore();
+    } else if (hasMood) {
+      // No goal — show the mood/energy rating the user gave
+      ctx.save();
+      ctx.font      = '400 9px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.fillText('VIBE', 22, 184);
+      const vibeLabelW = ctx.measureText('VIBE').width;
+      ctx.font      = '500 11px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = moodMeta.tc;
+      ctx.fillText(`  ${moodMeta.label}`, 22 + vibeLabelW, 184);
       ctx.restore();
     }
 
@@ -554,10 +582,20 @@ const ShareCard = (() => {
         </div>
         <div id="share-card-canvas-wrap"></div>
         <div id="share-card-goal-prompt" style="display:none">
-          <span class="sc-goal-question">did you finish it?</span>
-          <div class="sc-goal-btns">
+          <span class="sc-prompt-label">did you finish it? 🎯</span>
+          <div class="sc-prompt-btns">
             <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes ✓</button>
             <button id="share-card-goal-no"  class="sc-btn sc-btn-no">not yet</button>
+          </div>
+        </div>
+        <div id="share-card-mood-prompt" style="display:none">
+          <span class="sc-prompt-label">how was this session?</span>
+          <div class="sc-mood-btns">
+            <button class="sc-mood-btn" data-rating="1" title="Drained">😩</button>
+            <button class="sc-mood-btn" data-rating="2" title="Meh">😕</button>
+            <button class="sc-mood-btn" data-rating="3" title="Okay">😐</button>
+            <button class="sc-mood-btn" data-rating="4" title="Good">🙂</button>
+            <button class="sc-mood-btn" data-rating="5" title="On fire!">🔥</button>
           </div>
         </div>
         <div id="share-card-actions">
@@ -599,6 +637,18 @@ const ShareCard = (() => {
       if (typeof Session !== 'undefined') Session.setGoalAchieved(false);
       _rerenderCard();
       modal.querySelector('#share-card-goal-prompt').style.display = 'none';
+    });
+
+    // Mood rating — one of five emoji buttons
+    modal.querySelectorAll('.sc-mood-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!_sessionDataRef) return;
+        const rating = parseInt(btn.dataset.rating, 10);
+        _sessionDataRef.moodRating = rating;
+        if (typeof Session !== 'undefined') Session.setMoodRating(rating);
+        _rerenderCard();
+        modal.querySelector('#share-card-mood-prompt').style.display = 'none';
+      });
     });
 
     // Copy to clipboard — use Electron native API, fall back to Web Clipboard API
@@ -692,11 +742,15 @@ const ShareCard = (() => {
       wrap.appendChild(_canvasCache);
     }
 
-    // Show goal prompt if session had a goal and it hasn't been answered yet
+    // Show the right prompt depending on whether the session had a goal
     const goalPromptEl = document.getElementById('share-card-goal-prompt');
-    if (goalPromptEl) {
-      const showPrompt = !!(sessionData.goalText && sessionData.goalAchieved === null);
-      goalPromptEl.style.display = showPrompt ? '' : 'none';
+    const moodPromptEl = document.getElementById('share-card-mood-prompt');
+    if (goalPromptEl && moodPromptEl) {
+      const hasGoal  = !!sessionData.goalText;
+      const showGoal = hasGoal && sessionData.goalAchieved === null;
+      const showMood = !hasGoal && (sessionData.moodRating === null || sessionData.moodRating === undefined);
+      goalPromptEl.style.display = showGoal ? '' : 'none';
+      moodPromptEl.style.display = showMood ? '' : 'none';
     }
 
     const modal = document.getElementById('share-card-modal');
