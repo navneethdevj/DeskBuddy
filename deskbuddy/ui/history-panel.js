@@ -51,6 +51,7 @@ const HistoryPanel = (() => {
     _activeView = 'daily';
 
     _renderStatCards(history);
+    _renderBestRow(history);
     _renderStreakRow(history);
     _drawStreakCalendar(history);
     _drawBarChart('daily', history);
@@ -118,6 +119,27 @@ const HistoryPanel = (() => {
     _setText('hsc-today-sessions',   String(todaySessions.length));
     _setText('hsc-week-focused',     _fmtSecs(weekSecs));
     _setText('hsc-lifetime-focused', _fmtSecs(lifetimeSecs));
+  }
+
+  // ── 1b. Personal Bests Row ───────────────────────────────────────────────
+
+  function _renderBestRow(history) {
+    // This month focused
+    const now        = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthSecs  = history
+      .filter(s => s.date && new Date(s.date) >= monthStart)
+      .reduce((a, s) => a + (s.actualFocusedSeconds || 0), 0);
+
+    // Personal bests via HistoryStats helpers
+    const bestDayMs   = (typeof HistoryStats !== 'undefined') ? HistoryStats.getMaxDayFocusMs(history)   : 0;
+    const bestWeekMs  = (typeof HistoryStats !== 'undefined') ? HistoryStats.getMaxWeekFocusMs(history)  : 0;
+    const bestMonthMs = (typeof HistoryStats !== 'undefined') ? HistoryStats.getMaxMonthFocusMs(history) : 0;
+
+    _setText('hsb-this-month',  monthSecs  > 0 ? _fmtSecs(monthSecs)       : '—');
+    _setText('hsb-best-day',    bestDayMs  > 0 ? _fmtSecs(bestDayMs / 1000) : '—');
+    _setText('hsb-best-week',   bestWeekMs > 0 ? _fmtSecs(bestWeekMs / 1000) : '—');
+    _setText('hsb-best-month',  bestMonthMs> 0 ? _fmtSecs(bestMonthMs / 1000) : '—');
   }
 
   // ── 2. Streak Row ────────────────────────────────────────────────────────

@@ -142,6 +142,51 @@ const HistoryStats = (() => {
     return map;
   }
 
+  // ── Personal-best helpers ─────────────────────────────────────────────────
+
+  /** Returns the highest total focused ms achieved in any single calendar day. */
+  function getMaxDayFocusMs(history) {
+    const byDay = {};
+    history.forEach(s => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      byDay[key] = (byDay[key] || 0) + (s.actualFocusedSeconds || 0) * 1000;
+    });
+    const vals = Object.values(byDay);
+    return vals.length ? Math.max(...vals) : 0;
+  }
+
+  /** Returns the highest total focused ms achieved in any single calendar week (Mon–Sun). */
+  function getMaxWeekFocusMs(history) {
+    const byWeek = {};
+    history.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const dow = (d.getDay() + 6) % 7;
+      const mon = new Date(d);
+      mon.setDate(d.getDate() - dow);
+      mon.setHours(0, 0, 0, 0);
+      const key = mon.getTime();
+      byWeek[key] = (byWeek[key] || 0) + (s.actualFocusedSeconds || 0) * 1000;
+    });
+    const vals = Object.values(byWeek);
+    return vals.length ? Math.max(...vals) : 0;
+  }
+
+  /** Returns the highest total focused ms achieved in any single calendar month. */
+  function getMaxMonthFocusMs(history) {
+    const byMonth = {};
+    history.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      byMonth[key] = (byMonth[key] || 0) + (s.actualFocusedSeconds || 0) * 1000;
+    });
+    const vals = Object.values(byMonth);
+    return vals.length ? Math.max(...vals) : 0;
+  }
+
   return {
     formatFocusTime,
     getFocusedMs,
@@ -154,6 +199,9 @@ const HistoryStats = (() => {
     buildMonthlyBars,
     buildLifetimeBars,
     buildCalendarData,
+    getMaxDayFocusMs,
+    getMaxWeekFocusMs,
+    getMaxMonthFocusMs,
   };
 
 })();
