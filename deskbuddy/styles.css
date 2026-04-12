@@ -1796,6 +1796,13 @@ body.pip-shape-circle.pip-mode #world  { border-radius: 50%; }
 body.pip-shape-rounded.pip-mode #world { border-radius: 32px; }
 body.pip-shape-square.pip-mode #world  { border-radius: 16px; }
 
+/* ── Clip body corners to match #world — ensures glow box-shadows
+   (which render outside #world's bounds) are also clipped and the
+   OS-level window corners remain truly transparent.               */
+body.pip-shape-circle.pip-mode  { border-radius: 50%; }
+body.pip-shape-rounded.pip-mode { border-radius: 32px; }
+body.pip-shape-square.pip-mode  { border-radius: 16px; }
+
 /* ── Entrance animation ─────────────────────────────────────────────
    Applied via the one-shot `pip-entering` body class, which JS adds
    when collapsing to PiP and removes after the animation completes.
