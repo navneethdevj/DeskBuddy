@@ -42,6 +42,8 @@ const Settings = (() => {
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
     emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
+    // ── DND (Do Not Disturb) ──────────────────────────────────────────────
+    dndDuration:            25,  // default duration in minutes (0 = infinite / until cancelled)
   };
 
   let _current = { ...DEFAULTS };

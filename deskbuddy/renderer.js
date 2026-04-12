@@ -62,6 +62,9 @@
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
 
+  // 11. DND module — init click-to-cancel on the indicator
+  DND.init();
+
   // The companion starts in full-screen mode on launch.
   // The user can switch to compact PiP overlay via the collapse button.
   document.body.classList.add('full-mode');
@@ -83,7 +86,7 @@
     }
   }
 
-  // 11. Wire cross-module communication
+  // 12. Wire cross-module communication
   _wireUI();
   _wireTimerToSounds();
   _wireTimerToCompanion();
@@ -93,6 +96,7 @@
   _wireKeybinds();
   _wireSettings();
   _wireBreakReminder();
+  _wireDND();
   _wireSidebar();
 
   // 12. Sync main-process window state with the initial full-mode.
@@ -1077,6 +1081,13 @@
       fn: () => { if (BreakReminder.isActive()) BreakReminder.dismiss(); },
     });
 
+    Keybinds.register({
+      id: 'toggle-dnd',
+      label: 'Toggle Do Not Disturb',
+      defaultKey: 'Ctrl+Shift+D',
+      fn: () => DND.toggle(Settings.get('dndDuration') || 25),
+    });
+
     Keybinds.init();
   }
 
@@ -1883,6 +1894,47 @@
         e.preventDefault(); first.focus();
       }
     }
+  }
+
+  // ── _wireDND ──────────────────────────────────────────────────────────────
+  // Wire the DND Settings section: toggle button, duration selector,
+  // and live UI sync when DND activates / deactivates.
+
+  function _wireDND() {
+    const toggleBtn  = document.getElementById('dnd-toggle-btn');
+    const durSelect  = document.getElementById('dnd-duration-select');
+    const durRow     = document.getElementById('dnd-duration-row');
+
+    // Populate duration select from saved setting
+    const savedDur = Settings.get('dndDuration') || 25;
+    if (durSelect) durSelect.value = String(savedDur);
+
+    // Persist chosen duration in Settings whenever it changes
+    if (durSelect) {
+      durSelect.addEventListener('change', () => {
+        Settings.set('dndDuration', parseInt(durSelect.value, 10));
+      });
+    }
+
+    function _syncDNDBtn() {
+      if (!toggleBtn) return;
+      const on = DND.isActive();
+      toggleBtn.textContent = on ? 'cancel' : 'start';
+      toggleBtn.classList.toggle('dnd-btn-active', on);
+      if (durRow) durRow.style.opacity = on ? '0.45' : '1';
+      if (durSelect) durSelect.disabled = on;
+    }
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const dur = parseInt(durSelect?.value || '25', 10);
+        DND.toggle(dur);
+      });
+    }
+
+    DND.onActivate(() => _syncDNDBtn());
+    DND.onDeactivate(() => _syncDNDBtn());
+    _syncDNDBtn();  // set initial state
   }
 
   // ── _wireSidebar ──────────────────────────────────────────────────────────

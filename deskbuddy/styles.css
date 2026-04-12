@@ -4328,3 +4328,97 @@ body.pip-mode #break-card { display: none !important; }
   animation: particleFade 2s ease-out forwards;
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   DND — DO NOT DISTURB
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Indicator pill ──────────────────────────────────────────────────── */
+#dnd-indicator {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-60px);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 5px 14px 5px 12px;
+  border-radius: 20px;
+
+  background: rgba(30, 20, 50, 0.78);
+  border: 1px solid rgba(160, 130, 255, 0.22);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+
+  color: rgba(200, 185, 255, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3200;
+
+  transition:
+    transform  0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity    0.30s ease;
+}
+
+/* Active state — slide in and become interactive */
+#dnd-indicator.dnd-on {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+  color: rgba(210, 195, 255, 0.90);
+  border-color: rgba(180, 150, 255, 0.38);
+  animation: dndPulse 3s ease-in-out infinite;
+}
+
+#dnd-indicator.dnd-on:hover {
+  background: rgba(50, 35, 80, 0.88);
+  border-color: rgba(200, 170, 255, 0.55);
+  color: #fff;
+  animation: none;
+}
+
+/* Subtle breathing glow when active */
+@keyframes dndPulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(130, 100, 220, 0.12); }
+  50%       { box-shadow: 0 2px 20px rgba(140, 110, 240, 0.26); }
+}
+
+/* ── Companion stillness in DND mode ─────────────────────────────────── */
+/* Freeze idle sway and any bounce animations while DND is active */
+body.dnd-active .companion-inner {
+  animation-play-state: paused !important;
+}
+
+body.dnd-active .companion {
+  /* Subtle desaturation to signal "quiet mode" without hiding the buddy */
+  filter: saturate(0.65) brightness(0.92);
+  transition: filter 0.8s ease;
+}
+
+/* Dim the session panel decorations slightly during DND */
+body.dnd-active #session-panel {
+  opacity: 0.72;
+  transition: opacity 0.5s ease;
+}
+
+/* Don't show DND indicator in pip/compact mode (no room) */
+body.pip-mode #dnd-indicator {
+  display: none !important;
+}
+
+/* ── Toggle button active state in settings panel ─────────────────────── */
+.settings-action-btn.dnd-btn-active {
+  background: rgba(100, 75, 160, 0.45);
+  border-color: rgba(170, 140, 255, 0.55);
+  color: rgba(220, 205, 255, 0.95);
+}

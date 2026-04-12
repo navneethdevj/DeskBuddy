@@ -359,6 +359,39 @@
         </div>
       </div>
 
+      <!-- ── DND SECTION ──────────────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">⊘</span> Do Not Disturb<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Focus lock</div>
+              <div class="settings-row-sublabel">Silence the companion for a set time</div>
+            </div>
+            <button id="dnd-toggle-btn" class="settings-action-btn">start</button>
+          </div>
+          <div class="settings-row" id="dnd-duration-row">
+            <div class="settings-row-label">Duration</div>
+            <select id="dnd-duration-select" class="settings-select">
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="25" selected>25 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+              <option value="90">90 min</option>
+              <option value="0">Until I turn it off</option>
+            </select>
+          </div>
+          <div class="settings-row-sublabel" style="padding: 0 12px 8px; font-size:10.5px; color:rgba(255,255,255,0.32);">
+            Companion goes quiet &amp; still. Sounds reduced to reminders only. Press the keybind or click the indicator to cancel early.
+          </div>
+        </div>
+      </div>
+
       <!-- ── SHORTCUTS SECTION ─────────────────────────────────────── -->
       <hr class="settings-divider">
       <div class="settings-section">
@@ -691,6 +724,9 @@
   <!-- Attention bar — EyeOnTask concept, barely visible -->
   <div id="attention-bar"><div id="attention-fill"></div></div>
 
+  <!-- DND indicator — shown when Do Not Disturb is active; click to cancel -->
+  <div id="dnd-indicator" aria-live="polite" aria-label="Do Not Disturb active — click to cancel"></div>
+
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
        Electron renderer (nodeIntegration:false) does not provide -->
   <script>var exports = {}; var module = { exports: exports };</script>
@@ -717,6 +753,7 @@
   <script src="components/settings.js"></script>
   <script src="components/keybinds.js"></script>
   <script src="components/break-reminder.js"></script>
+  <script src="components/dnd.js"></script>
   <script src="ui/focus-graph.js"></script>
   <script src="ui/share-card.js"></script>
   <script src="renderer.js"></script>
