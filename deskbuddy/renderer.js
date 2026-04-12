@@ -1447,10 +1447,16 @@
             _activeBtn = btn;
             const sound = SOUND_MAP[state];
             if (sound) Sounds.play(sound);
+            // Start side-effects that go beyond the CSS class swap
+            if (state === 'crying' && typeof Brain !== 'undefined' && Brain.startTearEffect) {
+              Brain.startTearEffect();
+            }
             const durMs = (Settings.get('emotionPreviewDuration') || 3) * 1000;
             Emotion.preview(state, durMs, () => {
               btn.classList.remove('active');
               if (_activeBtn === btn) _activeBtn = null;
+              // Always clean up tears when the preview ends
+              if (typeof Brain !== 'undefined' && Brain.stopTearEffect) Brain.stopTearEffect();
             });
           });
 

@@ -2410,6 +2410,10 @@ const Brain = (() => {
     }
   }
 
+  /** Public wrappers so settings preview can trigger tear side-effects */
+  function startTearEffect() { _startTears(); }
+  function stopTearEffect()  { _stopTears();  }
+
   /**
    * Set how frequently the buddy does spontaneous idle behaviors.
    * level: 1 = slow & calm, 2 = default, 3 = hyper & frequent
@@ -2438,5 +2442,6 @@ const Brain = (() => {
            checkNightWhisper, doMorningGreeting,
            setDNDActive,
            setIdleSpeed, setExpressiveness,
+           startTearEffect, stopTearEffect,
            triggerLookSequence };
 })();
