@@ -240,15 +240,17 @@ const Brain = (() => {
   // Love (petting) — click interaction
   let _loveUntil = 0;            // epoch ms when love state expires
 
-  // Cozy (long-press snuggle) — hold mouse near companion
-  let _cozyUntil       = 0;      // epoch ms when cozy state expires
-  let _mousedownNear   = false;  // true if mousedown happened near companion
-  let _mousedownTime   = 0;      // epoch ms when mousedown near companion started
-  const LONG_PRESS_MS  = 800;    // ms held = long press → cozy
-  const COZY_HOLD_MS   = 5000;   // cozy lasts this long after release
+  // Cozy (hold/pat snuggle) — active while mouse is held near companion,
+  // then lingers briefly after release before returning to normal.
+  let _mousedownNear   = false;  // true while mouse is held near companion
+  let _mousedownTime   = 0;      // epoch ms when mousedown started (used only to suppress love-click after a hold)
+  let _cozyUntil       = 0;      // epoch ms of linger expiry after release
+  let _cozyEnteredAt   = 0;      // epoch ms when cozy was first entered (gate for one-shot effects)
+  const COZY_LINGER_MS = 2500;   // how long cozy lingers after mouse is released
 
   // Rapid-pet burst — multiple quick clicks
   let _petClickTimes      = [];  // rolling timestamps of pet-zone clicks
+  let _suppressNextClick  = false; // suppresses love-click after a cozy hold
   const PET_BURST_COUNT   = 3;   // clicks within window → burst reaction
   const PET_BURST_WINDOW_MS = 1500; // rolling window (ms)
 
@@ -566,8 +568,29 @@ const Brain = (() => {
     // 1. Love hold (petting click) — most intimate, highest priority
     if (now < _loveUntil) { _setQuiet('love'); return; }
 
-    // 1b. Cozy (long-press snuggle) — deep affection hold
-    if (now < _cozyUntil) { _setQuiet('cozy'); return; }
+    // 1b. Cozy (hold/pat snuggle) — active while held AND during linger after release
+    if (_mousedownNear || now < _cozyUntil) {
+      // One-shot entry effects — whisper, particles, blink (fire only once per hold)
+      if (_cozyEnteredAt === 0) {
+        _cozyEnteredAt = now;
+        const cozyMsgs = [
+          '...♡ cozy', '*nuzzles closer*', 'don\'t let go~',
+          'safe here...', '...warm and soft', 'mmh~♡',
+          '*contented purr*', 'staying here forever~',
+          '*eyes slowly closing*', 'like this~', 'you\'re my favourite~',
+          '...home ♡', '*melts*', 'this is everything.',
+        ];
+        showWhisper(cozyMsgs[Math.floor(Math.random() * cozyMsgs.length)], 4500);
+        const el = Companion.getElement();
+        if (el) { el.classList.add('nuzzling'); setTimeout(() => el.classList.remove('nuzzling'), 900); }
+        if (typeof Particles !== 'undefined') Particles.burst('cozy', 7);
+        setTimeout(_doSlowBlink, 600);
+      }
+      _setQuiet('cozy');
+      return;
+    }
+    // Reset entry gate once cozy is fully over
+    if (_cozyEnteredAt > 0) _cozyEnteredAt = 0;
 
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
@@ -1797,6 +1820,8 @@ const Brain = (() => {
   // 3+ quick clicks within 1.5 s → burst love overload.
   // Hold mousedown ≥ 800 ms near companion → cozy snuggle.
   function _onScreenClick(e) {
+    // Suppress the love-click that fires right after a cozy hold is released
+    if (_suppressNextClick) { _suppressNextClick = false; return; }
     const c    = Companion.getCenter();
     const dx   = e.clientX - c.x;
     const dy   = e.clientY - c.y;
@@ -1860,23 +1885,14 @@ const Brain = (() => {
     if (!_mousedownNear) return;
     const held = Date.now() - _mousedownTime;
     _mousedownNear = false;
-    if (held >= LONG_PRESS_MS) {
-      // Long press — trigger cozy snuggle state
-      _cozyUntil = Date.now() + COZY_HOLD_MS;
-      const cozyMsgs = [
-        '...♡ cozy', '*nuzzles closer*', 'don\'t let go~',
-        'safe here...', '...warm and soft', 'mmh~♡',
-        '*contented purr*', 'staying here forever~',
-        '*eyes slowly closing*', 'like this~', 'you\'re my favourite~',
-        '...home ♡', '*melts*', 'this is everything.',
-      ];
-      showWhisper(cozyMsgs[Math.floor(Math.random() * cozyMsgs.length)], 4500);
-      // Brief nuzzle lean + rose-gold particle burst to signal the snuggle
-      const el = Companion.getElement();
-      if (el) { el.classList.add('nuzzling'); setTimeout(() => el.classList.remove('nuzzling'), 900); }
-      if (typeof Particles !== 'undefined') Particles.burst('cozy', 7);
-      // Slow double-blink (the "cat I love you" blink)
-      setTimeout(_doSlowBlink, 600);
+    if (held >= 250) {
+      // Held long enough to count as a pat/hold — start the linger period
+      _cozyUntil = Date.now() + COZY_LINGER_MS;
+    }
+    // Suppress the 'click' event that follows mouseup so it doesn't immediately
+    // switch to love state and cancel the cozy linger.
+    if (held >= 250) {
+      _suppressNextClick = true;
     }
   }
 
