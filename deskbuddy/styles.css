@@ -3783,26 +3783,116 @@ body.pip-mode #break-card { display: none !important; }
    Applied to .companion element by brain.js _applyTypingRhythm()
    ══════════════════════════════════════════════════════════════════════ */
 
-/* FLOW — slightly narrowed eyes, subtle forward lean */
+/* ── FLOW GLOW ANIMATION ─────────────────────────────────────────── */
+/* Bright teal/cyan pulse — "in the zone" energy */
+@keyframes glowFlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6vmin rgba(80, 200, 200, 0.38))
+            drop-shadow(0 0 18vmin rgba(60, 190, 215, 0.14))
+            drop-shadow(0 0 30vmin rgba(50, 175, 225, 0.05));
+  }
+  50% {
+    filter: drop-shadow(0 0 11vmin rgba(80, 215, 210, 0.56))
+            drop-shadow(0 0 26vmin rgba(60, 200, 225, 0.20))
+            drop-shadow(0 0 42vmin rgba(50, 185, 235, 0.08));
+  }
+}
+
+/* FLOW — narrowed eyes + forward lean + teal glow ring */
+.companion.typing-flow {
+  animation: glowFlow 1.8s ease-in-out infinite, idleSway 9s ease-in-out infinite;
+}
 .companion.typing-flow .eye {
   transform-origin: center;
-  transition: height 0.8s ease;
+  transition: height 0.8s ease, box-shadow 0.8s ease;
 }
 .companion.typing-flow .eye-left,
 .companion.typing-flow .eye-right {
   height: calc(var(--eye-h, 44vmin) * 0.86);
+  box-shadow:
+    0 0 2vmin rgba(100, 220, 215, 0.70),
+    0 0 5vmin rgba(80,  210, 210, 0.30);
 }
 .companion.typing-flow .companion-inner {
-  transform: translateY(-0.5vh) scale(1.007);
-  transition: transform 1.0s ease;
+  animation: flowLean 2.4s ease-in-out infinite;
+}
+@keyframes flowLean {
+  0%, 100% { transform: translateY(-0.4vh) scale(1.006); }
+  50%      { transform: translateY(-0.7vh) scale(1.010); }
 }
 
-/* THINKING — one eye slightly wider (curious lean) */
+/* THINKING — asymmetric wide eye + gentle side sway */
 .companion.typing-thinking .eye-left {
-  width: calc(var(--eye-w, 36vmin) * 1.08);
+  width: calc(var(--eye-w, 36vmin) * 1.10);
   transition: width 0.6s ease;
 }
 .companion.typing-thinking .companion-inner {
-  transform: translateY(-0.2vh) rotate(1.5deg);
-  transition: transform 0.7s ease;
+  animation: thinkSway 3.2s ease-in-out infinite;
+  transition: none;
 }
+@keyframes thinkSway {
+  0%   { transform: translateY(-0.1vh) rotate(0deg); }
+  30%  { transform: translateY(-0.2vh) rotate(1.8deg); }
+  60%  { transform: translateY(-0.1vh) rotate(-0.6deg); }
+  100% { transform: translateY(-0.1vh) rotate(0deg); }
+}
+
+/* ── FRUSTRATED GLOW ─────────────────────────────────────────────── */
+/* Warm amber-red pulse — "this is not going well" */
+@keyframes glowFrustrated {
+  0%, 100% {
+    filter: drop-shadow(0 0 5vmin rgba(255, 120, 80,  0.34))
+            drop-shadow(0 0 14vmin rgba(255, 100, 60,  0.12));
+  }
+  50% {
+    filter: drop-shadow(0 0 9vmin rgba(255, 140, 90,  0.52))
+            drop-shadow(0 0 22vmin rgba(255, 115, 70,  0.18));
+  }
+}
+
+/* FRUSTRATED — reddish tinted eyes + warm glow + restless micro-pulse */
+.companion.typing-frustrated {
+  animation: glowFrustrated 1.2s ease-in-out infinite, idleSway 7s ease-in-out infinite;
+}
+.companion.typing-frustrated .eye-left,
+.companion.typing-frustrated .eye-right {
+  box-shadow:
+    0 0 2vmin rgba(255, 130, 90, 0.65),
+    0 0 6vmin rgba(255, 110, 70, 0.28);
+  transition: box-shadow 0.5s ease;
+}
+.companion.typing-frustrated .companion-inner {
+  animation: frustratedPulse 1.4s ease-in-out infinite;
+}
+@keyframes frustratedPulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40%      { transform: translateY(-0.3vh) scale(1.004); }
+  70%      { transform: translateY(0.1vh) scale(0.998); }
+}
+
+/* FLOW MILESTONE — brief joyful bounce on 2min / 5min flow milestones */
+.companion.flow-milestone .companion-inner {
+  animation: milestoneBounce 0.9s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes milestoneBounce {
+  0%   { transform: translateY(0) scale(1); }
+  20%  { transform: translateY(-2.0vh) scale(1.035); }
+  42%  { transform: translateY(0.2vh) scale(0.975); }
+  62%  { transform: translateY(-1.1vh) scale(1.018); }
+  80%  { transform: translateY(0.1vh) scale(0.994); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* ── FLOW PARTICLE ───────────────────────────────────────────────── */
+/* Bright teal/cyan sparkle matching the flow glow */
+.particle-flow {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(90, 220, 215, 0.95);
+  box-shadow:
+    0 0 6px rgba(70, 210, 210, 0.80),
+    0 0 12px rgba(50, 195, 215, 0.40);
+  animation: particleFade 2s ease-out forwards;
+}
+

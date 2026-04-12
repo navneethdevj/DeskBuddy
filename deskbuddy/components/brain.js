@@ -213,9 +213,16 @@ const Brain = (() => {
   let _excitedUntil   = 0;       // epoch ms when excited state expires
 
   // ── Typing rhythm state ────────────────────────────────────────────────────
-  let _keyRhythmState  = 'idle';  // 'idle' | 'thinking' | 'flow' | 'burst'
+  let _keyRhythmState  = 'idle';  // 'idle' | 'thinking' | 'flow' | 'frustrated'
   let _keyRhythmSince  = 0;       // epoch ms when current rhythm state started
   let _rhythmHoldTimer = null;    // debounce before committing to flow/thinking
+
+  // Extended rolling window for rhythm measurement (needs 3s: 2s measure + 1s debounce)
+  let _rhythmKeyTimes  = [];      // 3s rolling window — separate from _keyPressTimes
+  let _backspaceTimes  = [];      // 3s rolling window of delete/backspace presses
+
+  // Flow milestone tracking — reset each time flow state is entered
+  let _flowMilestones  = new Set();   // which milestones (30, 60, 120, 300) have fired
 
   // DND (Do Not Disturb) — suppresses rhythm reactions and spontaneous behavior
   let _dndActive = false;
@@ -649,9 +656,15 @@ const Brain = (() => {
       };
       const eLabel = emotionLabels[emotion] || emotion;
       if (window.cameraAvailable && p && p.facePresent) {
-        Status.setText(eLabel + ' · Attention ' + p.attentionScore + '%');
+        const rhythmTag = _keyRhythmState === 'flow'
+          ? ' · ' + _getTypingWpm() + ' wpm'
+          : (_keyRhythmState === 'frustrated' ? ' · struggling...' : '');
+        Status.setText(eLabel + ' · Attention ' + p.attentionScore + '%' + rhythmTag);
       } else {
-        Status.setText('Status: ' + eLabel);
+        const rhythmTag = _keyRhythmState === 'flow'
+          ? ' · ' + _getTypingWpm() + ' wpm'
+          : (_keyRhythmState === 'frustrated' ? ' · struggling...' : '');
+        Status.setText('Status: ' + eLabel + rhythmTag);
       }
 
       // Start tears on crying, stop on any other emotion
@@ -669,7 +682,8 @@ const Brain = (() => {
     // Transitions typing rhythm to idle, fires a small observational reaction.
     const timeSinceKey      = now - lastKeyTime;
     const wasTypingRecently = timeSinceKey > 5000 && timeSinceKey < 20000;
-    const faceStillPresent  = window.perception?.facePresent;
+    // Fall back to true when no camera — assume face present
+    const faceStillPresent  = window.cameraAvailable ? window.perception?.facePresent : true;
 
     if (wasTypingRecently && faceStillPresent && _keyRhythmState !== 'idle') {
       _setTypingRhythm('idle');
@@ -1065,7 +1079,7 @@ const Brain = (() => {
     _prevMouseY = e.clientY;
   }
 
-  function onKeyDown() {
+  function onKeyDown(e) {
     lastKeyTime = Date.now();
 
     // Excited: rapid typing detection — track rolling keypress timestamps
@@ -1077,17 +1091,35 @@ const Brain = (() => {
       _excitedUntil = now + EXCITED_HOLD_MS;
     }
 
+    // Rhythm measurement window — wider 3s array (2s measure + 1s debounce)
+    _rhythmKeyTimes.push(now);
+    _rhythmKeyTimes = _rhythmKeyTimes.filter(t => now - t < 3000);
+
+    // Backspace/delete tracking for frustration detection
+    if (e && (e.key === 'Backspace' || e.key === 'Delete')) {
+      _backspaceTimes.push(now);
+      _backspaceTimes = _backspaceTimes.filter(t => now - t < 3000);
+    }
+
     // ── Rhythm classification (debounced 1s to avoid reacting to single keys) ──
     clearTimeout(_rhythmHoldTimer);
     _rhythmHoldTimer = setTimeout(() => {
       if (_dndActive) return;  // DND suppresses rhythm reactions
 
-      // Count keys in last 2 seconds to measure instantaneous rate
-      const keys2s     = _keyPressTimes.filter(t => now - t < 2000).length;
-      const keysPerSec = keys2s / 2;
+      const n        = Date.now();  // fresh timestamp inside callback — not stale closure
+      const keys2s   = _rhythmKeyTimes.filter(t => n - t < 2000).length;
+      const del2s    = _backspaceTimes.filter(t => n - t < 2000).length;
+      const keysPerSec  = keys2s / 2;
+      const deleteRatio = del2s / Math.max(1, keys2s);
 
-      if      (keysPerSec >= 3.0) _setTypingRhythm('flow');
-      else if (keysPerSec >= 0.5) _setTypingRhythm('thinking');
+      // Frustration: >35% of recent keypresses are deletes/backspaces
+      if (deleteRatio > 0.35 && keys2s >= 4) {
+        _setTypingRhythm('frustrated');
+      } else if (keysPerSec >= 3.0) {
+        _setTypingRhythm('flow');
+      } else if (keysPerSec >= 0.5) {
+        _setTypingRhythm('thinking');
+      }
       // Below 0.5 kps → let pause detection in rAF loop handle the transition to idle
     }, 1000);
   }
@@ -1841,6 +1873,10 @@ const Brain = (() => {
 
   function _setTypingRhythm(newState) {
     if (_keyRhythmState === newState) return;
+    // When leaving flow, clear milestone set so next flow session is fresh
+    if (_keyRhythmState === 'flow' && newState !== 'flow') {
+      _flowMilestones.clear();
+    }
     _keyRhythmState = newState;
     _keyRhythmSince = Date.now();
     _applyTypingRhythm(newState);
@@ -1855,25 +1891,89 @@ const Brain = (() => {
     const el = Companion.getElement();
 
     if (state === 'flow') {
-      if (el) { el.classList.add('typing-flow'); el.classList.remove('typing-thinking'); }
-
-      // Whisper occasionally after 20s of sustained flow (15% chance, once)
-      const inFlowSecs = (Date.now() - _keyRhythmSince) / 1000;
-      if (inFlowSecs > 20 && Math.random() < 0.15) {
-        const msgs = ['in the zone ✦', '...keep going~', '✦', '*watching*', '...'];
-        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
+      if (el) {
+        el.classList.add('typing-flow');
+        el.classList.remove('typing-thinking', 'typing-frustrated');
       }
+      // Spawn a sparkle particle to reinforce the "in the zone" feel
+      if (typeof Particles !== 'undefined') Particles.spawn('flow');
+      // Check flow milestones (30s / 60s / 2min / 5min)
+      _checkFlowMilestone();
     }
 
     if (state === 'thinking') {
-      if (el) { el.classList.remove('typing-flow'); el.classList.add('typing-thinking'); }
+      if (el) {
+        el.classList.remove('typing-flow', 'typing-frustrated');
+        el.classList.add('typing-thinking');
+      }
       // 35% chance of a curious head tilt during thinking mode
       if (Math.random() < 0.35) _doHeadTilt();
+      // 20% chance of a quiet observational murmur
+      if (Math.random() < 0.20) {
+        const thinkMsgs = ['hm...', '...', '*listens*', '...thinking?', '...✧', 'hmm~'];
+        showWhisper(thinkMsgs[Math.floor(Math.random() * thinkMsgs.length)], 2500);
+      }
+      // Soft sound cue
+      if (Math.random() < 0.25 && typeof Sounds !== 'undefined') {
+        Sounds.play('curious_ooh');
+      }
+    }
+
+    if (state === 'frustrated') {
+      if (el) {
+        el.classList.remove('typing-flow', 'typing-thinking');
+        el.classList.add('typing-frustrated');
+        // Micro-shiver to express shared frustration
+        el.classList.add('shiver');
+        setTimeout(() => { if (el) el.classList.remove('shiver'); }, 420);
+      }
+      // Sympathy whisper — 50% chance
+      if (Math.random() < 0.50) {
+        const msgs = ['...it\'s okay.', '*concerned*', 'take a breath~',
+                      '...struggling?', 'you got this.', 'hmm... 🤔',
+                      '*pats head*', '...need help?'];
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3500);
+      }
     }
 
     if (state === 'idle') {
-      if (el) { el.classList.remove('typing-flow', 'typing-thinking'); }
+      if (el) { el.classList.remove('typing-flow', 'typing-thinking', 'typing-frustrated'); }
     }
+  }
+
+  /** Check and fire flow milestone reactions at 30s / 60s / 2min / 5min. */
+  function _checkFlowMilestone() {
+    const secs = (Date.now() - _keyRhythmSince) / 1000;
+    const milestones = [
+      { t: 30,  msgs: ['...focus~', '*nods*', '...going well.', 'nice.'], chance: 0.50 },
+      { t: 60,  msgs: ['one minute ✦', '...keep it up.', '*watches quietly*', '...✦'], chance: 0.45 },
+      { t: 120, msgs: ['two minutes... ✦', '*impressed*', '...you\'re really going.', 'wow~'], chance: 0.60 },
+      { t: 300, msgs: ['five minutes!! ✦', '...wow.', 'i\'m proud of you~', '✦ deep focus ✦', 'incredible...'], chance: 0.75 },
+    ];
+    for (const m of milestones) {
+      if (secs >= m.t && !_flowMilestones.has(m.t)) {
+        _flowMilestones.add(m.t);
+        if (Math.random() < m.chance) {
+          showWhisper(m.msgs[Math.floor(Math.random() * m.msgs.length)], 3200);
+        }
+        // At 2min+: brief companion bounce to celebrate the milestone
+        if (m.t >= 120) {
+          const el = Companion.getElement();
+          if (el) {
+            el.classList.add('flow-milestone');
+            setTimeout(() => { if (el) el.classList.remove('flow-milestone'); }, 1000);
+          }
+        }
+        break;  // fire one milestone at a time
+      }
+    }
+  }
+
+  /** Estimate current typing speed in WPM (rough: 5 chars/word, 60s/min). */
+  function _getTypingWpm() {
+    const n      = Date.now();
+    const keys2s = _rhythmKeyTimes.filter(t => n - t < 2000).length;
+    return Math.round((keys2s / 2) * 60 / 5);
   }
 
   // ── DND (DO NOT DISTURB) STUB ─────────────────────────────────────────────
@@ -1883,7 +1983,7 @@ const Brain = (() => {
     const el = Companion.getElement();
     if (bool) {
       // Go still and focused — stop spontaneous behaviors
-      if (el) { el.classList.remove('typing-flow', 'typing-thinking'); }
+      if (el) { el.classList.remove('typing-flow', 'typing-thinking', 'typing-frustrated'); }
       _setTypingRhythm('idle');
       Emotion.setState('focused');
       window._lastEmotion = 'focused';
