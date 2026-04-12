@@ -252,10 +252,26 @@
               <div class="settings-row-label">Overlay shape</div>
               <div class="settings-row-sublabel">Shape of the compact overlay window</div>
             </div>
-            <select id="pip-shape-select" class="settings-select">
-              <option value="square">Square</option>
-              <option value="circle">Circle</option>
-            </select>
+            <div class="pip-shape-picker" id="pip-shape-picker">
+              <button class="pip-shape-chip" data-shape="square" title="Square">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <rect x="2" y="2" width="18" height="18" rx="3" ry="3" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Square
+              </button>
+              <button class="pip-shape-chip" data-shape="rounded" title="Rounded">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <rect x="2" y="2" width="18" height="18" rx="7" ry="7" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Rounded
+              </button>
+              <button class="pip-shape-chip" data-shape="circle" title="Circle">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Circle
+              </button>
+            </div>
           </div>
         </div>
       </div>

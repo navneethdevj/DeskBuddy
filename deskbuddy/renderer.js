@@ -1256,21 +1256,25 @@
       if (autoPipSkipSessionToggle) autoPipSkipSessionToggle.checked = v;
     });
 
-    // PiP overlay shape
+    // PiP overlay shape chip picker
+    const VALID_SHAPES = ['square', 'rounded', 'circle'];
     function _applyPipShape(shape) {
-      document.body.classList.toggle('pip-shape-circle', shape === 'circle');
-      document.body.classList.toggle('pip-shape-square', shape !== 'circle');
+      VALID_SHAPES.forEach(s =>
+        document.body.classList.toggle('pip-shape-' + s, s === shape));
+    }
+    function _syncShapeChips(shape) {
+      document.querySelectorAll('#pip-shape-picker .pip-shape-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === shape);
+      });
     }
     _applyPipShape(Settings.get('pipShape'));
-    const pipShapeSel = document.getElementById('pip-shape-select');
-    if (pipShapeSel) {
-      pipShapeSel.value = Settings.get('pipShape');
-      pipShapeSel.addEventListener('change', () =>
-        Settings.set('pipShape', pipShapeSel.value));
-    }
+    _syncShapeChips(Settings.get('pipShape'));
+    document.querySelectorAll('#pip-shape-picker .pip-shape-chip').forEach(btn => {
+      btn.addEventListener('click', () => Settings.set('pipShape', btn.dataset.shape));
+    });
     Settings.onChange('pipShape', (v) => {
       _applyPipShape(v);
-      if (pipShapeSel) pipShapeSel.value = v;
+      _syncShapeChips(v);
     });
 
     // Sensitivity select

@@ -1758,9 +1758,8 @@ body.pip-mode {
 
 /* Show compact-only controls, hide full-mode controls */
 body.pip-mode #compact-expand-btn { display: block; }
-/* In circular PiP the hover overlay's expand button is sufficient —
+/* In circle/rounded PiP the hover overlay's expand button is sufficient —
    hide the always-visible button to keep the bubble clean. */
-body.pip-shape-circle.pip-mode #compact-expand-btn { display: none; }
 
 /* Hide full-mode button and non-essential UI in compact */
 body.pip-mode #full-collapse-btn,
@@ -1772,7 +1771,7 @@ body.pip-mode #tear-overlay { display: none; }
 
 /* ── PiP floating bubble — base shape & glow ───────────────────────
    `body.pip-mode #world` is the bubble container.
-   Shape is driven by the `pip-shape-*` body class (circle / square).
+   Shape is driven by the `pip-shape-*` body class (square / rounded / circle).
    Glow colours are driven by CSS custom-properties that are set by
    the emotion attribute-selectors below; only the COLOURS change,
    not the animation name → no animation restart → no flash.        */
@@ -1786,21 +1785,16 @@ body.pip-mode #world {
   /* Default glow colours (purple/default emotion) */
   --pip-glow-a: 0 0 0 2px rgba(130, 145, 255, 0.55), 0 0 18px rgba(120, 135, 235, 0.30), 0 0 44px rgba(100, 110, 210, 0.15), 0 8px 32px rgba(0, 0, 0, 0.60);
   --pip-glow-b: 0 0 0 2px rgba(160, 175, 255, 0.70), 0 0 26px rgba(145, 160, 255, 0.42), 0 0 60px rgba(120, 130, 230, 0.22), 0 8px 36px rgba(0, 0, 0, 0.65);
+  /* Smooth morph when the user switches shape in settings */
+  transition: border-radius 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Default fallback shape (circle) until a shape class is applied */
+  border-radius: 50%;
 }
 
-/* ── Shape variants ─────────────────────────────────────────────── */
-/* Circle (default, WhatsApp-style) */
-body.pip-shape-circle.pip-mode #world {
-  border-radius: 50%;
-}
-/* Square (rounded-rectangle) */
-body.pip-shape-square.pip-mode #world {
-  border-radius: 16px;
-}
-/* Fallback when no shape class is set yet */
-body.pip-mode #world {
-  border-radius: 50%;
-}
+/* ── Shape variants (higher specificity → always win) ──────────── */
+body.pip-shape-circle.pip-mode #world  { border-radius: 50%; }
+body.pip-shape-rounded.pip-mode #world { border-radius: 32px; }
+body.pip-shape-square.pip-mode #world  { border-radius: 16px; }
 
 /* ── Entrance animation ─────────────────────────────────────────────
    Applied via the one-shot `pip-entering` body class, which JS adds
@@ -1857,13 +1851,13 @@ body.pip-mode #world[data-pip-emotion="crying"] {
   display: none;  /* hidden until pip-mode */
   position: absolute;
   inset: 0;
-  border-radius: 50%;
+  border-radius: 50%; /* default; overridden by shape classes below */
   background: rgba(0, 0, 0, 0);
   align-items: center;
   justify-content: center;
   z-index: 1998;
   opacity: 0;
-  transition: opacity 0.18s ease, background 0.18s ease;
+  transition: opacity 0.18s ease, background 0.18s ease, border-radius 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;        /* pass-through until shown */
   -webkit-app-region: no-drag;
 }
@@ -1877,6 +1871,15 @@ body.pip-mode #world:hover #pip-hover-overlay {
   opacity: 1;
   background: rgba(0, 0, 0, 0.45);
 }
+
+/* Hover overlay tracks the PiP shape — each variant sets its own border-radius */
+body.pip-shape-circle.pip-mode  #pip-hover-overlay { border-radius: 50%; }
+body.pip-shape-rounded.pip-mode #pip-hover-overlay { border-radius: 32px; }
+body.pip-shape-square.pip-mode  #pip-hover-overlay { border-radius: 16px; }
+
+/* Hide always-visible expand button in non-square shapes (hover overlay is enough) */
+body.pip-shape-circle.pip-mode  #compact-expand-btn { display: none; }
+body.pip-shape-rounded.pip-mode #compact-expand-btn { display: none; }
 
 #pip-expand-btn {
   background: rgba(255, 255, 255, 0.14);
@@ -1927,6 +1930,9 @@ body.pip-mode #session-timer {
   z-index: 1001;
   animation: none;
 }
+/* In circle/rounded mode pull the timer up so it doesn't clip outside the curve */
+body.pip-shape-circle.pip-mode  #session-timer,
+body.pip-shape-rounded.pip-mode #session-timer { bottom: 13px; }
 
 /* ── Full-screen mode ─────────────────────────────────────────────── */
 body.full-mode {
@@ -2342,6 +2348,46 @@ body.pip-mode #settings-panel { display: none !important; }
 .settings-select option {
   background: #120f22;
   color: rgba(220, 210, 255, 0.88);
+}
+
+/* ── PiP shape chip picker ────────────────────────────────────── */
+.pip-shape-picker {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.pip-shape-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 6px 10px 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(200, 190, 255, 0.60);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pip-shape-chip:hover {
+  border-color: rgba(160, 140, 255, 0.30);
+  background: rgba(160, 140, 255, 0.10);
+  color: rgba(220, 210, 255, 0.80);
+  transform: translateY(-1px);
+}
+.pip-shape-chip.active {
+  border-color: rgba(160, 140, 255, 0.65);
+  background: rgba(130, 110, 255, 0.18);
+  color: rgba(220, 210, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(140, 120, 255, 0.25);
+}
+.pip-shape-chip svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 /* ── Toggle switch ────────────────────────────────────────────── */
