@@ -159,33 +159,125 @@ const ShareCard = (() => {
     if (g.mouth) _drawMouth(ctx, cx, cy + eyeH / 2 + 10, g.mouth);
   }
 
-  // ── Focus score bar ───────────────────────────────────────────────────────
-
-  function _drawFocusBar(ctx, x, y, w, h, pct) {
-    // Background track
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    _roundRect(ctx, x, y, w, h, h / 2);
-    ctx.fill();
-
-    // Fill
-    const fillW = Math.max(h, w * Math.min(1, Math.max(0, pct)));
-    const grad  = ctx.createLinearGradient(x, y, x + fillW, y);
-    grad.addColorStop(0,   'rgba(140,110,255,0.80)');
-    grad.addColorStop(1,   'rgba(100,200,255,0.80)');
-    ctx.fillStyle = grad;
-    _roundRect(ctx, x, y, fillW, h, h / 2);
-    ctx.fill();
-  }
+  // ── Shared drawing utilities ─────────────────────────────────────────────
 
   function _roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y,     x + w, y + h,     r);
-    ctx.arcTo(x + w, y + h, x,     y + h,     r);
-    ctx.arcTo(x,     y + h, x,     y,          r);
-    ctx.arcTo(x,     y,     x + w, y,          r);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
     ctx.closePath();
+  }
+
+  /** Rounded-bar focus-score indicator, gold gradient fill. */
+  function _drawFocusBar(ctx, x, y, w, h, pct) {
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    _roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fill();
+
+    const fillW = Math.max(h, w * Math.min(1, Math.max(0, pct)));
+    const grad  = ctx.createLinearGradient(x, y, x + fillW, y);
+    grad.addColorStop(0,   'rgba(215, 150,  28, 0.85)');
+    grad.addColorStop(0.5, 'rgba(230, 185,  60, 0.90)');
+    grad.addColorStop(1,   'rgba(200, 225, 100, 0.80)');
+    ctx.fillStyle = grad;
+    _roundRect(ctx, x, y, fillW, h, h / 2);
+    ctx.fill();
+  }
+
+  /** 4-pointed sparkle at (cx, cy). */
+  function _drawSparkle(ctx, cx, cy, size, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      const r     = (i % 2 === 0) ? size : size * 0.30;
+      const px    = cx + Math.cos(angle) * r;
+      const py    = cy + Math.sin(angle) * r;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Small filled circle bullet. */
+  function _dot(ctx, cx, cy, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Pill-shaped badge with centred label text. */
+  function _drawBadge(ctx, x, y, w, h, text, bgColor, borderColor, textColor, fontSize) {
+    const r = h / 2;
+    ctx.save();
+    ctx.fillStyle = bgColor;
+    _roundRect(ctx, x, y, w, h, r);
+    ctx.fill();
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth   = 0.75;
+    _roundRect(ctx, x, y, w, h, r);
+    ctx.stroke();
+    ctx.fillStyle    = textColor;
+    ctx.font         = `600 ${fontSize || 9}px "Segoe UI", system-ui, sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign    = 'center';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  /** Minimal trophy silhouette — used as a faint decorative watermark. */
+  function _drawTrophy(ctx, cx, cy, scale, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 1.3;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    const s = scale;
+
+    // Cup body
+    ctx.beginPath();
+    ctx.moveTo(cx - 13 * s, cy - 18 * s);
+    ctx.lineTo(cx - 11 * s, cy);
+    ctx.quadraticCurveTo(cx, cy + 8 * s, cx + 11 * s, cy);
+    ctx.lineTo(cx + 13 * s, cy - 18 * s);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Left handle
+    ctx.beginPath();
+    ctx.arc(cx - 14 * s, cy - 10 * s, 5 * s, 0.35 * Math.PI, 1.5 * Math.PI);
+    ctx.stroke();
+
+    // Right handle
+    ctx.beginPath();
+    ctx.arc(cx + 14 * s, cy - 10 * s, 5 * s, 1.5 * Math.PI, 0.65 * Math.PI);
+    ctx.stroke();
+
+    // Stem + base
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 8 * s);
+    ctx.lineTo(cx, cy + 17 * s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 10 * s, cy + 17 * s);
+    ctx.lineTo(cx + 10 * s, cy + 17 * s);
+    ctx.stroke();
+
+    // Star on cup top
+    _drawSparkle(ctx, cx, cy - 22 * s, 4 * s, color);
+
+    ctx.restore();
   }
 
   // ── Card renderer ─────────────────────────────────────────────────────────
@@ -197,29 +289,7 @@ const ShareCard = (() => {
     canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    // ── Background ────────────────────────────────────────────────────────
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, W, H);
-
-    // Subtle top-edge purple tint
-    const topGrad = ctx.createLinearGradient(0, 0, 0, 80);
-    topGrad.addColorStop(0, 'rgba(120,90,200,0.18)');
-    topGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, W, 80);
-
-    // Border
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth   = 1;
-    ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
-
-    // ── Header ────────────────────────────────────────────────────────────
-    ctx.font      = '500 12px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.30)';
-    ctx.fillText('👀  DeskBuddy', 24, 30);
-
-    // ── Primary stat: focused time ────────────────────────────────────────
-    const focusedMins  = Math.floor((sessionData.actualFocusedSeconds || 0) / 60);
+    const focusedMins  = Math.floor((sessionData.actualFocusedSeconds  || 0) / 60);
     const longestMins  = Math.floor((sessionData.longestFocusStreakSeconds || 0) / 60);
     const distractions = sessionData.distractionCount || 0;
     const totalSecs    = (sessionData.durationMinutes || 0) * 60;
@@ -227,75 +297,203 @@ const ShareCard = (() => {
       ? Math.round(((sessionData.actualFocusedSeconds || 0) / totalSecs) * 100)
       : 0;
 
-    ctx.font      = '300 28px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.fillText(`✦  ${focusedMins} min focused`, 24, 68);
+    // ── Background ────────────────────────────────────────────────────────
+
+    // Base fill — deep dark indigo
+    ctx.fillStyle = '#0c0a1a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Warm gold beacon behind stat area (trophy glow)
+    const warmGlow = ctx.createRadialGradient(85, 95, 0, 85, 95, 165);
+    warmGlow.addColorStop(0,    'rgba(215, 150,  28, 0.11)');
+    warmGlow.addColorStop(0.45, 'rgba(150,  75, 200, 0.05)');
+    warmGlow.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = warmGlow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Cool lavender glow on companion side
+    const lavGlow = ctx.createRadialGradient(318, 112, 0, 318, 112, 105);
+    lavGlow.addColorStop(0, 'rgba(150, 120, 255, 0.11)');
+    lavGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = lavGlow;
+    ctx.fillRect(0, 0, W, H);
+
+    // Top purple-to-transparent band
+    const topBand = ctx.createLinearGradient(0, 0, 0, 58);
+    topBand.addColorStop(0, 'rgba(88, 48, 168, 0.28)');
+    topBand.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = topBand;
+    ctx.fillRect(0, 0, W, 58);
+
+    // Bottom fade
+    const botFade = ctx.createLinearGradient(0, H - 46, 0, H);
+    botFade.addColorStop(0, 'rgba(0,0,0,0)');
+    botFade.addColorStop(1, 'rgba(0,0,0,0.38)');
+    ctx.fillStyle = botFade;
+    ctx.fillRect(0, H - 46, W, 46);
+
+    // Outer border — subtle lavender rim
+    ctx.strokeStyle = 'rgba(175, 135, 255, 0.22)';
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+    // Inner inset border
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(3, 3, W - 6, H - 6);
+
+    // Top edge gradient line (purple → gold → transparent)
+    const topLine = ctx.createLinearGradient(0, 0, W, 0);
+    topLine.addColorStop(0,    'rgba(0,0,0,0)');
+    topLine.addColorStop(0.18, 'rgba(175,135,255,0.50)');
+    topLine.addColorStop(0.62, 'rgba(215,168,48, 0.38)');
+    topLine.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.strokeStyle = topLine;
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 1);
+    ctx.lineTo(W, 1);
+    ctx.stroke();
+
+    // ── Background sparkle decorations ────────────────────────────────────
+    _drawSparkle(ctx, 358, 17,  3.8, 'rgba(255,210,75,0.20)');
+    _drawSparkle(ctx, 387, 56,  2.2, 'rgba(255,210,75,0.12)');
+    _drawSparkle(ctx, 378, 202, 2.0, 'rgba(255,210,75,0.10)');
+    _drawSparkle(ctx, 21,  220, 2.5, 'rgba(160,128,255,0.15)');
+    _drawSparkle(ctx, 214, 13,  1.8, 'rgba(255,255,255,0.10)');
+
+    // ── Header ────────────────────────────────────────────────────────────
+    ctx.font      = '600 10px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(160,128,255,0.68)';
+    ctx.fillText('✦  DESKBUDDY', 22, 23);
+
+    // "SESSION COMPLETE" pill badge
+    ctx.font = '600 9px "Segoe UI", system-ui, sans-serif';
+    const badgeW = ctx.measureText('SESSION COMPLETE').width + 18;
+    _drawBadge(ctx, 22, 30, badgeW, 15, 'SESSION COMPLETE',
+      'rgba(218,162,38,0.14)',
+      'rgba(218,162,38,0.40)',
+      'rgba(232,192,76,0.90)',
+      9);
+
+    // ── Left vertical gold accent bar ─────────────────────────────────────
+    const accentG = ctx.createLinearGradient(0, 52, 0, 136);
+    accentG.addColorStop(0,   'rgba(218,168,46,0.72)');
+    accentG.addColorStop(0.5, 'rgba(232,190,70,0.95)');
+    accentG.addColorStop(1,   'rgba(218,168,46,0.18)');
+    ctx.fillStyle = accentG;
+    ctx.fillRect(14, 52, 2.5, 84);
+
+    // ── Primary stat: focused minutes — large gold number ─────────────────
+    ctx.save();
+    const numGrad = ctx.createLinearGradient(22, 56, 22, 110);
+    numGrad.addColorStop(0, 'rgba(255,234,125,0.98)');
+    numGrad.addColorStop(1, 'rgba(218,172, 38,0.92)');
+    ctx.fillStyle = numGrad;
+    ctx.font      = '200 52px "Segoe UI", system-ui, sans-serif';
+    const numStr  = String(focusedMins);
+    ctx.fillText(numStr, 22, 108);
+    const numW = ctx.measureText(numStr).width;
+    ctx.restore();
+
+    // "min focused" label floated right of the big number
+    ctx.font      = '300 12px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.76)';
+    ctx.fillText('min focused', 28 + numW, 86);
 
     // ── Secondary stats ───────────────────────────────────────────────────
-    ctx.font      = '300 13px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.50)';
-    ctx.fillText(`${distractions} distraction${distractions !== 1 ? 's' : ''}`, 24, 92);
-    ctx.fillText(`longest streak: ${longestMins} min`, 24, 110);
+    const GOLD_DOT = 'rgba(218,168,46,0.68)';
+    ctx.font       = '300 12px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle  = 'rgba(255,255,255,0.44)';
+
+    _dot(ctx, 28, 124, GOLD_DOT);
+    ctx.fillText(`${distractions} distraction${distractions !== 1 ? 's' : ''}`, 37, 127);
+
+    _dot(ctx, 28, 141, GOLD_DOT);
+    ctx.fillText(`longest streak: ${longestMins} min`, 37, 144);
 
     // ── Focus score bar ───────────────────────────────────────────────────
-    ctx.font      = '300 11px "Segoe UI", system-ui, sans-serif';
+    ctx.font      = '400 9.5px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.fillText(`focus score  ${focusScore}%`, 24, 132);
-    _drawFocusBar(ctx, 24, 138, 160, 5, focusScore / 100);
+    ctx.fillText('FOCUS', 22, 162);
+    ctx.font      = '600 9.5px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(225,184,72,0.90)';
+    ctx.fillText(`${focusScore}%`, 57, 162);
+    _drawFocusBar(ctx, 22, 167, 198, 4, focusScore / 100);
 
     // ── Goal line ─────────────────────────────────────────────────────────
     if (sessionData.goalText) {
-      const achieved = sessionData.goalAchieved;
-      const mark     = achieved === true ? ' ✓' : achieved === false ? ' ✗' : '';
-      ctx.font      = 'italic 12px "Segoe UI", system-ui, sans-serif';
-      ctx.fillStyle = achieved === true
-        ? 'rgba(100,220,100,0.90)'
+      const achieved  = sessionData.goalAchieved;
+      const mark      = achieved === true ? ' ✓' : achieved === false ? ' ✗' : '';
+      const goalColor = achieved === true
+        ? 'rgba(75,215,120,0.92)'
         : achieved === false
-          ? 'rgba(255,100,100,0.80)'
-          : 'rgba(255,255,255,0.42)';
+          ? 'rgba(255,100,100,0.82)'
+          : 'rgba(255,255,255,0.40)';
+      ctx.font      = 'italic 11px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = goalColor;
 
-      // Truncate if too long for the card
       let goalTxt = `"${sessionData.goalText}"${mark}`;
-      const MAX_W = 200;
       ctx.save();
+      const MAX_W = 198;
       if (ctx.measureText(goalTxt).width > MAX_W) {
-        while (ctx.measureText(goalTxt + '…"' + mark).width > MAX_W && goalTxt.length > 3) {
-          goalTxt = goalTxt.slice(0, -1);
+        let base = sessionData.goalText;
+        while (ctx.measureText(`"${base}…"${mark}`).width > MAX_W && base.length > 1) {
+          base = base.slice(0, -1);
         }
-        goalTxt += `…"${mark}`;
+        goalTxt = `"${base}…"${mark}`;
       }
-      ctx.fillText(goalTxt, 24, 162);
+      ctx.fillText(goalTxt, 22, 186);
       ctx.restore();
     }
 
     // ── Companion glyph (right side) ──────────────────────────────────────
-    _drawCompanionGlyph(ctx, emotion || 'happy', 318, 115);
+    _drawCompanionGlyph(ctx, emotion || 'happy', 318, 112);
+
+    // ── Trophy watermark beneath companion ────────────────────────────────
+    _drawTrophy(ctx, 318, 168, 0.86, 'rgba(218,168,46,0.18)');
 
     // ── Footer ────────────────────────────────────────────────────────────
-    const streak     = (typeof Session !== 'undefined' && Session.computeDayStreak?.()) || 0;
-    const totalMins  = (typeof Session !== 'undefined' && Session.getTotalFocusedMinutes?.()) || 0;
-    const tier       = _getBondingTier(streak, totalMins);
-    const streakText = streak === 1 ? 'Day 1 streak' : `Day ${streak} streak`;
+    const streak    = (typeof Session !== 'undefined' && Session.computeDayStreak?.()) || 0;
+    const totalMins = (typeof Session !== 'undefined' && Session.getTotalFocusedMinutes?.()) || 0;
+    const tier      = _getBondingTier(streak, totalMins);
 
-    ctx.font      = '400 10px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.24)';
-    ctx.fillText(`${streakText}  ·  ${tier}`, 24, H - 14);
-
-    // Light bottom separator
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    // Footer separator — gold-to-lavender gradient line
+    const footLine = ctx.createLinearGradient(0, 0, W, 0);
+    footLine.addColorStop(0,    'rgba(0,0,0,0)');
+    footLine.addColorStop(0.14, 'rgba(218,168,46,0.28)');
+    footLine.addColorStop(0.86, 'rgba(175,135,255,0.20)');
+    footLine.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.strokeStyle = footLine;
     ctx.lineWidth   = 1;
     ctx.beginPath();
-    ctx.moveTo(24, H - 26);
-    ctx.lineTo(W - 24, H - 26);
+    ctx.moveTo(14, H - 32);
+    ctx.lineTo(W - 14, H - 32);
     ctx.stroke();
+
+    // Streak label
+    const streakLabel = streak > 0 ? `Day ${streak} streak` : 'first session ✦';
+    ctx.font      = '400 10px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.fillText(streakLabel, 22, H - 14);
+
+    // Tier badge — pill on right side of footer
+    ctx.font     = '600 9px "Segoe UI", system-ui, sans-serif';
+    const tierW  = ctx.measureText(tier).width + 18;
+    _drawBadge(ctx, W - 18 - tierW, H - 28, tierW, 14, tier,
+      'rgba(135,100,255,0.15)',
+      'rgba(135,100,255,0.34)',
+      'rgba(192,168,255,0.82)',
+      9);
 
     return canvas;
   }
 
   // ── Modal UI ─────────────────────────────────────────────────────────────
 
-  let _modalEl     = null;
-  let _canvasCache = null;
+  let _modalEl      = null;
+  let _canvasCache  = null;
+  let _sessionDataRef = null;  // mutable ref so goal-answer can re-render
 
   function _ensureModal() {
     if (document.getElementById('share-card-modal')) return;
@@ -313,6 +511,13 @@ const ShareCard = (() => {
           <button id="share-card-close" title="Close" aria-label="Close share card">✕</button>
         </div>
         <div id="share-card-canvas-wrap"></div>
+        <div id="share-card-goal-prompt" style="display:none">
+          <span class="sc-goal-question">did you finish it?</span>
+          <div class="sc-goal-btns">
+            <button id="share-card-goal-yes" class="sc-btn sc-btn-yes">yes ✓</button>
+            <button id="share-card-goal-no"  class="sc-btn sc-btn-no">not yet</button>
+          </div>
+        </div>
         <div id="share-card-actions">
           <button id="share-card-copy"     class="sc-btn sc-btn-primary">copy image</button>
           <button id="share-card-download" class="sc-btn sc-btn-secondary">save PNG</button>
@@ -334,6 +539,24 @@ const ShareCard = (() => {
     // Keyboard dismiss
     modal.addEventListener('keydown', e => {
       if (e.key === 'Escape') ShareCard.hide();
+    });
+
+    // Goal achieved — yes
+    modal.querySelector('#share-card-goal-yes').addEventListener('click', () => {
+      if (!_sessionDataRef) return;
+      _sessionDataRef.goalAchieved = true;
+      if (typeof Session !== 'undefined') Session.setGoalAchieved(true);
+      _rerenderCard();
+      modal.querySelector('#share-card-goal-prompt').style.display = 'none';
+    });
+
+    // Goal achieved — no
+    modal.querySelector('#share-card-goal-no').addEventListener('click', () => {
+      if (!_sessionDataRef) return;
+      _sessionDataRef.goalAchieved = false;
+      if (typeof Session !== 'undefined') Session.setGoalAchieved(false);
+      _rerenderCard();
+      modal.querySelector('#share-card-goal-prompt').style.display = 'none';
     });
 
     // Copy to clipboard
@@ -368,6 +591,21 @@ const ShareCard = (() => {
     });
   }
 
+  /** Re-render the card canvas after a goal-achieved answer. */
+  function _rerenderCard() {
+    if (!_sessionDataRef) return;
+    const emotion = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
+    _canvasCache = _renderCard(_sessionDataRef, emotion);
+    const wrap = document.getElementById('share-card-canvas-wrap');
+    if (wrap) {
+      wrap.innerHTML = '';
+      _canvasCache.style.maxWidth    = '100%';
+      _canvasCache.style.height      = 'auto';
+      _canvasCache.style.borderRadius = '8px';
+      wrap.appendChild(_canvasCache);
+    }
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
@@ -377,6 +615,7 @@ const ShareCard = (() => {
    */
   function show(sessionData, emotion) {
     _ensureModal();
+    _sessionDataRef = sessionData;  // keep mutable ref for goal-answer re-render
     _canvasCache = _renderCard(sessionData, emotion);
 
     const wrap = document.getElementById('share-card-canvas-wrap');
@@ -388,6 +627,13 @@ const ShareCard = (() => {
       _canvasCache.style.height    = 'auto';
       _canvasCache.style.borderRadius = '8px';
       wrap.appendChild(_canvasCache);
+    }
+
+    // Show goal prompt if session had a goal and it hasn't been answered yet
+    const goalPromptEl = document.getElementById('share-card-goal-prompt');
+    if (goalPromptEl) {
+      const showPrompt = !!(sessionData.goalText && sessionData.goalAchieved === null);
+      goalPromptEl.style.display = showPrompt ? '' : 'none';
     }
 
     const modal = document.getElementById('share-card-modal');
@@ -412,7 +658,8 @@ const ShareCard = (() => {
       modal.classList.remove('sc-visible');
       modal.setAttribute('aria-hidden', 'true');
     }
-    _canvasCache = null;
+    _canvasCache    = null;
+    _sessionDataRef = null;
   }
 
   return { show, hide };

@@ -185,31 +185,15 @@
       });
     }
 
-    // "New session" button on the outcome screen → reset back to IDLE
+    // "New session" button on the outcome screen (FAILED / ABANDONED) → reset back to IDLE
     const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
-        // Hide share card if open
-        if (typeof ShareCard !== 'undefined') ShareCard.hide();
-        // Hide share button until next completed session
-        const shareBtn = document.getElementById('share-session-btn');
-        if (shareBtn) shareBtn.style.display = 'none';
         Session.reset();
         Timer.reset();
         // Clear goal input for fresh start
         const goalEl = document.getElementById('goal-input');
         if (goalEl) goalEl.value = '';
-      });
-    }
-
-    // Share card button — shown only for COMPLETED sessions
-    const shareSessionBtn = document.getElementById('share-session-btn');
-    if (shareSessionBtn) {
-      shareSessionBtn.addEventListener('click', () => {
-        const lastSession = Session.getHistory()[0];
-        if (!lastSession) return;
-        const emotion = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
-        if (typeof ShareCard !== 'undefined') ShareCard.show(lastSession, emotion);
       });
     }
 
@@ -423,10 +407,11 @@
       _setVisible('session-active',  newState === 'ACTIVE');
       _setVisible('session-paused',  newState === 'PAUSED');
 
-      // Outcome popup — standalone overlay, works in any mode
+      // Outcome popup — shown only for FAILED / ABANDONED.
+      // COMPLETED uses the share-card modal instead (see below).
       const outcomeEl = document.getElementById('outcome-screen');
       if (outcomeEl) {
-        const isOutcome = newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED';
+        const isOutcome = newState === 'FAILED' || newState === 'ABANDONED';
         outcomeEl.classList.toggle('outcome-visible', isOutcome);
         outcomeEl.setAttribute('aria-hidden', String(!isOutcome));
       }
@@ -480,11 +465,11 @@
         goalDisplay.style.display = (newState === 'ACTIVE' && txt) ? '' : 'none';
       }
 
-      // Goal achievement prompt on outcome screen
+      // Goal achievement prompt on outcome screen (only for FAILED — goal still relevant)
       const goalPrompt = document.getElementById('goal-prompt');
       if (goalPrompt) {
         const hasGoal = !!(stats?.goalText || Session.getHistory()[0]?.goalText);
-        const isEnd   = newState === 'COMPLETED' || newState === 'FAILED';
+        const isEnd   = newState === 'FAILED';
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
@@ -498,17 +483,28 @@
       }
 
       if (newState === 'COMPLETED') {
-        // Small delay so the outcome card slides in before confetti fires
+        // Capture session data + emotion snapshot before reset
+        const lastSession = Session.getHistory()[0];
+        const emotion     = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
+
+        // Confetti celebration
         setTimeout(() => _fireCelebration('complete'), 400);
-        // Show the share-card button — only for completed sessions
-        const shareBtn = document.getElementById('share-session-btn');
-        if (shareBtn) shareBtn.style.display = '';
+
+        // Auto-reset to IDLE so the session panel is immediately ready for a new session
+        setTimeout(() => {
+          Session.reset();
+          Timer.reset();
+        }, 50);
+
+        // Show share card modal slightly after celebration fires
+        setTimeout(() => {
+          if (typeof ShareCard !== 'undefined' && lastSession) {
+            ShareCard.show(lastSession, emotion);
+          }
+        }, 700);
       }
 
       if (newState === 'FAILED' || newState === 'ABANDONED') {
-        // Hide share button (not a celebration)
-        const shareBtn = document.getElementById('share-session-btn');
-        if (shareBtn) shareBtn.style.display = 'none';
         // Companion shows sad/crying for both failed and abandoned sessions
         Emotion.setState('crying');
         // Abandoned sessions play the fail sound (session.js is intentionally silent for abandon)
@@ -516,7 +512,7 @@
       }
 
       // Reset timer state body attribute when session ends
-      if (newState === 'IDLE' || newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+      if (newState === 'IDLE' || newState === 'FAILED' || newState === 'ABANDONED') {
         delete document.body.dataset.timerState;
       }
     });
