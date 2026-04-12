@@ -10,7 +10,7 @@ const Status = (() => {
    */
   function init(container) {
     el = container;
-    setText('Status: Idle');
+    setText('Idle');
   }
 
   /**

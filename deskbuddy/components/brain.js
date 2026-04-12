@@ -1780,11 +1780,15 @@ const Brain = (() => {
     const { text, durationMs } = _whisperQueue.shift();
     const el = document.getElementById('whisper-text');
     if (!el) { _nextWhisper(); return; }
-    el.textContent   = text;
-    el.style.opacity = '0.65';
+    // Snap in quickly (0.2 s) so message is readable immediately,
+    // then fade out smoothly (0.6 s) so exit feels gentle.
+    el.textContent          = text;
+    el.style.transition     = 'opacity 0.2s ease';
+    el.style.opacity        = '0.72';
     setTimeout(() => {
-      el.style.opacity = '0';
-      setTimeout(_nextWhisper, 900);
+      el.style.transition   = 'opacity 0.6s ease';
+      el.style.opacity      = '0';
+      setTimeout(_nextWhisper, 700);  // 700 > 600 so fade fully completes
     }, durationMs);
   }
 
