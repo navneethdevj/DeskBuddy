@@ -2101,6 +2101,64 @@ body[data-time-period="NIGHT"] .companion {
    (breathe keyframe defined earlier, near top of file)
    ===================================================================== */
 
+/* ── BOUNCE — happy little hop ───────────────────────────────────────────── */
+.companion.bouncing .companion-inner {
+  animation: companionBounce 0.7s cubic-bezier(.4,0,.2,1) forwards !important;
+}
+@keyframes companionBounce {
+  0%   { transform: scale(1,1)       translateY(0); }
+  20%  { transform: scale(1.04,0.92) translateY(0.3vh); }   /* squat anticipation */
+  45%  { transform: scale(0.90,1.14) translateY(-3.2vh); }  /* rise */
+  65%  { transform: scale(1.06,0.90) translateY(0.5vh); }   /* land squash */
+  80%  { transform: scale(0.97,1.05) translateY(-0.6vh); }  /* spring rebound */
+  90%  { transform: scale(1.01,0.99) translateY(0.1vh); }   /* micro-settle */
+  100% { transform: scale(1,1)       translateY(0); }
+}
+
+/* ── HEAD SHAKE — rapid side-to-side disagreement ────────────────────────── */
+.companion.head-shaking .companion-inner {
+  animation: companionHeadShake 0.55s cubic-bezier(.36,.07,.19,.97) forwards !important;
+}
+@keyframes companionHeadShake {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(-7deg); }
+  30%  { transform: rotate(7deg); }
+  45%  { transform: rotate(-6deg); }
+  60%  { transform: rotate(5deg); }
+  75%  { transform: rotate(-3deg); }
+  90%  { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ── HEAD BOP — rhythmic bop to imaginary music ──────────────────────────── */
+.companion.head-bopping .companion-inner {
+  animation: companionHeadBop 1.8s ease-in-out forwards !important;
+}
+@keyframes companionHeadBop {
+  0%   { transform: rotate(0deg)  translateY(0); }
+  12%  { transform: rotate(-5deg) translateY(-0.3vh); }
+  25%  { transform: rotate(0deg)  translateY(0); }
+  37%  { transform: rotate(5deg)  translateY(-0.3vh); }
+  50%  { transform: rotate(0deg)  translateY(0); }
+  62%  { transform: rotate(-4deg) translateY(-0.25vh); }
+  75%  { transform: rotate(0deg)  translateY(0); }
+  87%  { transform: rotate(4deg)  translateY(-0.25vh); }
+  100% { transform: rotate(0deg)  translateY(0); }
+}
+
+/* ── SNEEZE — wind-up then explosive forward lurch ───────────────────────── */
+.companion.sneezing .companion-inner {
+  animation: companionSneeze 0.55s cubic-bezier(.4,0,.2,1) forwards !important;
+}
+@keyframes companionSneeze {
+  0%   { transform: scale(1,1)       translateY(0)      rotate(0deg); }
+  18%  { transform: scale(0.95,1.08) translateY(-0.8vh) rotate(-3deg); }  /* tilt-back wind-up */
+  45%  { transform: scale(1.10,0.86) translateY(1.2vh)  rotate(4deg); }   /* ACHOO forward lurch */
+  68%  { transform: scale(0.97,1.06) translateY(-0.4vh) rotate(-2deg); }  /* rebound */
+  84%  { transform: scale(1.02,0.98) translateY(0.1vh)  rotate(0deg); }
+  100% { transform: scale(1,1)       translateY(0)      rotate(0deg); }
+}
+
 /* =====================================================================
    COMPACT OVERLAY MODE  (body.pip-mode — applied at startup by default)
    The companion lives as a small floating window.

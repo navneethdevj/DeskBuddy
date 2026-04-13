@@ -2076,20 +2076,28 @@ const Brain = (() => {
 
     // Weighted random selection (sum = 100)
     const r = Math.random() * 100;
-    if      (r < 17) _doIdleLook();        // look around (17%)
-    else if (r < 29) _doDoubleBlink();     // quick double blink (12%)
-    else if (r < 40) _doHeadTilt();        // cute head tilt (11%)
-    else if (r < 48) _doStretch();         // yawn + stretch (8%)
-    else if (r < 59) _doWhisperCoo();      // murmur something (11%)
-    else if (r < 67) _doWink();            // cheeky wink (8%)
-    else if (r < 73) _doPeek();            // look far away, snap back (6%)
-    else if (r < 80) _doHappyFlash();      // brief joyful expression (7%)
-    else if (r < 85) _doShiver();          // tiny excited shiver (5%)
-    else if (r < 88) _doTripleBlink();     // three rapid blinks (3%)
-    else if (r < 91) _doNuzzle();          // lean toward screen (3%)
-    else if (r < 94) _doDaydream();        // look up dreamily (3%)
-    else if (r < 97) _doSpinOnce();        // gleeful tiny spin (3%)
-    else             _doSlowBlink();       // cat slow-blink — "I love you" (3%)
+    if      (r < 14) _doIdleLook();        // look around (14%)
+    else if (r < 24) _doDoubleBlink();     // quick double blink (10%)
+    else if (r < 33) _doHeadTilt();        // cute head tilt (9%)
+    else if (r < 40) _doStretch();         // yawn + stretch (7%)
+    else if (r < 50) _doWhisperCoo();      // murmur something (10%)
+    else if (r < 56) _doWink();            // cheeky wink (6%)
+    else if (r < 61) _doPeek();            // look far away, snap back (5%)
+    else if (r < 67) _doHappyFlash();      // brief joyful expression (6%)
+    else if (r < 71) _doShiver();          // tiny excited shiver (4%)
+    else if (r < 73) _doTripleBlink();     // three rapid blinks (2%)
+    else if (r < 75) _doNuzzle();          // lean toward screen (2%)
+    else if (r < 77) _doDaydream();        // look up dreamily (2%)
+    else if (r < 79) _doSpinOnce();        // gleeful tiny spin (2%)
+    else if (r < 81) _doSlowBlink();       // cat slow-blink — "I love you" (2%)
+    else if (r < 85) _doBounce();          // happy little hop (4%)
+    else if (r < 88) _doEyeRub();          // rub tired eyes (3%)
+    else if (r < 91) _doSniff();           // sniff the air curiously (3%)
+    else if (r < 93) _doGroomSelf();       // groom/fix hair (2%)
+    else if (r < 95) _doHeadShake();       // shake head (2%)
+    else if (r < 97) _doHeadBop();         // bop to imaginary music (2%)
+    else if (r < 99) _doEarPerk();         // perk up at distant sound (2%)
+    else             _doSneeze();          // adorable sneeze (1%)
   }
 
   /** Look in a random direction then drift back */
@@ -2441,6 +2449,152 @@ const Brain = (() => {
         setTimeout(_doHappyFlash, 120);
       }, spinDuration);
     }, 180);
+  }
+
+  /**
+   * Cat slow-blink — a long, deliberate "I love you" blink.
+   * Referenced at cozy-entry (line ~660) and in the spontaneous pool.
+   */
+  function _doSlowBlink() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('blink');
+    setTimeout(() => {
+      if (el) el.classList.remove('blink');
+      if (Math.random() < 0.45) {
+        const msgs = ['...♡', '*slow blink* ♡', '...i trust you.',
+                      '...♡ always.', '*blinks slowly*',
+                      '...content.', '...you\'re nice ♡',
+                      '*happy blink*', '...safe ♡'];
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
+      }
+    }, 480); // held longer than a normal blink for the languid cat effect
+  }
+
+  /** Happy little hop — brief upward bounce full of energy */
+  function _doBounce() {
+    const el = Companion.getElement();
+    if (!el) return;
+    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad'];
+    if (_blocked.includes(window._lastEmotion)) return;
+    el.classList.add('bouncing');
+    setTimeout(() => el.classList.remove('bouncing'), 700);
+    if (Math.random() < 0.55) {
+      const msgs = ['*hops*', 'boing~', '*bounces*', 'wheee~',
+                    '*jumps*', '(*^◡^*)', 'yay~!', '*sproing*',
+                    '( •̀ᴗ•́)و', '*hop*'];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 1800);
+    }
+  }
+
+  /** Rub tired eyes — scrunch, open, scrunch, open */
+  function _doEyeRub() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('blink');
+    setTimeout(() => {
+      el.classList.remove('blink');
+      setTimeout(() => {
+        el.classList.add('blink');
+        setTimeout(() => {
+          el.classList.remove('blink');
+          const msgs = ['*rubs eyes*', '...sleepy.', '*yawns quietly*',
+                        '...tired eyes', '*blinks awake*', 'mm...',
+                        '*sleepy squint*', '...zzz~'];
+          if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2500);
+        }, 220);
+      }, 140);
+    }, 320);
+  }
+
+  /** Sniff the air — look to the side curiously then snap back */
+  function _doSniff() {
+    const c    = Companion.getCenter();
+    const side = Math.random() < 0.5 ? -1 : 1;
+    Companion.lookAt(c.x + side * 280, c.y - 40);
+    _doJoyFlash('curious', 700);
+    const msgs = ['*sniff sniff*', '...what\'s that?', '*sniffs curiously*',
+                  '...hmm.', '*nose twitch*', '...interesting.',
+                  '*sniffs air*', '...something smells nice~'];
+    if (Math.random() < 0.70) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2500);
+    setTimeout(() => Companion.resetLook(), 1200 + Math.random() * 600);
+  }
+
+  /** Groom self — tilt, shiver, whisper, return */
+  function _doGroomSelf() {
+    const deg = (6 + Math.random() * 4) * (Math.random() > 0.5 ? 1 : -1);
+    Companion.setRotation(deg);
+    const msgs = ['*fixes hair*', '*grooming*', '*smooths down fur*',
+                  '...presentable.', '*licks paw*', '*tidy tidy*',
+                  '*groom*', '...proper.', '*preens*',
+                  '...looking good~', '*pats self down*'];
+    if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2400);
+    setTimeout(() => {
+      Companion.setRotation(0);
+      setTimeout(_doDoubleBlink, 200);
+    }, 1400 + Math.random() * 600);
+  }
+
+  /** Rapid side-to-side head shake — disagreement or silliness */
+  function _doHeadShake() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('head-shaking');
+    const msgs = ['*shakes head*', '...nope.', '*disagrees*', 'no no no~',
+                  '...hmph.', '*rattles head*', 'nah~',
+                  '*shakes head rapidly*', '...absolutely not.',
+                  '*head wiggle*'];
+    if (Math.random() < 0.55) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2200);
+    setTimeout(() => el.classList.remove('head-shaking'), 600);
+  }
+
+  /** Rhythmic bop to imaginary music */
+  function _doHeadBop() {
+    const el = Companion.getElement();
+    if (!el) return;
+    el.classList.add('head-bopping');
+    const msgs = ['♪', '~♪', '...la la la~', '*bopping*', '♩ ♩ ♩',
+                  '...♫', '*vibing*', 'la~', '♪ ♪ ♪',
+                  '*nods to the beat*', '...music~'];
+    if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2500);
+    setTimeout(() => el.classList.remove('head-bopping'), 1800);
+  }
+
+  /** Perk up suddenly as if hearing a distant sound */
+  function _doEarPerk() {
+    const c    = Companion.getCenter();
+    const side = Math.random() < 0.5 ? -1 : 1;
+    _doJoyFlash('curious', 800);
+    setTimeout(() => {
+      Companion.lookAt(c.x + side * 360, c.y - 90);
+      const msgs = ['...?', '...!', 'did you hear that?', '*ear twitch*',
+                    '...something moved.', 'hmm...?', '*perks up suddenly*',
+                    '...what was that~', '...?!', '*listens intently*',
+                    '...huh?'];
+      if (Math.random() < 0.75) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3000);
+    }, 200);
+    setTimeout(() => Companion.resetLook(), 1800 + Math.random() * 800);
+  }
+
+  /** Wind up then sneeze forward with rebound */
+  function _doSneeze() {
+    const el = Companion.getElement();
+    if (!el) return;
+    // Brief upward wind-up look
+    const c = Companion.getCenter();
+    Companion.lookAt(c.x, c.y - 160);
+    setTimeout(() => {
+      el.classList.add('sneezing');
+      Companion.resetLook();
+      setTimeout(() => {
+        el.classList.remove('sneezing');
+        const msgs = ['*achoo!*', '*ACHOO*', 'bless me~', '*sneeze*',
+                      'achoo! >///<', '*sneezes cutely*',
+                      '*achoo* excuse me~', '...!(╥_╥)'];
+        showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2200);
+        setTimeout(_doDoubleBlink, 220);
+      }, 580);
+    }, 380);
   }
 
   /**

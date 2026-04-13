@@ -66,7 +66,6 @@ const Settings = (() => {
     mouthStyle:      'arc',         // 'arc'|'wave'|'perky'|'minimal'|'none'
     mouthThickness:  'normal',      // 'thin'|'normal'|'thick'
     glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
-    themeParticles:  true,          // canvas particle effects on animated themes
     pipOpacity:      78,            // 20–95 integer % — PiP background opacity
     pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
     companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
