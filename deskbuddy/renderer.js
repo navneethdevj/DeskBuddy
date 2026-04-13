@@ -2576,8 +2576,8 @@
     // embedded history card.
     HistoryPanel.init();
 
-    // Check for weekly report once at startup
-    _checkWeeklyReport();
+    // Weekly report is now visible inside the history panel weekly view —
+    // no startup modal needed.
   }
 
 })();

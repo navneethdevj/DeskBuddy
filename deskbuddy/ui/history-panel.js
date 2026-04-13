@@ -27,7 +27,7 @@ const HistoryPanel = (() => {
   // ── Init ──────────────────────────────────────────────────────────────────
 
   function init() {
-    const panel = document.getElementById('history-panel');
+    const panel = document.getElementById('history-card');
     if (!panel) return;
 
     // Wire view pill clicks — each pill switches ALL content
@@ -94,7 +94,7 @@ const HistoryPanel = (() => {
     const history = _getHistory();
 
     // Reset pill to daily
-    const panel = document.getElementById('history-panel');
+    const panel = document.getElementById('history-card');
     if (panel) {
       panel.querySelectorAll('.hgraph-pill').forEach(p => p.classList.remove('active'));
       const d = panel.querySelector('.hgraph-pill[data-view="daily"]');
@@ -159,7 +159,7 @@ const HistoryPanel = (() => {
     const sum = completed.reduce((acc, s) => {
       const total   = (s.durationMinutes || 0) * 60;
       const focused = s.actualFocusedSeconds || 0;
-      return acc + (total > 0 ? (focused / total) * 100 : 0);
+      return acc + (total > 0 ? Math.min(100, (focused / total) * 100) : 0);
     }, 0);
     return Math.round(sum / completed.length);
   }
@@ -200,11 +200,11 @@ const HistoryPanel = (() => {
     const weekSessions  = history.filter(s => s.date && new Date(s.date) >= monday);
     const monthSessions = history.filter(s => s.date && new Date(s.date) >= monthStart);
 
-    const todaySecs  = todaySessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
-    const weekSecs   = weekSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
-    const monthSecs  = monthSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
-    const lifetimeMins = (typeof Session !== 'undefined' && Session.getTotalFocusedMinutes)
-      ? Session.getTotalFocusedMinutes() : 0;
+    const todaySecs   = todaySessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const weekSecs    = weekSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const monthSecs   = monthSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    // Use sum across all sessions for lifetime (consistent with other views)
+    const lifetimeSecs = history.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
 
     // Daily view
     _setText('hsc-today-focused',  todaySecs > 0 ? _fmtSecs(todaySecs) : '0m');
@@ -212,7 +212,7 @@ const HistoryPanel = (() => {
     const todayAvg = _avgFocusScore(todaySessions);
     _setText('hsc-today-avg',      todayAvg !== null ? `${todayAvg}%` : '—');
     const todayLongest = _longestSession(todaySessions);
-    _setText('hsc-today-longest',  todayLongest > 0 ? `${todayLongest}m` : '—');
+    _setText('hsc-today-longest',  todayLongest > 0 ? `${Math.round(todayLongest)}m` : '—');
 
     // Weekly view
     _setText('hsc-week-focused',   weekSecs > 0 ? _fmtSecs(weekSecs) : '0m');
@@ -230,8 +230,8 @@ const HistoryPanel = (() => {
     const monthBest = _bestDay(monthSessions);
     _setText('hsc-month-best',     monthBest || '—');
 
-    // Lifetime view
-    _setText('hsc-lifetime-focused',  _fmtSecs(lifetimeMins * 60));
+    // Lifetime view — use same actualFocusedSeconds accumulation for consistency
+    _setText('hsc-lifetime-focused',  lifetimeSecs > 0 ? _fmtSecs(lifetimeSecs) : '0m');
     _setText('hsc-lifetime-sessions', String(history.length));
     const lifetimeBest = _bestDay(history);
     _setText('hsc-lifetime-best-day', lifetimeBest || '—');
@@ -479,23 +479,28 @@ const HistoryPanel = (() => {
                           'July','August','September','October','November','December'];
     const DAY_NAMES   = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
-    // Build day map
+    // Build day map — track focus time for heat-map intensity
     const dayMap = new Map();
     history.forEach(s => {
       if (!s.date) return;
       const d = new Date(s.date);
       if (d.getFullYear() !== year || d.getMonth() !== month) return;
       const day = d.getDate();
-      if (!dayMap.has(day)) dayMap.set(day, { hasCompleted: false, hasAttempted: false });
+      if (!dayMap.has(day)) dayMap.set(day, { hasCompleted: false, hasAttempted: false, focusedSecs: 0 });
       const e = dayMap.get(day);
       if (s.outcome === 'COMPLETED') e.hasCompleted = true;
       else if (s.outcome === 'FAILED' || s.outcome === 'ABANDONED') e.hasAttempted = true;
+      e.focusedSecs += s.actualFocusedSeconds || 0;
     });
+
+    // Max focus seconds across month (for heat intensity normalisation)
+    const maxSecs = Math.max(1, ...Array.from(dayMap.values()).map(v => v.focusedSecs));
 
     // First day of month in Mon-based weekday (0=Mon)
     const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
 
-    let html = `<div style="text-align:center;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(200,185,255,0.60);margin-bottom:6px;">${MONTH_NAMES[month]} ${year}</div>`;
+    // Month/year header
+    let html = `<div class="hp-month-cal-header">${MONTH_NAMES[month]} <span>${year}</span></div>`;
     html += `<table class="hp-cal-month-grid"><thead><tr>`;
     DAY_NAMES.forEach(d => { html += `<th>${d}</th>`; });
     html += `</tr></thead><tbody><tr>`;
@@ -510,12 +515,27 @@ const HistoryPanel = (() => {
       const isFuture = day > today;
       const isToday  = day === today;
       let cls = 'hp-cal-day-cell';
-      if (isFuture)            cls += ' hp-day-future';
-      else if (!info)          cls += ' hp-day-empty';
-      else if (info.hasCompleted) cls += ' hp-day-completed';
-      else                     cls += ' hp-day-attempted';
-      if (isToday)             cls += ' hp-day-today';
-      html += `<td><div class="${cls}" title="${isToday ? 'Today' : `${MONTH_NAMES[month]} ${day}`}">${day}</div></td>`;
+      let style = '';
+
+      if (isFuture) {
+        cls += ' hp-day-future';
+      } else if (!info) {
+        cls += ' hp-day-empty';
+      } else if (info.hasCompleted) {
+        cls += ' hp-day-completed';
+        // Heat-map intensity: brighter = more focus time
+        const intensity = Math.min(1, info.focusedSecs / maxSecs);
+        const alpha = (0.45 + intensity * 0.45).toFixed(2);
+        style = `style="--day-intensity:${alpha}"`;
+      } else {
+        cls += ' hp-day-attempted';
+      }
+      if (isToday) cls += ' hp-day-today';
+
+      const fmtMins = info ? Math.round(info.focusedSecs / 60) : 0;
+      const titleStr = isToday ? 'Today' : `${MONTH_NAMES[month]} ${day}`;
+      const focusTitle = fmtMins > 0 ? ` · ${fmtMins}m focused` : '';
+      html += `<td><div class="${cls}" ${style} title="${titleStr}${focusTitle}">${day}</div></td>`;
       col++;
     }
     // Fill remainder of last row
