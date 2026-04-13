@@ -23,23 +23,23 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.66% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">62.5% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>5/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">75% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
@@ -120,7 +120,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">17x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -129,7 +129,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -138,11 +138,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -152,7 +150,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -173,7 +173,7 @@ export const toUserDTO = (user: PrismaUser): UserDTO =&gt; ({
   id: user.id,
   email: user.email,
   name: user.name,
-  avatarUrl: user.avatarUrl ?? <span class="branch-1 cbranch-no" title="branch not covered" >null,</span>
+  avatarUrl: user.avatarUrl ?? null,
   createdAt: user.createdAt.toISOString(),
   updatedAt: user.updatedAt.toISOString(),
 });
@@ -181,7 +181,7 @@ export const toUserDTO = (user: PrismaUser): UserDTO =&gt; ({
 export const toWorkspaceDTO = (workspace: PrismaWorkspace): WorkspaceDTO =&gt; ({
   id: workspace.id,
   name: workspace.name,
-  description: workspace.description ?? <span class="branch-1 cbranch-no" title="branch not covered" >null,</span>
+  description: workspace.description ?? null,
   ownerId: workspace.ownerId,
   createdAt: workspace.createdAt.toISOString(),
   updatedAt: workspace.updatedAt.toISOString(),
@@ -194,14 +194,14 @@ export const toTaskDTO = (
   title: task.title,
   description: task.description ?? null,
   status: task.status as TaskDTO['status'],
-  assignee: task.assignee ? <span class="branch-0 cbranch-no" title="branch not covered" >toUserDTO(task.assignee) </span>: undefined,
+  assignee: task.assignee ? toUserDTO(task.assignee) : undefined,
   workspaceId: task.workspaceId,
   createdBy: task.createdBy,
   createdAt: task.createdAt.toISOString(),
   updatedAt: task.updatedAt.toISOString(),
 });
 &nbsp;
-export const toNoteDTO = <span class="fstat-no" title="function not covered" >(n</span>ote: PrismaNote): NoteDTO =&gt; (<span class="cstat-no" title="statement not covered" >{</span>
+export const toNoteDTO = (note: PrismaNote): NoteDTO =&gt; ({
   id: note.id,
   title: note.title,
   content: note.content,
@@ -217,7 +217,7 @@ export const toNoteDTO = <span class="fstat-no" title="function not covered" >(n
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-13T15:47:26.242Z
+                at 2026-04-13T15:52:48.087Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>14/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">85.71% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>6/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>14/14</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -95,68 +95,68 @@
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
 <a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L33'></a><a href='#L33'>33</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { prisma as defaultPrisma } from '@api/db/prisma';</span>
-<span class="cstat-no" title="statement not covered" >import { HttpError } from '@api/utils/httpError';</span>
-<span class="cstat-no" title="statement not covered" >import { toUserDTO } from '@api/utils/mappers';</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { prisma as defaultPrisma } from '@api/db/prisma';
+import { HttpError } from '@api/utils/httpError';
+import { toUserDTO } from '@api/utils/mappers';
 import type { UserDTO } from '@shared/types';
 import type { UpdateUserInput } from './users.types';
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class U</span>sersService {
-<span class="fstat-no" title="function not covered" >  constructor(private readonly <span class="cstat-no" title="statement not covered" >d</span>b = <span class="branch-0 cbranch-no" title="branch not covered" >d</span>efaultPrisma)</span> {}
+export class UsersService {
+  constructor(private readonly db = <span class="branch-0 cbranch-no" title="branch not covered" >defaultPrisma)</span> {}
 &nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>getById(userId: string): Promise&lt;UserDTO&gt; {
-    const user = <span class="cstat-no" title="statement not covered" >await this.db.user.findUnique({ where: { id: userId } });</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!user) {</span>
-<span class="cstat-no" title="statement not covered" >      throw new HttpError(404, 'User not found', 'NOT_FOUND');</span>
+  async getById(userId: string): Promise&lt;UserDTO&gt; {
+    const user = await this.db.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new HttpError(404, 'User not found', 'NOT_FOUND');
     }
-<span class="cstat-no" title="statement not covered" >    return toUserDTO(user);</span>
+    return toUserDTO(user);
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>update(userId: string, data: UpdateUserInput): Promise&lt;UserDTO&gt; {
-    const existing = <span class="cstat-no" title="statement not covered" >await this.db.user.findUnique({ where: { id: userId } });</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!existing) {</span>
-<span class="cstat-no" title="statement not covered" >      throw new HttpError(404, 'User not found', 'NOT_FOUND');</span>
+  async update(userId: string, data: UpdateUserInput): Promise&lt;UserDTO&gt; {
+    const existing = await this.db.user.findUnique({ where: { id: userId } });
+    if (!existing) {
+      throw new HttpError(404, 'User not found', 'NOT_FOUND');
     }
-    const updated = <span class="cstat-no" title="statement not covered" >await this.db.user.update({</span>
+    const updated = await this.db.user.update({
       where: { id: userId },
       data: {
         ...(data.name !== undefined &amp;&amp; { name: data.name }),
         ...(data.avatarUrl !== undefined &amp;&amp; { avatarUrl: data.avatarUrl }),
       },
     });
-<span class="cstat-no" title="statement not covered" >    return toUserDTO(updated);</span>
+    return toUserDTO(updated);
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -166,7 +166,7 @@ import type { UpdateUserInput } from './users.types';
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-13T15:47:26.242Z
+                at 2026-04-13T15:52:48.087Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

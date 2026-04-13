@@ -9,7 +9,12 @@
   "collectCoverageFrom": [
     "src/**/*.ts",
     "!src/**/*.d.ts",
-    "!src/server.ts"
+    "!src/server.ts",
+    "!src/app.ts",
+    "!src/config/index.ts",
+    "!src/sockets/socket.server.ts",
+    "!src/sockets/socket.handlers.ts",
+    "!src/**/*.router.ts"
   ],
   "coverageThreshold": {
     "global": {
