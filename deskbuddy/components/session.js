@@ -637,7 +637,20 @@ const Session = (() => {
     _history = [];
   }
 
-  // ── Public surface ─────────────────────────────────────────────────────────
+  /**
+   * toggleStarred(index) — toggle the _starred flag on a session by its 0-based index.
+   * Returns the new starred state (true/false), or null if index is invalid.
+   * @param {number} index
+   * @returns {boolean|null}
+   */
+  function toggleStarred(index) {
+    if (index < 0 || index >= _history.length) return null;
+    _history[index]._starred = !_history[index]._starred;
+    _saveToStorage();
+    return !!_history[index]._starred;
+  }
+
+
 
   /**
    * exportHistory() — serialise the full session history to a JSON string.
@@ -718,6 +731,7 @@ const Session = (() => {
     deleteSessions,
     clearHistory,
     clearAllCache,
+    toggleStarred,
   };
 
 })();

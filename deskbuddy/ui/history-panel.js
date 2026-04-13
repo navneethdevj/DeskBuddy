@@ -1240,18 +1240,7 @@ const HistoryPanel = (() => {
       }
       case 'star': {
         if (_ctxTargetIndex === null || typeof Session === 'undefined') return;
-        const raw = Session.getHistory();          // live array copy
-        const s   = raw[_ctxTargetIndex];
-        if (!s) return;
-        // Mutate via a tiny helper: toggle _starred flag and persist via deleteSessions+reimport trick
-        // Simpler: directly patch localStorage
-        try {
-          const stored = JSON.parse(localStorage.getItem('deskbuddy_sessions') || '[]');
-          if (stored[_ctxTargetIndex]) {
-            stored[_ctxTargetIndex]._starred = !stored[_ctxTargetIndex]._starred;
-            localStorage.setItem('deskbuddy_sessions', JSON.stringify(stored));
-          }
-        } catch (_e) {}
+        Session.toggleStarred(_ctxTargetIndex);
         _refreshPanel();
         break;
       }
