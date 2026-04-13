@@ -63,7 +63,7 @@ const Settings = (() => {
     blinkRate:       'normal',      // 'off'|'slow'|'normal'|'fast'
     showEyebrows:    true,
     noseStyle:       'triangle',    // 'triangle'|'dot'|'none'
-    mouthStyle:      'arc',         // 'arc'|'wave'|'perky'|'minimal'|'none'
+    mouthStyle:      'arc',         // 'arc'|'wide'|'cat'|'flat'|'none'
     mouthThickness:  'normal',      // 'thin'|'normal'|'thick'
     glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
     pipOpacity:      78,            // 20–95 integer % — PiP background opacity
@@ -90,12 +90,17 @@ const Settings = (() => {
     const VALID_THEMES = new Set(['galaxy', 'classic', 'forest', 'cherry', 'ocean']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
+    // Migrate deprecated mouth style names
+    const MOUTH_MIGRATE = { wave: 'arc', perky: 'wide', minimal: 'flat' };
+    if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
+
     // Reconcile with main-process Store (survives localStorage clear)
     if (window.electronAPI?.getSettings) {
       window.electronAPI.getSettings().then(saved => {
         if (!saved) return;
         _current = { ...DEFAULTS, ...saved };
         if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
+        if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
         _persist();
         Object.keys(_current).forEach(key => _fire(key, _current[key]));
       }).catch(() => {});

@@ -2756,7 +2756,8 @@ const ThemeCanvas = (() => {
     Settings.onChange('noseStyle', (v) => _applyNoseStyle(v));
 
     // ── Mouth style ──────────────────────────────────────────────────────
-    const MOUTH_CLASSES = ['mouth-arc','mouth-wave','mouth-perky','mouth-minimal','mouth-none'];
+    const MOUTH_CLASSES = ['mouth-arc','mouth-wide','mouth-cat','mouth-flat','mouth-none',
+                           'mouth-wave','mouth-perky','mouth-minimal']; // keep old names for migration
 
     function _applyMouthStyle(style) {
       document.body.classList.remove(...MOUTH_CLASSES);
