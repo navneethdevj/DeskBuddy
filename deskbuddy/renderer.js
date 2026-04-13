@@ -58,6 +58,7 @@
   if (Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(Settings.get('phoneDetection'));
   if (Brain.setIdleSpeed)      Brain.setIdleSpeed(Settings.get('idleSpeed') || 2);
   if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 2);
+  if (Brain.setPettingMode)    Brain.setPettingMode(Settings.get('pettingMode') || 2);
 
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
@@ -1858,7 +1859,32 @@
 
     Settings.onChange('expressiveness', (v) => _applyExpressiveness(v));
 
-    // ── Emotion grid — categorised with emoji icons ──────────────────────
+    // ── Petting mode triple-btn ──────────────────────────────────────────
+    const PETTING_LABELS = { 1: 'Gentle', 2: 'Default', 3: 'Eager' };
+    const pettingBtns = document.getElementById('petting-btns');
+
+    function _applyPettingMode(v) {
+      const n = parseInt(v, 10) || 2;
+      if (pettingBtns) {
+        pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setPettingMode) Brain.setPettingMode(n);
+    }
+
+    _applyPettingMode(Settings.get('pettingMode'));
+
+    if (pettingBtns) {
+      pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('pettingMode', v);
+        });
+      });
+    }
+
+    Settings.onChange('pettingMode', (v) => _applyPettingMode(v));
     const emotionGrid = document.getElementById('emotion-grid');
     if (emotionGrid) {
       const GLOW = {
@@ -1882,7 +1908,32 @@
         excited: 'excited_chirp', shy: 'shy_squeak', love: 'love_purr',
         suspicious: 'suspicious_squint', pouty: 'pouty_mweh', grumpy: 'grumpy_hmph',
         scared: 'scared_eep', sad: 'sad_whimper', crying: 'crying_sob',
-        startled: 'startled_gasp',
+        startled: 'startled_gasp', cozy: 'love_purr', being_patted: 'love_purr',
+      };
+
+      // Rich per-emotion tooltip descriptions
+      const DESC = {
+        idle:        'Resting calmly',
+        curious:     'Something caught its eye',
+        focused:     'Deep in concentration',
+        sleepy:      'Getting drowsy',
+        suspicious:  'Something feels off…',
+        happy:       'Warm and joyful',
+        scared:      'Startled or anxious',
+        sad:         'Feeling a little down',
+        crying:      'Really sad',
+        pouty:       'Mildly grumpy',
+        grumpy:      'Properly grumpy',
+        overjoyed:   'Pure unbridled joy',
+        sulking:     'Sulking quietly',
+        embarrassed: 'Flustered and blushing',
+        forgiven:    'All is forgiven ♡',
+        excited:     'Buzzing with energy',
+        shy:         'Bashful from eye contact',
+        love:        'Click-to-pet affection ♡',
+        startled:    'Sudden scare!',
+        cozy:        'Hold < 1.5 s — half-lidded warmth, heavy droopy eyes',
+        being_patted:'Hold ≥ 1.5 s — eyes fully closed, bliss escalates the longer you hold ♡',
       };
 
       // Emotional categories
@@ -1925,7 +1976,7 @@
 
           btn.appendChild(icon);
           btn.appendChild(name);
-          btn.title = `Preview: ${state}`;
+          btn.title = DESC[state] || `Preview: ${state}`;
 
           btn.addEventListener('click', () => {
             if (_activeBtn) _activeBtn.classList.remove('active');

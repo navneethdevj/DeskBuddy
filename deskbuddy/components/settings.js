@@ -41,6 +41,7 @@ const Settings = (() => {
     // ── Buddy personality ──────────────────────────────────────────────
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
+    pettingMode:            2,   // 1 = gentle (2 s deep), 2 = default (1.5 s), 3 = eager (1 s)
     emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
     // ── DND (Do Not Disturb) ──────────────────────────────────────────────
     dndDuration:            25,  // default duration in minutes (0 = infinite / until cancelled)

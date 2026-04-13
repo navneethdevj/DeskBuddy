@@ -365,10 +365,17 @@
               <button class="settings-triple-btn-item" data-val="3" title="Maximum drama">💥 Drama</button>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- ── EXPRESSIONS SECTION ──────────────────────────────────── -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Petting</div>
+              <div class="settings-row-sublabel">Hold near buddy to snuggle · escalates with hold duration</div>
+            </div>
+            <div class="settings-triple-btn" id="petting-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Hold 0.8 s to start, 1.5 s for deep bliss">🐾 Gentle</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Hold 0.5 s to start, 1.5 s for deep bliss">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Instantly cozy, 1 s for deep bliss">💕 Eager</button>
+            </div>
+          </div>
       <hr class="settings-divider">
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
@@ -384,7 +391,8 @@
               min="1" max="10" step="1" value="3" style="width:90px;">
           </div>
           <div class="settings-row-sublabel" id="emotion-grid-hint" style="padding:4px 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.26);">
-            tap to preview · hold to keep playing
+            tap to preview · hold to extend preview<br>
+            <span style="color:rgba(255,155,130,0.52);">♡ cozy</span><span style="color:rgba(255,255,255,0.18);"> = hold &lt; 1.5 s · </span><span style="color:rgba(255,110,145,0.52);">being_patted</span><span style="color:rgba(255,255,255,0.18);"> = hold ≥ 1.5 s, escalates the longer you hold</span>
           </div>
           <!-- Category groups built dynamically by renderer.js -->
           <div id="emotion-grid"></div>

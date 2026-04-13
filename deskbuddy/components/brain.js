@@ -269,10 +269,10 @@ const Brain = (() => {
   let _cozyUntil            = 0;      // epoch ms of linger expiry after release
   let _cozyEnteredAt        = 0;      // epoch ms when cozy was first entered (gate for one-shot effects)
   let _deepCozyEnteredAt    = 0;      // epoch ms when being_patted was first entered (gate for deep one-shot effects)
-  let _lastHoldWasDeep      = false;  // whether the most recent completed hold exceeded COZY_DEEP_MS
+  let _lastHoldWasDeep      = false;  // whether the most recent completed hold exceeded _cozyDeepMs
   let _nextDeepReactionAt   = 0;      // epoch ms when next escalating reaction fires during deep hold
   const COZY_LINGER_MS      = 2500;   // how long cozy lingers after mouse is released
-  const COZY_DEEP_MS        = 1500;   // hold duration (ms) before escalating to being_patted
+  let _cozyDeepMs           = 1500;   // runtime-adjustable deep threshold (default 1.5 s)
   const COZY_PHASE1_MS      = 4500;   // ms from deep entry → phase 1: happy wiggles
   const COZY_PHASE2_MS      = 9000;   // ms from deep entry → phase 2: joy overload
   const COZY_PHASE3_MS      = 16000;  // ms from deep entry → phase 3: absolute bliss chaos
@@ -604,7 +604,7 @@ const Brain = (() => {
     if (_mousedownNear || now < _cozyUntil) {
       // While actively holding: check if threshold crossed; during linger: use last-hold flag
       const heldMs = _mousedownNear ? (now - _mousedownTime) : 0;
-      const isDeep = _mousedownNear ? (heldMs >= COZY_DEEP_MS) : _lastHoldWasDeep;
+      const isDeep = _mousedownNear ? (heldMs >= _cozyDeepMs) : _lastHoldWasDeep;
 
       if (isDeep) {
         // ── DEEP PETTING MODE (≥ 1.5 s hold) ─────────────────────────────
@@ -1976,7 +1976,7 @@ const Brain = (() => {
     if (held >= 250) {
       // Held long enough to count as a pat/hold — start the linger period
       _cozyUntil       = Date.now() + COZY_LINGER_MS;
-      _lastHoldWasDeep = held >= COZY_DEEP_MS;
+      _lastHoldWasDeep = held >= _cozyDeepMs;
     } else {
       _lastHoldWasDeep = false;
     }
@@ -2644,6 +2644,15 @@ const Brain = (() => {
     _expressMult = Math.max(0.3, Math.min(3, Number(level) || 1));
   }
 
+  /**
+   * Set how responsive petting is.
+   * level: 1 = gentle (2 s to fully close eyes), 2 = default (1.5 s), 3 = eager (1 s)
+   */
+  function setPettingMode(level) {
+    const n = parseInt(level, 10) || 2;
+    _cozyDeepMs = n === 1 ? 2000 : n === 3 ? 1000 : 1500;
+  }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
@@ -2652,7 +2661,7 @@ const Brain = (() => {
            getNightSessionCount, trackNightSession, resetNightSessions,
            checkNightWhisper, doMorningGreeting,
            setDNDActive,
-           setIdleSpeed, setExpressiveness,
+           setIdleSpeed, setExpressiveness, setPettingMode,
            startTearEffect, stopTearEffect,
            triggerWelcomeBack: _welcomeBackSequence,
            triggerLookSequence };
