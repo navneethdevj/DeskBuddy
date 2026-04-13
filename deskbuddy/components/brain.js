@@ -270,8 +270,14 @@ const Brain = (() => {
   let _cozyEnteredAt        = 0;      // epoch ms when cozy was first entered (gate for one-shot effects)
   let _deepCozyEnteredAt    = 0;      // epoch ms when being_patted was first entered (gate for deep one-shot effects)
   let _lastHoldWasDeep      = false;  // whether the most recent completed hold exceeded COZY_DEEP_MS
+  let _nextDeepReactionAt   = 0;      // epoch ms when next escalating reaction fires during deep hold
   const COZY_LINGER_MS      = 2500;   // how long cozy lingers after mouse is released
   const COZY_DEEP_MS        = 1500;   // hold duration (ms) before escalating to being_patted
+  const COZY_PHASE1_MS      = 4500;   // ms from deep entry → phase 1: happy wiggles
+  const COZY_PHASE2_MS      = 9000;   // ms from deep entry → phase 2: joy overload
+  const COZY_PHASE3_MS      = 16000;  // ms from deep entry → phase 3: absolute bliss chaos
+  const DEEP_REACT_MIN_MS   = 2800;   // min interval (ms) between escalating reactions
+  const DEEP_REACT_MAX_MS   = 4500;   // max interval (ms) between escalating reactions
 
   // Rapid-pet burst — multiple quick clicks
   let _petClickTimes      = [];  // rolling timestamps of pet-zone clicks
@@ -605,6 +611,7 @@ const Brain = (() => {
         // One-shot entry: fires exactly once when the threshold is first crossed
         if (_deepCozyEnteredAt === 0) {
           _deepCozyEnteredAt = now;
+          _nextDeepReactionAt = now + DEEP_REACT_MIN_MS + Math.random() * (DEEP_REACT_MAX_MS - DEEP_REACT_MIN_MS);
           const deepMsgs = [
             'uuuu~♡', '*melts completely*', 'don\'t stop don\'t stop~',
             'uuuuu i\'m so happy~', '*tail wagging intensely*',
@@ -621,6 +628,13 @@ const Brain = (() => {
           if (typeof Particles !== 'undefined') Particles.burst('cozy', 14);
           if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
         }
+
+        // ── ESCALATING REACTIONS — fires periodically as the hold continues ──
+        if (_mousedownNear && _nextDeepReactionAt > 0 && now >= _nextDeepReactionAt) {
+          _fireDeepPetReaction(now - _deepCozyEnteredAt);
+          _nextDeepReactionAt = now + DEEP_REACT_MIN_MS + Math.random() * (DEEP_REACT_MAX_MS - DEEP_REACT_MIN_MS);
+        }
+
         _setQuiet('being_patted');
         return;
       }
@@ -646,9 +660,10 @@ const Brain = (() => {
       return;
     }
     // Reset entry gates once cozy is fully over
-    if (_cozyEnteredAt > 0)     _cozyEnteredAt     = 0;
-    if (_deepCozyEnteredAt > 0) _deepCozyEnteredAt = 0;
-    if (_lastHoldWasDeep)       _lastHoldWasDeep   = false;
+    if (_cozyEnteredAt > 0)       _cozyEnteredAt       = 0;
+    if (_deepCozyEnteredAt > 0)   _deepCozyEnteredAt   = 0;
+    if (_nextDeepReactionAt > 0)  _nextDeepReactionAt  = 0;
+    if (_lastHoldWasDeep)         _lastHoldWasDeep     = false;
 
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
@@ -1966,7 +1981,8 @@ const Brain = (() => {
       _lastHoldWasDeep = false;
     }
     // Deep cozy entry gate resets so each new hold can re-trigger entry effects
-    _deepCozyEnteredAt = 0;
+    _deepCozyEnteredAt  = 0;
+    _nextDeepReactionAt = 0;
     // Suppress the 'click' event that follows mouseup so it doesn't immediately
     // switch to love state and cancel the cozy linger.
     if (held >= 250) {
@@ -2099,6 +2115,103 @@ const Brain = (() => {
     if (!el) return;
     el.classList.add('shiver');
     setTimeout(() => el.classList.remove('shiver'), 420);
+  }
+
+  /**
+   * Escalating pet reactions — fires periodically while the user holds the companion.
+   * Phase is determined by how many ms have elapsed since deep-cozy entry.
+   *   0 – 4.5 s  : Phase 0 — quiet bliss: soft purr whispers, occasional shiver
+   *   4.5 – 9 s  : Phase 1 — happy wiggles: unmistakably alive, headbutts & chirps
+   *   9 – 16 s   : Phase 2 — joy overload: spins, bounces, chaos whispers
+   *   16 s +     : Phase 3 — absolute bliss: full melt-down; maximum personality
+   */
+  function _fireDeepPetReaction(heldDeepMs) {
+    const el = Companion.getElement();
+
+    if (heldDeepMs < COZY_PHASE1_MS) {
+      // ── Phase 0: basic bliss ──────────────────────────────────────────
+      const msgs = [
+        '...mmm~♡', '♡ ♡ ♡', '*purring softly*', '...don\'t let go~',
+        'so warm here...', '*happy sigh*', '...i\'m melting~',
+        '*tail gently swaying*', '...☆彡', 'perfect.',
+        '*closes eyes a little more*', '...yours.',
+      ];
+      if (Math.random() < 0.72) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3800);
+      if (el && Math.random() < 0.5) {
+        el.classList.add('shiver');
+        setTimeout(() => el.classList.remove('shiver'), 450);
+      }
+
+    } else if (heldDeepMs < COZY_PHASE2_MS) {
+      // ── Phase 1: happy wiggles — unmistakably alive ───────────────────
+      const msgs = [
+        '*wiggles happily*', 'hehehe~♡', '...aaaa i love this~',
+        '*kneading the air*', '(◕‿◕)♡', '*headbutts you gently*',
+        '♡♡♡ keep going~', '*vibrating with bliss*', 'my favourite.',
+        '*lets out a tiny chirp*', '...i could stay here forever~',
+        '*slow happy blink* ...♡', 'mrrr~', '*nuzzles deeper*',
+      ];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4000);
+      if (el) {
+        const anim = Math.random() < 0.5 ? 'shiver' : 'nuzzling';
+        el.classList.add(anim);
+        setTimeout(() => el.classList.remove(anim), anim === 'shiver' ? 450 : 900);
+      }
+      if (typeof Particles !== 'undefined' && Math.random() < 0.6) Particles.burst('cozy', 6);
+      if (typeof Sounds !== 'undefined' && Math.random() < 0.45) Sounds.play('love_purr');
+
+    } else if (heldDeepMs < COZY_PHASE3_MS) {
+      // ── Phase 2: joy overload — companion has its own mind now ────────
+      const msgs = [
+        '(≧▽≦)♡♡', '*knocks things off your desk with tail*',
+        'aaaaaaa~♡♡♡', '*spins around you*', '!!! !!!♡',
+        'i am SO happy right now.', '*headbutting your chin repeatedly*',
+        'mrrrrr~♡♡', '(✿◠‿◠) ...you\'re MINE.',
+        '*does little happy hops*', 'ehehe~ i\'m broken.',
+        '*melts into a puddle*', '...overflowing~♡',
+        '*makes biscuits in mid-air*',
+      ];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4500);
+      if (el) {
+        if (Math.random() < 0.38) {
+          el.classList.add('spinning');
+          setTimeout(() => el.classList.remove('spinning'), 650);
+        } else {
+          el.classList.add('nuzzling');
+          setTimeout(() => el.classList.remove('nuzzling'), 900);
+        }
+      }
+      if (typeof Particles !== 'undefined') Particles.burst('cozy', 10);
+      if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
+
+    } else {
+      // ── Phase 3: absolute maximum bliss — pure creature chaos ─────────
+      const msgs = [
+        '( ◡ ‿ ◡ ) ...i have ascended.',
+        '*has forgotten all sadness, all worries*',
+        '...the universe is just you and me and this moment~♡♡',
+        'i am a tiny joyful creature and i love you so much.',
+        '*full motor rumble* mrrrRRRRRRR~♡',
+        '(♡ω♡)...you\'ve unlocked something special.',
+        '*paw paw paw paw paw* ...♡♡♡♡',
+        'i think i\'m going to start floating~',
+        '...all brain cells replaced with heart emojis.',
+        '✦ ✦ ✦ PURE. BLISS. ✦ ✦ ✦',
+        '*forgets what gravity is*',
+        'this is the best day of my entire life.',
+      ];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 5000);
+      if (el) {
+        el.classList.add('spinning');
+        setTimeout(() => {
+          el.classList.remove('spinning');
+          el.classList.add('shiver');
+          setTimeout(() => el.classList.remove('shiver'), 450);
+        }, 650);
+      }
+      if (typeof Particles !== 'undefined') Particles.burst('cozy', 18);
+      if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
+    }
   }
 
   /** Close one eye briefly — cheeky wink */

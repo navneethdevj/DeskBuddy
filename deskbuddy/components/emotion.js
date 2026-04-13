@@ -12,8 +12,8 @@ const Emotion = (() => {
     'shy',            // prolonged direct eye contact
     'love',           // click-to-pet interaction
     'startled',       // sudden large mouse jerk
-    'cozy',           // long-press snuggle / being held (< 1.5 s)
-    'being_patted',   // deep hold (≥ 1.5 s) — fully closed eyes, pet-bliss mode
+    'cozy',           // long-press snuggle / being held (< 1.5 s) — soft half-lidded warm eyes
+    'being_patted',   // deep hold (≥ 1.5 s) — fully closed eyes, pet-bliss; escalates with duration
   ];
   let currentState = null;
   let element = null;
