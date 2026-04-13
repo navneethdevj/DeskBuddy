@@ -1670,12 +1670,14 @@ body[data-time-period="NIGHT"] .companion {
 
 /* Eyes: UwU closed — the blue eyeball stays, height just squishes to a
    flat crescent so the eye looks like it's pressing shut from love.
-   No color change, no dark fill — just the regular eye squeezed thin. */
+   No color change, no dark fill — just the regular eye squeezed thin.
+   border-radius: 100% 100% 0% 0% on the vertical axis gives a ∩ arch
+   (curved top, flat bottom) = the classic UwU happy squint shape. */
 .companion.being_patted .eye {
   width: 30vmin;
   height: 6vmin;
   /* background stays as the default blue eyeball gradient — no override */
-  border-radius: 50% 50% 50% 50% / 0% 0% 100% 100%;
+  border-radius: 50% 50% 50% 50% / 100% 100% 0% 0%;
   overflow: hidden;
   box-shadow:
     0 0 5vmin  rgba(255, 140, 175, 0.85),
