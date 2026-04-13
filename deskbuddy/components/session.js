@@ -22,6 +22,7 @@ const Session = (() => {
 
   const _MAX_SESSIONS          = 365;
   const _STORAGE_KEY           = 'deskbuddy_sessions';
+  const _LEDGER_KEY            = 'deskbuddy_stats_ledger';
   const _TIMELINE_INTERVAL_MS  = 5000;  // snapshot every 5 s during ACTIVE state
 
   const STATE = {
@@ -48,6 +49,31 @@ const Session = (() => {
   let _sessionStartMs     = null;  // wall-clock ms when current session started
 
   let _history  = [];  // array of completed session objects loaded from localStorage
+
+  // ── Stats ledger (append-only, never reduced by session deletion) ─────────
+  //
+  // The ledger accumulates stats for every committed session.  deleteSession /
+  // clearHistory only touch _history (the visible list).  The ledger is the
+  // single source of truth for lifetime / average-focus stats so users cannot
+  // game them by removing bad sessions.
+  //
+  // Fields:
+  //   totalSessions     — every committed session (COMPLETED + FAILED + ABANDONED)
+  //   completedSessions — COMPLETED only
+  //   totalFocusedSecs  — sum of actualFocusedSeconds across all sessions
+  //   totalSessionSecs  — sum of planned duration (durationMinutes×60) across all sessions
+  //   focusScoreSum     — running sum of (focused/duration)*100 for sessions where duration>0
+  //   focusScoredCount  — number of sessions that contributed to focusScoreSum
+  //   migrated          — true once the one-time backfill from history is done
+  let _ledger = {
+    totalSessions:    0,
+    completedSessions:0,
+    totalFocusedSecs: 0,
+    totalSessionSecs: 0,
+    focusScoreSum:    0,
+    focusScoredCount: 0,
+    migrated:         false,
+  };
 
   // Callbacks registered by external callers
   const _callbacks = {
@@ -126,6 +152,60 @@ const Session = (() => {
       _history = _history.slice(0, _MAX_SESSIONS);
     }
     _saveToStorage();
+    _incrementLedger(session);   // anti-cheat: always record, never reversed
+  }
+
+  // ── Ledger storage ─────────────────────────────────────────────────────────
+
+  function _loadLedger() {
+    try {
+      const raw = localStorage.getItem(_LEDGER_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          _ledger = Object.assign(_ledger, parsed);
+        }
+      }
+    } catch (_) { /* keep defaults */ }
+  }
+
+  function _saveLedger() {
+    try {
+      localStorage.setItem(_LEDGER_KEY, JSON.stringify(_ledger));
+    } catch (_) { /* quota — not critical */ }
+  }
+
+  /**
+   * _incrementLedger(session) — add one session's stats to the immutable ledger.
+   * Called by _pushSession; NEVER called by any deletion or clearing function.
+   */
+  function _incrementLedger(session) {
+    _ledger.totalSessions++;
+    if (session.outcome === 'COMPLETED') _ledger.completedSessions++;
+    const focused = session.actualFocusedSeconds || 0;
+    const total   = (session.durationMinutes || 0) * 60;
+    _ledger.totalFocusedSecs += focused;
+    _ledger.totalSessionSecs += total;
+    if (total > 0) {
+      _ledger.focusScoreSum    += (focused / total) * 100;
+      _ledger.focusScoredCount += 1;
+    }
+    _saveLedger();
+  }
+
+  /**
+   * _migrateToLedger() — one-time backfill of existing history into the ledger.
+   * Runs on first load when ledger is empty but history already exists so that
+   * existing users get accurate lifetime stats immediately after the update.
+   */
+  function _migrateToLedger() {
+    if (_ledger.migrated) return;
+    _ledger.migrated = true;
+    if (_history.length > 0) {
+      _history.forEach(s => _incrementLedger(s));
+    } else {
+      _saveLedger();
+    }
   }
 
   // ── Break tracking ─────────────────────────────────────────────────────────
@@ -256,6 +336,8 @@ const Session = (() => {
    */
   function init() {
     _loadFromStorage();
+    _loadLedger();
+    _migrateToLedger();
     if (typeof Timer !== 'undefined' && Timer.onStateChange) {
       Timer.onStateChange(_onTimerStateChange);
     }
@@ -623,10 +705,12 @@ const Session = (() => {
   /**
    * clearAllCache() — wipe ALL localStorage keys used by DeskBuddy
    * (sessions + settings + any other persisted state).
+   * Also resets the stats ledger since this is a full factory reset.
    */
   function clearAllCache() {
     const KNOWN_KEYS = [
       _STORAGE_KEY,                     // deskbuddy_sessions
+      _LEDGER_KEY,                      // deskbuddy_stats_ledger
       'deskbuddy_settings',
       'deskbuddy_phone_detect',
       'deskbuddy_dnd_active',
@@ -635,6 +719,8 @@ const Session = (() => {
       try { localStorage.removeItem(k); } catch (_) {}
     });
     _history = [];
+    _ledger  = { totalSessions: 0, completedSessions: 0, totalFocusedSecs: 0,
+                 totalSessionSecs: 0, focusScoreSum: 0, focusScoredCount: 0, migrated: true };
   }
 
   /**
@@ -651,6 +737,34 @@ const Session = (() => {
   }
 
 
+
+  /**
+   * getLifetimeLedger() — return a snapshot of the immutable stats ledger.
+   *
+   * The ledger is append-only.  deleteSession / clearHistory only remove from
+   * the visible _history array; they never touch the ledger.  This means
+   * lifetime stats here cannot be inflated by deleting bad sessions.
+   *
+   * @returns {{
+   *   totalSessions:     number,   — all committed sessions (C + F + A)
+   *   completedSessions: number,   — COMPLETED only
+   *   totalFocusedSecs:  number,   — sum of actualFocusedSeconds
+   *   totalSessionSecs:  number,   — sum of planned duration in seconds
+   *   avgFocusPct:       number|null  — time-weighted average focus %, or null
+   * }}
+   */
+  function getLifetimeLedger() {
+    const avgFocusPct = _ledger.focusScoredCount > 0
+      ? Math.round(_ledger.focusScoreSum / _ledger.focusScoredCount)
+      : null;
+    return {
+      totalSessions:     _ledger.totalSessions,
+      completedSessions: _ledger.completedSessions,
+      totalFocusedSecs:  _ledger.totalFocusedSecs,
+      totalSessionSecs:  _ledger.totalSessionSecs,
+      avgFocusPct,
+    };
+  }
 
   /**
    * exportHistory() — serialise the full session history to a JSON string.
@@ -724,6 +838,7 @@ const Session = (() => {
     computeLongestStreak,
     getTotalFocusedMinutes,
     getGoalCompletionRate,
+    getLifetimeLedger,
     STATE,
     exportHistory,
     importHistory,

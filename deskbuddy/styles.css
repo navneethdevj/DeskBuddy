@@ -1665,66 +1665,75 @@ body[data-time-period="NIGHT"] .companion {
 
 /* =====================================================================
    BEING PATTED — deep-hold (≥ 1.5 s) pet bliss mode
-   Eyes fully closed, intense warm glow, petting head-bob, deep blush
+   Eyes gently closed from pure enjoyment — adorable UwU crescent
    ===================================================================== */
 
-/* Eyes: joy-squint crescent — ⌣ shape (flat top, domed bottom) like UwU */
+/* Eyes: dreamy closed crescent — the eyelid gently pressed shut in bliss.
+   Dark warm tone makes it look like a real closed eyelid, not a pink blob.
+   Width matches the happy-eye width so it feels proportional and natural. */
 .companion.being_patted .eye {
-  width: 42vmin; height: 5.5vmin;
-  /* Flat top, fully domed bottom = unmistakable "eyes closed in bliss" crescent */
-  border-radius: 50% 50% 50% 50% / 2% 2% 98% 98%;
-  /* Warm rosy gradient instead of the default blue — the bliss warmth */
+  width: 28vmin;
+  height: 10vmin;
+  /* Dark warm eyelid: closed eyes look dark, not bright — this is what
+     gives it the "aww" factor in cute/anime art */
   background: linear-gradient(
-    to bottom,
-    rgba(255, 120, 160, 0.92) 0%,
-    rgba(255,  90, 140, 0.80) 40%,
-    rgba(255, 150, 180, 0.60) 100%
+    180deg,
+    rgba(50,  15, 35, 0.96) 0%,
+    rgba(75,  28, 52, 0.90) 40%,
+    rgba(105, 48, 78, 0.65) 100%
   );
-  opacity: 1;
+  /* Dead-flat top (upper eyelid pressed down) + full dome bottom
+     (lower lash line) = unmistakable "eyes closed in bliss" crescent */
+  border-radius: 50% 50% 50% 50% / 0% 0% 100% 100%;
+  /* Outer glow stays warm-pink — the bliss warmth radiates outward */
   box-shadow:
-    0 0 8vmin  rgba(255,  90, 140, 0.95),
-    0 0 18vmin rgba(255,  80, 120, 0.55),
-    0 0 34vmin rgba(255,  70, 100, 0.22);
+    0 0 5vmin  rgba(255, 140, 175, 0.85),
+    0 0 14vmin rgba(255, 110, 150, 0.45),
+    0 0 28vmin rgba(255,  85, 125, 0.18);
   overflow: visible;
-  /* Squeeze-pulse: the eye gently presses shut in waves of happiness */
-  animation: pattedEyeSqueeze 1.8s ease-in-out infinite;
+  /* Gentle breathing squeeze — the eye softly pulses shut */
+  animation: pattedEyeSqueeze 1.6s ease-in-out infinite;
 }
 
-/* Eyelash line — a thin curved stroke drawn above the crescent */
+/* Eyelash arch — the curved lash line above the closed crescent.
+   This is the visual element that sells "genuinely closed eyes" vs
+   "shrunken eye with hidden pupil". Wider overhang + thicker stroke. */
 .companion.being_patted .eye::before {
   content: '';
   position: absolute;
-  top: -3.5vmin;
-  left: 0; right: 0;
-  height: 3vmin;
-  border-bottom: 0.6vmin solid rgba(255, 90, 150, 0.75);
+  top: -5vmin;
+  left: -3vmin; right: -3vmin;
+  height: 5vmin;
+  /* Thick curved bottom stroke = prominent eyelash arch */
+  border-bottom: 0.9vmin solid rgba(45, 12, 32, 0.92);
   border-radius: 0 0 50% 50%;
   pointer-events: none;
 }
 
-/* Warm shimmer highlight — glistening moist closed eye */
+/* Glistening tear-of-joy highlight — tiny bright sparkle on the lash
+   corner that makes the closed eye look alive and warm, not flat. */
 .companion.being_patted .eye::after {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 220, 235, 0.70) 0%,
-    rgba(255, 180, 210, 0.40) 40%,
-    transparent 70%
+  background: radial-gradient(
+    ellipse at 28% 35%,
+    rgba(255, 235, 248, 0.90) 0%,
+    rgba(255, 195, 225, 0.55) 28%,
+    transparent 60%
   );
-  animation: pattedEyeShimmer 1.8s ease-in-out infinite;
+  animation: pattedEyeShimmer 1.6s ease-in-out infinite;
 }
 
 @keyframes pattedEyeSqueeze {
-  0%, 100% { height: 5.5vmin; opacity: 1; }
-  35%       { height: 4.2vmin; opacity: 0.90; }
-  65%       { height: 5.8vmin; opacity: 1; }
+  0%, 100% { height: 10vmin;  opacity: 1;    }
+  40%       { height: 8.2vmin; opacity: 0.93; }
+  65%       { height: 10.5vmin; opacity: 1;   }
 }
 
 @keyframes pattedEyeShimmer {
-  0%, 100% { opacity: 0.70; transform: translateX(-10%) scale(1); }
-  50%       { opacity: 1.00; transform: translateX( 5%) scale(1.06); }
+  0%, 100% { opacity: 0.80; transform: translateX(-6%)  scale(1);    }
+  50%       { opacity: 1.00; transform: translateX( 3%) scale(1.10); }
 }
 
-/* Hide pupil while eyes are fully closed */
+/* Pupil is behind the closed eyelid — naturally invisible */
 .companion.being_patted .pupil { opacity: 0; }
 
 .companion.being_patted {

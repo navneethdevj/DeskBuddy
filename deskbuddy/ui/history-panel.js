@@ -203,8 +203,15 @@ const HistoryPanel = (() => {
     const todaySecs   = todaySessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
     const weekSecs    = weekSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
     const monthSecs   = monthSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
-    // Use sum across all sessions for lifetime (consistent with other views)
-    const lifetimeSecs = history.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+
+    // Lifetime stats — use the immutable ledger so deletions cannot game them.
+    // The ledger is the single source of truth: every committed session is
+    // added to it and nothing is ever removed from it.
+    const ledger = (typeof Session !== 'undefined' && Session.getLifetimeLedger)
+      ? Session.getLifetimeLedger() : null;
+    const lifetimeFocusSecs = ledger ? ledger.totalFocusedSecs
+      : history.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const lifetimeTotalSessions = ledger ? ledger.totalSessions : history.length;
 
     // Daily view
     _setText('hsc-today-focused',  todaySecs > 0 ? _fmtSecs(todaySecs) : '0m');
@@ -230,9 +237,9 @@ const HistoryPanel = (() => {
     const monthBest = _bestDay(monthSessions);
     _setText('hsc-month-best',     monthBest || '—');
 
-    // Lifetime view — use same actualFocusedSeconds accumulation for consistency
-    _setText('hsc-lifetime-focused',  lifetimeSecs > 0 ? _fmtSecs(lifetimeSecs) : '0m');
-    _setText('hsc-lifetime-sessions', String(history.length));
+    // Lifetime view — ledger values are tamper-proof (deletions don't affect them)
+    _setText('hsc-lifetime-focused',  lifetimeFocusSecs > 0 ? _fmtSecs(lifetimeFocusSecs) : '0m');
+    _setText('hsc-lifetime-sessions', String(lifetimeTotalSessions));
     const lifetimeBest = _bestDay(history);
     _setText('hsc-lifetime-best-day', lifetimeBest || '—');
     const longestStreak = (typeof Session !== 'undefined' && Session.computeLongestStreak)
@@ -255,15 +262,21 @@ const HistoryPanel = (() => {
     const longest = (typeof Session !== 'undefined' && Session.computeLongestStreak)
       ? Session.computeLongestStreak() : 0;
 
-    const completed = history.filter(s => s.outcome === 'COMPLETED');
-    let avgScore = null;
-    if (completed.length > 0) {
-      const sum = completed.reduce((acc, s) => {
-        const total   = (s.durationMinutes || 0) * 60;
-        const focused = s.actualFocusedSeconds || 0;
-        return acc + (total > 0 ? (focused / total) * 100 : 0);
-      }, 0);
-      avgScore = Math.round(sum / completed.length);
+    // Avg focus — use the immutable ledger so deleting sessions cannot inflate it.
+    // Fall back to computing from visible history only if ledger is unavailable.
+    const ledger = (typeof Session !== 'undefined' && Session.getLifetimeLedger)
+      ? Session.getLifetimeLedger() : null;
+    let avgScore = ledger ? ledger.avgFocusPct : null;
+    if (avgScore === null) {
+      const completed = history.filter(s => s.outcome === 'COMPLETED');
+      if (completed.length > 0) {
+        const sum = completed.reduce((acc, s) => {
+          const total   = (s.durationMinutes || 0) * 60;
+          const focused = s.actualFocusedSeconds || 0;
+          return acc + (total > 0 ? (focused / total) * 100 : 0);
+        }, 0);
+        avgScore = Math.round(sum / completed.length);
+      }
     }
 
     _setText('hsr-current-streak', current > 0 ? `${current}d` : '—');
