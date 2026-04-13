@@ -1671,13 +1671,21 @@ body[data-time-period="NIGHT"] .companion {
 /* Eyes: UwU closed — the blue eyeball stays, height just squishes to a
    flat crescent so the eye looks like it's pressing shut from love.
    No color change, no dark fill — just the regular eye squeezed thin.
-   border-radius: 100% 100% 0% 0% on the vertical axis gives a ∩ arch
-   (curved top, flat bottom) = the classic UwU happy squint shape. */
+   border-radius: 50% 50% 50% 50% / 2% 2% 88% 88% gives a ⌣ squint
+   (flat top, dome bottom) = the classic UwU happy squint shape.
+   Background is explicitly set to the periwinkle center of the eye so
+   the eye never looks dark no matter how thin the element gets. */
 .companion.being_patted .eye {
   width: 30vmin;
-  height: 6vmin;
-  /* background stays as the default blue eyeball gradient — no override */
-  border-radius: 50% 50% 50% 50% / 100% 100% 0% 0%;
+  height: 8vmin;
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    #7b8bd8 0%,
+    #8f97de 30%,
+    #9aa4de 60%,
+    #b2b9e3 100%
+  );
+  border-radius: 50% 50% 50% 50% / 2% 2% 88% 88%;
   overflow: hidden;
   box-shadow:
     0 0 5vmin  rgba(255, 140, 175, 0.85),
@@ -1701,9 +1709,9 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 @keyframes pattedEyeSqueeze {
-  0%, 100% { height: 6vmin;   opacity: 1;    }
-  45%       { height: 5vmin;   opacity: 0.90; }
-  70%       { height: 6.5vmin; opacity: 1;    }
+  0%, 100% { height: 8vmin;   opacity: 1;    }
+  45%       { height: 7vmin;   opacity: 0.90; }
+  70%       { height: 8.5vmin; opacity: 1;    }
 }
 
 @keyframes pattedEyeShimmer {
@@ -3229,14 +3237,14 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
 }
 
 /* =====================================================================
-   HISTORY BUTTON — right-side icon, below brain icon
+   HISTORY BUTTON — left-side icon, next to settings gear
    ===================================================================== */
 
-/* ── History icon button — same glass style as sp-icon, positioned below ─ */
+/* ── History icon button — same glass style as sp-icon, positioned to the right of settings gear ─ */
 #hp-icon {
   position: fixed;
-  right: 10px;
-  top: calc(50% + 50px);
+  left: 58px;
+  top: 14px;
   width: 36px;
   height: 36px;
   border-radius: 11px;
@@ -3308,32 +3316,33 @@ body.pip-mode  #hp-icon { display: none !important; }
 
 #history-panel {
   position: fixed;
-  right: 0;
-  top: 10px;
-  bottom: 10px;
-  transform: translateX(calc(100% + 8px));
+  left: 58px;
+  top: 58px;
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
   width: 460px;
-  max-height: calc(100vh - 20px);
+  max-height: calc(100vh - 78px);
   z-index: 2490;
   display: none;
   flex-direction: column;
   gap: 12px;
-  padding-right: 10px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
-  pointer-events: auto;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.26s ease;
 }
 body.full-mode #history-panel { display: flex; }
 body.pip-mode  #history-panel { display: none !important; }
 
 #history-panel.hp-panel-open {
-  transform: translateX(0);
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* =====================================================================
@@ -3344,7 +3353,7 @@ body.pip-mode  #history-panel { display: none !important; }
 /* #history-btn removed — history is now in #history-panel */
 
 /* =====================================================================
-   HISTORY CARD — inside #history-panel (right sidebar)
+   HISTORY CARD — inside #history-panel (left-side dropdown)
    ===================================================================== */
 
 /* ── Glass card ──────────────────────────────────────────────────── */
@@ -4161,33 +4170,34 @@ body.pip-mode  #history-panel { display: none !important; }
 
 #session-panel {
   position: fixed;
-  right: 0;
-  top: 10px;
-  bottom: 10px;
-  transform: translateX(calc(100% + 8px)); /* hidden off-screen */
-  width: 460px;
-  max-height: calc(100vh - 20px);
+  right: 56px;
+  top: 50%;
+  transform: translateY(-50%) translateX(16px);
+  opacity: 0;
+  pointer-events: none;
+  width: 300px;
+  max-height: min(82vh, 620px);
   z-index: 2500;
   display: none;          /* shown only in full-mode */
   flex-direction: column;
   gap: 12px;
-  padding-right: 10px;    /* gap between panel and window edge when open */
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
-  pointer-events: auto;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.26s ease;
 }
 body.full-mode #session-panel { display: flex; }
 body.pip-mode  #session-panel { display: none !important; }
 
 /* Slide-in when open */
 #session-panel.sidebar-open {
-  transform: translateX(0);
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* ── iOS-style frosted glass card ───────────────────────────────────── */

@@ -1208,17 +1208,8 @@
       label: 'Open session / history panel',
       defaultKey: 'Ctrl+Shift+H',
       fn: () => {
-        const panel = document.getElementById('session-panel');
-        if (panel) {
-          if (panel.classList.contains('sidebar-open')) {
-            panel.classList.remove('sidebar-open');
-            const icon = document.getElementById('sp-icon');
-            if (icon) icon.classList.remove('sp-icon-hidden');
-          } else {
-            const icon = document.getElementById('sp-icon');
-            if (icon) icon.dispatchEvent(new MouseEvent('mouseenter'));
-          }
-        }
+        const hpIcon = document.getElementById('hp-icon');
+        if (hpIcon) hpIcon.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       },
     });
 
@@ -2587,35 +2578,43 @@
     const icon  = document.getElementById('hp-icon');
     if (!panel || !icon) return;
 
-    let _hideTimer = null;
-
     function _openHistory() {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
       panel.classList.add('hp-panel-open');
-      if (icon) icon.classList.add('hp-icon-hidden');
+      icon.classList.add('hp-icon-hidden');
       requestAnimationFrame(() => {
         if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
       });
     }
 
-    function _scheduleCloseHistory() {
-      if (_hideTimer) return;
-      _hideTimer = setTimeout(() => {
-        _hideTimer = null;
-        if (panel.contains(document.activeElement)) return;
-        panel.classList.remove('hp-panel-open');
-        if (icon) icon.classList.remove('hp-icon-hidden');
-      }, 380);
+    function _closeHistory() {
+      panel.classList.remove('hp-panel-open');
+      icon.classList.remove('hp-icon-hidden');
     }
 
-    icon.addEventListener('mouseenter', _openHistory);
-    panel.addEventListener('mouseenter', () => {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    function _toggleHistory() {
+      if (panel.classList.contains('hp-panel-open')) {
+        _closeHistory();
+      } else {
+        _openHistory();
+      }
+    }
+
+    // Click-to-toggle: open/close on icon click
+    icon.addEventListener('click', _toggleHistory);
+
+    // Close when clicking outside the panel (but not the icon itself)
+    document.addEventListener('click', (e) => {
+      if (!panel.classList.contains('hp-panel-open')) return;
+      if (panel.contains(e.target) || e.target === icon || icon.contains(e.target)) return;
+      _closeHistory();
     });
-    panel.addEventListener('focusin', () => {
-      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && panel.classList.contains('hp-panel-open')) {
+        _closeHistory();
+      }
     });
-    panel.addEventListener('mouseleave', _scheduleCloseHistory);
   }
 
 })();
