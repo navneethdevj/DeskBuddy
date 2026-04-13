@@ -580,6 +580,63 @@ const Session = (() => {
     _setState(STATE.IDLE);
   }
 
+  // ── History mutation ──────────────────────────────────────────────────────
+
+  /**
+   * deleteSession(index) — remove one session by its 0-based index in getHistory().
+   * History is stored newest-first, so index 0 = most recent.
+   * Does nothing and returns false if the index is out of range.
+   * @param {number} index
+   * @returns {boolean} true if a session was removed
+   */
+  function deleteSession(index) {
+    if (index < 0 || index >= _history.length) return false;
+    _history.splice(index, 1);
+    _saveToStorage();
+    return true;
+  }
+
+  /**
+   * deleteSessions(indices) — remove multiple sessions by their 0-based indices.
+   * Indices are resolved against the array BEFORE any removal so callers can
+   * pass them in any order.
+   * @param {number[]} indices
+   * @returns {number} count of sessions actually removed
+   */
+  function deleteSessions(indices) {
+    const valid = [...new Set(indices)]
+      .filter(i => Number.isInteger(i) && i >= 0 && i < _history.length)
+      .sort((a, b) => b - a); // remove highest index first to keep lower indices stable
+    valid.forEach(i => _history.splice(i, 1));
+    if (valid.length) _saveToStorage();
+    return valid.length;
+  }
+
+  /**
+   * clearHistory() — delete all saved session history from memory and localStorage.
+   */
+  function clearHistory() {
+    _history = [];
+    _saveToStorage();
+  }
+
+  /**
+   * clearAllCache() — wipe ALL localStorage keys used by DeskBuddy
+   * (sessions + settings + any other persisted state).
+   */
+  function clearAllCache() {
+    const KNOWN_KEYS = [
+      _STORAGE_KEY,                     // deskbuddy_sessions
+      'deskbuddy_settings',
+      'deskbuddy_phone_detect',
+      'deskbuddy_dnd_active',
+    ];
+    KNOWN_KEYS.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+    });
+    _history = [];
+  }
+
   // ── Public surface ─────────────────────────────────────────────────────────
 
   /**
@@ -657,6 +714,10 @@ const Session = (() => {
     STATE,
     exportHistory,
     importHistory,
+    deleteSession,
+    deleteSessions,
+    clearHistory,
+    clearAllCache,
   };
 
 })();

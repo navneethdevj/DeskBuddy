@@ -1782,6 +1782,36 @@
       });
     }
 
+    // ── Clear history button ─────────────────────────────────────────────
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        const count = Session.getHistory().length;
+        if (count === 0) {
+          _showBackupStatus('no sessions to clear', 'rgba(200,185,255,0.60)');
+          return;
+        }
+        if (!confirm(`Delete all ${count} session${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+        Session.clearHistory();
+        _updateExportCount();
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+        _showBackupStatus(`cleared ${count} session${count !== 1 ? 's' : ''} ✓`, 'rgba(248,113,113,0.80)');
+      });
+    }
+
+    // ── Clear all cache button ───────────────────────────────────────────
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener('click', () => {
+        if (!confirm('Wipe ALL stored data (sessions + settings)? This cannot be undone.')) return;
+        Session.clearAllCache();
+        Settings.reset();
+        _updateExportCount();
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+        _showBackupStatus('all cache wiped ✓ — restart recommended', 'rgba(248,113,113,0.80)');
+      });
+    }
+
     // ── Emotion preview duration slider ─────────────────────────────────
     const previewDurSlider   = document.getElementById('preview-dur-slider');
     const previewDurSubLabel = document.getElementById('preview-dur-sublabel');

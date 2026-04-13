@@ -468,7 +468,22 @@
           </div>
           <div id="backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
 
-          <!-- ── Settings backup ── -->
+          <!-- ── Danger zone: clear history / clear cache ── -->
+          <hr class="settings-sub-divider">
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Clear session history</div>
+              <div class="settings-row-sublabel">Permanently delete all saved sessions</div>
+            </div>
+            <button id="clear-history-btn" class="settings-action-btn settings-action-btn-danger">clear</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Clear all cache</div>
+              <div class="settings-row-sublabel">Wipe sessions, settings &amp; all stored data</div>
+            </div>
+            <button id="clear-cache-btn" class="settings-action-btn settings-action-btn-danger">wipe</button>
+          </div>
           <hr class="settings-sub-divider">
           <div class="settings-row">
             <div class="settings-row-info">
@@ -943,9 +958,33 @@
       <div class="hp-section">
         <div class="hp-section-head">
           <span class="hp-slabel">recent sessions</span>
-          <span style="font-size:8px;color:rgba(155,140,220,0.35);letter-spacing:0.04em">last 10</span>
+          <span id="hp-recent-hint" style="font-size:8px;color:rgba(155,140,220,0.35);letter-spacing:0.04em">right-click for options</span>
         </div>
         <div id="hp-recent-list" class="hp-recent-list"></div>
+        <!-- Multi-select toolbar (hidden until rows are selected) -->
+        <div id="hp-select-toolbar" class="hp-select-toolbar" style="display:none">
+          <span id="hp-select-count" class="hp-select-count">0 selected</span>
+          <div class="hp-select-actions">
+            <button id="hp-select-all-btn"   class="hp-select-action-btn">select all</button>
+            <button id="hp-select-clear-btn" class="hp-select-action-btn">clear</button>
+            <button id="hp-select-del-btn"   class="hp-select-action-btn hp-select-del-btn">🗑 delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context menu for individual session rows -->
+      <div id="hp-ctx-menu" class="hp-ctx-menu" style="display:none" role="menu" aria-label="Session options">
+        <div class="hp-ctx-header" id="hp-ctx-title">Session</div>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item" data-action="details"    role="menuitem">🔍 View details</button>
+        <button class="hp-ctx-item" data-action="copy"       role="menuitem">📋 Copy summary</button>
+        <button class="hp-ctx-item" data-action="star"       role="menuitem">⭐ Star session</button>
+        <button class="hp-ctx-item" data-action="export-one" role="menuitem">⬆ Export this session</button>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item" data-action="select-all" role="menuitem">☑ Select all</button>
+        <button class="hp-ctx-item" data-action="select-same-outcome" role="menuitem">◎ Select same outcome</button>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item hp-ctx-item-danger" data-action="delete-one" role="menuitem">🗑 Delete this session</button>
       </div>
 
     </div><!-- /#history-card -->

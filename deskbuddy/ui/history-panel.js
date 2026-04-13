@@ -7,7 +7,7 @@
  *   3. Chart + Graph hybrid — bars + line curve for the selected period
  *   4. Streak Row — 🔥 current streak · longest streak · avg focus %
  *   5. Streak Calendar — 16-week GitHub-style canvas OR month-mode calendar
- *   6. Recent Sessions — last 7 sessions (always visible, unchanged)
+ *   6. Recent Sessions — last 10, with multi-select + right-click context menu
  *
  * Public API:
  *   HistoryPanel.init()    — wire pill/close/calendar events
@@ -15,9 +15,14 @@
  */
 const HistoryPanel = (() => {
 
-  let _chartRafId = null;
-  let _activeView = 'daily';
-  let _calMode    = '16w';   // '16w' or 'month'
+  let _chartRafId  = null;
+  let _activeView  = 'daily';
+  let _calMode     = '16w';   // '16w' or 'month'
+
+  // ── Multi-select state ────────────────────────────────────────────────────
+  let _selectedIndices = new Set();   // set of session indices currently selected
+  let _lastClickedIdx  = null;        // for shift-click range selection
+  let _ctxTargetIndex  = null;        // session index under the right-click context menu
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +50,42 @@ const HistoryPanel = (() => {
         _drawStreakCalendar(history);
       });
     });
+
+    // Wire context menu actions
+    const ctxMenu = document.getElementById('hp-ctx-menu');
+    if (ctxMenu) {
+      ctxMenu.addEventListener('click', e => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        _handleCtxAction(btn.dataset.action);
+        _hideCtxMenu();
+      });
+    }
+
+    // Close context menu on outside click or Escape
+    document.addEventListener('click', e => {
+      if (ctxMenu && !ctxMenu.contains(e.target)) _hideCtxMenu();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        _hideCtxMenu();
+        _clearSelection();
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (_selectedIndices.size > 0 && document.activeElement &&
+            !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+          _deleteSelected();
+        }
+      }
+    });
+
+    // Wire selection toolbar buttons
+    const selectAllBtn  = document.getElementById('hp-select-all-btn');
+    const selectClrBtn  = document.getElementById('hp-select-clear-btn');
+    const selectDelBtn  = document.getElementById('hp-select-del-btn');
+    if (selectAllBtn)  selectAllBtn.addEventListener('click', _selectAll);
+    if (selectClrBtn)  selectClrBtn.addEventListener('click', _clearSelection);
+    if (selectDelBtn)  selectDelBtn.addEventListener('click', _deleteSelected);
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
@@ -61,6 +102,7 @@ const HistoryPanel = (() => {
     }
     _activeView = 'daily';
 
+    _clearSelection();
     _renderAllViewStats(history);
     _renderStreakRow(history);
     _drawStreakCalendar(history);
@@ -840,7 +882,7 @@ const HistoryPanel = (() => {
     return bars;
   }
 
-  // ── 5. Recent Sessions (last 7) ──────────────────────────────────────────
+  // ── 5. Recent Sessions (last 10) — with multi-select + context menu ─────────
 
   function _renderRecentSessions(history) {
     const container = document.getElementById('hp-recent-list');
@@ -850,6 +892,7 @@ const HistoryPanel = (() => {
 
     if (!recent.length) {
       container.innerHTML = '<div class="hp-recent-empty">✨ No sessions yet — start your first one!</div>';
+      _updateToolbar();
       return;
     }
 
@@ -912,6 +955,9 @@ const HistoryPanel = (() => {
       const CATEGORY_EMOJI = { study: '📚', work: '💼', creative: '🎨', reading: '📖', other: '⚙️' };
       const catEmoji = s.category ? (CATEGORY_EMOJI[s.category] || '') : '';
 
+      // Starred indicator
+      const starHtml = s._starred ? '<span class="hp-rr-star" title="Starred">⭐</span>' : '';
+
       // Outcome
       const outCls   = outcome === 'COMPLETED' ? 'hp-ri-completed'
                      : outcome === 'FAILED'    ? 'hp-ri-failed'
@@ -927,24 +973,322 @@ const HistoryPanel = (() => {
           <div class="hp-rr-focus-fill" style="width:${scoreNum}%;background:${ratingColor}"></div>
         </div>` : '';
 
+      const titleTip = outcome === 'COMPLETED' ? 'Completed session'
+                     : outcome === 'FAILED'    ? 'Session failed (too many distractions)'
+                     :                           'Session abandoned early';
+
       return `
-        <div class="hp-recent-row ${outCls}" style="animation-delay:${idx * 30}ms" title="${outcome === 'COMPLETED' ? 'Completed session' : outcome === 'FAILED' ? 'Session failed (too many distractions)' : 'Session abandoned early'}">
-          <div class="hp-rr-left">
-            ${catEmoji ? `<span class="hp-rr-cat" title="${_esc(s.category || '')}">${catEmoji}</span>` : ''}
-            <span class="hp-rr-date">${_esc(dateStr)}</span>
-            ${timeStr ? `<span class="hp-rr-time">${_esc(timeStr)}</span>` : ''}
-            <span class="hp-rr-sep">·</span>
-            <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
-            ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused">${scoreNum}%</span>` : ''}
-            ${outLabel}
-          </div>
-          <div class="hp-rr-right">
-            ${focusBarHtml}
-            ${goalStr ? `<span class="hp-rr-goal" title="Session goal">${_esc(goalStr)}</span>` : ''}
-            ${rating ? `<span class="hp-rr-rating" style="color:${ratingColor}" title="Focus grade (A+ = excellent, F = poor)">${rating}</span>` : ''}
+        <div class="hp-recent-row ${outCls}" data-idx="${idx}" style="animation-delay:${idx * 30}ms" title="${titleTip}">
+          <div class="hp-rr-check" aria-hidden="true"></div>
+          <div class="hp-rr-body">
+            <div class="hp-rr-left">
+              ${catEmoji ? `<span class="hp-rr-cat" title="${_esc(s.category || '')}">${catEmoji}</span>` : ''}
+              ${starHtml}
+              <span class="hp-rr-date">${_esc(dateStr)}</span>
+              ${timeStr ? `<span class="hp-rr-time">${_esc(timeStr)}</span>` : ''}
+              <span class="hp-rr-sep">·</span>
+              <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
+              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused">${scoreNum}%</span>` : ''}
+              ${outLabel}
+            </div>
+            <div class="hp-rr-right">
+              ${focusBarHtml}
+              ${goalStr ? `<span class="hp-rr-goal" title="Session goal">${_esc(goalStr)}</span>` : ''}
+              ${rating ? `<span class="hp-rr-rating" style="color:${ratingColor}" title="Focus grade (A+ = excellent, F = poor)">${rating}</span>` : ''}
+            </div>
           </div>
         </div>`;
     }).join('');
+
+    // Wire click (select) and contextmenu (right-click) on every row
+    container.querySelectorAll('.hp-recent-row[data-idx]').forEach(row => {
+      row.addEventListener('click',       e => _onRowClick(e, row));
+      row.addEventListener('contextmenu', e => _onRowContextMenu(e, row));
+    });
+
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  // ── Selection helpers ─────────────────────────────────────────────────────
+
+  function _onRowClick(e, row) {
+    // Ignore clicks directly on action buttons
+    if (e.target.closest('button')) return;
+    const idx = parseInt(row.dataset.idx, 10);
+
+    if (e.shiftKey && _lastClickedIdx !== null) {
+      // Range select
+      const lo = Math.min(_lastClickedIdx, idx);
+      const hi = Math.max(_lastClickedIdx, idx);
+      for (let i = lo; i <= hi; i++) _selectedIndices.add(i);
+    } else if (e.ctrlKey || e.metaKey) {
+      // Toggle individual
+      if (_selectedIndices.has(idx)) _selectedIndices.delete(idx);
+      else                           _selectedIndices.add(idx);
+      _lastClickedIdx = idx;
+    } else {
+      // Plain click: toggle only this one (deselect all others)
+      if (_selectedIndices.has(idx) && _selectedIndices.size === 1) {
+        _selectedIndices.clear();
+        _lastClickedIdx = null;
+      } else {
+        _selectedIndices.clear();
+        _selectedIndices.add(idx);
+        _lastClickedIdx = idx;
+      }
+    }
+
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _applySelectionVisuals() {
+    const container = document.getElementById('hp-recent-list');
+    if (!container) return;
+    container.querySelectorAll('.hp-recent-row[data-idx]').forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      row.classList.toggle('hp-rr-selected', _selectedIndices.has(idx));
+    });
+  }
+
+  function _updateToolbar() {
+    const toolbar   = document.getElementById('hp-select-toolbar');
+    const countEl   = document.getElementById('hp-select-count');
+    const delBtn    = document.getElementById('hp-select-del-btn');
+    if (!toolbar) return;
+    const n = _selectedIndices.size;
+    toolbar.style.display = n > 0 ? '' : 'none';
+    if (countEl) countEl.textContent = `${n} selected`;
+    if (delBtn)  delBtn.textContent  = `🗑 delete ${n > 1 ? n + ' sessions' : 'session'}`;
+  }
+
+  function _clearSelection() {
+    _selectedIndices.clear();
+    _lastClickedIdx = null;
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _selectAll() {
+    const history = _getHistory();
+    const recent  = history.slice(0, 10);
+    for (let i = 0; i < recent.length; i++) _selectedIndices.add(i);
+    _lastClickedIdx = recent.length - 1;
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _deleteSelected() {
+    if (_selectedIndices.size === 0) return;
+    const count = _selectedIndices.size;
+    if (!confirm(`Delete ${count} session${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    if (typeof Session === 'undefined') return;
+    Session.deleteSessions([..._selectedIndices]);
+    _selectedIndices.clear();
+    _lastClickedIdx = null;
+    _refreshPanel();
+  }
+
+  function _refreshPanel() {
+    const history = _getHistory();
+    _renderAllViewStats(history);
+    _renderStreakRow(history);
+    _drawStreakCalendar(history);
+    _renderRecentSessions(history);
+    // Update export count in settings if open
+    const exportCount = document.getElementById('export-session-count');
+    if (exportCount) {
+      const n = (typeof Session !== 'undefined') ? Session.getHistory().length : 0;
+      exportCount.textContent = `${n} session${n !== 1 ? 's' : ''} saved`;
+    }
+  }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  function _onRowContextMenu(e, row) {
+    e.preventDefault();
+    _ctxTargetIndex = parseInt(row.dataset.idx, 10);
+
+    // Auto-select the right-clicked row if not already part of a selection
+    if (!_selectedIndices.has(_ctxTargetIndex)) {
+      _selectedIndices.clear();
+      _selectedIndices.add(_ctxTargetIndex);
+      _lastClickedIdx = _ctxTargetIndex;
+      _applySelectionVisuals();
+      _updateToolbar();
+    }
+
+    // Update star label based on current state
+    const history = _getHistory();
+    const session  = history[_ctxTargetIndex];
+    const starBtn  = document.querySelector('#hp-ctx-menu [data-action="star"]');
+    if (starBtn && session) {
+      starBtn.textContent = session._starred ? '★ Unstar session' : '⭐ Star session';
+    }
+
+    // Update "select same outcome" label
+    const sameBtn = document.querySelector('#hp-ctx-menu [data-action="select-same-outcome"]');
+    if (sameBtn && session) {
+      const o = String(session.outcome || 'ABANDONED').toLowerCase();
+      sameBtn.textContent = `◎ Select all ${o}`;
+    }
+
+    // Title bar
+    const titleEl = document.getElementById('hp-ctx-title');
+    if (titleEl && session) {
+      const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d = session.date ? new Date(session.date) : null;
+      const label = d && isFinite(d.getTime())
+        ? `${MONTH_NAMES[d.getMonth()]} ${d.getDate()} · ${session.durationMinutes || 0}m`
+        : `${session.durationMinutes || 0}m session`;
+      titleEl.textContent = label;
+    }
+
+    _showCtxMenu(e.clientX, e.clientY);
+  }
+
+  function _showCtxMenu(x, y) {
+    const menu = document.getElementById('hp-ctx-menu');
+    if (!menu) return;
+    menu.style.display = '';
+    // Position and clamp to viewport
+    menu.style.left = '0';
+    menu.style.top  = '0';
+    const vw = window.innerWidth,  vh = window.innerHeight;
+    const mw = menu.offsetWidth,   mh = menu.offsetHeight;
+    menu.style.left = `${Math.min(x, vw - mw - 6)}px`;
+    menu.style.top  = `${Math.min(y, vh - mh - 6)}px`;
+    menu.classList.add('hp-ctx-visible');
+    // Focus first item for keyboard nav
+    const first = menu.querySelector('[data-action]');
+    if (first) first.focus();
+  }
+
+  function _hideCtxMenu() {
+    const menu = document.getElementById('hp-ctx-menu');
+    if (!menu) return;
+    menu.style.display = 'none';
+    menu.classList.remove('hp-ctx-visible');
+    _ctxTargetIndex = null;
+  }
+
+  function _handleCtxAction(action) {
+    const history = _getHistory();
+    const session  = _ctxTargetIndex !== null ? history[_ctxTargetIndex] : null;
+
+    switch (action) {
+      case 'delete-one': {
+        if (_ctxTargetIndex === null) return;
+        if (!confirm('Delete this session? This cannot be undone.')) return;
+        if (typeof Session !== 'undefined') {
+          Session.deleteSession(_ctxTargetIndex);
+          _selectedIndices.delete(_ctxTargetIndex);
+          _ctxTargetIndex = null;
+          _refreshPanel();
+        }
+        break;
+      }
+      case 'copy': {
+        if (!session) return;
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const d     = session.date ? new Date(session.date) : null;
+        const dateS = d && isFinite(d.getTime())
+          ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()} ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
+          : 'Unknown date';
+        const dur   = session.durationMinutes || 0;
+        const focus = (() => {
+          const total   = dur * 60;
+          const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
+          return total > 0 ? Math.round((focused / total) * 100) : 0;
+        })();
+        const out   = String(session.outcome || 'ABANDONED');
+        const cat   = session.category ? ` [${session.category}]` : '';
+        const goal  = session.goalText ? ` · "${session.goalText}"` : '';
+        const text  = `DeskBuddy Session${cat}\n${dateS}\n${dur}m · ${focus}% focus · ${out}${goal}`;
+        navigator.clipboard?.writeText(text).catch(() => {});
+        break;
+      }
+      case 'details': {
+        if (!session) return;
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const d     = session.date ? new Date(session.date) : null;
+        const dateS = d && isFinite(d.getTime())
+          ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
+          : 'Unknown date';
+        const dur   = session.durationMinutes || 0;
+        const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
+        const focus = dur > 0 ? Math.round((focused / (dur * 60)) * 100) : 0;
+        const distracts = session.distractionCount || 0;
+        const out   = String(session.outcome || 'ABANDONED');
+        const cat   = session.category || '—';
+        const goal  = session.goalText  || '—';
+        const mood  = session.moodRating != null ? `${session.moodRating}/5` : '—';
+        alert(
+          `📅  ${dateS}\n` +
+          `⏱  Duration: ${dur} min\n` +
+          `🎯  Focus: ${focused}s (${focus}%)\n` +
+          `⚡  Distractions: ${distracts}\n` +
+          `✅  Outcome: ${out}\n` +
+          `🏷  Category: ${cat}\n` +
+          `📝  Goal: ${goal}\n` +
+          `😊  Mood: ${mood}`
+        );
+        break;
+      }
+      case 'star': {
+        if (_ctxTargetIndex === null || typeof Session === 'undefined') return;
+        const raw = Session.getHistory();          // live array copy
+        const s   = raw[_ctxTargetIndex];
+        if (!s) return;
+        // Mutate via a tiny helper: toggle _starred flag and persist via deleteSessions+reimport trick
+        // Simpler: directly patch localStorage
+        try {
+          const stored = JSON.parse(localStorage.getItem('deskbuddy_sessions') || '[]');
+          if (stored[_ctxTargetIndex]) {
+            stored[_ctxTargetIndex]._starred = !stored[_ctxTargetIndex]._starred;
+            localStorage.setItem('deskbuddy_sessions', JSON.stringify(stored));
+          }
+        } catch (_e) {}
+        _refreshPanel();
+        break;
+      }
+      case 'export-one': {
+        if (!session) return;
+        const payload = JSON.stringify({
+          version: 1, exportedAt: new Date().toISOString(),
+          appVersion: 'DeskBuddy', sessionCount: 1, sessions: [session],
+        }, null, 2);
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = Object.assign(document.createElement('a'), {
+          href: url, download: `deskbuddy-session-${Date.now()}.json`,
+        });
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        break;
+      }
+      case 'select-all': {
+        _selectAll();
+        break;
+      }
+      case 'select-same-outcome': {
+        if (!session) return;
+        const targetOutcome = String(session.outcome || 'ABANDONED').toUpperCase();
+        const recent = history.slice(0, 10);
+        recent.forEach((s, i) => {
+          if (String(s.outcome || 'ABANDONED').toUpperCase() === targetOutcome) {
+            _selectedIndices.add(i);
+          }
+        });
+        _applySelectionVisuals();
+        _updateToolbar();
+        break;
+      }
+    }
   }
 
   return { init, refresh };
