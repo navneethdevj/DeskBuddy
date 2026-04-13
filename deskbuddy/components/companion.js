@@ -29,7 +29,7 @@ const Companion = (() => {
   let gazeGradientTargetX  = 0, gazeGradientTargetY  = 0;
 
   // Pupil tracking
-  const PUPIL_MOVEMENT_RADIUS_VMIN = 8;   // max movement radius in vmin (bigger eyes need more range)
+  const PUPIL_MOVEMENT_RADIUS_VMIN = 9;   // max movement radius in vmin (bigger eyes need more range)
   const PUPIL_LERP = 0.30;
   const PUPIL_DISTANCE_SCALE = 500;
   let pupilCurrentX = 0;

@@ -187,10 +187,12 @@ html, body {
 
 /* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
    to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
-   focal point so the whole color field follows the gaze direction. */
+   focal point so the whole color field follows the gaze direction.
+   Slightly larger than before (36→38 wide, 44→48 tall) for a cuter,
+   rounder appearance, with a richer multi-layer glow. */
 .eye {
-  width: 36vmin;
-  height: 44vmin;
+  width: 38vmin;
+  height: 48vmin;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
     #7b8bd8  0%,
@@ -221,20 +223,22 @@ html, body {
               transform 0.22s cubic-bezier(.4, 0, .2, 1),
               opacity 0.30s ease,
               box-shadow 0.22s ease;
-  box-shadow: 0 0 4vmin rgba(120, 135, 235, 0.35),
-              0 0 12vmin rgba(120, 135, 235, 0.15),
-              0 0 22vmin rgba(120, 135, 235, 0.06);
+  box-shadow: 0 0 5vmin  rgba(120, 135, 235, 0.45),
+              0 0 14vmin rgba(120, 135, 235, 0.20),
+              0 0 26vmin rgba(120, 135, 235, 0.08),
+              inset 0 -1px 2px rgba(255, 255, 255, 0.12);
 }
 
 /* ===== Expression: Idle (resting, soft-eyed, present) ===== */
 .companion.idle .eye {
-  width: 38vmin;
-  height: 40vmin;
+  width: 40vmin;
+  height: 44vmin;
   border-radius: 50% 50% 48% 48% / 46% 46% 54% 54%;
   box-shadow:
-    0 0 5vmin rgba(150, 140, 220, 0.42),
-    0 0 15vmin rgba(135, 125, 210, 0.16),
-    0 0 28vmin rgba(120, 110, 200, 0.06);
+    0 0 6vmin  rgba(150, 140, 220, 0.52),
+    0 0 18vmin rgba(135, 125, 210, 0.22),
+    0 0 32vmin rgba(120, 110, 200, 0.08),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.14);
 }
 /* Idle brows — natural resting droop */
 .companion.idle .brow-left  { transform: translateY(0.3vmin) rotate(-1deg); }
@@ -305,10 +309,12 @@ html, body {
 }
 
 /* ===== Pupil (moves inside eye to track cursor) ===== */
+/* Slightly larger pupil (16→18vmin) to stay proportional with the bigger eyes.
+   margin-top/-left = -(18/2) = -9vmin to keep it centred. */
 .pupil {
   position: absolute;
-  width: 16vmin;
-  height: 16vmin;
+  width: 18vmin;
+  height: 18vmin;
   background: radial-gradient(
     circle,
     #5a9ac8  0%,
@@ -324,26 +330,29 @@ html, body {
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -8vmin;
-  margin-left: -8vmin;
+  margin-top: -9vmin;
+  margin-left: -9vmin;
   pointer-events: none;
   will-change: transform;
 }
 
 /* Dilated pupils while curious — widens slightly for that "taking it all in" look */
 .companion.curious .pupil {
-  width: 19vmin;
-  height: 19vmin;
-  margin-top: -9.5vmin;
-  margin-left: -9.5vmin;
+  width: 21vmin;
+  height: 21vmin;
+  margin-top: -10.5vmin;
+  margin-left: -10.5vmin;
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
+/* Only height is forced so each emotion retains its own width.
+   Removing the hard-coded width prevents eyes that are wider than 36vmin
+   (e.g. curious left-eye 45vmin, overjoyed 44vmin) from passing through
+   a landscape-oval phase when recovering from a blink. */
 .companion.blink .eyes .eye {
   height: 1.5vmin;
-  width: 36vmin;
   border-radius: 50%;
-  transition: height 0.1s ease, width 0.1s ease;
+  transition: height 0.1s ease;
 }
 
 /* ===== Eyebrows ===== */
@@ -433,10 +442,11 @@ html, body {
 
 /* ===== Blush Cheeks ===== */
 /* Soft rosy ovals that appear under the eyes when the companion is happy
-   or overjoyed — classic anime blush marks, GPU-composited opacity. */
+   or overjoyed — classic anime blush marks, GPU-composited opacity.
+   Slightly larger (16→18vmin) to stay proportional with the bigger eyes. */
 .blush {
-  width: 16vmin;
-  height: 7vmin;
+  width: 18vmin;
+  height: 8vmin;
   border-radius: 50%;
   background: rgba(255, 140, 170, 0);
   flex-shrink: 0;
@@ -445,10 +455,10 @@ html, body {
   transition: background 0.45s ease;
 }
 
-.companion.happy .blush      { background: rgba(255, 135, 168, 0.22); }
-.companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.36); }
-.companion.embarrassed .blush { background: rgba(255, 120, 155, 0.30); }
-.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.34); }
+.companion.happy .blush      { background: rgba(255, 135, 168, 0.26); }
+.companion.overjoyed .blush  { background: rgba(255, 145, 175, 0.40); }
+.companion.embarrassed .blush { background: rgba(255, 120, 155, 0.34); }
+.companion.forgiven .blush   { background: rgba(255, 160, 190, 0.38); }
 
 /* ===== Sprite Frames: Idle (subtle breathing) ===== */
 .companion.sprite-idle-1 .companion-inner {
@@ -632,19 +642,32 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 
+/* Eye highlight shimmer — top-left white glint that subtly breathes.
+   A second smaller glint on the opposite side doubles the luminosity. */
 .eye::after {
   content: '';
   position: absolute;
-  top: 8%; left: 15%;
-  width: 30%; height: 25%;
-  background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, transparent 70%);
+  top: 8%; left: 14%;
+  width: 28%; height: 22%;
+  background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, transparent 70%);
   border-radius: 50%;
   animation: eyeShimmer 3s ease-in-out infinite;
   pointer-events: none;
 }
+/* Second tiny glint — lower-right, gives the eye life and depth */
+.eye::before {
+  content: '';
+  position: absolute;
+  bottom: 18%; right: 16%;
+  width: 14%; height: 11%;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: eyeShimmer 3s ease-in-out infinite 1.5s;
+  pointer-events: none;
+}
 @keyframes eyeShimmer {
   0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
-  50%      { opacity: 1; transform: translate(2%, -3%) scale(1.1); }
+  50%      { opacity: 1;   transform: translate(2%, -3%) scale(1.12); }
 }
 
 /* ===== Particles ===== */
@@ -1110,16 +1133,17 @@ body[data-time-period="NIGHT"] .companion {
   animation: microShiver 0.38s ease-in-out;
 }
 
-/* Pupil micro-saccade — faint rapid flick */
+/* Pupil micro-saccade — faint rapid flick.
+   The @keyframes is kept for future use; the static rule only triggers
+   the animation without touching margin or transform — those are owned
+   exclusively by companion.js (inline style) and must not be overridden
+   here or the pupil will jump off-centre. */
 @keyframes saccade {
   0%,100% { transform: translate(-50%, -50%); }
   30%     { transform: translate(calc(-50% + 4px), calc(-50% - 2px)); }
   60%     { transform: translate(calc(-50% - 3px), calc(-50% + 2px)); }
 }
 .companion.saccade .pupil {
-  top: 50%; left: 50%;
-  margin: 0;
-  transform: translate(-50%, -50%);
   animation: saccade 0.28s ease-out;
 }
 
@@ -1574,17 +1598,23 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 /* =====================================================================
-   WINK HELPER — closes one eye for a single wink
+   WINK HELPER — closes one eye for a single wink.
+   Both width AND height collapse to the same tiny value so the eye becomes
+   a small circle rather than a flat bar.  When the class is removed the eye
+   reopens from circle → portrait oval, never passing through a landscape
+   (x-axis) oval phase — which is the root cause of the "weird oval eye" bug.
    ===================================================================== */
 .companion.wink-left .eye-left {
+  width: 2.5vmin !important;
   height: 2.5vmin !important;
   border-radius: 50% !important;
-  transition: height 0.08s ease, border-radius 0.08s ease !important;
+  transition: width 0.08s ease, height 0.08s ease, border-radius 0.08s ease !important;
 }
 .companion.wink-right .eye-right {
+  width: 2.5vmin !important;
   height: 2.5vmin !important;
   border-radius: 50% !important;
-  transition: height 0.08s ease, border-radius 0.08s ease !important;
+  transition: width 0.08s ease, height 0.08s ease, border-radius 0.08s ease !important;
 }
 
 /* =====================================================================
@@ -1799,6 +1829,7 @@ body[data-time-period="NIGHT"] .companion {
 }
 .companion.embarrassed .pupil {
   width:  12vmin; height: 12vmin;
+  margin-top: -6vmin; margin-left: -6vmin;
 }
 .companion.embarrassed .brow-left  { transform: translateY(0.6vmin) rotate(4deg); }
 .companion.embarrassed .brow-right { transform: translateY(0.6vmin) rotate(-4deg); }
@@ -1866,6 +1897,7 @@ body[data-time-period="NIGHT"] .companion {
 }
 .companion.ecstatic .pupil {
   width: 19vmin; height: 19vmin;
+  margin-top: -9.5vmin; margin-left: -9.5vmin;
   background: radial-gradient(circle,
     rgba(255,255,220,0.95) 0%,
     rgba(255,240, 80,0.55) 45%,
@@ -1937,6 +1969,7 @@ body[data-time-period="NIGHT"] .companion {
 }
 .companion.dazed .pupil {
   width: 13vmin; height: 13vmin;
+  margin-top: -6.5vmin; margin-left: -6.5vmin;
   opacity: 0.80;
 }
 .companion.dazed .brow-left  { transform: translateY(0.3vmin) rotate(-1deg); }
@@ -2153,7 +2186,9 @@ body.pip-mode #tear-overlay { display: none; }
    not the animation name → no animation restart → no flash.        */
 body.pip-mode #world {
   overflow: hidden;
-  background: radial-gradient(ellipse at 40% 35%, rgba(38, 30, 72, 0.96) 0%, rgba(10, 8, 22, 0.98) 100%);
+  /* Slightly less opaque so the desktop peeks through — eyes are unaffected
+     because they have their own opaque background-image. */
+  background: radial-gradient(ellipse at 40% 35%, rgba(38, 30, 72, 0.78) 0%, rgba(10, 8, 22, 0.84) 100%);
   /* The glow animation reads --pip-glow-a/b custom properties.
      Because the animation name never changes, swapping colours
      only updates the animated property value in-place — no flash. */
@@ -2325,20 +2360,66 @@ body.pip-shape-rounded.pip-mode #session-timer { bottom: 16px; }
 
 /* ── Full-screen mode ─────────────────────────────────────────────── */
 body.full-mode {
-  background: #111111;
+  /* Rich deep-space background: layered nebula glows + micro star-dots +
+     deep violet-indigo base — far more vibrant than the old flat #111111. */
+  background:
+    /* Nebula ambient glows */
+    radial-gradient(ellipse 82% 54% at 50% 110%, rgba(95, 58, 172, 0.52) 0%, transparent 63%),
+    radial-gradient(ellipse 56% 40% at  6% 20%,  rgba(45, 78, 195, 0.26) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 34% at 94%  8%,  rgba(140, 60, 200, 0.24) 0%, transparent 56%),
+    radial-gradient(ellipse 40% 28% at 80% 62%,  rgba(58, 90, 215, 0.16) 0%, transparent 52%),
+    radial-gradient(ellipse 30% 22% at 22% 72%,  rgba(80, 55, 165, 0.14) 0%, transparent 50%),
+    /* Star highlight dots */
+    radial-gradient(1.5px 1.5px at 18% 15%, rgba(220, 222, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 55%  8%, rgba(205, 215, 255, 0.50) 0%, transparent 100%),
+    radial-gradient(2px   2px   at 88% 22%, rgba(225, 218, 255, 0.58) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 72% 58%, rgba(200, 210, 255, 0.38) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 32% 73%, rgba(215, 212, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(1px   1px   at  8% 52%, rgba(200, 218, 255, 0.40) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 93% 68%, rgba(210, 215, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(2px   2px   at 46% 88%, rgba(205, 218, 255, 0.42) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 62% 38%, rgba(215, 210, 255, 0.32) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 12% 82%, rgba(200, 215, 255, 0.42) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 76% 14%, rgba(218, 212, 255, 0.48) 0%, transparent 100%),
+    radial-gradient(2px   2px   at 40% 44%, rgba(210, 222, 255, 0.28) 0%, transparent 100%),
+    /* Deep rich base */
+    linear-gradient(168deg, #130b2e 0%, #0c0819 36%, #110a20 64%, #170c2c 100%);
   overflow: hidden;
+}
+
+/* Animated nebula breath overlay — sits below #world (DOM order) so
+   companion and all UI panels always render on top. */
+body.full-mode::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 78% 50% at 50% 108%, rgba(105, 68, 188, 0.42) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 34% at  6% 20%,  rgba(52, 88, 210, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 44% 28% at 94%  8%,  rgba(150, 70, 210, 0.16) 0%, transparent 52%),
+    radial-gradient(ellipse 36% 22% at 80% 62%,  rgba(70, 105, 235, 0.12) 0%, transparent 50%);
+  animation: fullNebulaBreath 11s ease-in-out infinite;
+}
+@keyframes fullNebulaBreath {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1.00; }
 }
 
 /* Show full-mode collapse button, hide compact controls */
 body.full-mode #full-collapse-btn  { display: block; }
 body.full-mode #compact-expand-btn { display: none;  }
 
-/* Full mode #world: no rounded corners, no glow ring, fills screen */
+/* Full mode #world: no rounded corners, no glow ring, fills screen.
+   z-index: 1 ensures it stacks above the body::before nebula overlay. */
 body.full-mode #world {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   animation: none;
+  position: relative;
+  z-index: 1;
   -webkit-app-region: no-drag; /* full mode uses normal mouse interaction */
 }
 
