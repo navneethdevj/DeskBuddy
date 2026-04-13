@@ -275,6 +275,16 @@ ipcMain.on('exit-full-mode', () => {
   mainWindow.webContents.send('full-mode-exited');
 });
 
+// ── PiP always-on-top toggle from renderer ─────────────────────────────────
+ipcMain.on('set-pip-always-on-top', (_event, flag) => {
+  if (!mainWindow || !_isPipMode) return;
+  if (flag) {
+    mainWindow.setAlwaysOnTop(true, 'floating');
+  } else {
+    mainWindow.setAlwaysOnTop(false);
+  }
+});
+
 // ── Settings IPC handlers ──────────────────────────────────────────────────
 
 const SETTINGS_DEFAULTS = {

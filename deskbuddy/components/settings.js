@@ -53,15 +53,23 @@ const Settings = (() => {
     // ── Anti-cheat ────────────────────────────────────────────────────
     antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
     // ── Buddy appearance ──────────────────────────────────────────────
-    fullTheme:    'galaxy',    // 'galaxy' | 'classic' | 'forest' | 'ocean' | 'sunset' | 'aurora' | 'cherry' | 'midnight'
-    eyeColor:     'periwinkle',// 'periwinkle' | 'emerald' | 'rose' | 'amber' | 'lavender' | 'sky' | 'ruby' | 'teal'
-    noseStyle:    'triangle',  // 'triangle' | 'dot' | 'none'
-    mouthStyle:   'arc',       // 'arc' | 'perky' | 'minimal' | 'none'
-    pipOpacity:   78,          // 20–95 integer % — PiP background opacity
-    companionPos: 'center',    // 'left' | 'center' | 'right' — full-mode eye position
-    blinkRate:    'normal',    // 'off' | 'slow' | 'normal' | 'fast'
-    eyeSpacing:   'normal',    // 'narrow' | 'normal' | 'wide'
-    showEyebrows: true,        // show / hide eyebrows
+    fullTheme:       'galaxy',      // 'galaxy'|'classic'|'forest'|'cherry'|'ocean'|'sunset'|'aurora'|'midnight'
+    themeParticles:  true,          // canvas particle effects on animated themes
+    eyeColor:        'periwinkle',  // 'periwinkle'|'emerald'|'rose'|'amber'|'lavender'|'sky'|'ruby'|'teal'
+    eyeGlowColor:    'default',     // 'default'|'emerald'|'rose'|'amber'|'sky'|'ruby'|'white'|'gold'
+    eyeRoundness:    'round',       // 'round'|'soft'|'oval'
+    eyeSpacing:      'normal',      // 'narrow'|'normal'|'wide'
+    pupilSize:       'normal',      // 'small'|'normal'|'large'
+    blinkRate:       'normal',      // 'off'|'slow'|'normal'|'fast'
+    showEyebrows:    true,
+    noseStyle:       'triangle',    // 'triangle'|'dot'|'none'
+    mouthStyle:      'arc',         // 'arc'|'wave'|'perky'|'minimal'|'none'
+    mouthThickness:  'normal',      // 'thin'|'normal'|'thick'
+    glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
+    themeParticles:  true,          // canvas particle effects on animated themes
+    pipOpacity:      78,            // 20–95 integer % — PiP background opacity
+    pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
+    companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
   };
 
   let _current = { ...DEFAULTS };

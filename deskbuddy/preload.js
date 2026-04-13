@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enterFullMode: () => ipcRenderer.send('enter-full-mode'),
   exitFullMode:  () => ipcRenderer.send('exit-full-mode'),
 
+  // PiP always-on-top toggle
+  setPipAlwaysOnTop: (flag) => ipcRenderer.send('set-pip-always-on-top', flag),
+
   // Fired by main after the window is shown (ready-to-show).
   onWindowReady: (fn) => {
     const handler = (_event, ...args) => fn(...args);

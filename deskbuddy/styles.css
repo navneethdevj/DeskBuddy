@@ -6681,3 +6681,339 @@ body.pip-mode #dnd-indicator {
   letter-spacing: 0.05em;
   margin-top: 2px;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS PANEL — GROUP / SUBSECTION HIERARCHY
+   Groups are the top-level accordions (8 total).
+   Subsections are nested accordions inside a group.
+   ─────────────────────────────────────────────────────────── */
+
+/* ── Top-level group ──────────────────────────────────── */
+.settings-group {
+  margin: 0 0 2px;
+}
+
+.settings-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 16px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(195, 175, 255, 0.75);
+  background: rgba(255,255,255,0.03);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s, background 0.15s;
+}
+.settings-group-title:hover {
+  color: rgba(220, 205, 255, 0.92);
+  background: rgba(255,255,255,0.055);
+}
+.settings-group-title[aria-expanded="true"] {
+  color: rgba(225, 210, 255, 0.95);
+  background: rgba(255,255,255,0.06);
+}
+/* colour bar left-accent */
+.settings-group-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(to bottom, rgba(190, 160, 255, 0.9), rgba(140, 110, 235, 0.3));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+/* chevron handled by shared .settings-chevron rule */
+.settings-group-title[aria-expanded="true"] .settings-chevron::after {
+  transform: rotate(-90deg);
+}
+.settings-group-title[aria-expanded="true"] .settings-chevron { opacity: 0.8; }
+
+.settings-group-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.28s ease;
+  padding: 0 0 4px;
+}
+.settings-group-body.expanded {
+  max-height: 9999px; /* large; subsections use their own max-height */
+}
+
+/* ── Subsection — nested accordion inside a group ─────── */
+.settings-subsection {
+  margin: 4px 6px 2px;
+  background: rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.055);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.settings-subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 14px 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.55);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s;
+}
+.settings-subsection-title:hover {
+  color: rgba(195, 178, 255, 0.82);
+}
+.settings-subsection-title[aria-expanded="true"] {
+  color: rgba(205, 190, 255, 0.90);
+}
+.settings-subsection-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.settings-subsection-title[aria-expanded="true"] .settings-chevron::after {
+  transform: rotate(-90deg);
+}
+
+.settings-subsection-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.22s ease;
+  /* subtle indent */
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.settings-subsection-body.expanded {
+  max-height: 3000px;
+}
+
+/* settings-row-col: stacked layout (label above control) */
+.settings-row-col {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PiP CENTERING FIX
+   The idleSway animation moves .companion via margin-left /
+   margin-top.  In a small PiP window those margins are
+   visible and shift the buddy off-centre.  Replace with a
+   transform-only micro-float so geometry stays centred.
+   ─────────────────────────────────────────────────────────── */
+
+@keyframes pipFloat {
+  0%,100% { transform: translateY(0px)    scale(1);      }
+  33%      { transform: translateY(-2px)   scale(1.007);  }
+  66%      { transform: translateY(1px)    scale(1.003);  }
+}
+@keyframes pipBreathe {
+  0%,100% { transform: scale(1);     }
+  50%     { transform: scale(1.012); }
+}
+
+body.pip-mode .companion {
+  margin: 0 !important; /* neutralise idleSway margin offsets */
+  animation: glowIdle 4s ease-in-out infinite, pipFloat 7s ease-in-out infinite !important;
+}
+body.pip-mode .companion.happy      { animation: glowHappy      1.8s ease-in-out infinite, pipFloat  5s ease-in-out infinite !important; }
+body.pip-mode .companion.curious    { animation: glowCurious     2.5s ease-in-out infinite, pipFloat  7s ease-in-out infinite !important; }
+body.pip-mode .companion.focused    { animation: glowFocused     3.5s ease-in-out infinite, pipFloat  9s ease-in-out infinite !important; }
+body.pip-mode .companion.sleepy     { animation: glowSleepy      6s   ease-in-out infinite, pipFloat 11s ease-in-out infinite !important; }
+body.pip-mode .companion.suspicious { animation: glowSuspicious  3s   ease-in-out infinite, pipFloat  7s ease-in-out infinite !important; }
+
+body.pip-mode .companion-inner {
+  /* Remove the translateY from the breathe animation in PiP so the eyes
+     stay centred vertically within the bubble. */
+  animation: pipBreathe 5.5s ease-in-out infinite !important;
+}
+
+/* Ensure companion fills the pip window edge-to-edge */
+body.pip-mode .companion {
+  width:  100% !important;
+  height: 100% !important;
+  top:  0 !important;
+  left: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EYE IRIS vs GLOW SEPARATION
+   The iris gradient is moved to .eye::before so that a
+   hue-rotate applied to ::before does NOT touch the box-shadow
+   (eye glow ring) on .eye itself.
+   ─────────────────────────────────────────────────────────── */
+
+/* .eye background is now transparent — colour comes from ::before */
+.eye {
+  background: transparent;
+  /* Eye glow ring — colour controlled via --eye-glow-rgb */
+  box-shadow:
+    0 0 5vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.45),
+    0 0 14vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.20),
+    0 0 26vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.08),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.12);
+}
+
+/* Iris layer — full-cover pseudo, carries the gradient */
+.eye::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #7b8bd8  0%,  #8190d9  6%,  #8795db 12%,
+    #8d9adc 18%,  #949fdd 24%,  #9aa4de 30%,
+    #a0aae0 36%,  #a6afe1 42%,  #acb4e2 48%,
+    #b2b9e3 54%,  #b8bee5 60%,  #bec3e6 66%,
+    #c4c8e7 72%,  #cbcde8 78%,  #d1d2ea 84%,
+    #d7d8eb 90%,  #ddddec 95%,  #e3e2ee 100%
+  );
+  z-index: 0;
+  pointer-events: none;
+  transition: filter 0.4s ease;
+}
+/* Pupil must sit above the ::before iris layer */
+.pupil { position: relative; z-index: 1; }
+
+/* ── Iris colour classes (hue-rotate on ::before only) ── */
+body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); }
+body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); }
+body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
+body.eye-lavender .eye::before { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
+body.eye-sky      .eye::before { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
+body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); }
+body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
+/* periwinkle = default, no filter */
+
+/* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
+body.eye-glow-default  { --eye-glow-rgb: 120, 135, 235; }
+body.eye-glow-emerald  { --eye-glow-rgb:  55, 180, 105; }
+body.eye-glow-rose     { --eye-glow-rgb: 210,  75, 140; }
+body.eye-glow-amber    { --eye-glow-rgb: 230, 160,  30; }
+body.eye-glow-sky      { --eye-glow-rgb:  55, 185, 235; }
+body.eye-glow-ruby     { --eye-glow-rgb: 220,  55,  55; }
+body.eye-glow-white    { --eye-glow-rgb: 220, 225, 255; }
+body.eye-glow-gold     { --eye-glow-rgb: 220, 180,  30; }
+
+/* ═══════════════════════════════════════════════════════════
+   MOUTH SHAPES
+   ─────────────────────────────────────────────────────────── */
+
+/* wave: subtle S-curve via border-radius asymmetry */
+body.mouth-wave .mouth {
+  border-radius: 0 0 3vmin 3vmin / 0 0 3vmin 3vmin;
+  border-top:    0.28vmin solid transparent;
+  border-bottom: 0.28vmin solid rgba(170, 145, 255, 0.80);
+  border-left:   0.18vmin solid rgba(170, 145, 255, 0.40);
+  border-right:  0.28vmin solid rgba(170, 145, 255, 0.70);
+  transform: translateX(0) skewX(-4deg);
+  width: 12vmin;
+}
+
+/* ── Mouth thickness ─────────────────────────────────── */
+body.mouth-thin   .mouth { border-width: 0.13vmin !important; opacity: 0.75; }
+body.mouth-thick  .mouth { border-width: 0.52vmin !important; }
+
+/* thickness must propagate to emotion-specific mouth overrides */
+body.mouth-thin  .companion.happy    .mouth { border-width: 0.13vmin !important; }
+body.mouth-thick .companion.happy    .mouth { border-width: 0.52vmin !important; }
+body.mouth-thin  .companion.sad      .mouth { border-width: 0.13vmin !important; }
+body.mouth-thick .companion.sad      .mouth { border-width: 0.52vmin !important; }
+body.mouth-thin  .companion.crying   .mouth { border-width: 0.13vmin !important; }
+body.mouth-thick .companion.crying   .mouth { border-width: 0.52vmin !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   EYE ROUNDNESS
+   ─────────────────────────────────────────────────────────── */
+body.eye-roundness-soft .eye {
+  border-radius: 44% !important;
+  transition: border-radius 0.22s cubic-bezier(.4,0,.2,1);
+}
+body.eye-roundness-oval .eye {
+  border-radius: 42% 42% 48% 48% !important;
+  transition: border-radius 0.22s cubic-bezier(.4,0,.2,1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PUPIL SIZE
+   ─────────────────────────────────────────────────────────── */
+body.pupil-small .pupil {
+  width: 12vmin !important;
+  height: 12vmin !important;
+  margin-top: -6vmin !important;
+  margin-left: -6vmin !important;
+}
+body.pupil-large .pupil {
+  width: 24vmin !important;
+  height: 24vmin !important;
+  margin-top: -12vmin !important;
+  margin-left: -12vmin !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GLOW INTENSITY
+   ─────────────────────────────────────────────────────────── */
+body.glow-off .companion {
+  filter: none !important;
+  animation-name: none !important;
+  /* keep idleSway only */
+  animation: pipFloat 14s ease-in-out infinite !important;
+}
+body.glow-subtle .companion {
+  --glow-scale: 0.45;
+}
+body.glow-vivid .companion {
+  --glow-scale: 2.2;
+}
+/* subtle / vivid are applied by scaling the keyframe glow
+   via the CSS filter on the companion using a multiplier class.
+   Since keyframe values can't use CSS vars directly in older code-paths,
+   we duplicate the filter here for the key emotions: */
+body.glow-subtle .companion           { filter: drop-shadow(0 0 3vmin rgba(120,135,235,0.12)) drop-shadow(0 0 8vmin rgba(120,135,235,0.04)) !important; }
+body.glow-subtle .companion.happy     { filter: drop-shadow(0 0 4vmin rgba(160,140,245,0.16)) drop-shadow(0 0 10vmin rgba(160,140,245,0.05)) !important; }
+body.glow-vivid  .companion           { filter: drop-shadow(0 0 12vmin rgba(120,135,235,0.70)) drop-shadow(0 0 28vmin rgba(120,135,235,0.28)) drop-shadow(0 0 50vmin rgba(120,135,235,0.10)) !important; }
+body.glow-vivid  .companion.happy     { filter: drop-shadow(0 0 16vmin rgba(160,140,245,0.90)) drop-shadow(0 0 36vmin rgba(160,140,245,0.36)) !important; }
+body.glow-vivid  .companion.curious   { filter: drop-shadow(0 0 14vmin rgba(115,125,245,0.80)) drop-shadow(0 0 32vmin rgba(115,125,245,0.30)) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS THEME PARTICLES
+   The ThemeCanvas module appends <canvas id="theme-canvas">
+   to body. Position it behind the companion but above the bg.
+   ─────────────────────────────────────────────────────────── */
+#theme-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;        /* behind companion (z-index 1+) */
+  opacity: 1;
+}
+/* Hide canvas in PiP mode (particles look wrong in tiny bubble) */
+body.pip-mode #theme-canvas { display: none; }
+
+/* ═══════════════════════════════════════════════════════════
+   NEW SETTINGS CONTROLS  (glow-swatch ring indicator)
+   ─────────────────────────────────────────────────────────── */
+.glow-swatch {
+  box-shadow: 0 0 6px 2px rgba(160,150,255,0.20);
+}
+.glow-swatch.active,
+.glow-swatch[aria-pressed="true"] {
+  box-shadow: 0 0 8px 3px rgba(180,160,255,0.60), 0 0 0 2px rgba(220,210,255,0.70);
+}

@@ -1,12 +1,239 @@
 /**
- * Renderer — main frontend entry point.
- *
- * Boot order: Settings → Sounds → Session → Timer → Companion → SpriteAnimator →
- *             Particles → Status → Camera/Perception → Brain → wire
- *
- * Cross-module communication rule: no module calls another directly.
- * All inter-module wiring lives exclusively in the _wire* functions below.
+ * ThemeCanvas — canvas-based particle effects for animated full-screen themes.
+ * Themes: galaxy (meteors), forest (leaves), cherry/sakura (petals),
+ *         ocean (bubbles), sunset (embers), aurora (glows), midnight (snow).
+ * classic has no particles.
+ * The canvas sits at z-index 0, behind the companion.
  */
+const ThemeCanvas = (() => {
+  let _canvas = null, _ctx = null, _animId = null;
+  let _particles = [], _active = false, _paused = false, _theme = 'galaxy';
+
+  // ── Per-theme particle factories ──────────────────────────────────────────
+  const CFG = {
+    galaxy: {
+      max: 7, rate: 0.04,
+      create(W, H) {
+        return { x: Math.random() * W * 0.8, y: Math.random() * H * 0.4 - H * 0.05,
+          vx: 2.5 + Math.random() * 2, vy: 1.5 + Math.random() * 1.5,
+          len: 80 + Math.random() * 80, alpha: 0, maxAlpha: 0.55 + Math.random() * 0.3,
+          life: 0, maxLife: 60 + Math.random() * 80 };
+      },
+      draw(ctx, p) {
+        const d = Math.hypot(p.vx, p.vy);
+        const tx = p.x - (p.vx / d) * p.len, ty = p.y - (p.vy / d) * p.len;
+        const g = ctx.createLinearGradient(p.x, p.y, tx, ty);
+        g.addColorStop(0, `rgba(255,255,255,${p.alpha})`);
+        g.addColorStop(1, `rgba(160,180,255,0)`);
+        ctx.save(); ctx.strokeStyle = g; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.x += p.vx; p.y += p.vy; p.life++;
+        p.alpha = p.life < 15 ? (p.life / 15) * p.maxAlpha
+          : p.life > p.maxLife - 20 ? Math.max(0, p.alpha - p.maxAlpha / 20) : p.maxAlpha;
+        return p.life < p.maxLife && p.x < W + p.len && p.y < H + p.len;
+      }
+    },
+    forest: {
+      max: 22, rate: 0.07,
+      create(W) {
+        return { x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 50,
+          vx: -0.8 + Math.random() * 1.6, vy: 0.8 + Math.random() * 1.2,
+          rot: Math.random() * Math.PI * 2, rotV: -0.03 + Math.random() * 0.06,
+          sz: 5 + Math.random() * 7, alpha: 0.5 + Math.random() * 0.4,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.4,
+          swSpd: 0.018 + Math.random() * 0.018,
+          col: `hsl(${100 + Math.random() * 65},${58 + Math.random() * 28}%,${26 + Math.random() * 18}%)` };
+      },
+      draw(ctx, p) {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
+        ctx.beginPath();
+        ctx.moveTo(0, -p.sz);
+        ctx.bezierCurveTo(p.sz * 0.6, -p.sz * 0.5, p.sz * 0.6, p.sz * 0.5, 0, p.sz);
+        ctx.bezierCurveTo(-p.sz * 0.6, p.sz * 0.5, -p.sz * 0.6, -p.sz * 0.5, 0, -p.sz);
+        ctx.fill(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y += p.vy; p.rot += p.rotV; return p.y < H + 30;
+      }
+    },
+    cherry: {
+      max: 28, rate: 0.09,
+      create(W) {
+        return { x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 80,
+          vx: -0.4 + Math.random() * 1.2, vy: 0.5 + Math.random() * 1.0,
+          rot: Math.random() * Math.PI * 2, rotV: -0.04 + Math.random() * 0.08,
+          sz: 4 + Math.random() * 5, alpha: 0.55 + Math.random() * 0.35,
+          sw: Math.random() * Math.PI * 2, swAmp: 1 + Math.random() * 2,
+          swSpd: 0.014 + Math.random() * 0.018,
+          col: `hsl(${338 + Math.random() * 28},${68 + Math.random() * 22}%,${70 + Math.random() * 14}%)` };
+      },
+      draw(ctx, p) {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-p.sz, -p.sz, -p.sz, -p.sz * 2, 0, -p.sz * 2.5);
+        ctx.bezierCurveTo(p.sz, -p.sz * 2, p.sz, -p.sz, 0, 0);
+        ctx.fill(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y += p.vy; p.rot += p.rotV; return p.y < H + 30;
+      }
+    },
+    ocean: {
+      max: 16, rate: 0.05,
+      create(W, H) {
+        return { x: Math.random() * W, y: H + 20,
+          vx: -0.3 + Math.random() * 0.6, vy: -(0.5 + Math.random() * 1.0),
+          r: 3 + Math.random() * 8, alpha: 0.14 + Math.random() * 0.22,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9,
+          swSpd: 0.018 + Math.random() * 0.02 };
+      },
+      draw(ctx, p) {
+        ctx.save(); ctx.globalAlpha = p.alpha;
+        ctx.strokeStyle = 'rgba(140,210,255,0.85)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(180,230,255,0.15)'; ctx.fill(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y += p.vy; return p.y > -30;
+      }
+    },
+    sunset: {
+      max: 20, rate: 0.07,
+      create(W, H) {
+        return { x: W * 0.15 + Math.random() * W * 0.7, y: H * 0.65 + Math.random() * H * 0.35,
+          vx: -0.8 + Math.random() * 1.6, vy: -(0.4 + Math.random() * 1.1),
+          r: 1.5 + Math.random() * 2.5, alpha: 0.55 + Math.random() * 0.35,
+          life: 0, maxLife: 80 + Math.random() * 100,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.3 + Math.random() * 0.7,
+          swSpd: 0.04 + Math.random() * 0.04,
+          hue: 15 + Math.random() * 30 };
+      },
+      draw(ctx, p) {
+        const a = p.alpha * (1 - p.life / p.maxLife);
+        ctx.save();
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
+        g.addColorStop(0, `hsla(${p.hue},100%,65%,${a * 0.7})`);
+        g.addColorStop(1, `hsla(${p.hue},100%,55%,0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = a * 0.9; ctx.fillStyle = 'rgba(255,240,190,0.95)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y += p.vy; p.life++; return p.life < p.maxLife && p.y > -50;
+      }
+    },
+    aurora: {
+      max: 9, rate: 0.025,
+      create(W, H) {
+        return { x: Math.random() * W, y: Math.random() * H * 0.55,
+          vx: -0.4 + Math.random() * 0.8, vy: 0.08 + Math.random() * 0.22,
+          wx: 50 + Math.random() * 90, wy: 22 + Math.random() * 40,
+          alpha: 0.07 + Math.random() * 0.11,
+          hue: 155 + Math.random() * 65,
+          life: 0, maxLife: 160 + Math.random() * 100,
+          pulse: Math.random() * Math.PI * 2, pulseSpd: 0.018 + Math.random() * 0.02 };
+      },
+      draw(ctx, p) {
+        const a = p.alpha * (0.65 + 0.35 * Math.sin(p.pulse));
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.wx);
+        g.addColorStop(0, `hsla(${p.hue},80%,62%,${a})`);
+        g.addColorStop(1, `hsla(${p.hue + 28},88%,52%,0)`);
+        ctx.save(); ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.wx, p.wy, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.x += p.vx; p.y += p.vy; p.pulse += p.pulseSpd; p.life++;
+        if (p.life > p.maxLife - 30) p.alpha = Math.max(0, p.alpha - 0.003);
+        return p.life < p.maxLife;
+      }
+    },
+    midnight: {
+      max: 32, rate: 0.11,
+      create(W) {
+        return { x: Math.random() * W * 1.2 - W * 0.1, y: -10 - Math.random() * 50,
+          vx: -0.25 + Math.random() * 0.5, vy: 0.3 + Math.random() * 0.75,
+          r: 1 + Math.random() * 2.2, alpha: 0.38 + Math.random() * 0.45,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.25 + Math.random() * 0.7,
+          swSpd: 0.01 + Math.random() * 0.018 };
+      },
+      draw(ctx, p) {
+        ctx.save(); ctx.globalAlpha = p.alpha;
+        ctx.shadowColor = 'rgba(180,200,255,0.5)'; ctx.shadowBlur = 3;
+        ctx.fillStyle = 'rgba(215,225,255,0.92)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y += p.vy; return p.y < H + 30;
+      }
+    },
+    classic: null
+  };
+
+  function _resize() {
+    if (!_canvas) return;
+    _canvas.width = window.innerWidth; _canvas.height = window.innerHeight;
+  }
+
+  function _tick() {
+    if (!_canvas || !_ctx || !_active) return;
+    const W = _canvas.width, H = _canvas.height;
+    _ctx.clearRect(0, 0, W, H);
+    const cfg = CFG[_theme];
+    if (!cfg || _paused) { _animId = requestAnimationFrame(_tick); return; }
+    if (_particles.length < cfg.max && Math.random() < cfg.rate)
+      _particles.push(cfg.create(W, H));
+    _particles = _particles.filter(p => {
+      const alive = cfg.update(p, W, H);
+      if (alive) cfg.draw(_ctx, p);
+      return alive;
+    });
+    _animId = requestAnimationFrame(_tick);
+  }
+
+  function init() {
+    _canvas = document.createElement('canvas');
+    _canvas.id = 'theme-canvas';
+    document.body.appendChild(_canvas);
+    _ctx = _canvas.getContext('2d');
+    _resize();
+    window.addEventListener('resize', _resize);
+  }
+
+  function setTheme(t) {
+    _theme = t || 'galaxy'; _particles = [];
+    if (!_active) { _active = true; _animId = requestAnimationFrame(_tick); }
+  }
+
+  function setPaused(p) { _paused = !!p; }
+
+  function setEnabled(on) {
+    if (!on) {
+      _active = false;
+      if (_animId) { cancelAnimationFrame(_animId); _animId = null; }
+      if (_canvas && _ctx) _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    } else if (!_active) {
+      _active = true; _animId = requestAnimationFrame(_tick);
+    }
+  }
+
+  return { init, setTheme, setPaused, setEnabled };
+})();
+
+
 (function main() {
   const world     = document.getElementById('world');
   const statusBar = document.getElementById('status-bar');
@@ -90,11 +317,18 @@
     const eyeColor = Settings.get('eyeColor') || 'periwinkle';
     if (eyeColor !== 'periwinkle') document.body.classList.add(`eye-${eyeColor}`);
 
+    // Eye glow colour — independent from iris
+    const eyeGlowColor = Settings.get('eyeGlowColor') || 'default';
+    document.body.classList.add(`eye-glow-${eyeGlowColor}`);
+
     const noseStyle = Settings.get('noseStyle') || 'triangle';
     if (noseStyle !== 'triangle') document.body.classList.add(`nose-${noseStyle}`);
 
     const mouthStyle = Settings.get('mouthStyle') || 'arc';
     if (mouthStyle !== 'arc') document.body.classList.add(`mouth-${mouthStyle}`);
+
+    const mouthThickness = Settings.get('mouthThickness') || 'normal';
+    if (mouthThickness !== 'normal') document.body.classList.add(`mouth-${mouthThickness}`);
 
     const companionPos = Settings.get('companionPos') || 'center';
     if (companionPos !== 'center') document.body.classList.add(`companion-pos-${companionPos}`);
@@ -102,11 +336,25 @@
     const eyeSpacing = Settings.get('eyeSpacing') || 'normal';
     if (eyeSpacing !== 'normal') document.body.classList.add(`eye-spacing-${eyeSpacing}`);
 
+    const eyeRoundness = Settings.get('eyeRoundness') || 'round';
+    if (eyeRoundness !== 'round') document.body.classList.add(`eye-roundness-${eyeRoundness}`);
+
+    const pupilSize = Settings.get('pupilSize') || 'normal';
+    if (pupilSize !== 'normal') document.body.classList.add(`pupil-${pupilSize}`);
+
+    const glowIntensity = Settings.get('glowIntensity') || 'normal';
+    if (glowIntensity !== 'normal') document.body.classList.add(`glow-${glowIntensity}`);
+
     if (!Settings.get('showEyebrows')) document.body.classList.add('hide-eyebrows');
 
     const pipOpacity = Settings.get('pipOpacity') != null ? Settings.get('pipOpacity') : 78;
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.setProperty('--pip-bg-opacity', (pipOpacity / 100).toFixed(2));
+
+    // Initialise canvas-based theme particle system
+    ThemeCanvas.init();
+    ThemeCanvas.setTheme(theme);
+    ThemeCanvas.setEnabled(Settings.get('themeParticles') !== false);
 
     // Pre-fill HH:MM:SS fields with saved default (sessionLength is in minutes)
     _setDurationSeconds((Settings.get('sessionLength') || 25) * 60);
@@ -1059,6 +1307,9 @@
     document.body.classList.remove('pip-mode');
     document.body.classList.add('full-mode');
     if (window.electronAPI) window.electronAPI.enterFullMode();
+    // Resume canvas particles now that we're in full-screen mode
+    if (typeof ThemeCanvas !== 'undefined' && Settings.get('themeParticles') !== false)
+      ThemeCanvas.setPaused(false);
     // Show share card that was deferred because the session ended while in PiP mode
     if (_pendingShareCard) {
       const { sessionData, emotion } = _pendingShareCard;
@@ -1078,6 +1329,8 @@
     document.body.classList.add('pip-entering');
     setTimeout(() => document.body.classList.remove('pip-entering'), 400);
     if (window.electronAPI) window.electronAPI.exitFullMode();
+    // Pause canvas particles in PiP (canvas hidden via CSS; pause saves CPU)
+    if (typeof ThemeCanvas !== 'undefined') ThemeCanvas.setPaused(true);
   }
 
   function _exitFullModeManual() {
@@ -1275,8 +1528,12 @@
     function closePanel() {
       panel.classList.remove('settings-open');
       gearBtn.setAttribute('aria-expanded', 'false');
-      // Collapse all accordion sections
-      panel.querySelectorAll('.settings-section-title[aria-expanded="true"]').forEach(btn => {
+      // Collapse all accordion tiers (groups, subsections, legacy sections)
+      panel.querySelectorAll(
+        '.settings-group-title[aria-expanded="true"],' +
+        '.settings-subsection-title[aria-expanded="true"],' +
+        '.settings-section-title[aria-expanded="true"]'
+      ).forEach(btn => {
         btn.setAttribute('aria-expanded', 'false');
         const body = btn.nextElementSibling;
         if (body) body.classList.remove('expanded');
@@ -1291,14 +1548,20 @@
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
 
     // ── Accordion section toggles ────────────────────────────────────────
-    panel.querySelectorAll('.settings-section-title').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const isOpen = btn.getAttribute('aria-expanded') === 'true';
-        const body   = btn.nextElementSibling;
-        btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        if (body) body.classList.toggle('expanded', !isOpen);
+    // Wire ALL toggleable titles: group-title, subsection-title, section-title
+    function _wireAccordion(selector, bodyClass) {
+      panel.querySelectorAll(selector).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const isOpen = btn.getAttribute('aria-expanded') === 'true';
+          const body   = btn.nextElementSibling;
+          btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+          if (body) body.classList.toggle(bodyClass, !isOpen);
+        });
       });
-    });
+    }
+    _wireAccordion('.settings-group-title',      'expanded');
+    _wireAccordion('.settings-subsection-title', 'expanded');
+    _wireAccordion('.settings-section-title',    'expanded'); // legacy compat
 
     // Escape closes the panel
     panel.addEventListener('keydown', (e) => {
@@ -2278,7 +2541,7 @@
     Settings.onChange('noseStyle', (v) => _applyNoseStyle(v));
 
     // ── Mouth style ──────────────────────────────────────────────────────
-    const MOUTH_CLASSES = ['mouth-perky','mouth-minimal','mouth-none'];
+    const MOUTH_CLASSES = ['mouth-arc','mouth-wave','mouth-perky','mouth-minimal','mouth-none'];
 
     function _applyMouthStyle(style) {
       document.body.classList.remove(...MOUTH_CLASSES);
@@ -2299,6 +2562,190 @@
       });
     }
     Settings.onChange('mouthStyle', (v) => _applyMouthStyle(v));
+
+    // ── Mouth thickness ──────────────────────────────────────────────────
+    const MOUTH_THICK_CLASSES = ['mouth-thin','mouth-thick'];
+
+    function _applyMouthThickness(t) {
+      document.body.classList.remove(...MOUTH_THICK_CLASSES);
+      if (t && t !== 'normal') document.body.classList.add(`mouth-${t}`);
+      const btns = document.getElementById('mouth-thickness-btns');
+      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.thickness === t));
+    }
+
+    _applyMouthThickness(Settings.get('mouthThickness') || 'normal');
+
+    const mouthThickBtns = document.getElementById('mouth-thickness-btns');
+    if (mouthThickBtns) {
+      mouthThickBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('mouthThickness', btn.dataset.thickness));
+      });
+    }
+    Settings.onChange('mouthThickness', (v) => _applyMouthThickness(v));
+
+    // ── Eye glow colour ──────────────────────────────────────────────────
+    const EYE_GLOW_CLASSES = ['eye-glow-default','eye-glow-emerald','eye-glow-rose',
+      'eye-glow-amber','eye-glow-sky','eye-glow-ruby','eye-glow-white','eye-glow-gold'];
+
+    function _applyEyeGlow(g) {
+      document.body.classList.remove(...EYE_GLOW_CLASSES);
+      document.body.classList.add(`eye-glow-${g || 'default'}`);
+      const picker = document.getElementById('eye-glow-picker');
+      if (picker) picker.querySelectorAll('.glow-swatch').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.glow === (g || 'default')));
+    }
+
+    _applyEyeGlow(Settings.get('eyeGlowColor') || 'default');
+
+    const eyeGlowPicker = document.getElementById('eye-glow-picker');
+    if (eyeGlowPicker) {
+      eyeGlowPicker.querySelectorAll('.glow-swatch').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('eyeGlowColor', btn.dataset.glow));
+      });
+    }
+    Settings.onChange('eyeGlowColor', (v) => _applyEyeGlow(v));
+
+    // ── Eye roundness ────────────────────────────────────────────────────
+    const EYE_ROUND_CLASSES = ['eye-roundness-soft','eye-roundness-oval'];
+
+    function _applyEyeRoundness(r) {
+      document.body.classList.remove(...EYE_ROUND_CLASSES);
+      if (r && r !== 'round') document.body.classList.add(`eye-roundness-${r}`);
+      const btns = document.getElementById('eye-roundness-btns');
+      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.roundness === r));
+    }
+
+    _applyEyeRoundness(Settings.get('eyeRoundness') || 'round');
+
+    const eyeRoundBtns = document.getElementById('eye-roundness-btns');
+    if (eyeRoundBtns) {
+      eyeRoundBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('eyeRoundness', btn.dataset.roundness));
+      });
+    }
+    Settings.onChange('eyeRoundness', (v) => _applyEyeRoundness(v));
+
+    // ── Pupil size ───────────────────────────────────────────────────────
+    const PUPIL_CLASSES = ['pupil-small','pupil-large'];
+
+    function _applyPupilSize(s) {
+      document.body.classList.remove(...PUPIL_CLASSES);
+      if (s && s !== 'normal') document.body.classList.add(`pupil-${s}`);
+      const btns = document.getElementById('pupil-size-btns');
+      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.pupil === s));
+    }
+
+    _applyPupilSize(Settings.get('pupilSize') || 'normal');
+
+    const pupilSizeBtns = document.getElementById('pupil-size-btns');
+    if (pupilSizeBtns) {
+      pupilSizeBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('pupilSize', btn.dataset.pupil));
+      });
+    }
+    Settings.onChange('pupilSize', (v) => _applyPupilSize(v));
+
+    // ── Glow intensity ───────────────────────────────────────────────────
+    const GLOW_INT_CLASSES = ['glow-off','glow-subtle','glow-vivid'];
+
+    function _applyGlowIntensity(g) {
+      document.body.classList.remove(...GLOW_INT_CLASSES);
+      if (g && g !== 'normal') document.body.classList.add(`glow-${g}`);
+      const btns = document.getElementById('glow-intensity-btns');
+      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.glowInt === g));
+    }
+
+    _applyGlowIntensity(Settings.get('glowIntensity') || 'normal');
+
+    const glowIntBtns = document.getElementById('glow-intensity-btns');
+    if (glowIntBtns) {
+      glowIntBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('glowIntensity', btn.dataset.glowInt));
+      });
+    }
+    Settings.onChange('glowIntensity', (v) => _applyGlowIntensity(v));
+
+    // ── Theme particle effects toggle ────────────────────────────────────
+    const particlesToggle = document.getElementById('theme-particles-toggle');
+    if (particlesToggle) {
+      particlesToggle.checked = Settings.get('themeParticles') !== false;
+      particlesToggle.addEventListener('change', () => {
+        Settings.set('themeParticles', particlesToggle.checked);
+        ThemeCanvas.setEnabled(particlesToggle.checked);
+      });
+    }
+    Settings.onChange('themeParticles', (v) => {
+      if (particlesToggle) particlesToggle.checked = v !== false;
+      ThemeCanvas.setEnabled(v !== false);
+    });
+
+    // Also update ThemeCanvas when theme changes
+    Settings.onChange('fullTheme', (v) => {
+      ThemeCanvas.setTheme(v || 'galaxy');
+    });
+
+    // ── PiP always-on-top ────────────────────────────────────────────────
+    const pipAotToggle = document.getElementById('pip-always-on-top-toggle');
+    if (pipAotToggle) {
+      pipAotToggle.checked = Settings.get('pipAlwaysOnTop') !== false;
+      pipAotToggle.addEventListener('change', () => {
+        Settings.set('pipAlwaysOnTop', pipAotToggle.checked);
+        if (window.electronAPI && window.electronAPI.setPipAlwaysOnTop)
+          window.electronAPI.setPipAlwaysOnTop(pipAotToggle.checked);
+      });
+    }
+
+    // ── Appearance preset copy / paste ───────────────────────────────────
+    const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness','eyeSpacing',
+      'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
+
+    const copyPresetBtn  = document.getElementById('copy-preset-btn');
+    const pastePresetBtn = document.getElementById('paste-preset-btn');
+    const presetStatus   = document.getElementById('preset-status');
+
+    function _showPresetStatus(msg, ok) {
+      if (!presetStatus) return;
+      presetStatus.textContent = msg;
+      presetStatus.style.display = 'block';
+      presetStatus.style.color = ok ? 'rgba(140,220,160,0.90)' : 'rgba(255,140,120,0.90)';
+      clearTimeout(presetStatus._t);
+      presetStatus._t = setTimeout(() => { presetStatus.style.display = 'none'; }, 3000);
+    }
+
+    if (copyPresetBtn) {
+      copyPresetBtn.addEventListener('click', async () => {
+        const preset = {};
+        PRESET_KEYS.forEach(k => { preset[k] = Settings.get(k); });
+        preset.__deskbuddyPreset = true;
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(preset, null, 2));
+          _showPresetStatus('✓ Preset copied to clipboard', true);
+        } catch (e) {
+          _showPresetStatus('Could not write to clipboard', false);
+        }
+      });
+    }
+
+    if (pastePresetBtn) {
+      pastePresetBtn.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          const preset = JSON.parse(text);
+          if (!preset.__deskbuddyPreset) throw new Error('Not a DeskBuddy preset');
+          PRESET_KEYS.forEach(k => {
+            if (preset[k] !== undefined) Settings.set(k, preset[k]);
+          });
+          _showPresetStatus('✓ Preset applied!', true);
+        } catch (e) {
+          _showPresetStatus('No valid preset found in clipboard', false);
+        }
+      });
+    }
   }
 
   // ── _wireBreakReminder ────────────────────────────────────────────────────
