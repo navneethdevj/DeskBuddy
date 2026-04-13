@@ -4170,12 +4170,12 @@ body.pip-mode  #history-panel { display: none !important; }
 
 #session-panel {
   position: fixed;
-  right: 56px;
+  right: 48px;
   top: 50%;
-  transform: translateY(-50%) translateX(16px);
+  transform: translateY(-50%) translateX(14px);
   opacity: 0;
   pointer-events: none;
-  width: 300px;
+  width: 272px;
   max-height: min(82vh, 620px);
   z-index: 2500;
   display: none;          /* shown only in full-mode */
