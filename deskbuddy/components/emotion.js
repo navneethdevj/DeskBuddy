@@ -14,6 +14,8 @@ const Emotion = (() => {
     'startled',       // sudden large mouse jerk
     'cozy',           // long-press snuggle / being held (< 1.5 s) — soft half-lidded warm eyes
     'being_patted',   // deep hold (≥ 1.5 s) — fully closed eyes, pet-bliss; escalates with duration
+    'ecstatic',       // Phase 3+ deep hold flash — golden star eyes, absolute peak joy chaos
+    'dazed',          // post-long-hold haze — dreamy asymmetric eyes, floating bliss fog
   ];
   let currentState = null;
   let element = null;

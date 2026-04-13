@@ -277,18 +277,23 @@ const Soundscape = (() => {
 
     // Emotion → { cutoff, lfoGain, lfoFreq }
     const nudges = {
-      sad:        { cutoff: 200, lfoGain:  6, lfoFreq: 0.05 },
-      crying:     { cutoff: 185, lfoGain:  5, lfoFreq: 0.04 },
-      scared:     { cutoff: 315, lfoGain: 26, lfoFreq: 0.11 },
-      happy:      { cutoff: 330, lfoGain: 22, lfoFreq: 0.09 },
-      overjoyed:  { cutoff: 350, lfoGain: 26, lfoFreq: 0.10 },
-      excited:    { cutoff: 360, lfoGain: 28, lfoFreq: 0.12 },
-      love:       { cutoff: 240, lfoGain: 12, lfoFreq: 0.04 },
-      cozy:       { cutoff: 230, lfoGain: 10, lfoFreq: 0.04 },
-      grumpy:     { cutoff: 245, lfoGain: 15, lfoFreq: 0.06 },
-      pouty:      { cutoff: 250, lfoGain: 14, lfoFreq: 0.06 },
-      curious:    { cutoff: 300, lfoGain: 22, lfoFreq: 0.09 },
-      suspicious: { cutoff: 270, lfoGain: 20, lfoFreq: 0.08 },
+      sad:          { cutoff: 200, lfoGain:  6, lfoFreq: 0.05 },
+      crying:       { cutoff: 185, lfoGain:  5, lfoFreq: 0.04 },
+      scared:       { cutoff: 315, lfoGain: 26, lfoFreq: 0.11 },
+      happy:        { cutoff: 330, lfoGain: 22, lfoFreq: 0.09 },
+      overjoyed:    { cutoff: 350, lfoGain: 26, lfoFreq: 0.10 },
+      excited:      { cutoff: 360, lfoGain: 28, lfoFreq: 0.12 },
+      love:         { cutoff: 240, lfoGain: 12, lfoFreq: 0.04 },
+      cozy:         { cutoff: 230, lfoGain: 10, lfoFreq: 0.04 },
+      being_patted: { cutoff: 220, lfoGain:  8, lfoFreq: 0.03 },
+      grumpy:       { cutoff: 245, lfoGain: 15, lfoFreq: 0.06 },
+      pouty:        { cutoff: 250, lfoGain: 14, lfoFreq: 0.06 },
+      curious:      { cutoff: 300, lfoGain: 22, lfoFreq: 0.09 },
+      suspicious:   { cutoff: 270, lfoGain: 20, lfoFreq: 0.08 },
+      embarrassed:  { cutoff: 310, lfoGain: 19, lfoFreq: 0.08 },
+      forgiven:     { cutoff: 290, lfoGain: 16, lfoFreq: 0.06 },
+      ecstatic:     { cutoff: 380, lfoGain: 32, lfoFreq: 0.14 },
+      dazed:        { cutoff: 210, lfoGain:  9, lfoFreq: 0.03 },
     };
 
     // Neutral settings — restored on null/unknown emotion

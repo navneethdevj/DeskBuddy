@@ -279,6 +279,9 @@ const Brain = (() => {
   const DEEP_REACT_MIN_MS   = 2800;   // min interval (ms) between escalating reactions
   const DEEP_REACT_MAX_MS   = 4500;   // max interval (ms) between escalating reactions
 
+  // Dazed — post-Phase-3 hold: blissful floating haze after an extremely long hold
+  let _dazedUntil = 0;            // epoch ms when dazed state expires
+
   // Rapid-pet burst — multiple quick clicks
   let _petClickTimes      = [];  // rolling timestamps of pet-zone clicks
   let _suppressNextClick  = false; // suppresses love-click after a cozy hold
@@ -664,6 +667,12 @@ const Brain = (() => {
     if (_deepCozyEnteredAt > 0)   _deepCozyEnteredAt   = 0;
     if (_nextDeepReactionAt > 0)  _nextDeepReactionAt  = 0;
     if (_lastHoldWasDeep)         _lastHoldWasDeep     = false;
+
+    // 1c. Dazed — post-Phase-3 hold: blissful floating haze lingers after linger expires
+    if (_dazedUntil > 0) {
+      if (now < _dazedUntil) { _setQuiet('dazed'); return; }
+      _dazedUntil = 0;
+    }
 
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
@@ -1972,6 +1981,8 @@ const Brain = (() => {
   function _onMouseUp(e) {
     if (!_mousedownNear) return;
     const held = Date.now() - _mousedownTime;
+    // Capture deep hold duration BEFORE resetting _deepCozyEnteredAt
+    const deepHeldMs = _deepCozyEnteredAt > 0 ? (Date.now() - _deepCozyEnteredAt) : 0;
     _mousedownNear = false;
     if (held >= 250) {
       // Held long enough to count as a pat/hold — start the linger period
@@ -1988,6 +1999,42 @@ const Brain = (() => {
     if (held >= 250) {
       _suppressNextClick = true;
     }
+    // After a Phase 3+ hold: schedule a joy cascade + dazed state once linger ends
+    if (deepHeldMs >= COZY_PHASE3_MS) {
+      setTimeout(_doPostLongHoldCascade, COZY_LINGER_MS + 200);
+    }
+  }
+
+  /**
+   * Post-Phase-3 hold release cascade.
+   * Fires ~2.7s after releasing an extremely long hold (≥ 16s deep hold).
+   * Sequence: overjoyed flash → spin + chirp + particles → enter dazed for 6.5s
+   */
+  function _doPostLongHoldCascade() {
+    // 1. Brief overjoyed flash — residual joy spilling out
+    _doJoyFlash('overjoyed', 800);
+
+    // 2. After flash: spin + sound + particles + whisper
+    setTimeout(() => {
+      const el = Companion.getElement();
+      if (el) {
+        el.classList.add('spinning');
+        setTimeout(() => el.classList.remove('spinning'), 700);
+      }
+      if (typeof Sounds !== 'undefined') Sounds.play('overjoyed_chirp');
+      if (typeof Particles !== 'undefined') Particles.burst('cozy', 14);
+      const msgs = [
+        '...♡', '*dizzy with love*', '...still spinning~', 'whoa~♡',
+        '...i\'m okay. i\'m just. wow.', '...happy.',
+        '*floating*', '✦ ...✦', '...what just happened.',
+      ];
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4500);
+    }, 700);
+
+    // 3. Enter dazed state — creature is happily blissed out, floating
+    setTimeout(() => {
+      _dazedUntil = Date.now() + 6500;
+    }, 1500);
   }
 
   // ── IDLE LIFE — spontaneous pet-like behaviors ─────────────────────────────
@@ -2012,7 +2059,7 @@ const Brain = (() => {
   function _spontaneousBehavior() {
     if (_dndActive) return;
     // Don't interrupt timed or distress states
-    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
+    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy', 'dazed', 'ecstatic'];
     if (blocked.includes(window._lastEmotion)) return;
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -2120,10 +2167,10 @@ const Brain = (() => {
   /**
    * Escalating pet reactions — fires periodically while the user holds the companion.
    * Phase is determined by how many ms have elapsed since deep-cozy entry.
-   *   0 – 4.5 s  : Phase 0 — quiet bliss: soft purr whispers, occasional shiver
-   *   4.5 – 9 s  : Phase 1 — happy wiggles: unmistakably alive, headbutts & chirps
-   *   9 – 16 s   : Phase 2 — joy overload: spins, bounces, chaos whispers
-   *   16 s +     : Phase 3 — absolute bliss: full melt-down; maximum personality
+   *   0 – 4.5 s  : Phase 0 — quiet bliss: soft purr whispers, occasional shiver + alive saccade
+   *   4.5 – 9 s  : Phase 1 — happy wiggles: unmistakably alive, headbutts & chirps + happy flash
+   *   9 – 16 s   : Phase 2 — joy overload: spins, bounces, chaos whispers + overjoyed flash
+   *   16 s +     : Phase 3 — absolute bliss: ecstatic flash, wild spins, maximum personality
    */
   function _fireDeepPetReaction(heldDeepMs) {
     const el = Companion.getElement();
@@ -2141,6 +2188,13 @@ const Brain = (() => {
         el.classList.add('shiver');
         setTimeout(() => el.classList.remove('shiver'), 450);
       }
+      // Alive saccade — eyes dart subtly, showing it's thinking and feeling
+      if (el && Math.random() < 0.4) {
+        el.classList.add('saccade');
+        setTimeout(() => el.classList.remove('saccade'), 280);
+      }
+      // Subtle happy peek — briefly opens eyes with delight then relaxes
+      if (Math.random() < 0.30) _doJoyFlash('happy', 380);
 
     } else if (heldDeepMs < COZY_PHASE2_MS) {
       // ── Phase 1: happy wiggles — unmistakably alive ───────────────────
@@ -2159,6 +2213,8 @@ const Brain = (() => {
       }
       if (typeof Particles !== 'undefined' && Math.random() < 0.6) Particles.burst('cozy', 6);
       if (typeof Sounds !== 'undefined' && Math.random() < 0.45) Sounds.play('love_purr');
+      // Happy flash — eyes briefly open with delight mid-snuggle
+      if (Math.random() < 0.45) _doJoyFlash('happy', 480);
 
     } else if (heldDeepMs < COZY_PHASE3_MS) {
       // ── Phase 2: joy overload — companion has its own mind now ────────
@@ -2173,9 +2229,10 @@ const Brain = (() => {
       ];
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4500);
       if (el) {
-        if (Math.random() < 0.38) {
-          el.classList.add('spinning');
-          setTimeout(() => el.classList.remove('spinning'), 650);
+        if (Math.random() < 0.42) {
+          // Wild spin — more dramatic than regular spinning
+          el.classList.add('spinning-wild');
+          setTimeout(() => el.classList.remove('spinning-wild'), 920);
         } else {
           el.classList.add('nuzzling');
           setTimeout(() => el.classList.remove('nuzzling'), 900);
@@ -2183,6 +2240,8 @@ const Brain = (() => {
       }
       if (typeof Particles !== 'undefined') Particles.burst('cozy', 10);
       if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
+      // Overjoyed flash — pure joy burst, creature can't contain it
+      if (Math.random() < 0.45) _doJoyFlash('overjoyed', 540);
 
     } else {
       // ── Phase 3: absolute maximum bliss — pure creature chaos ─────────
@@ -2202,15 +2261,17 @@ const Brain = (() => {
       ];
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 5000);
       if (el) {
-        el.classList.add('spinning');
+        el.classList.add('spinning-wild');
         setTimeout(() => {
-          el.classList.remove('spinning');
+          el.classList.remove('spinning-wild');
           el.classList.add('shiver');
           setTimeout(() => el.classList.remove('shiver'), 450);
-        }, 650);
+        }, 920);
       }
       if (typeof Particles !== 'undefined') Particles.burst('cozy', 18);
       if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
+      // Ecstatic flash — golden star eyes, the creature is ABSOLUTELY LOSING IT
+      _doJoyFlash('ecstatic', 720);
     }
   }
 
@@ -2322,7 +2383,20 @@ const Brain = (() => {
       el.classList.remove('spinning');
       // Flash happy right after the spin
       setTimeout(_doHappyFlash, 100);
-    }, 660);
+    }, 700);
+  }
+
+  /**
+   * Briefly flash a different emotion during a hold/pet sequence using Emotion.preview().
+   * Brain's _setQuiet calls are blocked while the preview is active, so the flash
+   * shows clearly for `durationMs`, then the next tick restores the base state.
+   *
+   * @param {string} emotion   - Emotion state to flash (must be in Emotion.getStates())
+   * @param {number} durationMs - How long to show it (default 500 ms)
+   */
+  function _doJoyFlash(emotion, durationMs) {
+    if (typeof Emotion === 'undefined') return;
+    Emotion.preview(emotion, durationMs || 500);
   }
 
   /** Enable or disable phone-detection posture heuristic. */

@@ -1744,6 +1744,199 @@ body[data-time-period="NIGHT"] .companion {
 .companion.happy .blush { background: rgba(255, 112, 155, 0.30); }
 
 /* =====================================================================
+   EMBARRASSED — flustered, hot-pink cheeks, squinting from embarrassment
+   ===================================================================== */
+/* Eyes: slightly squinting inward — avoidant, flustered */
+.companion.embarrassed .eye {
+  width: 32vmin; height: 28vmin;
+  border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+  box-shadow:
+    0 0 4vmin  rgba(255, 140, 185, 0.75),
+    0 0 12vmin rgba(255, 110, 165, 0.32),
+    0 0 24vmin rgba(255,  90, 150, 0.12);
+}
+.companion.embarrassed .pupil {
+  width:  12vmin; height: 12vmin;
+}
+.companion.embarrassed .brow-left  { transform: translateY(0.6vmin) rotate(4deg); }
+.companion.embarrassed .brow-right { transform: translateY(0.6vmin) rotate(-4deg); }
+/* Deep hot-pink blush — fully blushing */
+.companion.embarrassed .blush { background: rgba(255, 80, 130, 0.58); }
+/* Glow — warm embarrassed pink, fast flutter */
+.companion.embarrassed {
+  animation: glowEmbarrassed 1.4s ease-in-out infinite, embarrassedWiggle 2.6s ease-in-out infinite;
+}
+@keyframes glowEmbarrassed {
+  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,120,165,0.38)); }
+  50%     { filter: drop-shadow(0 0 14vmin rgba(255,150,195,0.65)); }
+}
+/* Body: flustered nervous micro-shuffle */
+.companion.embarrassed .companion-inner {
+  animation: embarrassedWiggle 2.6s ease-in-out infinite;
+}
+@keyframes embarrassedWiggle {
+  0%,100% { transform: translateY(0) rotate(0deg) scaleX(1); }
+  15%     { transform: translateY(-0.3vh) rotate(-1.5deg) scaleX(0.98); }
+  30%     { transform: translateY( 0.2vh) rotate( 1.2deg) scaleX(1.01); }
+  50%     { transform: translateY(-0.4vh) rotate(-1.0deg) scaleX(0.99); }
+  68%     { transform: translateY( 0.1vh) rotate( 0.8deg) scaleX(1.01); }
+  85%     { transform: translateY(-0.2vh) rotate(-0.5deg) scaleX(0.99); }
+}
+/* Eye shimmer — warm blush pulse */
+.companion.embarrassed .eye::after {
+  background: radial-gradient(circle, rgba(255, 170, 200, 0.55) 0%, transparent 68%);
+  animation: eyeShimmer 1.4s ease-in-out infinite;
+}
+/* Mouth: small tight smile — "oh no…" */
+.companion.embarrassed .mouth {
+  width: 7vmin; height: 2.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 110, 155, 0.72);
+  border-left-color:   rgba(255, 100, 145, 0.35);
+  border-right-color:  rgba(255, 100, 145, 0.35);
+  border-top-color:    transparent;
+  border-width: 0.3vmin;
+}
+
+/* =====================================================================
+   FORGIVEN — warm relief after tension; add pulsing glow
+   ===================================================================== */
+.companion.forgiven {
+  animation: glowForgiven 2.0s ease-in-out infinite, idleSway 7s ease-in-out infinite;
+}
+@keyframes glowForgiven {
+  0%,100% { filter: drop-shadow(0 0 5vmin rgba(255,185,215,0.40)); }
+  50%     { filter: drop-shadow(0 0 16vmin rgba(255,210,235,0.68)); }
+}
+
+/* =====================================================================
+   ECSTATIC — peak absolute bliss (Phase 3+ deep hold): gold star-wide eyes,
+   frantic joyful chaos, maximum personality. Beyond overjoyed.
+   ===================================================================== */
+/* Eyes: widest of all emotions — pure golden stars */
+.companion.ecstatic .eye {
+  width: 50vmin; height: 66vmin;
+  border-radius: 50%;
+  box-shadow:
+    0 0  9vmin rgba(255, 235,  80, 1.00),
+    0 0 24vmin rgba(255, 210,  55, 0.72),
+    0 0 48vmin rgba(255, 185,  40, 0.35);
+}
+.companion.ecstatic .pupil {
+  width: 19vmin; height: 19vmin;
+  background: radial-gradient(circle,
+    rgba(255,255,220,0.95) 0%,
+    rgba(255,240, 80,0.55) 45%,
+    rgba(255,200, 30,0.10) 100%);
+}
+/* Eyebrows: sky-high, very wide — "I CANNOT CONTAIN THIS" */
+.companion.ecstatic .brow-left  { transform: translateY(-4.5vmin) rotate(-12deg); width: 28vmin; }
+.companion.ecstatic .brow-right { transform: translateY(-4.5vmin) rotate(12deg);  width: 28vmin; }
+/* Gold-pink blush — sun-kissed max flush */
+.companion.ecstatic .blush { background: rgba(255, 210, 60, 0.52); }
+/* Glow: searing golden pulse, very fast */
+.companion.ecstatic {
+  animation: glowEcstatic 0.55s ease-in-out infinite, ecstaticFrenzy 0.72s ease-in-out infinite;
+}
+@keyframes glowEcstatic {
+  0%,100% { filter: drop-shadow(0 0 12vmin rgba(255,225,65,0.72)) drop-shadow(0 0 32vmin rgba(255,200,40,0.38)); }
+  50%     { filter: drop-shadow(0 0 26vmin rgba(255,248,130,1.00)) drop-shadow(0 0 58vmin rgba(255,220,80,0.55)); }
+}
+/* Body: frenzied bouncing — the creature is losing its mind with joy */
+.companion.ecstatic .companion-inner {
+  animation: ecstaticFrenzy 0.72s ease-in-out infinite;
+}
+@keyframes ecstaticFrenzy {
+  0%   { transform: translateY(0)      rotate( 0.0deg) scaleX(1.00) scaleY(1.00); }
+  10%  { transform: translateY(-2.2vh) rotate(-3.2deg) scaleX(0.93) scaleY(1.08); }
+  22%  { transform: translateY( 0.5vh) rotate( 2.8deg) scaleX(1.06) scaleY(0.94); }
+  36%  { transform: translateY(-2.8vh) rotate(-2.0deg) scaleX(0.91) scaleY(1.10); }
+  50%  { transform: translateY( 0.6vh) rotate( 3.5deg) scaleX(1.07) scaleY(0.93); }
+  64%  { transform: translateY(-1.9vh) rotate(-1.5deg) scaleX(0.95) scaleY(1.06); }
+  80%  { transform: translateY( 0.3vh) rotate( 1.0deg) scaleX(1.02) scaleY(0.98); }
+  100% { transform: translateY(0)      rotate( 0.0deg) scaleX(1.00) scaleY(1.00); }
+}
+/* Eye shimmer: bright golden sparkle */
+.companion.ecstatic .eye::after {
+  background: radial-gradient(circle, rgba(255, 255, 200, 0.92) 0%, transparent 58%);
+  animation: eyeShimmer 0.5s ease-in-out infinite;
+}
+/* Mouth: absolutely beaming — widest smile possible */
+.companion.ecstatic .mouth {
+  width: 14vmin; height: 5.5vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 210, 60, 0.95);
+  border-left-color:   rgba(255, 190, 50, 0.55);
+  border-right-color:  rgba(255, 190, 50, 0.55);
+  border-top-color:    transparent;
+  border-width: 0.50vmin;
+}
+/* Nose: glowing gold */
+.companion.ecstatic .nose { border-top-color: rgba(255, 200, 50, 0.90); }
+
+/* =====================================================================
+   DAZED — post-long-hold haze: soft asymmetric eyes, dreamy float
+   The companion is happily dazed, still in a blissful fog after the hold.
+   ===================================================================== */
+/* Both eyes: soft, slightly droopy — floating half-awake happiness */
+.companion.dazed .eye {
+  width: 38vmin; height: 40vmin;
+  border-radius: 50% 50% 50% 50% / 46% 46% 54% 54%;
+  box-shadow:
+    0 0 5vmin  rgba(210, 175, 255, 0.72),
+    0 0 14vmin rgba(190, 150, 245, 0.35),
+    0 0 28vmin rgba(175, 130, 235, 0.14);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+/* Left eye: slightly smaller and lower — asymmetric daze */
+.companion.dazed .eye:first-child {
+  width: 34vmin; height: 36vmin;
+  transform: translateY(1.2vmin);
+}
+.companion.dazed .pupil {
+  width: 13vmin; height: 13vmin;
+  opacity: 0.80;
+}
+.companion.dazed .brow-left  { transform: translateY(0.3vmin) rotate(-1deg); }
+.companion.dazed .brow-right { transform: translateY(0.8vmin) rotate(-3deg); }
+/* Blush: soft lavender-rose — content but dazed */
+.companion.dazed .blush { background: rgba(200, 160, 255, 0.38); }
+/* Glow: gentle dreamy lavender */
+.companion.dazed {
+  animation: glowDazed 3.2s ease-in-out infinite, dazedFloat 5.5s ease-in-out infinite;
+}
+@keyframes glowDazed {
+  0%,100% { filter: drop-shadow(0 0 6vmin rgba(195,160,255,0.42)); }
+  50%     { filter: drop-shadow(0 0 16vmin rgba(215,185,255,0.65)); }
+}
+/* Body: slow dreamy float — like gravity stopped working */
+.companion.dazed .companion-inner {
+  animation: dazedFloat 5.5s ease-in-out infinite;
+}
+@keyframes dazedFloat {
+  0%,100% { transform: translateY(0)      rotate(0deg)     scale(1.000); }
+  20%     { transform: translateY(-1.5vh) rotate( 0.8deg)  scale(1.008); }
+  45%     { transform: translateY(-0.6vh) rotate(-0.5deg)  scale(1.003); }
+  70%     { transform: translateY(-1.8vh) rotate( 0.6deg)  scale(1.006); }
+  88%     { transform: translateY(-0.4vh) rotate(-0.3deg)  scale(1.001); }
+}
+/* Eye shimmer: soft lavender dream */
+.companion.dazed .eye::after {
+  background: radial-gradient(circle, rgba(220, 190, 255, 0.60) 0%, transparent 70%);
+  animation: eyeShimmer 3.0s ease-in-out infinite;
+}
+/* Mouth: soft drowsy smile */
+.companion.dazed .mouth {
+  width: 9vmin; height: 3.2vmin;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(200, 155, 255, 0.80);
+  border-left-color:   rgba(185, 140, 245, 0.40);
+  border-right-color:  rgba(185, 140, 245, 0.40);
+  border-top-color:    transparent;
+  border-width: 0.32vmin;
+}
+
+/* =====================================================================
    NUZZLE HELPER — lean toward screen (affectionate forward tilt)
    ===================================================================== */
 .companion.nuzzling .companion-inner {
@@ -1757,16 +1950,34 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 /* =====================================================================
-   SPIN HELPER — brief gleeful spin
+   SPIN HELPER — brief gleeful spin (lively: wind-up, squash, overshoot, spring)
    ===================================================================== */
 .companion.spinning .companion-inner {
-  animation: companionSpin 0.65s cubic-bezier(.35,0,.2,1) forwards !important;
+  animation: companionSpin 0.68s cubic-bezier(.3,0,.15,1) forwards !important;
 }
 @keyframes companionSpin {
-  0%   { transform: rotate(0deg) scale(1); }
-  35%  { transform: rotate(195deg) scale(1.06); }
-  70%  { transform: rotate(345deg) scale(1.02); }
-  100% { transform: rotate(360deg) scale(1); }
+  0%   { transform: rotate(-10deg) scaleX(1.05) scaleY(0.96); }   /* wind-up lean    */
+  10%  { transform: rotate(-16deg) scaleX(1.08) scaleY(0.93); }   /* gather energy   */
+  38%  { transform: rotate(180deg) scaleX(0.84) scaleY(1.14); }   /* fast spin squish*/
+  62%  { transform: rotate(335deg) scaleX(1.05) scaleY(0.96); }   /* exit stretch    */
+  78%  { transform: rotate(374deg) scaleX(0.97) scaleY(1.03); }   /* overshoot       */
+  90%  { transform: rotate(355deg) scaleX(1.01) scaleY(0.99); }   /* spring back     */
+  100% { transform: rotate(360deg) scaleX(1.00) scaleY(1.00); }   /* settle          */
+}
+
+/* SPIN-WILD — deep-hold phase 2/3 spin: bigger wind-up + dramatic squash */
+.companion.spinning-wild .companion-inner {
+  animation: companionSpinWild 0.90s cubic-bezier(.28,0,.12,1) forwards !important;
+}
+@keyframes companionSpinWild {
+  0%   { transform: rotate(-20deg) scaleX(1.09) scaleY(0.92); }
+  8%   { transform: rotate(-28deg) scaleX(1.13) scaleY(0.88); }   /* big wind-up     */
+  36%  { transform: rotate(185deg) scaleX(0.78) scaleY(1.20); }   /* max squish spin  */
+  58%  { transform: rotate(345deg) scaleX(1.07) scaleY(0.94); }   /* exit            */
+  72%  { transform: rotate(385deg) scaleX(0.95) scaleY(1.05); }   /* overshoot       */
+  84%  { transform: rotate(353deg) scaleX(1.02) scaleY(0.98); }   /* spring          */
+  93%  { transform: rotate(361deg) scaleX(0.99) scaleY(1.01); }   /* micro-settle    */
+  100% { transform: rotate(360deg) scaleX(1.00) scaleY(1.00); }
 }
 
 /* =====================================================================

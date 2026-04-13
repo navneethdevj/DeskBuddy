@@ -1895,6 +1895,7 @@
         sulking: '205,138,192', embarrassed: '255,120,155', forgiven: '255,160,190',
         excited: '255,228,120', shy: '255,142,198', love: '255,138,180',
         startled: '200,220,255', cozy: '255,155,130', being_patted: '255,110,145',
+        ecstatic: '255,230,60', dazed: '200,165,255',
       };
       const EMOJI = {
         idle: '○', curious: '◉', focused: '◎', sleepy: '◔',
@@ -1902,6 +1903,7 @@
         crying: '😢', pouty: '◣', grumpy: '◤', overjoyed: '★',
         sulking: '◷', embarrassed: '◕///◕', forgiven: '♡✓', excited: '◕!',
         shy: '///◕', love: '♡', startled: '◕‼', cozy: '◕‿◕♡', being_patted: 'UwU♡',
+        ecstatic: '✦★✦', dazed: '◕~◕',
       };
       const SOUND_MAP = {
         happy: 'happy_coo', curious: 'curious_ooh', overjoyed: 'overjoyed_chirp',
@@ -1909,6 +1911,7 @@
         suspicious: 'suspicious_squint', pouty: 'pouty_mweh', grumpy: 'grumpy_hmph',
         scared: 'scared_eep', sad: 'sad_whimper', crying: 'crying_sob',
         startled: 'startled_gasp', cozy: 'love_purr', being_patted: 'love_purr',
+        ecstatic: 'overjoyed_chirp', dazed: 'love_purr',
       };
 
       // Rich per-emotion tooltip descriptions
@@ -1934,11 +1937,13 @@
         startled:    'Sudden scare!',
         cozy:        'Hold < 1.5 s — half-lidded warmth, heavy droopy eyes',
         being_patted:'Hold ≥ 1.5 s — eyes fully closed, bliss escalates the longer you hold ♡',
+        ecstatic:    'Hold ≥ 16 s — golden star eyes, absolute peak joy — the creature has ascended ✦',
+        dazed:       'Post-long-hold bliss fog — asymmetric dreamy eyes, floating on air ♡',
       };
 
       // Emotional categories
       const CATEGORIES = [
-        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'being_patted', 'shy', 'forgiven'] },
+        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'being_patted', 'ecstatic', 'dazed', 'shy', 'forgiven'] },
         { label: '◎ Neutral',   states: ['idle', 'focused', 'curious', 'sleepy', 'embarrassed'] },
         { label: '◤ Negative',  states: ['suspicious', 'pouty', 'grumpy', 'sulking', 'scared', 'sad', 'crying', 'startled'] },
       ];
