@@ -70,8 +70,11 @@ const Particles = (() => {
       case 'sulking':    rate = 0.006; break;
       case 'excited':    rate = 0.05;  break;
       case 'love':       rate = 0.035; break;
+      case 'cozy':       rate = 0.025; break;
       case 'shy':        rate = 0.012; break;
       case 'startled':   rate = 0.022; break;
+      case 'embarrassed':rate = 0.012; break;
+      case 'forgiven':   rate = 0.020; break;
       default:           rate = 0.005; break;
     }
 
@@ -80,5 +83,20 @@ const Particles = (() => {
     }
   }
 
-  return { init: init, update: update };
+  /**
+   * Immediately spawn N particles of the given type — used for burst reactions
+   * (rapid-tap pet, overjoyed return, milestone, etc.)
+   */
+  function burst(type, count) {
+    if (!container) return;
+    const n = Math.min(count || 8, MAX_PARTICLES - particles.length);
+    for (var i = 0; i < n; i++) {
+      // Small staggered delay so they don't all appear in the same frame
+      (function (delay) {
+        setTimeout(function () { spawn(type || 'happy'); }, delay);
+      })(i * 40);
+    }
+  }
+
+  return { init: init, update: update, spawn: spawn, burst: burst };
 })();

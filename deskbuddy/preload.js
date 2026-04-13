@@ -53,4 +53,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Share card — copy image to clipboard / save PNG via native dialog.
   copyImage: (dataUrl) => ipcRenderer.invoke('share-card:copy-image', dataUrl),
   saveImage: (dataUrl) => ipcRenderer.invoke('share-card:save-image', dataUrl),
+
+  // Session history backup
+  exportHistory: (jsonString) => ipcRenderer.invoke('history:export', jsonString),
+  importHistory: ()           => ipcRenderer.invoke('history:import'),
+
+  // App focus / blur — used for auto-PiP on app switch
+  onAppBlur: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('app-blur', handler);
+    return () => ipcRenderer.removeListener('app-blur', handler);
+  },
+  onAppFocus: (fn) => {
+    const handler = (_event, ...args) => fn(...args);
+    ipcRenderer.on('app-focus', handler);
+    return () => ipcRenderer.removeListener('app-focus', handler);
+  },
+
+  // Settings backup
+  exportSettings: (jsonString) => ipcRenderer.invoke('settings:export', jsonString),
+  importSettings: ()           => ipcRenderer.invoke('settings:import'),
 });

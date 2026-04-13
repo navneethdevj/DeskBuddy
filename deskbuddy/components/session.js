@@ -14,14 +14,15 @@
  * Breaks have no time limit — the user may take a break of any duration and
  * resume whenever they are ready.
  *
- * localStorage key: 'deskbuddy_sessions'.  Max 50 sessions; oldest dropped.
+ * localStorage key: 'deskbuddy_sessions'.  Max 365 sessions; oldest dropped.
  */
 const Session = (() => {
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const _MAX_SESSIONS          = 50;
+  const _MAX_SESSIONS          = 365;
   const _STORAGE_KEY           = 'deskbuddy_sessions';
+  const _LEDGER_KEY            = 'deskbuddy_stats_ledger';
   const _TIMELINE_INTERVAL_MS  = 5000;  // snapshot every 5 s during ACTIVE state
 
   const STATE = {
@@ -49,6 +50,31 @@ const Session = (() => {
 
   let _history  = [];  // array of completed session objects loaded from localStorage
 
+  // ── Stats ledger (append-only, never reduced by session deletion) ─────────
+  //
+  // The ledger accumulates stats for every committed session.  deleteSession /
+  // clearHistory only touch _history (the visible list).  The ledger is the
+  // single source of truth for lifetime / average-focus stats so users cannot
+  // game them by removing bad sessions.
+  //
+  // Fields:
+  //   totalSessions     — every committed session (COMPLETED + FAILED + ABANDONED)
+  //   completedSessions — COMPLETED only
+  //   totalFocusedSecs  — sum of actualFocusedSeconds across all sessions
+  //   totalSessionSecs  — sum of planned duration (durationMinutes×60) across all sessions
+  //   focusScoreSum     — running sum of (focused/duration)*100 for sessions where duration>0
+  //   focusScoredCount  — number of sessions that contributed to focusScoreSum
+  //   migrated          — true once the one-time backfill from history is done
+  let _ledger = {
+    totalSessions:    0,
+    completedSessions:0,
+    totalFocusedSecs: 0,
+    totalSessionSecs: 0,
+    focusScoreSum:    0,
+    focusScoredCount: 0,
+    migrated:         false,
+  };
+
   // Callbacks registered by external callers
   const _callbacks = {
     onSessionStateChange: [],  // fn(newState, oldState)
@@ -57,6 +83,13 @@ const Session = (() => {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   function _now() { return Date.now(); }
+
+  /** Returns true when the anti-cheat guard is active (deletions are blocked). */
+  function _isAntiCheatEnabled() {
+    return (typeof Settings !== 'undefined' && Settings.get)
+      ? Settings.get('antiCheatEnabled') !== false
+      : true;
+  }
 
   function _setState(newState) {
     const oldState = _state;
@@ -126,6 +159,61 @@ const Session = (() => {
       _history = _history.slice(0, _MAX_SESSIONS);
     }
     _saveToStorage();
+    _incrementLedger(session);   // anti-cheat: always record, never reversed
+  }
+
+  // ── Ledger storage ─────────────────────────────────────────────────────────
+
+  function _loadLedger() {
+    try {
+      const raw = localStorage.getItem(_LEDGER_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          _ledger = Object.assign(_ledger, parsed);
+        }
+      }
+    } catch (_) { /* keep defaults */ }
+  }
+
+  function _saveLedger() {
+    try {
+      localStorage.setItem(_LEDGER_KEY, JSON.stringify(_ledger));
+    } catch (_) { /* quota — not critical */ }
+  }
+
+  /**
+   * _incrementLedger(session) — add one session's stats to the immutable ledger.
+   * Called by _pushSession; NEVER called by any deletion or clearing function.
+   * @param {boolean} [skipSave] — if true, skips _saveLedger (used during bulk migration)
+   */
+  function _incrementLedger(session, skipSave) {
+    _ledger.totalSessions++;
+    if (session.outcome === 'COMPLETED') _ledger.completedSessions++;
+    const focused = session.actualFocusedSeconds || 0;
+    const total   = (session.durationMinutes || 0) * 60;
+    _ledger.totalFocusedSecs += focused;
+    _ledger.totalSessionSecs += total;
+    if (total > 0) {
+      _ledger.focusScoreSum    += (focused / total) * 100;
+      _ledger.focusScoredCount += 1;
+    }
+    if (!skipSave) _saveLedger();
+  }
+
+  /**
+   * _migrateToLedger() — one-time backfill of existing history into the ledger.
+   * Runs on first load when ledger is empty but history already exists so that
+   * existing users get accurate lifetime stats immediately after the update.
+   * Uses skipSave=true during iteration to avoid N localStorage writes.
+   */
+  function _migrateToLedger() {
+    if (_ledger.migrated) return;
+    _ledger.migrated = true;
+    if (_history.length > 0) {
+      _history.forEach(s => _incrementLedger(s, true));
+    }
+    _saveLedger();
   }
 
   // ── Break tracking ─────────────────────────────────────────────────────────
@@ -256,6 +344,8 @@ const Session = (() => {
    */
   function init() {
     _loadFromStorage();
+    _loadLedger();
+    _migrateToLedger();
     if (typeof Timer !== 'undefined' && Timer.onStateChange) {
       Timer.onStateChange(_onTimerStateChange);
     }
@@ -270,11 +360,12 @@ const Session = (() => {
   }
 
   /**
-   * startNew(mins, goal?) — begin a new session.
-   * @param {number} mins   — intended session duration in minutes
-   * @param {string} [goal] — optional goal text (max 100 chars)
+   * startNew(mins, goal?, category?) — begin a new session.
+   * @param {number} mins      — intended session duration in minutes
+   * @param {string} [goal]    — optional goal text (max 100 chars)
+   * @param {string} [category] — activity category: 'study'|'work'|'creative'|'reading'|'other'
    */
-  function startNew(mins, goal) {
+  function startNew(mins, goal, category) {
     if (_state === STATE.ACTIVE || _state === STATE.PAUSED) return;
 
     _current = {
@@ -288,6 +379,8 @@ const Session = (() => {
       goalText:                  (goal && goal.trim().slice(0, 100)) || null,
       goalAchieved:              null,
       moodRating:                null,
+      category:                  (category && ['study','work','creative','reading','other'].includes(category))
+                                   ? category : null,
       focusTimeline:             [],   // { t: elapsedSecs, level: 0-100, state: timerState }
       milestones:                [],   // { t: elapsedSecs, type: 'distraction'|'milestone_5m' }
     };
@@ -482,6 +575,46 @@ const Session = (() => {
   }
 
   /**
+   * computeLongestStreak() — find the longest ever consecutive-day streak
+   * in the full history. Scans up to 2 years of history.
+   * @returns {number} — days
+   */
+  function computeLongestStreak() {
+    const history = getHistory();
+    if (!history.length) return 0;
+
+    // Build a Set of "day keys" (date strings) for all non-abandoned sessions
+    const dayKeys = new Set(
+      history
+        .filter(s => s.outcome !== 'ABANDONED')
+        .map(s => {
+          if (!s.date) return null;
+          const d = new Date(s.date);
+          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        })
+        .filter(Boolean)
+    );
+
+    let longest = 0;
+    let current = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 730; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (dayKeys.has(key)) {
+        current++;
+        if (current > longest) longest = current;
+      } else {
+        current = 0;
+      }
+    }
+    return longest;
+  }
+
+  /**
    * getTotalFocusedMinutes() — sum of actualFocusedSeconds across all
    * COMPLETED sessions in history, converted to minutes (floored).
    * @returns {number}
@@ -537,7 +670,191 @@ const Session = (() => {
     _setState(STATE.IDLE);
   }
 
-  // ── Public surface ─────────────────────────────────────────────────────────
+  // ── History mutation ──────────────────────────────────────────────────────
+
+  /**
+   * deleteSession(index) — remove one session by its 0-based index in getHistory().
+   * History is stored newest-first, so index 0 = most recent.
+   * Does nothing and returns false if the index is out of range.
+   * @param {number} index
+   * @returns {boolean} true if a session was removed
+   */
+  function deleteSession(index) {
+    if (_isAntiCheatEnabled()) return false;
+    if (index < 0 || index >= _history.length) return false;
+    _history.splice(index, 1);
+    _saveToStorage();
+    return true;
+  }
+
+  /**
+   * deleteSessions(indices) — remove multiple sessions by their 0-based indices.
+   * Indices are resolved against the array BEFORE any removal so callers can
+   * pass them in any order.
+   * @param {number[]} indices
+   * @returns {number} count of sessions actually removed
+   */
+  function deleteSessions(indices) {
+    if (_isAntiCheatEnabled()) return 0;
+    const valid = [...new Set(indices)]
+      .filter(i => Number.isInteger(i) && i >= 0 && i < _history.length)
+      .sort((a, b) => b - a); // remove highest index first to keep lower indices stable
+    valid.forEach(i => _history.splice(i, 1));
+    if (valid.length) _saveToStorage();
+    return valid.length;
+  }
+
+  /**
+   * clearHistory() — delete all saved session history from memory and localStorage.
+   */
+  function clearHistory() {
+    if (_isAntiCheatEnabled()) return;
+    _history = [];
+    _saveToStorage();
+  }
+
+  /**
+   * hardClearHistory() — absolute complete reset of all session data.
+   *
+   * Unlike clearHistory(), this:
+   *   • bypasses the anti-cheat guard unconditionally
+   *   • wipes the visible session history (_history)
+   *   • resets the stats ledger back to zero (total sessions, focus time, etc.)
+   *   • persists both changes immediately
+   *
+   * Use this when the user explicitly wants a full "start from scratch" reset.
+   */
+  function hardClearHistory() {
+    _history = [];
+    _ledger  = { totalSessions: 0, completedSessions: 0, totalFocusedSecs: 0,
+                 totalSessionSecs: 0, focusScoreSum: 0, focusScoredCount: 0, migrated: true };
+    try { localStorage.removeItem(_STORAGE_KEY); } catch (_) {}
+    try { localStorage.removeItem(_LEDGER_KEY);  } catch (_) {}
+    if (window.electronAPI?.setSettings) {
+      // Notify Electron store too (settings key is separate; only data keys cleared)
+    }
+    _saveToStorage();
+    _saveLedger();
+  }
+
+  /**
+   * clearAllCache() — wipe ALL localStorage keys used by DeskBuddy
+   * (sessions + settings + any other persisted state).
+   * Also resets the stats ledger since this is a full factory reset.
+   */
+  function clearAllCache() {
+    const KNOWN_KEYS = [
+      _STORAGE_KEY,                     // deskbuddy_sessions
+      _LEDGER_KEY,                      // deskbuddy_stats_ledger
+      'deskbuddy_settings',
+      'deskbuddy_phone_detect',
+      'deskbuddy_dnd_active',
+    ];
+    KNOWN_KEYS.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+    });
+    _history = [];
+    _ledger  = { totalSessions: 0, completedSessions: 0, totalFocusedSecs: 0,
+                 totalSessionSecs: 0, focusScoreSum: 0, focusScoredCount: 0, migrated: true };
+  }
+
+  /**
+   * toggleStarred(index) — toggle the _starred flag on a session by its 0-based index.
+   * Returns the new starred state (true/false), or null if index is invalid.
+   * @param {number} index
+   * @returns {boolean|null}
+   */
+  function toggleStarred(index) {
+    if (index < 0 || index >= _history.length) return null;
+    _history[index]._starred = !_history[index]._starred;
+    _saveToStorage();
+    return !!_history[index]._starred;
+  }
+
+
+
+  /**
+   * getLifetimeLedger() — return a snapshot of the immutable stats ledger.
+   *
+   * The ledger is append-only.  deleteSession / clearHistory only remove from
+   * the visible _history array; they never touch the ledger.  This means
+   * lifetime stats here cannot be inflated by deleting bad sessions.
+   *
+   * @returns {{
+   *   totalSessions:     number,   — all committed sessions (C + F + A)
+   *   completedSessions: number,   — COMPLETED only
+   *   totalFocusedSecs:  number,   — sum of actualFocusedSeconds
+   *   totalSessionSecs:  number,   — sum of planned duration in seconds
+   *   avgFocusPct:       number|null  — time-weighted average focus %, or null
+   * }}
+   */
+  function getLifetimeLedger() {
+    const avgFocusPct = _ledger.focusScoredCount > 0
+      ? Math.round(_ledger.focusScoreSum / _ledger.focusScoredCount)
+      : null;
+    return {
+      totalSessions:     _ledger.totalSessions,
+      completedSessions: _ledger.completedSessions,
+      totalFocusedSecs:  _ledger.totalFocusedSecs,
+      totalSessionSecs:  _ledger.totalSessionSecs,
+      avgFocusPct,
+    };
+  }
+
+  /**
+   * exportHistory() — serialise the full session history to a JSON string.
+   * Returns a wrapper object with metadata for validation on import.
+   */
+  function exportHistory() {
+    const payload = {
+      version:      1,
+      exportedAt:   new Date().toISOString(),
+      appVersion:   'DeskBuddy',
+      sessionCount: _history.length,
+      sessions:     _history.slice(),
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  /**
+   * importHistory(jsonString) — parse a JSON export and merge sessions.
+   *
+   * Merge strategy: additive by ID.
+   *   - Sessions from the file that do NOT exist locally (by id) are added.
+   *   - Sessions that already exist locally are KEPT (local wins on conflict).
+   *   - Result is sorted newest-first and capped at _MAX_SESSIONS.
+   *
+   * @returns {{ success: boolean, imported: number, total: number, reason?: string }}
+   */
+  function importHistory(jsonString) {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (_) {
+      return { success: false, reason: 'Invalid JSON file.' };
+    }
+
+    if (!parsed.sessions || !Array.isArray(parsed.sessions)) {
+      return { success: false, reason: 'File does not contain session data.' };
+    }
+
+    // Validate: each session must have at least date + outcome
+    const valid = parsed.sessions.filter(s => s.date && s.outcome !== undefined);
+    if (!valid.length) {
+      return { success: false, reason: 'No valid sessions found in file.' };
+    }
+
+    // Merge: add sessions whose IDs don't already exist locally
+    const existingIds = new Set(_history.map(s => s.id));
+    const newSessions = valid.filter(s => !existingIds.has(s.id));
+
+    _history = [...newSessions, ..._history]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, _MAX_SESSIONS);
+
+    _saveToStorage();
+    return { success: true, imported: newSessions.length, total: _history.length };
+  }
 
   return {
     init,
@@ -553,9 +870,20 @@ const Session = (() => {
     getBreakElapsedMs,
     onSessionStateChange,
     computeDayStreak,
+    computeLongestStreak,
     getTotalFocusedMinutes,
     getGoalCompletionRate,
+    getLifetimeLedger,
     STATE,
+    exportHistory,
+    importHistory,
+    deleteSession,
+    deleteSessions,
+    clearHistory,
+    hardClearHistory,
+    clearAllCache,
+    toggleStarred,
+    isAntiCheatEnabled: () => _isAntiCheatEnabled(),
   };
 
 })();

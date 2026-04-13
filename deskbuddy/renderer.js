@@ -56,9 +56,15 @@
   // Apply saved sensitivity and phone-detection from Settings
   Brain.setSensitivity(Settings.get('sensitivity'));
   if (Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(Settings.get('phoneDetection'));
+  if (Brain.setIdleSpeed)      Brain.setIdleSpeed(Settings.get('idleSpeed') || 2);
+  if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 2);
+  if (Brain.setPettingMode)    Brain.setPettingMode(Settings.get('pettingMode') || 2);
 
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
+
+  // 11. DND module — init click-to-cancel on the indicator
+  DND.init();
 
   // The companion starts in full-screen mode on launch.
   // The user can switch to compact PiP overlay via the collapse button.
@@ -81,7 +87,7 @@
     }
   }
 
-  // 11. Wire cross-module communication
+  // 12. Wire cross-module communication
   _wireUI();
   _wireTimerToSounds();
   _wireTimerToCompanion();
@@ -91,7 +97,16 @@
   _wireKeybinds();
   _wireSettings();
   _wireBreakReminder();
+  _wireDND();
   _wireSidebar();
+  _wireHistorySidebar();
+
+  // 12. Sync main-process window state with the initial full-mode.
+  // Without this, createWindow()'s alwaysOnTop=false is fine but the
+  // main process doesn't know we're in full-mode until the user first
+  // manually toggles.  Sending enterFullMode() now ensures alwaysOnTop
+  // stays false in full mode and the initial skipTaskbar=false is set.
+  if (window.electronAPI) window.electronAPI.enterFullMode();
 
   // ── Duration HH:MM:SS helpers ─────────────────────────────────────────────
   // Read/write the three HH:MM:SS number fields as a single total-seconds value.
@@ -135,7 +150,11 @@
         BreakReminder.setInterval(_getBreakMinutes());
 
         Timer.init(mins);
-        Session.startNew(mins, goal);
+        // Read currently selected category pill
+        const activeCatPill = document.querySelector('.sp-cat-pill.active');
+        const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
+        Settings.set('sessionCategory', category);
+        Session.startNew(mins, goal, category);
         Timer.start();
         const overlay = document.getElementById('goal-overlay');
         if (overlay) overlay.style.display = 'none';
@@ -209,6 +228,29 @@
       sensitivitySel.value = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
       sensitivitySel.addEventListener('change', (e) => Brain.setSensitivity(e.target.value));
     }
+
+    // ── Category pills ─────────────────────────────────────────────────────
+    // Wire activity category buttons, pre-select saved category, and update daily goal arc.
+    const catPillsContainer = document.getElementById('sp-category-pills');
+    if (catPillsContainer) {
+      const savedCat = Settings.get('sessionCategory') || 'study';
+      catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.cat === savedCat);
+        pill.addEventListener('click', () => {
+          catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          Settings.set('sessionCategory', pill.dataset.cat);
+        });
+      });
+    }
+
+    // ── Daily goal arc — initial render ───────────────────────────────────
+    _updateDailyGoalArc();
+
+    // ── Quick-preset duration pills (mouseenter on session icon triggers panel open)
+    // Re-render the daily goal whenever the panel becomes visible (via mouseover)
+    const spIcon = document.getElementById('sp-icon');
+    if (spIcon) spIcon.addEventListener('mouseenter', () => _updateDailyGoalArc());
   }
 
   // ── Stepper helpers ───────────────────────────────────────────────────────
@@ -397,6 +439,49 @@
 
   let _breakCountdownInterval = null;
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
+  let _dailyGoalLastTick      = 0;   // throttle daily goal arc updates during sessions
+  let _budgetWarnedAt         = -1;  // distraction count at which we last warned
+
+  // ── Live focus heatmap — 90 per-second coloured blocks ────────────────────
+  const HEATMAP_MAX_BLOCKS = 90;
+  const _heatmapData       = [];
+  let   _heatmapInterval   = null;
+
+  function _heatmapPush() {
+    const state = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
+    _heatmapData.push(state.toLowerCase());
+    if (_heatmapData.length > HEATMAP_MAX_BLOCKS) _heatmapData.shift();
+    _heatmapRender();
+  }
+
+  function _heatmapRender() {
+    const strip = document.getElementById('focus-heatmap-strip');
+    if (!strip) return;
+    strip.innerHTML = '';
+    const empties = HEATMAP_MAX_BLOCKS - _heatmapData.length;
+    for (let i = 0; i < empties; i++) {
+      const b = document.createElement('div');
+      b.className = 'fh-block fh-empty';
+      strip.appendChild(b);
+    }
+    _heatmapData.forEach(s => {
+      const b = document.createElement('div');
+      b.className = `fh-block fh-${s}`;
+      strip.appendChild(b);
+    });
+  }
+
+  function _heatmapStart() {
+    _heatmapData.length = 0;
+    if (_heatmapInterval) clearInterval(_heatmapInterval);
+    _heatmapInterval = setInterval(_heatmapPush, 1000);
+    _heatmapRender();
+  }
+
+  function _heatmapStop() {
+    if (_heatmapInterval) { clearInterval(_heatmapInterval); _heatmapInterval = null; }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function _wireSessionToUI() {
     Session.onSessionStateChange((newState, oldState) => {
@@ -433,9 +518,25 @@
         if (inlineTimer) {
           inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
         }
+        // Reset focus stat bar on fresh start
+        if (oldState === 'IDLE') {
+          const fill  = document.getElementById('sp-focus-stat-fill');
+          const pctEl = document.getElementById('sp-focus-stat-pct');
+          if (fill)  fill.style.width = '0%';
+          if (pctEl) pctEl.textContent = '–';
+        }
+
+        // Start live focus heatmap on fresh session start
+        if (oldState === 'IDLE') _heatmapStart();
 
         // Immediate companion reaction — only on a fresh start (not resume from pause)
         if (oldState === 'IDLE') _fireSessionStartAnim();
+
+        // Initialize distraction budget display
+        if (oldState === 'IDLE') {
+          const budget = Settings.get('distractionBudget') || 0;
+          _renderBudgetDots(0, budget);
+        }
       }
 
       // Break countdown — start/stop the live update interval
@@ -468,11 +569,11 @@
         goalDisplay.style.display = (newState === 'ACTIVE' && txt) ? '' : 'none';
       }
 
-      // Goal achievement prompt on outcome screen (only for FAILED — goal still relevant)
+      // Goal achievement prompt on outcome screen (FAILED and ABANDONED — goal still relevant)
       const goalPrompt = document.getElementById('goal-prompt');
       if (goalPrompt) {
         const hasGoal = !!(stats?.goalText || Session.getHistory()[0]?.goalText);
-        const isEnd   = newState === 'FAILED';
+        const isEnd   = newState === 'FAILED' || newState === 'ABANDONED';
         goalPrompt.style.display = (isEnd && hasGoal) ? '' : 'none';
       }
 
@@ -501,12 +602,18 @@
           Timer.reset();
         }, 50);
 
-        // Show share card modal slightly after celebration fires
+        // Show share card modal after the companion's celebration animation has room to play.
+        // If in PiP mode, defer until the user returns to full-screen so the modal
+        // doesn't cover the PiP window and block the expand button.
         setTimeout(() => {
           if (typeof ShareCard !== 'undefined' && lastSession) {
-            ShareCard.show(lastSession, emotion);
+            if (_isFullMode) {
+              ShareCard.show(lastSession, emotion);
+            } else {
+              _pendingShareCard = { sessionData: lastSession, emotion };
+            }
           }
-        }, 700);
+        }, 1800);
       }
 
       if (newState === 'FAILED' || newState === 'ABANDONED') {
@@ -514,6 +621,14 @@
         Emotion.setState('crying');
         // session.js plays no sound for ABANDONED — renderer fills the gap here.
         if (newState === 'ABANDONED' && typeof Sounds !== 'undefined') Sounds.play('session_fail');
+      }
+
+      // After any session end, refresh the daily goal arc and hide budget display
+      if (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
+        setTimeout(() => _updateDailyGoalArc(), 200);
+        const budgetRow = document.getElementById('sp-budget-row');
+        if (budgetRow) budgetRow.style.display = 'none';
+        _heatmapStop();
       }
 
       // Reset timer state body attribute when session ends
@@ -534,6 +649,49 @@
         const elapsed = _sessionTotalSeconds - remaining;
         ring.style.strokeDashoffset = String(CIRC * (elapsed / _sessionTotalSeconds));
       }
+
+      // Live focus stat bar
+      const stats = Session.getCurrentStats ? Session.getCurrentStats() : null;
+      if (stats && stats.elapsed > 0) {
+        const pct = Math.round((stats.focusedSeconds / stats.elapsed) * 100);
+        const fill = document.getElementById('sp-focus-stat-fill');
+        const pctEl = document.getElementById('sp-focus-stat-pct');
+        if (fill) fill.style.width = `${pct}%`;
+        if (pctEl) pctEl.textContent = `${pct}%`;
+      }
+
+      // Distraction budget live update
+      const budget = Settings.get('distractionBudget') || 0;
+      if (budget > 0 && stats) {
+        _renderBudgetDots(stats.distractionCount || 0, budget);
+      }
+
+      // Daily goal arc live update (only every 30s to avoid redraws on every tick)
+      if (!_dailyGoalLastTick || Date.now() - _dailyGoalLastTick > 30000) {
+        _dailyGoalLastTick = Date.now();
+        _updateDailyGoalArc();
+      }
+    });
+
+    // ── Distraction budget: warn when new distraction crosses the budget threshold ──
+    Timer.onStateChange((newState, oldState) => {
+      const budget = Settings.get('distractionBudget') || 0;
+      if (budget <= 0) return;
+      const isDistraction = (newState === 'DISTRACTED' || newState === 'CRITICAL') &&
+                            (oldState === 'FOCUSED'    || oldState === 'DRIFTING');
+      if (!isDistraction) return;
+
+      // Give session.js a tick to increment the count first, then check
+      setTimeout(() => {
+        const s = Session.getCurrentStats ? Session.getCurrentStats() : null;
+        if (!s) return;
+        const used = s.distractionCount || 0;
+        _renderBudgetDots(used, budget);
+        if (used >= budget && used !== _budgetWarnedAt) {
+          _budgetWarnedAt = used;
+          _fireBudgetExceeded();
+        }
+      }, 50);
     });
   }
 
@@ -855,15 +1013,29 @@
   // The window is always interactive in PiP mode — no click-through.
 
   let _isFullMode = true;  // starts in full-screen
+  let _autoPipActive = false; // true when auto-PiP triggered the collapse
+  let _autoPipTimer  = null;  // pending delay timer for deferred collapse
+  let _pendingShareCard = null; // queued when session ends while in PiP mode
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
 
   function _enterFullMode() {
     if (_isFullMode) return;
+    // Cancel any pending deferred auto-collapse (e.g. user expands before timer fires).
+    if (_autoPipTimer) { clearTimeout(_autoPipTimer); _autoPipTimer = null; }
+    _autoPipActive = false;
     _isFullMode = true;
     document.body.classList.remove('pip-mode');
     document.body.classList.add('full-mode');
     if (window.electronAPI) window.electronAPI.enterFullMode();
+    // Show share card that was deferred because the session ended while in PiP mode
+    if (_pendingShareCard) {
+      const { sessionData, emotion } = _pendingShareCard;
+      _pendingShareCard = null;
+      setTimeout(() => {
+        if (typeof ShareCard !== 'undefined') ShareCard.show(sessionData, emotion);
+      }, 400);
+    }
   }
 
   function _exitFullMode() {
@@ -871,7 +1043,18 @@
     _isFullMode = false;
     document.body.classList.remove('full-mode');
     document.body.classList.add('pip-mode');
+    // Apply the one-shot entrance animation class; remove it after the animation duration.
+    document.body.classList.add('pip-entering');
+    setTimeout(() => document.body.classList.remove('pip-entering'), 400);
     if (window.electronAPI) window.electronAPI.exitFullMode();
+  }
+
+  function _exitFullModeManual() {
+    // Cancel any pending deferred auto-collapse timer.
+    if (_autoPipTimer) { clearTimeout(_autoPipTimer); _autoPipTimer = null; }
+    // Clear auto-pip flag so a subsequent focus event doesn't auto-restore.
+    _autoPipActive = false;
+    _exitFullMode();
   }
 
   function _wireWindowControls() {
@@ -881,7 +1064,23 @@
     const expandBtn   = document.getElementById('compact-expand-btn');
     const collapseBtn = document.getElementById('full-collapse-btn');
     if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
-    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullMode());
+    if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullModeManual());
+
+    // WhatsApp-style PiP hover overlay: click the expand button to restore
+    const pipExpandBtn = document.getElementById('pip-expand-btn');
+    if (pipExpandBtn) pipExpandBtn.addEventListener('click', () => _enterFullMode());
+
+    // Clicking anywhere on the circular bubble (that isn't an eye / interactive
+    // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
+    const worldEl = document.getElementById('world');
+    if (worldEl) {
+      worldEl.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('pip-mode')) return;
+        // Don't expand if the click hit an interactive child (eye, button, etc.)
+        if (e.target !== worldEl) return;
+        _enterFullMode();
+      });
+    }
 
     // Sync mode state when main reports transitions (covers IPC-initiated toggles).
     if (window.electronAPI) {
@@ -889,12 +1088,80 @@
         _isFullMode = true;
         document.body.classList.remove('pip-mode');
         document.body.classList.add('full-mode');
+        if (_pendingShareCard) {
+          const { sessionData, emotion } = _pendingShareCard;
+          _pendingShareCard = null;
+          setTimeout(() => {
+            if (typeof ShareCard !== 'undefined') ShareCard.show(sessionData, emotion);
+          }, 400);
+        }
       });
       window.electronAPI.onFullModeExited(() => {
         _isFullMode = false;
         document.body.classList.remove('full-mode');
         document.body.classList.add('pip-mode');
       });
+
+      // Auto-PiP: collapse to compact overlay when the user switches away
+      window.electronAPI.onAppBlur(() => {
+        if (!_isFullMode || !Settings.get('autoPipOnBlur')) return;
+
+        // Skip collapse when a focus session is active and the user has opted in
+        if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
+            Session.getState && Session.getState() === 'ACTIVE') return;
+
+        const delaySec = Settings.get('autoPipDelay') || 0;
+        if (delaySec > 0) {
+          // Deferred collapse — cancel any previously scheduled one first
+          clearTimeout(_autoPipTimer);
+          _autoPipTimer = setTimeout(() => {
+            _autoPipTimer = null;
+            // Re-check: window may have been focused again before timer fired
+            if (_isFullMode && Settings.get('autoPipOnBlur')) {
+              _autoPipActive = true;
+              _exitFullMode();
+            }
+          }, delaySec * 1000);
+        } else {
+          _autoPipActive = true;
+          _exitFullMode();
+        }
+      });
+
+      // Auto-PiP: restore full mode when the user comes back (only if we auto-collapsed)
+      window.electronAPI.onAppFocus(() => {
+        // Cancel a pending delayed collapse if the user returned quickly
+        if (_autoPipTimer) {
+          clearTimeout(_autoPipTimer);
+          _autoPipTimer = null;
+        }
+
+        if (_autoPipActive && !_isFullMode && Settings.get('autoPipRestore')) {
+          _autoPipActive = false;
+          _enterFullMode();
+          // Welcome-back reaction: give Brain a nudge so the companion reacts
+          setTimeout(() => {
+            if (typeof Brain !== 'undefined' && Brain.triggerWelcomeBack) {
+              Brain.triggerWelcomeBack();
+            }
+          }, 350);
+        }
+      });
+    }
+
+    // ── Emotion glow ring for PiP bubble ─────────────────────────────────
+    // Poll Brain's current emotion every 500 ms and mirror it onto
+    // #world[data-pip-emotion] so the CSS glow keyframes can react.
+    {
+      const worldEl = document.getElementById('world');
+      if (worldEl) {
+        setInterval(() => {
+          const em = (window._lastEmotion || 'idle').toLowerCase();
+          if (worldEl.dataset.pipEmotion !== em) {
+            worldEl.dataset.pipEmotion = em;
+          }
+        }, 500);
+      }
     }
   }
 
@@ -908,7 +1175,7 @@
       id: 'toggle-pip',
       label: 'Toggle compact overlay',
       defaultKey: 'Ctrl+Shift+P',
-      fn: () => _isFullMode ? _exitFullMode() : _enterFullMode(),
+      fn: () => _isFullMode ? _exitFullModeManual() : _enterFullMode(),
     });
 
     Keybinds.register({
@@ -934,6 +1201,23 @@
       label: 'Dismiss break reminder',
       defaultKey: 'Ctrl+Shift+B',
       fn: () => { if (BreakReminder.isActive()) BreakReminder.dismiss(); },
+    });
+
+    Keybinds.register({
+      id: 'toggle-history',
+      label: 'Open session / history panel',
+      defaultKey: 'Ctrl+Shift+H',
+      fn: () => {
+        const hpIcon = document.getElementById('hp-icon');
+        if (hpIcon) hpIcon.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      },
+    });
+
+    Keybinds.register({
+      id: 'toggle-dnd',
+      label: 'Toggle Do Not Disturb',
+      defaultKey: 'Ctrl+Shift+D',
+      fn: () => DND.toggle(Settings.get('dndDuration') || 25),
     });
 
     Keybinds.init();
@@ -1073,6 +1357,86 @@
       nightToggle.addEventListener('change', () => Settings.set('nightAutoVolume', nightToggle.checked));
     }
 
+    // Auto-PiP on app switch toggle + sub-options
+    const autoPipToggle = document.getElementById('auto-pip-toggle');
+    const autoPipDelayRow       = document.getElementById('auto-pip-delay-row');
+    const autoPipRestoreRow     = document.getElementById('auto-pip-restore-row');
+    const autoPipSkipSessionRow = document.getElementById('auto-pip-skip-session-row');
+
+    function _syncAutoPipSubrows(enabled) {
+      const display = enabled ? '' : 'none';
+      if (autoPipDelayRow)       autoPipDelayRow.style.display       = display;
+      if (autoPipRestoreRow)     autoPipRestoreRow.style.display     = display;
+      if (autoPipSkipSessionRow) autoPipSkipSessionRow.style.display = display;
+    }
+
+    if (autoPipToggle) {
+      autoPipToggle.checked = Settings.get('autoPipOnBlur');
+      _syncAutoPipSubrows(autoPipToggle.checked);
+      autoPipToggle.addEventListener('change', () => {
+        Settings.set('autoPipOnBlur', autoPipToggle.checked);
+        _syncAutoPipSubrows(autoPipToggle.checked);
+      });
+    }
+    Settings.onChange('autoPipOnBlur', (v) => {
+      if (autoPipToggle) autoPipToggle.checked = v;
+      _syncAutoPipSubrows(v);
+    });
+
+    // Collapse delay select
+    const autoPipDelaySel = document.getElementById('auto-pip-delay-select');
+    if (autoPipDelaySel) {
+      autoPipDelaySel.value = String(Settings.get('autoPipDelay'));
+      autoPipDelaySel.addEventListener('change', () =>
+        Settings.set('autoPipDelay', parseInt(autoPipDelaySel.value, 10)));
+    }
+    Settings.onChange('autoPipDelay', (v) => {
+      if (autoPipDelaySel) autoPipDelaySel.value = String(v);
+    });
+
+    // Restore on return toggle
+    const autoPipRestoreToggle = document.getElementById('auto-pip-restore-toggle');
+    if (autoPipRestoreToggle) {
+      autoPipRestoreToggle.checked = Settings.get('autoPipRestore');
+      autoPipRestoreToggle.addEventListener('change', () =>
+        Settings.set('autoPipRestore', autoPipRestoreToggle.checked));
+    }
+    Settings.onChange('autoPipRestore', (v) => {
+      if (autoPipRestoreToggle) autoPipRestoreToggle.checked = v;
+    });
+
+    // Stay full during sessions toggle
+    const autoPipSkipSessionToggle = document.getElementById('auto-pip-skip-session-toggle');
+    if (autoPipSkipSessionToggle) {
+      autoPipSkipSessionToggle.checked = Settings.get('autoPipSkipSession');
+      autoPipSkipSessionToggle.addEventListener('change', () =>
+        Settings.set('autoPipSkipSession', autoPipSkipSessionToggle.checked));
+    }
+    Settings.onChange('autoPipSkipSession', (v) => {
+      if (autoPipSkipSessionToggle) autoPipSkipSessionToggle.checked = v;
+    });
+
+    // PiP overlay shape chip picker
+    const VALID_SHAPES = ['square', 'rounded', 'circle'];
+    function _applyPipShape(shape) {
+      VALID_SHAPES.forEach(s =>
+        document.body.classList.toggle('pip-shape-' + s, s === shape));
+    }
+    function _syncShapeChips(shape) {
+      document.querySelectorAll('#pip-shape-picker .pip-shape-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === shape);
+      });
+    }
+    _applyPipShape(Settings.get('pipShape'));
+    _syncShapeChips(Settings.get('pipShape'));
+    document.querySelectorAll('#pip-shape-picker .pip-shape-chip').forEach(btn => {
+      btn.addEventListener('click', () => Settings.set('pipShape', btn.dataset.shape));
+    });
+    Settings.onChange('pipShape', (v) => {
+      _applyPipShape(v);
+      _syncShapeChips(v);
+    });
+
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');
     if (sensitivitySel) {
@@ -1101,7 +1465,21 @@
       breakAnimToggle.addEventListener('change', () => Settings.set('breakAnimEnabled', breakAnimToggle.checked));
     }
 
+    // Anti-cheat toggle
+    const antiCheatToggle = document.getElementById('anti-cheat-toggle');
+    if (antiCheatToggle) {
+      antiCheatToggle.checked = Settings.get('antiCheatEnabled');
+      antiCheatToggle.addEventListener('change', () => {
+        Settings.set('antiCheatEnabled', antiCheatToggle.checked);
+        if (typeof HistoryPanel !== 'undefined' && HistoryPanel.refresh) HistoryPanel.refresh();
+      });
+    }
+
     // ── Live change listeners ────────────────────────────────────────────
+    Settings.onChange('antiCheatEnabled', (v) => {
+      if (antiCheatToggle) antiCheatToggle.checked = v;
+      if (typeof HistoryPanel !== 'undefined' && HistoryPanel.refresh) HistoryPanel.refresh();
+    });
     Settings.onChange('mutePreset', (v) => {
       Sounds.setMutePreset(v);
       if (muteSelect) muteSelect.value = v;
@@ -1240,6 +1618,32 @@
       if (timerStepSel) timerStepSel.value = String(v);
     });
 
+    // ── Daily focus goal ─────────────────────────────────────────────────
+    const dailyGoalSel = document.getElementById('daily-goal-select');
+    if (dailyGoalSel) {
+      dailyGoalSel.value = String(Settings.get('dailyFocusGoalMins') || 0);
+      dailyGoalSel.addEventListener('change', (e) => {
+        Settings.set('dailyFocusGoalMins', parseInt(e.target.value, 10));
+        _updateDailyGoalArc();
+      });
+    }
+    Settings.onChange('dailyFocusGoalMins', (v) => {
+      if (dailyGoalSel) dailyGoalSel.value = String(v);
+      _updateDailyGoalArc();
+    });
+
+    // ── Distraction budget ───────────────────────────────────────────────
+    const distractionBudgetSel = document.getElementById('distraction-budget-select');
+    if (distractionBudgetSel) {
+      distractionBudgetSel.value = String(Settings.get('distractionBudget') || 0);
+      distractionBudgetSel.addEventListener('change', (e) => {
+        Settings.set('distractionBudget', parseInt(e.target.value, 10));
+      });
+    }
+    Settings.onChange('distractionBudget', (v) => {
+      if (distractionBudgetSel) distractionBudgetSel.value = String(v);
+    });
+
     // ── Session stats (today) ────────────────────────────────────────────
     function _refreshSessionStats() {
       const todayLabel  = document.getElementById('sessions-today-label');
@@ -1270,7 +1674,264 @@
     // Refresh stats each time the panel opens
     gearBtn.addEventListener('click', _refreshSessionStats);
 
+    // ── Backup: export / import ──────────────────────────────────────────────
+    const exportBtn    = document.getElementById('export-history-btn');
+    const importBtn    = document.getElementById('import-history-btn');
+    const backupStatus = document.getElementById('backup-status');
 
+    function _updateExportCount() {
+      const el = document.getElementById('export-session-count');
+      if (el) el.textContent = `${Session.getHistory().length} session${Session.getHistory().length !== 1 ? 's' : ''} saved`;
+    }
+    _updateExportCount();
+    gearBtn.addEventListener('click', _updateExportCount);
+
+    function _showBackupStatus(msg, color) {
+      if (!backupStatus) return;
+      backupStatus.textContent   = msg;
+      backupStatus.style.color   = color;
+      backupStatus.style.display = '';
+      setTimeout(() => { if (backupStatus) backupStatus.style.display = 'none'; }, 4000);
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        exportBtn.disabled    = true;
+        exportBtn.textContent = 'exporting…';
+        const json   = Session.exportHistory();
+        const result = await window.electronAPI.exportHistory(json);
+        exportBtn.disabled    = false;
+        exportBtn.textContent = 'export';
+        if (result.ok) {
+          _showBackupStatus('exported ✓', 'rgba(68,232,176,0.80)');
+        } else if (result.reason !== 'cancelled') {
+          _showBackupStatus(`export failed: ${result.reason}`, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    if (importBtn) {
+      importBtn.addEventListener('click', async () => {
+        importBtn.disabled    = true;
+        importBtn.textContent = 'importing…';
+        const fileResult = await window.electronAPI.importHistory();
+        importBtn.disabled    = false;
+        importBtn.textContent = 'import';
+        if (!fileResult.ok) {
+          if (fileResult.reason !== 'cancelled') {
+            _showBackupStatus(`import failed: ${fileResult.reason}`, 'rgba(255,100,100,0.80)');
+          }
+          return;
+        }
+        const mergeResult = Session.importHistory(fileResult.data);
+        if (mergeResult.success) {
+          _updateExportCount();
+          _refreshSessionStats();
+          _showBackupStatus(
+            `imported ${mergeResult.imported} new session${mergeResult.imported !== 1 ? 's' : ''} ✓`,
+            'rgba(68,232,176,0.80)'
+          );
+        } else {
+          _showBackupStatus(mergeResult.reason, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    // ── Settings backup: export / import ─────────────────────────────────────
+    const exportSettingsBtn    = document.getElementById('export-settings-btn');
+    const importSettingsBtn    = document.getElementById('import-settings-btn');
+    const resetSettingsBtn     = document.getElementById('reset-settings-btn');
+    const settingsBackupStatus = document.getElementById('settings-backup-status');
+
+    function _showSettingsBackupStatus(msg, color) {
+      if (!settingsBackupStatus) return;
+      settingsBackupStatus.textContent   = msg;
+      settingsBackupStatus.style.color   = color;
+      settingsBackupStatus.style.display = '';
+      setTimeout(() => { if (settingsBackupStatus) settingsBackupStatus.style.display = 'none'; }, 4000);
+    }
+
+    if (exportSettingsBtn) {
+      exportSettingsBtn.addEventListener('click', async () => {
+        exportSettingsBtn.disabled    = true;
+        exportSettingsBtn.textContent = 'exporting…';
+        const json   = Settings.exportSettings();
+        const result = await window.electronAPI.exportSettings(json);
+        exportSettingsBtn.disabled    = false;
+        exportSettingsBtn.textContent = 'export';
+        if (result.ok) {
+          _showSettingsBackupStatus('settings exported ✓', 'rgba(68,232,176,0.80)');
+        } else if (result.reason !== 'cancelled') {
+          _showSettingsBackupStatus(`export failed: ${result.reason}`, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    if (importSettingsBtn) {
+      importSettingsBtn.addEventListener('click', async () => {
+        importSettingsBtn.disabled    = true;
+        importSettingsBtn.textContent = 'importing…';
+        const fileResult = await window.electronAPI.importSettings();
+        importSettingsBtn.disabled    = false;
+        importSettingsBtn.textContent = 'import';
+        if (!fileResult.ok) {
+          if (fileResult.reason !== 'cancelled') {
+            _showSettingsBackupStatus(`import failed: ${fileResult.reason}`, 'rgba(255,100,100,0.80)');
+          }
+          return;
+        }
+        const mergeResult = Settings.importSettings(fileResult.data);
+        if (mergeResult.success) {
+          _showSettingsBackupStatus(
+            `${mergeResult.applied} settings applied ✓`,
+            'rgba(68,232,176,0.80)'
+          );
+        } else {
+          _showSettingsBackupStatus(mergeResult.reason, 'rgba(255,100,100,0.80)');
+        }
+      });
+    }
+
+    if (resetSettingsBtn) {
+      resetSettingsBtn.addEventListener('click', () => {
+        Settings.reset();
+        _showSettingsBackupStatus('settings reset to defaults ✓', 'rgba(68,232,176,0.80)');
+      });
+    }
+
+    // ── Clear history button ─────────────────────────────────────────────
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        const count = Session.getHistory().length;
+        if (count === 0) {
+          _showBackupStatus('no sessions to clear', 'rgba(200,185,255,0.60)');
+          return;
+        }
+        if (!confirm(`Complete reset: permanently delete all ${count} session${count !== 1 ? 's' : ''} and reset lifetime stats to zero?\n\nThis cannot be undone.`)) return;
+        Session.hardClearHistory();
+        _updateExportCount();
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+        _showBackupStatus(`cleared ${count} session${count !== 1 ? 's' : ''} + stats reset ✓`, 'rgba(248,113,113,0.80)');
+      });
+    }
+
+    // ── Clear all cache button ───────────────────────────────────────────
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener('click', () => {
+        if (!confirm('Wipe ALL stored data (sessions + settings)? This cannot be undone.')) return;
+        Session.clearAllCache();
+        Settings.reset();
+        _updateExportCount();
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+        _showBackupStatus('all cache wiped ✓ — restart recommended', 'rgba(248,113,113,0.80)');
+      });
+    }
+
+    // ── Emotion preview duration slider ─────────────────────────────────
+    const previewDurSlider   = document.getElementById('preview-dur-slider');
+    const previewDurSubLabel = document.getElementById('preview-dur-sublabel');
+
+    function _applyPreviewDur(v) {
+      const n = parseInt(v, 10) || 3;
+      if (previewDurSlider)   previewDurSlider.value = n;
+      if (previewDurSubLabel) previewDurSubLabel.textContent = `${n} s`;
+    }
+    _applyPreviewDur(Settings.get('emotionPreviewDuration'));
+
+    if (previewDurSlider) {
+      previewDurSlider.addEventListener('input', () => {
+        const v = parseInt(previewDurSlider.value, 10);
+        Settings.set('emotionPreviewDuration', v);
+        _applyPreviewDur(v);
+      });
+    }
+
+    // ── Idle speed triple-btn ────────────────────────────────────────────
+    const IDLE_SPEED_LABELS = { 1: 'Calm', 2: 'Default', 3: 'Hyper' };
+    const idleSpeedBtns   = document.getElementById('idle-speed-btns');
+    const idleSpeedLabel  = document.getElementById('idle-speed-sublabel');
+
+    function _applyIdleSpeed(v) {
+      const n = parseInt(v, 10) || 2;
+      if (idleSpeedLabel) idleSpeedLabel.textContent = IDLE_SPEED_LABELS[n] || 'Default';
+      if (idleSpeedBtns) {
+        idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setIdleSpeed) Brain.setIdleSpeed(n);
+    }
+
+    _applyIdleSpeed(Settings.get('idleSpeed'));
+
+    if (idleSpeedBtns) {
+      idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('idleSpeed', v);
+        });
+      });
+    }
+
+    Settings.onChange('idleSpeed', (v) => _applyIdleSpeed(v));
+
+    // ── Expressiveness triple-btn ────────────────────────────────────────
+    const EXPRESS_LABELS = { 1: 'Subtle', 2: 'Default', 3: 'Maximum drama' };
+    const expressBtns  = document.getElementById('express-btns');
+    const expressLabel = document.getElementById('express-sublabel');
+
+    function _applyExpressiveness(v) {
+      const n = parseInt(v, 10) || 2;
+      if (expressLabel) expressLabel.textContent = EXPRESS_LABELS[n] || 'Default';
+      if (expressBtns) {
+        expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setExpressiveness) Brain.setExpressiveness(n);
+    }
+
+    _applyExpressiveness(Settings.get('expressiveness'));
+
+    if (expressBtns) {
+      expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('expressiveness', v);
+        });
+      });
+    }
+
+    Settings.onChange('expressiveness', (v) => _applyExpressiveness(v));
+
+    // ── Petting mode triple-btn ──────────────────────────────────────────
+    const PETTING_LABELS = { 1: 'Gentle', 2: 'Default', 3: 'Eager' };
+    const pettingBtns = document.getElementById('petting-btns');
+
+    function _applyPettingMode(v) {
+      const n = parseInt(v, 10) || 2;
+      if (pettingBtns) {
+        pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
+        });
+      }
+      if (typeof Brain !== 'undefined' && Brain.setPettingMode) Brain.setPettingMode(n);
+    }
+
+    _applyPettingMode(Settings.get('pettingMode'));
+
+    if (pettingBtns) {
+      pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseInt(btn.dataset.val, 10);
+          Settings.set('pettingMode', v);
+        });
+      });
+    }
+
+    Settings.onChange('pettingMode', (v) => _applyPettingMode(v));
     const emotionGrid = document.getElementById('emotion-grid');
     if (emotionGrid) {
       const GLOW = {
@@ -1280,38 +1941,116 @@
         pouty: '255,188,118', grumpy: '255,138,128', overjoyed: '255,240,198',
         sulking: '205,138,192', embarrassed: '255,120,155', forgiven: '255,160,190',
         excited: '255,228,120', shy: '255,142,198', love: '255,138,180',
-        startled: '200,220,255',
+        startled: '200,220,255', cozy: '255,155,130', being_patted: '255,110,145',
+        ecstatic: '255,230,60', dazed: '200,165,255',
+      };
+      const EMOJI = {
+        idle: '○', curious: '◉', focused: '◎', sleepy: '◔',
+        suspicious: '👁', happy: '◕‿◕', scared: '○!', sad: '◕︵◕',
+        crying: '😢', pouty: '◣', grumpy: '◤', overjoyed: '★',
+        sulking: '◷', embarrassed: '◕///◕', forgiven: '♡✓', excited: '◕!',
+        shy: '///◕', love: '♡', startled: '◕‼', cozy: '◕‿◕♡', being_patted: 'UwU♡',
+        ecstatic: '✦★✦', dazed: '◕~◕',
       };
       const SOUND_MAP = {
         happy: 'happy_coo', curious: 'curious_ooh', overjoyed: 'overjoyed_chirp',
         excited: 'excited_chirp', shy: 'shy_squeak', love: 'love_purr',
         suspicious: 'suspicious_squint', pouty: 'pouty_mweh', grumpy: 'grumpy_hmph',
         scared: 'scared_eep', sad: 'sad_whimper', crying: 'crying_sob',
-        startled: 'startled_gasp',
+        startled: 'startled_gasp', cozy: 'love_purr', being_patted: 'love_purr',
+        ecstatic: 'overjoyed_chirp', dazed: 'love_purr',
       };
+
+      // Rich per-emotion tooltip descriptions
+      const DESC = {
+        idle:        'Resting calmly',
+        curious:     'Something caught its eye',
+        focused:     'Deep in concentration',
+        sleepy:      'Getting drowsy',
+        suspicious:  'Something feels off…',
+        happy:       'Warm and joyful',
+        scared:      'Startled or anxious',
+        sad:         'Feeling a little down',
+        crying:      'Really sad',
+        pouty:       'Mildly grumpy',
+        grumpy:      'Properly grumpy',
+        overjoyed:   'Pure unbridled joy',
+        sulking:     'Sulking quietly',
+        embarrassed: 'Flustered and blushing',
+        forgiven:    'All is forgiven ♡',
+        excited:     'Buzzing with energy',
+        shy:         'Bashful from eye contact',
+        love:        'Click-to-pet affection ♡',
+        startled:    'Sudden scare!',
+        cozy:        'Hold < 1.5 s — half-lidded warmth, heavy droopy eyes',
+        being_patted:'Hold ≥ 1.5 s — eyes fully closed, bliss escalates the longer you hold ♡',
+        ecstatic:    'Hold ≥ 16 s — golden star eyes, absolute peak joy — the creature has ascended ✦',
+        dazed:       'Post-long-hold bliss fog — asymmetric dreamy eyes, floating on air ♡',
+      };
+
+      // Emotional categories
+      const CATEGORIES = [
+        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'being_patted', 'ecstatic', 'dazed', 'shy', 'forgiven'] },
+        { label: '◎ Neutral',   states: ['idle', 'focused', 'curious', 'sleepy', 'embarrassed'] },
+        { label: '◤ Negative',  states: ['suspicious', 'pouty', 'grumpy', 'sulking', 'scared', 'sad', 'crying', 'startled'] },
+      ];
+
       let _activeBtn = null;
 
-      emotionGrid.style.cssText =
-        'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 10px 10px;';
+      emotionGrid.style.cssText = 'padding: 0 10px 10px;';
 
-      Emotion.getStates().forEach(state => {
-        const btn = document.createElement('button');
-        btn.className = 'emotion-test-btn';
-        btn.textContent = state;
-        btn.title = `Preview: ${state}`;
-        btn.style.setProperty('--glow-color', GLOW[state] || '155,135,255');
-        btn.addEventListener('click', () => {
-          if (_activeBtn) _activeBtn.classList.remove('active');
-          btn.classList.add('active');
-          _activeBtn = btn;
-          const sound = SOUND_MAP[state];
-          if (sound) Sounds.play(sound);
-          Emotion.preview(state, 3000, () => {
-            btn.classList.remove('active');
-            if (_activeBtn === btn) _activeBtn = null;
+      CATEGORIES.forEach(cat => {
+        // Category label
+        const catLabel = document.createElement('div');
+        catLabel.className = 'emotion-category-label';
+        catLabel.textContent = cat.label;
+        emotionGrid.appendChild(catLabel);
+
+        // Grid row for this category
+        const grid = document.createElement('div');
+        grid.className = 'emotion-category-grid';
+        emotionGrid.appendChild(grid);
+
+        cat.states.forEach(state => {
+          const btn = document.createElement('button');
+          btn.className = 'emotion-test-btn';
+          btn.dataset.emotion = state;
+          btn.style.setProperty('--glow-color', GLOW[state] || '155,135,255');
+
+          const icon = document.createElement('span');
+          icon.className = 'emotion-btn-icon';
+          icon.textContent = EMOJI[state] || '○';
+          icon.setAttribute('aria-hidden', 'true');
+
+          const name = document.createElement('span');
+          name.className = 'emotion-btn-name';
+          name.textContent = state;
+
+          btn.appendChild(icon);
+          btn.appendChild(name);
+          btn.title = DESC[state] || `Preview: ${state}`;
+
+          btn.addEventListener('click', () => {
+            if (_activeBtn) _activeBtn.classList.remove('active');
+            btn.classList.add('active');
+            _activeBtn = btn;
+            const sound = SOUND_MAP[state];
+            if (sound) Sounds.play(sound);
+            // Start side-effects that go beyond the CSS class swap
+            if (state === 'crying' && typeof Brain !== 'undefined' && Brain.startTearEffect) {
+              Brain.startTearEffect();
+            }
+            const durMs = (Settings.get('emotionPreviewDuration') || 3) * 1000;
+            Emotion.preview(state, durMs, () => {
+              btn.classList.remove('active');
+              if (_activeBtn === btn) _activeBtn = null;
+              // Always clean up tears when the preview ends
+              if (typeof Brain !== 'undefined' && Brain.stopTearEffect) Brain.stopTearEffect();
+            });
           });
+
+          grid.appendChild(btn);
         });
-        emotionGrid.appendChild(btn);
       });
     }
 
@@ -1350,13 +2089,6 @@
       } else {
         // IDLE | COMPLETED | FAILED | ABANDONED
         BreakReminder.stop();
-      }
-    });
-
-    // When user resumes, dismiss any active reminder
-    Session.onSessionStateChange((newState) => {
-      if (newState === 'ACTIVE' && BreakReminder.isActive()) {
-        BreakReminder.dismiss();
       }
     });
 
@@ -1421,10 +2153,376 @@
     }
   }
 
+  // ── _wireDND ──────────────────────────────────────────────────────────────
+  // Wire the DND Settings section: toggle button, duration selector,
+  // and live UI sync when DND activates / deactivates.
+
+  // ── Screen Time helpers ───────────────────────────────────────────────────
+
+  /**
+   * _updateDailyGoalArc()
+   * Reads today's total focused time (history + live session) and renders the
+   * Screen Time-style progress arc and labels in the session idle panel.
+   */
+  function _updateDailyGoalArc() {
+    const row     = document.getElementById('sp-daily-goal-row');
+    const arcFill = document.getElementById('sp-dg-fill');
+    const todayEl = document.getElementById('sp-dg-today');
+    const goalEl  = document.getElementById('sp-dg-goal');
+    if (!row) return;
+
+    const goalMins = Settings.get('dailyFocusGoalMins') || 0;
+
+    if (goalMins <= 0) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+
+    // Today's accumulated focus from completed/active sessions
+    const history    = Session.getHistory ? Session.getHistory() : [];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayMs    = todayStart.getTime();
+
+    const historySecs = history.reduce((acc, s) => {
+      if (!s.date || new Date(s.date).getTime() < todayMs) return acc;
+      return acc + (s.actualFocusedSeconds || 0);
+    }, 0);
+
+    // Add the currently active session's live focused seconds
+    const live    = Session.getCurrentStats ? Session.getCurrentStats() : null;
+    const liveSecs = (live && live.state === 'ACTIVE') ? (live.focusedSeconds || 0) : 0;
+
+    const totalSecs = historySecs + liveSecs;
+    const totalMins = Math.floor(totalSecs / 60);
+
+    // Format label: "1h 25m today"
+    const th = Math.floor(totalMins / 60);
+    const tm = totalMins % 60;
+    const timeStr = th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`;
+    if (todayEl) todayEl.textContent = `${timeStr} today`;
+
+    // Goal label: "/ 2h goal"
+    const gh = Math.floor(goalMins / 60);
+    const gm = goalMins % 60;
+    const goalStr = gh > 0 ? (gm > 0 ? `${gh}h ${gm}m` : `${gh}h`) : `${gm}m`;
+    if (goalEl) goalEl.textContent = `/ ${goalStr} goal`;
+
+    // Arc fill: circumference = 2π × 18 ≈ 113.1
+    const CIRC     = 113.1;
+    const fraction = Math.min(1, totalMins / goalMins);
+    if (arcFill) {
+      arcFill.style.strokeDasharray  = String(CIRC);
+      arcFill.style.strokeDashoffset = String(CIRC * (1 - fraction));
+      arcFill.classList.toggle('sp-dg-fill-done', fraction >= 1);
+    }
+    row.classList.toggle('goal-reached', fraction >= 1);
+
+    // Celebrate the moment the goal is first reached today
+    if (fraction >= 1 && !_dailyGoalCelebratedToday) {
+      _dailyGoalCelebratedToday = true;
+      _fireDailyGoalReached();
+    }
+  }
+
+  let _dailyGoalCelebratedToday = (() => {
+    // Reset on new day
+    const key = 'deskbuddy_goal_celebrated';
+    const stored = sessionStorage.getItem(key);
+    const today = new Date().toDateString();
+    if (stored === today) return true;
+    // On each init, clear stale date and return false so goal can re-celebrate
+    sessionStorage.removeItem(key);
+    return false;
+  })();
+
+  function _fireDailyGoalReached() {
+    sessionStorage.setItem('deskbuddy_goal_celebrated', new Date().toDateString());
+
+    const badge = document.getElementById('milestone-badge');
+    if (badge) {
+      badge.textContent = '🎯 daily goal reached!';
+      badge.classList.add('visible');
+      setTimeout(() => badge.classList.remove('visible'), 4500);
+    }
+
+    if (typeof Sounds !== 'undefined')    Sounds.play('overjoyed_chirp');
+    if (typeof Emotion !== 'undefined')   Emotion.preview('overjoyed', 3500);
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 12; i++) {
+        setTimeout(() => Particles.spawn('excited'), i * 60);
+      }
+    }
+  }
+
+  /**
+   * _renderBudgetDots(used, budget)
+   * Renders the distraction budget dot row in the active session panel.
+   * Green dots = remaining; red dots = used; nothing shown if budget = 0.
+   */
+  function _renderBudgetDots(used, budget) {
+    const row       = document.getElementById('sp-budget-row');
+    const dotsEl    = document.getElementById('sp-budget-dots');
+    const countEl   = document.getElementById('sp-budget-count');
+    if (!row) return;
+
+    if (!budget || budget <= 0) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+
+    if (dotsEl) {
+      dotsEl.innerHTML = '';
+      const MAX_DOTS = Math.min(budget, 10); // cap visual dots at 10
+      for (let i = 0; i < MAX_DOTS; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'sp-budget-dot' +
+          (i < used && used > budget  ? ' over' :
+           i < used                   ? ' used' : '');
+        dotsEl.appendChild(dot);
+      }
+    }
+
+    const remaining = Math.max(0, budget - used);
+    if (countEl) {
+      countEl.textContent = `${remaining}/${budget}`;
+      countEl.style.color = remaining === 0
+        ? 'rgba(255, 90, 90, 0.80)'
+        : remaining <= Math.ceil(budget * 0.4)
+          ? 'rgba(255, 190, 60, 0.80)'
+          : 'rgba(200, 220, 255, 0.55)';
+    }
+  }
+
+  /**
+   * _fireBudgetExceeded()
+   * Flash a warning when the user has used all distraction budget slots.
+   */
+  function _fireBudgetExceeded() {
+    const row = document.getElementById('sp-budget-row');
+    if (row) {
+      row.classList.remove('budget-exceeded');
+      // Force reflow to restart animation
+      void row.offsetWidth;
+      row.classList.add('budget-exceeded');
+    }
+
+    if (typeof Sounds !== 'undefined')  Sounds.play('pouty_mweh');
+    if (typeof Emotion !== 'undefined') Emotion.preview('pouty', 2200);
+
+    const badge = document.getElementById('milestone-badge');
+    if (badge) {
+      badge.textContent = '⚠ distraction budget spent';
+      badge.classList.add('visible');
+      setTimeout(() => badge.classList.remove('visible'), 3000);
+    }
+  }
+
+  /**
+   * _getWeekBounds(weeksAgo)
+   * Returns { start, end } for a calendar week (Mon–Sun) N weeks in the past.
+   */
+  function _getWeekBounds(weeksAgo) {
+    const now     = new Date();
+    const dow     = (now.getDay() + 6) % 7; // Mon=0 … Sun=6
+    const monday  = new Date(now);
+    monday.setDate(now.getDate() - dow - weeksAgo * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday  = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { start: monday, end: sunday };
+  }
+
+  /**
+   * _checkWeeklyReport()
+   * Shows the weekly report modal once per calendar week (Mon–Sun).
+   * Report covers the previous completed week. Skips if no sessions that week.
+   */
+  function _checkWeeklyReport() {
+    const now     = new Date();
+    const dow     = (now.getDay() + 6) % 7;
+    const monday  = new Date(now);
+    monday.setDate(now.getDate() - dow);
+    monday.setHours(0, 0, 0, 0);
+    const thisWeekKey = monday.toDateString();
+
+    const lastShown = Settings.get('weeklyReportLastShown') || '';
+    if (lastShown === thisWeekKey) return; // already shown this week
+
+    const history = Session.getHistory ? Session.getHistory() : [];
+    if (!history.length) return;
+
+    // Get previous week sessions
+    const prev = _getWeekBounds(1);
+    const prevSessions = history.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= prev.start.getTime() && t <= prev.end.getTime();
+    });
+
+    if (!prevSessions.length) return; // nothing to report
+
+    // Mark as shown for this week
+    Settings.set('weeklyReportLastShown', thisWeekKey);
+
+    // Populate and show the modal (slight delay so history panel animates in first)
+    setTimeout(() => _showWeeklyReport(prevSessions, prev.start, prev.end, history), 500);
+  }
+
+  function _showWeeklyReport(sessions, weekStart, weekEnd, allHistory) {
+    const modal = document.getElementById('weekly-report-modal');
+    if (!modal) return;
+
+    // Date range label: "Apr 7 – Apr 13"
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fmtDate = d => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+    const dateRangeEl = document.getElementById('wr-date-range');
+    if (dateRangeEl) dateRangeEl.textContent = `${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`;
+
+    // Total focus time
+    const totalSecs = sessions.reduce((a, s) => a + (s.actualFocusedSeconds || 0), 0);
+    const totalMins = Math.floor(totalSecs / 60);
+    const th = Math.floor(totalMins / 60);
+    const tm = totalMins % 60;
+    const timeStr = th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`;
+    const totalEl = document.getElementById('wr-total-time');
+    if (totalEl) totalEl.textContent = totalMins > 0 ? timeStr : '0m';
+
+    // Comparison: previous-previous week
+    const pp = _getWeekBounds(2);
+    const ppSessions = allHistory.filter(s => {
+      if (!s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= pp.start.getTime() && t <= pp.end.getTime();
+    });
+    const ppSecs = ppSessions.reduce((a, s) => a + (s.actualFocusedSeconds || 0), 0);
+    const changeEl = document.getElementById('wr-change');
+    if (changeEl) {
+      const diffMins = Math.round((totalSecs - ppSecs) / 60);
+      const dh = Math.floor(Math.abs(diffMins) / 60);
+      const dm = Math.abs(diffMins) % 60;
+      const diffStr = dh > 0 ? (dm > 0 ? `${dh}h ${dm}m` : `${dh}h`) : `${dm}m`;
+      if (diffMins > 5) {
+        changeEl.textContent = `↑ ${diffStr} more than last week`;
+        changeEl.className   = 'wr-change up';
+      } else if (diffMins < -5) {
+        changeEl.textContent = `↓ ${diffStr} less than last week`;
+        changeEl.className   = 'wr-change down';
+      } else {
+        changeEl.textContent = '→ similar to last week';
+        changeEl.className   = 'wr-change same';
+      }
+    }
+
+    // Sessions count
+    const sessionsEl = document.getElementById('wr-sessions');
+    if (sessionsEl) sessionsEl.textContent = String(sessions.length);
+
+    // Average focus score
+    const completed = sessions.filter(s => s.outcome === 'COMPLETED');
+    let avgScore = null;
+    if (completed.length) {
+      const sum = completed.reduce((acc, s) => {
+        const total   = (s.durationMinutes || 0) * 60;
+        const focused = s.actualFocusedSeconds || 0;
+        return acc + (total > 0 ? (focused / total) * 100 : 0);
+      }, 0);
+      avgScore = Math.round(sum / completed.length);
+    }
+    const avgEl = document.getElementById('wr-avg-focus');
+    if (avgEl) avgEl.textContent = avgScore !== null ? `${avgScore}%` : '—';
+
+    // Best day
+    const byDay = {};
+    sessions.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const key = d.toDateString();
+      byDay[key] = (byDay[key] || 0) + (s.actualFocusedSeconds || 0);
+    });
+    let bestDay = null, bestDaySecs = 0;
+    Object.entries(byDay).forEach(([day, secs]) => {
+      if (secs > bestDaySecs) { bestDaySecs = secs; bestDay = new Date(day); }
+    });
+    const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const bestDayEl = document.getElementById('wr-best-day');
+    if (bestDayEl) bestDayEl.textContent = bestDay ? DAYS[bestDay.getDay()] : '—';
+
+    // Top category
+    const CATEGORY_EMOJI = { study: '📚', work: '💼', creative: '🎨', reading: '📖', other: '⚙️' };
+    const catCounts = {};
+    sessions.forEach(s => {
+      const c = s.category || 'other';
+      catCounts[c] = (catCounts[c] || 0) + 1;
+    });
+    let topCat = null, topCatCount = 0;
+    Object.entries(catCounts).forEach(([cat, cnt]) => {
+      if (cnt > topCatCount) { topCatCount = cnt; topCat = cat; }
+    });
+    const topCatEl = document.getElementById('wr-top-cat');
+    if (topCatEl) {
+      topCatEl.textContent = topCat
+        ? `${CATEGORY_EMOJI[topCat] || '⚙️'} ${topCat}`
+        : '—';
+    }
+
+    // Wire close button (once)
+    const closeBtn = document.getElementById('wr-close-btn');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.setAttribute('aria-hidden', 'true');
+      };
+    }
+
+    // Show
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function _wireDND() {
+    const toggleBtn  = document.getElementById('dnd-toggle-btn');
+    const durSelect  = document.getElementById('dnd-duration-select');
+    const durRow     = document.getElementById('dnd-duration-row');
+
+    // Populate duration select from saved setting
+    const savedDur = Settings.get('dndDuration') || 25;
+    if (durSelect) durSelect.value = String(savedDur);
+
+    // Persist chosen duration in Settings whenever it changes
+    if (durSelect) {
+      durSelect.addEventListener('change', () => {
+        Settings.set('dndDuration', parseInt(durSelect.value, 10));
+      });
+    }
+
+    function _syncDNDBtn() {
+      if (!toggleBtn) return;
+      const on = DND.isActive();
+      toggleBtn.textContent = on ? 'cancel' : 'start';
+      toggleBtn.classList.toggle('dnd-btn-active', on);
+      if (durRow) durRow.style.opacity = on ? '0.45' : '1';
+      if (durSelect) durSelect.disabled = on;
+    }
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const dur = parseInt(durSelect?.value || '25', 10);
+        DND.toggle(dur);
+      });
+    }
+
+    DND.onActivate(() => _syncDNDBtn());
+    DND.onDeactivate(() => _syncDNDBtn());
+    _syncDNDBtn();  // set initial state
+  }
+
   // ── _wireSidebar ──────────────────────────────────────────────────────────
   // Auto-hide session sidebar: hover the brain icon to slide the panel in;
   // leave the panel to slide it away.
   // The brain icon fades out when the panel is open so it doesn't overlap.
+  // History is now in a separate #history-panel triggered by #hp-icon.
 
   function _wireSidebar() {
     const panel = document.getElementById('session-panel');
@@ -1466,6 +2564,57 @@
 
     // Schedule close when mouse leaves the panel
     panel.addEventListener('mouseleave', _scheduleClose);
+  }
+
+  // ── _wireHistorySidebar ───────────────────────────────────────────────────
+  // History panel is now a separate #history-panel sidebar triggered by #hp-icon.
+
+  function _wireHistorySidebar() {
+    // Init pill clicks, calendar mode buttons, and context menu inside the
+    // history card.
+    HistoryPanel.init();
+
+    const panel = document.getElementById('history-panel');
+    const icon  = document.getElementById('hp-icon');
+    if (!panel || !icon) return;
+
+    function _openHistory() {
+      panel.classList.add('hp-panel-open');
+      icon.classList.add('hp-icon-hidden');
+      requestAnimationFrame(() => {
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+      });
+    }
+
+    function _closeHistory() {
+      panel.classList.remove('hp-panel-open');
+      icon.classList.remove('hp-icon-hidden');
+    }
+
+    function _toggleHistory() {
+      if (panel.classList.contains('hp-panel-open')) {
+        _closeHistory();
+      } else {
+        _openHistory();
+      }
+    }
+
+    // Click-to-toggle: open/close on icon click
+    icon.addEventListener('click', _toggleHistory);
+
+    // Close when clicking outside the panel (but not the icon itself)
+    document.addEventListener('click', (e) => {
+      if (!panel.classList.contains('hp-panel-open')) return;
+      if (panel.contains(e.target) || e.target === icon || icon.contains(e.target)) return;
+      _closeHistory();
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && panel.classList.contains('hp-panel-open')) {
+        _closeHistory();
+      }
+    });
   }
 
 })();

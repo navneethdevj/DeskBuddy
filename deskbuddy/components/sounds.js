@@ -167,6 +167,14 @@ const Sounds = (() => {
       happy_coo:          _happy_coo,
       overjoyed_chirp:    _overjoyed_chirp,
       suspicious_squint:  _suspicious_squint,
+      love_purr:          _love_purr,
+      curious_ooh:        _curious_ooh,
+      excited_chirp:      _excited_chirp,
+      startled_gasp:      _startled_gasp,
+      shy_squeak:         _shy_squeak,
+      sad_whimper:        _sad_whimper,
+      scared_eep:         _scared_eep,
+      welcomeBack:        _welcomeBack,
       session_start:      _session_start,
       session_complete:   _session_complete,
       session_fail:       _session_fail,
@@ -686,6 +694,8 @@ const Sounds = (() => {
       case 'shy':        _shy_squeak();         break;
       case 'love':       _love_purr();          break;
       case 'startled':   _startled_gasp();      break;
+      case 'ecstatic':   _overjoyed_chirp();    break;  // golden joy — reuse overjoyed chirp
+      case 'dazed':      _love_purr();          break;  // soft contented purr on daze entry
       case 'idle':
         if (from === 'scared' || from === 'sad' || from === 'crying') _reliefSigh();
         break;

@@ -7,7 +7,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="world"></div>
+  <div id="world">
+    <!-- PiP hover controls — visible on mouse-enter in pip-mode -->
+    <div id="pip-hover-overlay" aria-hidden="true">
+      <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⛶</button>
+    </div>
+  </div>
   <div id="status-bar"></div>
 
   <!-- Compact mode: click to expand to full-screen -->
@@ -29,7 +34,7 @@
       <!-- ── SOUND SECTION ─────────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Sound<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">♪</span> Sound<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -72,7 +77,7 @@
       <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">☕</span> Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -113,7 +118,7 @@
       <!-- ── SESSION SECTION ──────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Session<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">⏱</span> Session<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -160,6 +165,50 @@
               <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
             </div>
           </div>
+
+          <!-- Daily focus goal -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Daily focus goal</div>
+              <div class="settings-row-sublabel">Screen Time-style daily progress arc</div>
+            </div>
+            <select id="daily-goal-select" class="settings-select">
+              <option value="0">Off</option>
+              <option value="60">1 h</option>
+              <option value="90">1.5 h</option>
+              <option value="120">2 h</option>
+              <option value="180">3 h</option>
+              <option value="240">4 h</option>
+            </select>
+          </div>
+
+          <!-- Distraction budget -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Distraction budget</div>
+              <div class="settings-row-sublabel">Warn after N distractions per session</div>
+            </div>
+            <select id="distraction-budget-select" class="settings-select">
+              <option value="0">Unlimited</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+
+          <!-- Anti-cheat protection -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">🛡 Stats protection</div>
+              <div class="settings-row-sublabel">Lock stats — prevent sessions from being deleted to inflate focus scores</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="anti-cheat-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+
         </div>
       </div>
       <hr class="settings-divider">
@@ -167,7 +216,7 @@
       <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Display<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">✧</span> Display<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -200,6 +249,74 @@
               <span class="settings-toggle-track"></span>
             </label>
           </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Auto-collapse on app switch</div>
+              <div class="settings-row-sublabel">Switch to compact overlay when you leave DeskBuddy</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="auto-pip-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row" id="auto-pip-delay-row">
+            <div>
+              <div class="settings-row-label">Collapse delay</div>
+              <div class="settings-row-sublabel">Wait before collapsing (prevents brief alt-tabs)</div>
+            </div>
+            <select id="auto-pip-delay-select" class="settings-select">
+              <option value="0">Instant</option>
+              <option value="2">2 s</option>
+              <option value="5">5 s</option>
+              <option value="10">10 s</option>
+            </select>
+          </div>
+          <div class="settings-row" id="auto-pip-restore-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Restore on return</div>
+              <div class="settings-row-sublabel">Re-expand to full mode when you come back</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="auto-pip-restore-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row" id="auto-pip-skip-session-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Stay full during sessions</div>
+              <div class="settings-row-sublabel">Don't collapse while a focus session is active</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="auto-pip-skip-session-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Overlay shape</div>
+              <div class="settings-row-sublabel">Shape of the compact overlay window</div>
+            </div>
+            <div class="pip-shape-picker" id="pip-shape-picker">
+              <button class="pip-shape-chip" data-shape="square" title="Square">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <rect x="2" y="2" width="18" height="18" rx="3" ry="3" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Square
+              </button>
+              <button class="pip-shape-chip" data-shape="rounded" title="Rounded">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <rect x="2" y="2" width="18" height="18" rx="7" ry="7" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Rounded
+              </button>
+              <button class="pip-shape-chip" data-shape="circle" title="Circle">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/>
+                </svg>
+                Circle
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
@@ -207,7 +324,7 @@
       <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Behaviour<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">◎</span> Behaviour<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div class="settings-row">
@@ -231,17 +348,99 @@
         </div>
       </div>
 
-      <!-- ── EXPRESSIONS SECTION ──────────────────────────────────── -->
+      <!-- ── BUDDY PERSONALITY SECTION ────────────────────────────── -->
       <hr class="settings-divider">
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Expressions<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">✦</span> Buddy Personality<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
-          <div class="settings-row-sublabel" style="padding:0 10px 8px;font-size:11px;color:rgba(255,255,255,0.28);">
-            tap any state to preview it for 3 s
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Idle speed</div>
+              <div class="settings-row-sublabel" id="idle-speed-sublabel">Default</div>
+            </div>
+            <div class="settings-triple-btn" id="idle-speed-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Slow & calm">🐢 Calm</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Default rhythm">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Hyper & frequent">⚡ Hyper</button>
+            </div>
           </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Expressiveness</div>
+              <div class="settings-row-sublabel" id="express-sublabel">Default</div>
+            </div>
+            <div class="settings-triple-btn" id="express-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Subtle reactions">🌸 Subtle</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Default vibes">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Maximum drama">💥 Drama</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Petting</div>
+              <div class="settings-row-sublabel">Hold near buddy to snuggle · escalates with hold duration</div>
+            </div>
+            <div class="settings-triple-btn" id="petting-btns">
+              <button class="settings-triple-btn-item" data-val="1" title="Hold 0.8 s to start, 1.5 s for deep bliss">🐾 Gentle</button>
+              <button class="settings-triple-btn-item" data-val="2" title="Hold 0.5 s to start, 1.5 s for deep bliss">✦ Default</button>
+              <button class="settings-triple-btn-item" data-val="3" title="Instantly cozy, 1 s for deep bliss">💕 Eager</button>
+            </div>
+          </div>
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">◕</span> Expressions<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row" style="align-items:center;">
+            <div>
+              <div class="settings-row-label">Preview duration</div>
+              <div class="settings-row-sublabel" id="preview-dur-sublabel">3 s</div>
+            </div>
+            <input type="range" id="preview-dur-slider" class="settings-slider"
+              min="1" max="10" step="1" value="3" style="width:90px;">
+          </div>
+          <div class="settings-row-sublabel" id="emotion-grid-hint" style="padding:4px 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.26);">
+            tap to preview · hold to extend preview<br>
+            <span style="color:rgba(255,155,130,0.52);">♡ cozy</span><span style="color:rgba(255,255,255,0.18);"> = hold &lt; 1.5 s · </span><span style="color:rgba(255,110,145,0.52);">being_patted</span><span style="color:rgba(255,255,255,0.18);"> = hold ≥ 1.5 s, escalates · </span><span style="color:rgba(255,230,60,0.55);">✦ ecstatic</span><span style="color:rgba(255,255,255,0.18);"> = ≥ 16 s flash · </span><span style="color:rgba(200,165,255,0.55);">◕~◕ dazed</span><span style="color:rgba(255,255,255,0.18);"> = post-hold bliss fog</span>
+          </div>
+          <!-- Category groups built dynamically by renderer.js -->
           <div id="emotion-grid"></div>
+        </div>
+      </div>
+
+      <!-- ── DND SECTION ──────────────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">⊘</span> Do Not Disturb<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Focus lock</div>
+              <div class="settings-row-sublabel">Silence the companion for a set time</div>
+            </div>
+            <button id="dnd-toggle-btn" class="settings-action-btn">start</button>
+          </div>
+          <div class="settings-row" id="dnd-duration-row">
+            <div class="settings-row-label">Duration</div>
+            <select id="dnd-duration-select" class="settings-select">
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="25" selected>25 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+              <option value="90">90 min</option>
+              <option value="0">Until I turn it off</option>
+            </select>
+          </div>
+          <div class="settings-row-sublabel" style="padding: 0 12px 8px; font-size:10.5px; color:rgba(255,255,255,0.32);">
+            Companion goes quiet &amp; still. Sounds reduced to reminders only. Press the keybind or click the indicator to cancel early.
+          </div>
         </div>
       </div>
 
@@ -249,13 +448,81 @@
       <hr class="settings-divider">
       <div class="settings-section">
         <button class="settings-section-title" aria-expanded="false">
-          Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
+          <span class="settings-section-icon">⌨</span> Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-section-body">
           <div id="shortcuts-list"></div>
         </div>
       </div>
 
+    </div><!-- /#settings-body — Shortcuts section end -->
+
+      <!-- ── BACKUP SECTION ────────────────────────────────────────── -->
+      <hr class="settings-divider">
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">💾</span> Backup<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Export history</div>
+              <div class="settings-row-sublabel" id="export-session-count">0 sessions saved</div>
+            </div>
+            <button id="export-history-btn" class="settings-action-btn">export</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Import history</div>
+              <div class="settings-row-sublabel">Merge sessions from a backup file</div>
+            </div>
+            <button id="import-history-btn" class="settings-action-btn">import</button>
+          </div>
+          <div id="backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
+
+          <!-- ── Danger zone: clear history / clear cache ── -->
+          <hr class="settings-sub-divider">
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Clear session history</div>
+              <div class="settings-row-sublabel">Permanently delete all saved sessions</div>
+            </div>
+            <button id="clear-history-btn" class="settings-action-btn settings-action-btn-danger">clear</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Clear all cache</div>
+              <div class="settings-row-sublabel">Wipe sessions, settings &amp; all stored data</div>
+            </div>
+            <button id="clear-cache-btn" class="settings-action-btn settings-action-btn-danger">wipe</button>
+          </div>
+          <hr class="settings-sub-divider">
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Export settings</div>
+              <div class="settings-row-sublabel">Save all preferences to a file</div>
+            </div>
+            <button id="export-settings-btn" class="settings-action-btn">export</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Import settings</div>
+              <div class="settings-row-sublabel">Restore preferences from a backup</div>
+            </div>
+            <button id="import-settings-btn" class="settings-action-btn">import</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Reset to defaults</div>
+              <div class="settings-row-sublabel">Restore all preferences to factory values</div>
+            </div>
+            <button id="reset-settings-btn" class="settings-action-btn settings-action-btn-danger">reset</button>
+          </div>
+          <div id="settings-backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
+        </div>
+      </div>
+
+    </div><!-- /#settings-body (buddy personality outer section) -->
     </div><!-- /#settings-body -->
   </div><!-- /#settings-panel -->
 
@@ -330,6 +597,24 @@
     <span id="sp-icon-ring"></span>
   </button>
 
+  <!-- History sidebar icon — floating glass icon next to the settings gear.
+       Click it to open the history/stats panel. -->
+  <button id="hp-icon" title="Session history" aria-label="Open history panel">
+    <svg id="hp-icon-chart" viewBox="0 0 22 22" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Counterclockwise arc (from 3 o'clock CCW to 12 o'clock, 270°) -->
+      <path d="M18 11 A7 7 0 1 0 11 4"
+            stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <!-- Arrow head at 12 o'clock pointing counterclockwise (left) -->
+      <polyline points="13.5,2 11,4 13.5,6"
+                stroke="currentColor" stroke-width="1.4"
+                stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Click cursor pointer in center -->
+      <path d="M9.5 7.5 L9.5 14 L11 12.5 L12 15 L12.7 14.7 L11.7 12.5 L13.5 12.5 Z"
+            fill="currentColor" opacity="0.88"/>
+    </svg>
+  </button>
+
   <!-- Session panel — auto-hide right sidebar, full-mode only -->
   <div id="session-panel">
 
@@ -385,6 +670,17 @@
                     aria-label="increase break">+</button>
           </div>
         </div>
+        <!-- Session category selector — Screen Time-style activity tag -->
+        <div class="sp-category-row">
+          <label class="sp-label">category</label>
+          <div class="sp-category-pills" id="sp-category-pills">
+            <button class="sp-cat-pill active" data-cat="study"    title="Study">📚 study</button>
+            <button class="sp-cat-pill"        data-cat="work"     title="Work">💼 work</button>
+            <button class="sp-cat-pill"        data-cat="creative" title="Creative">🎨 create</button>
+            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">📖 read</button>
+            <button class="sp-cat-pill"        data-cat="other"    title="Other">⚙️ other</button>
+          </div>
+        </div>
         <div class="sp-goal-row">
           <input type="text" id="goal-input" class="sp-goal-input"
             placeholder="what are you working on?" maxlength="80" autocomplete="off">
@@ -392,6 +688,18 @@
         <button id="start-session" class="sp-btn sp-btn-primary">
           ✦ begin session
         </button>
+
+        <!-- Daily focus goal progress — Screen Time-style daily target arc -->
+        <div class="sp-daily-goal-row" id="sp-daily-goal-row" style="display:none">
+          <svg class="sp-dg-svg" viewBox="0 0 44 44" aria-hidden="true">
+            <circle class="sp-dg-track" cx="22" cy="22" r="18"/>
+            <circle id="sp-dg-fill"  class="sp-dg-fill"  cx="22" cy="22" r="18"/>
+          </svg>
+          <div class="sp-dg-text">
+            <div id="sp-dg-today" class="sp-dg-today">0m today</div>
+            <div id="sp-dg-goal"  class="sp-dg-goal">— goal</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -415,6 +723,22 @@
       </div>
 
       <div id="goal-display" class="sp-goal-display" style="display:none"></div>
+      <!-- Live focus stat bar -->
+      <div class="sp-focus-stat-row">
+        <div class="sp-focus-stat-label">focus</div>
+        <div class="sp-focus-stat-bar">
+          <div id="sp-focus-stat-fill" class="sp-focus-stat-fill"></div>
+        </div>
+        <div id="sp-focus-stat-pct" class="sp-focus-stat-pct">–</div>
+      </div>
+      <!-- Live focus heatmap — last 90 seconds as per-second coloured blocks -->
+      <div id="focus-heatmap-strip" class="focus-heatmap-strip" aria-hidden="true" title="Last 90 seconds of focus"></div>
+      <!-- Distraction budget — Screen Time App Limits style -->
+      <div class="sp-budget-row" id="sp-budget-row" style="display:none">
+        <div class="sp-budget-label">budget</div>
+        <div class="sp-budget-dots" id="sp-budget-dots"></div>
+        <div id="sp-budget-count" class="sp-budget-count"></div>
+      </div>
       <div class="sp-controls">
         <button id="pause-session" class="sp-btn sp-btn-secondary">
           ☕ take a break
@@ -434,7 +758,7 @@
       <div class="sp-break-body">
         <div class="sp-break-icon">☕</div>
         <div id="break-countdown" class="sp-break-countdown">5:00</div>
-        <div class="sp-break-hint">break budget remaining</div>
+        <div class="sp-break-hint">time on break</div>
       </div>
       <div class="sp-controls">
         <button id="resume-session" class="sp-btn sp-btn-primary">
@@ -446,9 +770,242 @@
       </div>
     </div>
 
+
   </div><!-- /#session-panel -->
 
-  <!-- Outcome popup — standalone centered overlay, visible in any mode -->
+  <!-- History panel — separate floating sidebar, full-mode only -->
+  <div id="history-panel">
+  <div id="history-card">
+
+      <!-- ── HEADER with view pills ──────────────────────────────────── -->
+      <div class="hp-header">
+        <div class="hp-header-left">
+          <span class="hp-title">Focus Stats</span>
+          <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
+        </div>
+        <div class="hgraph-pills">
+          <button class="hgraph-pill active" data-view="daily">Daily</button>
+          <button class="hgraph-pill" data-view="weekly">Weekly</button>
+          <button class="hgraph-pill" data-view="monthly">Monthly</button>
+          <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
+        </div>
+        <button id="hp-close-btn" class="hp-close-btn" aria-hidden="true" style="display:none" aria-label="Close history panel">✕</button>
+      </div>
+
+      <!-- ── VIEW: DAILY ────────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="daily">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-today-focused">—</div>
+            <div class="hp-sc-lbl">today focused</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-today-sessions">0</div>
+            <div class="hp-sc-lbl">sessions today</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-today-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-dur">
+            <div class="hp-sc-val" id="hsc-today-longest">—</div>
+            <div class="hp-sc-lbl">longest session</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-daily">Today · hourly breakdown</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-daily"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: WEEKLY ───────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="weekly">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-week">
+            <div class="hp-sc-val" id="hsc-week-focused">—</div>
+            <div class="hp-sc-lbl">this week</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-week-sessions">0</div>
+            <div class="hp-sc-lbl">sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-week-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-week-best-day">—</div>
+            <div class="hp-sc-lbl">best day</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-weekly">This week · Mon → Sun</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-weekly"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: MONTHLY ──────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="monthly">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-month">
+            <div class="hp-sc-val" id="hsc-month-focused">—</div>
+            <div class="hp-sc-lbl">this month</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-month-sessions">0</div>
+            <div class="hp-sc-lbl">sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-avg">
+            <div class="hp-sc-val" id="hsc-month-avg">—</div>
+            <div class="hp-sc-lbl">avg focus %</div>
+          </div>
+          <div class="hp-sc hp-sc-lifetime">
+            <div class="hp-sc-val" id="hsc-month-best">—</div>
+            <div class="hp-sc-lbl">🏆 best day</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label" id="hcl-monthly">This month · day by day</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-monthly"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VIEW: LIFETIME ─────────────────────────────────────────── -->
+      <div class="hp-view" data-view-panel="lifetime">
+        <div class="hp-stat-cards">
+          <div class="hp-sc hp-sc-lifetime">
+            <div class="hp-sc-val" id="hsc-lifetime-focused">—</div>
+            <div class="hp-sc-lbl">lifetime total</div>
+          </div>
+          <div class="hp-sc hp-sc-sessions">
+            <div class="hp-sc-val" id="hsc-lifetime-sessions">0</div>
+            <div class="hp-sc-lbl">total sessions</div>
+          </div>
+          <div class="hp-sc hp-sc-today">
+            <div class="hp-sc-val" id="hsc-lifetime-best-day">—</div>
+            <div class="hp-sc-lbl">🏆 best day</div>
+          </div>
+          <div class="hp-sc hp-sc-week">
+            <div class="hp-sc-val" id="hsc-lifetime-streak">—</div>
+            <div class="hp-sc-lbl">🔥 longest streak</div>
+          </div>
+        </div>
+        <!-- Personal bests row -->
+        <div class="hp-best-row">
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-this-month">—</div>
+            <div class="hp-best-lbl">this month</div>
+          </div>
+          <div class="hp-best-div"></div>
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-best-week">—</div>
+            <div class="hp-best-lbl">🏆 best week</div>
+          </div>
+          <div class="hp-best-div"></div>
+          <div class="hp-best-item">
+            <div class="hp-best-val" id="hsb-best-month">—</div>
+            <div class="hp-best-lbl">🏆 best month</div>
+          </div>
+        </div>
+        <div class="hp-chart-section">
+          <div class="hp-chart-label">All time · monthly</div>
+          <div class="hp-chart-wrap">
+            <canvas id="hp-chart-lifetime"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STREAK SECTION (always visible) ───────────────────────── -->
+      <div class="hp-section hp-streak-section">
+        <div class="hp-streak-row">
+          <div class="hp-sr-item">
+            <div class="hp-sr-fires" id="hsr-fires" title="Current streak fire emojis"></div>
+            <div class="hp-sr-val" id="hsr-current-streak">0</div>
+            <div class="hp-sr-lbl">day streak 🔥</div>
+          </div>
+          <div class="hp-sr-div"></div>
+          <div class="hp-sr-item">
+            <div class="hp-sr-fires hp-sr-fires-dim" id="hsr-fires-longest"></div>
+            <div class="hp-sr-val" id="hsr-longest-streak">0</div>
+            <div class="hp-sr-lbl">longest 🏆</div>
+          </div>
+          <div class="hp-sr-div"></div>
+          <div class="hp-sr-item">
+            <div class="hp-sr-val hp-sr-val-score" id="hsr-avg-score">—</div>
+            <div class="hp-sr-lbl">avg focus %</div>
+          </div>
+        </div>
+        <div class="hp-section-head" style="margin-top:6px">
+          <span class="hp-slabel">streak calendar</span>
+          <div class="hp-cal-modes">
+            <button class="hp-cal-mode-btn active" data-cal-mode="16w" title="Show last 16 weeks (GitHub-style)">16 Weeks</button>
+            <button class="hp-cal-mode-btn" data-cal-mode="month" title="Show current month as calendar">Month</button>
+          </div>
+        </div>
+        <!-- GitHub-style: columns=weeks, rows=days, day labels on left -->
+        <div class="hp-cal-wrap" id="hp-cal-wrap-github">
+          <div class="hp-cal-day-col" id="hp-cal-day-col">
+            <!-- Day labels: Mon, Tue, Wed, Thu, Fri, Sat, Sun -->
+            <span title="Monday">M</span>
+            <span title="Tuesday">T</span>
+            <span title="Wednesday">W</span>
+            <span title="Thursday">T</span>
+            <span title="Friday">F</span>
+            <span title="Saturday">S</span>
+            <span title="Sunday">S</span>
+          </div>
+          <div class="hp-cal-graph-wrap">
+            <div class="hp-cal-month-labels" id="hp-cal-months"></div>
+            <canvas id="hp-streak-canvas" class="hp-streak-canvas" title="Focus streak — purple = completed session, dim = attempted, empty = no session"></canvas>
+          </div>
+        </div>
+        <!-- Month-mode calendar grid (hidden by default) -->
+        <div id="hp-cal-wrap-month" style="display:none;">
+          <div id="hp-cal-month-grid-container"></div>
+        </div>
+      </div>
+
+      <!-- ── RECENT SESSIONS (last 10) ──────────────────────────────── -->
+      <div class="hp-section">
+        <div class="hp-section-head">
+          <span class="hp-slabel">recent sessions</span>
+          <span id="hp-recent-hint" style="font-size:8px;color:rgba(155,140,220,0.35);letter-spacing:0.04em">right-click for options</span>
+        </div>
+        <div id="hp-recent-list" class="hp-recent-list"></div>
+        <!-- Multi-select toolbar (hidden until rows are selected) -->
+        <div id="hp-select-toolbar" class="hp-select-toolbar" style="display:none">
+          <span id="hp-select-count" class="hp-select-count">0 selected</span>
+          <div class="hp-select-actions">
+            <button id="hp-select-all-btn"   class="hp-select-action-btn">select all</button>
+            <button id="hp-select-clear-btn" class="hp-select-action-btn">clear</button>
+            <button id="hp-select-del-btn"   class="hp-select-action-btn hp-select-del-btn">🗑 delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context menu for individual session rows -->
+      <div id="hp-ctx-menu" class="hp-ctx-menu" style="display:none" role="menu" aria-label="Session options">
+        <div class="hp-ctx-header" id="hp-ctx-title">Session</div>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item" data-action="details"    role="menuitem">🔍 View details</button>
+        <button class="hp-ctx-item" data-action="copy"       role="menuitem">📋 Copy summary</button>
+        <button class="hp-ctx-item" data-action="star"       role="menuitem">⭐ Star session</button>
+        <button class="hp-ctx-item" data-action="export-one" role="menuitem">⬆ Export this session</button>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item" data-action="select-all" role="menuitem">☑ Select all</button>
+        <button class="hp-ctx-item" data-action="select-same-outcome" role="menuitem">◎ Select same outcome</button>
+        <div class="hp-ctx-sep"></div>
+        <button class="hp-ctx-item hp-ctx-item-danger" data-action="delete-one" role="menuitem">🗑 Delete this session</button>
+      </div>
+
+  </div><!-- /#history-card -->
+  </div><!-- /#history-panel -->
   <div id="outcome-screen" role="dialog" aria-modal="true" aria-label="Session outcome" aria-hidden="true">
     <div id="outcome-card">
       <div id="outcome-label" class="sp-outcome-label"></div>
@@ -518,6 +1075,84 @@
   <!-- Attention bar — EyeOnTask concept, barely visible -->
   <div id="attention-bar"><div id="attention-fill"></div></div>
 
+  <!-- DND indicator — shown when Do Not Disturb is active; click to cancel.
+       SVG arc ring depletes clockwise as time passes. Infinite mode spins. -->
+  <div id="dnd-indicator" role="button" tabindex="-1"
+       aria-live="polite" aria-label="Do Not Disturb active — click to cancel">
+
+    <!-- SVG ring (rotated -90° so arc starts at 12 o'clock) -->
+    <svg id="dnd-ring-svg" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="dnd-grad" x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#c4b5fd"/>
+          <stop offset="45%"  stop-color="#8b5cf6"/>
+          <stop offset="100%" stop-color="#4338ca"/>
+        </linearGradient>
+        <!-- Soft outer glow filter applied to the glow copy arc -->
+        <filter id="dnd-glow-filter" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <!-- Faint background track -->
+      <circle id="dnd-ring-track" cx="32" cy="32" r="26"/>
+      <!-- Blurred glow layer behind the main arc -->
+      <circle id="dnd-ring-glow"  cx="32" cy="32" r="26"/>
+      <!-- Main gradient progress arc -->
+      <circle id="dnd-ring-arc"   cx="32" cy="32" r="26"/>
+      <!-- Bright leading-edge dot at the arc tip -->
+      <circle id="dnd-ring-dot" cx="32" cy="6" r="2.8"/>
+    </svg>
+
+    <!-- Glass-morphism center face -->
+    <div id="dnd-ring-face">
+      <span id="dnd-time-val">--:--</span>
+      <span id="dnd-mode-label">focus lock</span>
+    </div>
+
+    <!-- Hover overlay — morphs center to show cancel action -->
+    <div id="dnd-cancel-hint">
+      <span id="dnd-cancel-icon">✕</span>
+      <span id="dnd-cancel-text">end</span>
+    </div>
+
+  </div>
+
+  <!-- Weekly Report modal — Screen Time-style weekly summary, auto-shown on new week -->
+  <div id="weekly-report-modal" role="dialog" aria-modal="true"
+       aria-label="Weekly focus report" aria-hidden="true">
+    <div id="weekly-report-card">
+      <div class="wr-header">
+        <div class="wr-subtitle">✦ weekly report</div>
+        <div id="wr-date-range" class="wr-date-range"></div>
+      </div>
+      <div class="wr-hero">
+        <div id="wr-total-time" class="wr-big-val">0h</div>
+        <div class="wr-big-lbl">total focus time</div>
+        <div id="wr-change" class="wr-change"></div>
+      </div>
+      <div class="wr-stats-grid">
+        <div class="wr-stat">
+          <div id="wr-sessions"  class="wr-sv">0</div>
+          <div class="wr-sl">sessions</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-avg-focus" class="wr-sv">—</div>
+          <div class="wr-sl">avg focus</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-best-day"  class="wr-sv">—</div>
+          <div class="wr-sl">best day</div>
+        </div>
+        <div class="wr-stat">
+          <div id="wr-top-cat"   class="wr-sv">—</div>
+          <div class="wr-sl">top category</div>
+        </div>
+      </div>
+      <button id="wr-close-btn" class="sp-btn sp-btn-primary">✦ got it</button>
+    </div>
+  </div>
+
   <!-- CJS shim — vision_bundle.cjs needs module/exports globals that
        Electron renderer (nodeIntegration:false) does not provide -->
   <script>var exports = {}; var module = { exports: exports };</script>
@@ -544,8 +1179,11 @@
   <script src="components/settings.js"></script>
   <script src="components/keybinds.js"></script>
   <script src="components/break-reminder.js"></script>
+  <script src="components/dnd.js"></script>
   <script src="ui/focus-graph.js"></script>
   <script src="ui/share-card.js"></script>
+  <script src="ui/history-stats.js"></script>
+  <script src="ui/history-panel.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

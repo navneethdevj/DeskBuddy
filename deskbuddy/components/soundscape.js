@@ -166,6 +166,8 @@ const Soundscape = (() => {
     _lfoGain = null;
   }
 
+  let _nudgeResetTimer = null;
+
   // ── Public API ────────────────────────────────────────────────────────────────
 
   /**
@@ -255,6 +257,77 @@ const Soundscape = (() => {
     else         stop();
   }
 
-  return { init, setTimeTint, stop, resume, setEnabled };
+  /**
+   * nudgeForEmotion(emotion) — temporarily shift the drone's character to
+   * match the companion's current emotional state.
+   *
+   * Each emotion nudges three parameters of the audio graph:
+   *   cutoff  — lowpass filter cutoff frequency (Hz); lower = darker/warmer
+   *   lfoGain — LFO modulation depth (Hz); higher = more "wobble" in the drone
+   *   lfoFreq — LFO oscillation speed (Hz); slower = more meditative
+   *
+   * After 20 seconds the drone automatically fades back to neutral settings.
+   * Calling nudgeForEmotion(null) forces an immediate restore.
+   *
+   * Safe to call when drone is stopped — queues for next resume.
+   */
+  function nudgeForEmotion(emotion) {
+    if (!_ready || !_ctx) return;
+    if (!_filter || !_lfo || !_lfoGain) return;
+
+    // Emotion → { cutoff, lfoGain, lfoFreq }
+    const nudges = {
+      sad:          { cutoff: 200, lfoGain:  6, lfoFreq: 0.05 },
+      crying:       { cutoff: 185, lfoGain:  5, lfoFreq: 0.04 },
+      scared:       { cutoff: 315, lfoGain: 26, lfoFreq: 0.11 },
+      happy:        { cutoff: 330, lfoGain: 22, lfoFreq: 0.09 },
+      overjoyed:    { cutoff: 350, lfoGain: 26, lfoFreq: 0.10 },
+      excited:      { cutoff: 360, lfoGain: 28, lfoFreq: 0.12 },
+      love:         { cutoff: 240, lfoGain: 12, lfoFreq: 0.04 },
+      cozy:         { cutoff: 230, lfoGain: 10, lfoFreq: 0.04 },
+      being_patted: { cutoff: 220, lfoGain:  8, lfoFreq: 0.03 },
+      grumpy:       { cutoff: 245, lfoGain: 15, lfoFreq: 0.06 },
+      pouty:        { cutoff: 250, lfoGain: 14, lfoFreq: 0.06 },
+      curious:      { cutoff: 300, lfoGain: 22, lfoFreq: 0.09 },
+      suspicious:   { cutoff: 270, lfoGain: 20, lfoFreq: 0.08 },
+      embarrassed:  { cutoff: 310, lfoGain: 19, lfoFreq: 0.08 },
+      forgiven:     { cutoff: 290, lfoGain: 16, lfoFreq: 0.06 },
+      ecstatic:     { cutoff: 380, lfoGain: 32, lfoFreq: 0.14 },
+      dazed:        { cutoff: 210, lfoGain:  9, lfoFreq: 0.03 },
+    };
+
+    // Neutral settings — restored on null/unknown emotion
+    const neutral = { cutoff: 260, lfoGain: 18, lfoFreq: 0.07 };
+    const target  = nudges[emotion] || neutral;
+    const isNeutral = !nudges[emotion];
+
+    const now  = _ctx.currentTime;
+    const ramp = 3.0; // 3-second smooth crossfade
+
+    _filter.frequency.cancelScheduledValues(now);
+    _filter.frequency.setValueAtTime(_filter.frequency.value, now);
+    _filter.frequency.linearRampToValueAtTime(target.cutoff, now + ramp);
+
+    _lfoGain.gain.cancelScheduledValues(now);
+    _lfoGain.gain.setValueAtTime(_lfoGain.gain.value, now);
+    _lfoGain.gain.linearRampToValueAtTime(target.lfoGain, now + ramp);
+
+    _lfo.frequency.cancelScheduledValues(now);
+    _lfo.frequency.setValueAtTime(_lfo.frequency.value, now);
+    _lfo.frequency.linearRampToValueAtTime(target.lfoFreq, now + ramp);
+
+    // Cancel any pending auto-restore
+    if (_nudgeResetTimer) { clearTimeout(_nudgeResetTimer); _nudgeResetTimer = null; }
+
+    // Non-neutral nudges self-restore after 20 seconds
+    if (!isNeutral) {
+      _nudgeResetTimer = setTimeout(() => {
+        _nudgeResetTimer = null;
+        nudgeForEmotion(null);
+      }, 20000);
+    }
+  }
+
+  return { init, setTimeTint, nudgeForEmotion, stop, resume, setEnabled };
 
 })();

@@ -1,0 +1,1351 @@
+/**
+ * HistoryPanel — Session history dashboard.
+ *
+ * Sections:
+ *   1. View pills (Daily/Weekly/Monthly/Lifetime) — controls ALL content in the panel
+ *   2. Stat Cards — period-specific metrics (focused time, sessions, avg focus %, etc.)
+ *   3. Chart + Graph hybrid — bars + line curve for the selected period
+ *   4. Streak Row — 🔥 current streak · longest streak · avg focus %
+ *   5. Streak Calendar — 16-week GitHub-style canvas OR month-mode calendar
+ *   6. Recent Sessions — last 10, with multi-select + right-click context menu
+ *
+ * Public API:
+ *   HistoryPanel.init()    — wire pill/close/calendar events
+ *   HistoryPanel.refresh() — re-render all sections with latest data
+ */
+const HistoryPanel = (() => {
+
+  let _chartRafId  = null;
+  let _activeView  = 'daily';
+  let _calMode     = '16w';   // '16w' or 'month'
+
+  // ── Multi-select state ────────────────────────────────────────────────────
+  let _selectedIndices = new Set();   // set of session indices currently selected
+  let _lastClickedIdx  = null;        // for shift-click range selection
+  let _ctxTargetIndex  = null;        // session index under the right-click context menu
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  function init() {
+    const panel = document.getElementById('history-card');
+    if (!panel) return;
+
+    // Wire view pill clicks — each pill switches ALL content
+    panel.querySelectorAll('.hgraph-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        panel.querySelectorAll('.hgraph-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        _activeView = pill.dataset.view;
+        _activateView(_activeView);
+      });
+    });
+
+    // Wire calendar mode buttons
+    document.querySelectorAll('.hp-cal-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.hp-cal-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _calMode = btn.dataset.calMode;
+        const history = _getHistory();
+        _drawStreakCalendar(history);
+      });
+    });
+
+    // Wire context menu actions
+    const ctxMenu = document.getElementById('hp-ctx-menu');
+    if (ctxMenu) {
+      ctxMenu.addEventListener('click', e => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        _handleCtxAction(btn.dataset.action);
+        _hideCtxMenu();
+      });
+    }
+
+    // Close context menu on outside click or Escape
+    document.addEventListener('click', e => {
+      if (ctxMenu && !ctxMenu.contains(e.target)) _hideCtxMenu();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        _hideCtxMenu();
+        _clearSelection();
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (_selectedIndices.size > 0 && document.activeElement &&
+            !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+          _deleteSelected();
+        }
+      }
+    });
+
+    // Wire selection toolbar buttons
+    const selectAllBtn  = document.getElementById('hp-select-all-btn');
+    const selectClrBtn  = document.getElementById('hp-select-clear-btn');
+    const selectDelBtn  = document.getElementById('hp-select-del-btn');
+    if (selectAllBtn)  selectAllBtn.addEventListener('click', _selectAll);
+    if (selectClrBtn)  selectClrBtn.addEventListener('click', _clearSelection);
+    if (selectDelBtn)  selectDelBtn.addEventListener('click', _deleteSelected);
+  }
+
+  // ── Refresh ───────────────────────────────────────────────────────────────
+
+  function refresh() {
+    const history = _getHistory();
+
+    // Reset pill to daily
+    const panel = document.getElementById('history-card');
+    if (panel) {
+      panel.querySelectorAll('.hgraph-pill').forEach(p => p.classList.remove('active'));
+      const d = panel.querySelector('.hgraph-pill[data-view="daily"]');
+      if (d) d.classList.add('active');
+    }
+    _activeView = 'daily';
+
+    _clearSelection();
+    _syncAntiCheatBadge();
+    _renderAllViewStats(history);
+    _renderStreakRow(history);
+    _drawStreakCalendar(history);
+    _activateView('daily');
+    _renderRecentSessions(history);
+  }
+
+  // ── Activate view (show/hide panels + draw chart) ─────────────────────────
+
+  function _activateView(view) {
+    document.querySelectorAll('.hp-view').forEach(v => {
+      v.classList.toggle('hp-view-active', v.dataset.viewPanel === view);
+    });
+    const history = _getHistory();
+    _drawViewChart(view, history);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function _getHistory() {
+    return (typeof Session !== 'undefined') ? Session.getHistory() : [];
+  }
+
+  /** Returns true when anti-cheat is active and deletions should be blocked. */
+  function _isAntiCheatOn() {
+    return (typeof Session !== 'undefined' && Session.isAntiCheatEnabled)
+      ? Session.isAntiCheatEnabled()
+      : true;
+  }
+
+  /** Update the 🛡 badge visibility in the history panel header. */
+  function _syncAntiCheatBadge() {
+    const badge = document.getElementById('hp-anticheat-badge');
+    if (badge) badge.style.display = _isAntiCheatOn() ? '' : 'none';
+  }
+
+  function _fmtSecs(totalSecs) {
+    const m = Math.floor(totalSecs / 60);
+    if (m <= 0) return '0m';
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    if (h === 0) return `${rem}m`;
+    if (rem === 0) return `${h}h`;
+    return `${h}h ${rem}m`;
+  }
+
+  function _fmtMs(ms) { return _fmtSecs(Math.floor(ms / 1000)); }
+
+  function _setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function _esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function _isoDay(d) {
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  function _avgFocusScore(sessions) {
+    const completed = sessions.filter(s => s.outcome === 'COMPLETED');
+    if (!completed.length) return null;
+    const sum = completed.reduce((acc, s) => {
+      const total   = (s.durationMinutes || 0) * 60;
+      const focused = s.actualFocusedSeconds || 0;
+      return acc + (total > 0 ? Math.min(100, (focused / total) * 100) : 0);
+    }, 0);
+    return Math.round(sum / completed.length);
+  }
+
+  function _longestSession(sessions) {
+    if (!sessions.length) return 0;
+    return Math.max(...sessions.map(s => s.durationMinutes || 0));
+  }
+
+  function _bestDay(sessions) {
+    if (!sessions.length) return null;
+    const byDay = {};
+    sessions.forEach(s => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      const key = _isoDay(d);
+      byDay[key] = (byDay[key] || { secs: 0, date: d });
+      byDay[key].secs += s.actualFocusedSeconds || 0;
+    });
+    const best = Object.values(byDay).sort((a, b) => b.secs - a.secs)[0];
+    if (!best || best.secs === 0) return null;
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return `${DAYS[best.date.getDay()]} ${MONTHS[best.date.getMonth()]} ${best.date.getDate()}`;
+  }
+
+  // ── 1. All View Stats ─────────────────────────────────────────────────────
+
+  function _renderAllViewStats(history) {
+    const now    = new Date();
+    const today  = new Date(now); today.setHours(0,0,0,0);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0,0,0,0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const todaySessions = history.filter(s => s.date && new Date(s.date) >= today);
+    const weekSessions  = history.filter(s => s.date && new Date(s.date) >= monday);
+    const monthSessions = history.filter(s => s.date && new Date(s.date) >= monthStart);
+
+    const todaySecs   = todaySessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const weekSecs    = weekSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const monthSecs   = monthSessions.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+
+    // Lifetime stats — use the immutable ledger so deletions cannot game them.
+    // The ledger is the single source of truth: every committed session is
+    // added to it and nothing is ever removed from it.
+    const ledger = (typeof Session !== 'undefined' && Session.getLifetimeLedger)
+      ? Session.getLifetimeLedger() : null;
+    const lifetimeFocusSecs = ledger ? ledger.totalFocusedSecs
+      : history.reduce((a,s) => a + (s.actualFocusedSeconds||0), 0);
+    const lifetimeTotalSessions = ledger ? ledger.totalSessions : history.length;
+
+    // Daily view
+    _setText('hsc-today-focused',  todaySecs > 0 ? _fmtSecs(todaySecs) : '0m');
+    _setText('hsc-today-sessions', String(todaySessions.length));
+    const todayAvg = _avgFocusScore(todaySessions);
+    _setText('hsc-today-avg',      todayAvg !== null ? `${todayAvg}%` : '—');
+    const todayLongest = _longestSession(todaySessions);
+    _setText('hsc-today-longest',  todayLongest > 0 ? `${Math.round(todayLongest)}m` : '—');
+
+    // Weekly view
+    _setText('hsc-week-focused',   weekSecs > 0 ? _fmtSecs(weekSecs) : '0m');
+    _setText('hsc-week-sessions',  String(weekSessions.length));
+    const weekAvg = _avgFocusScore(weekSessions);
+    _setText('hsc-week-avg',       weekAvg !== null ? `${weekAvg}%` : '—');
+    const weekBest = _bestDay(weekSessions);
+    _setText('hsc-week-best-day',  weekBest || '—');
+
+    // Monthly view
+    _setText('hsc-month-focused',  monthSecs > 0 ? _fmtSecs(monthSecs) : '0m');
+    _setText('hsc-month-sessions', String(monthSessions.length));
+    const monthAvg = _avgFocusScore(monthSessions);
+    _setText('hsc-month-avg',      monthAvg !== null ? `${monthAvg}%` : '—');
+    const monthBest = _bestDay(monthSessions);
+    _setText('hsc-month-best',     monthBest || '—');
+
+    // Lifetime view — ledger values are tamper-proof (deletions don't affect them)
+    _setText('hsc-lifetime-focused',  lifetimeFocusSecs > 0 ? _fmtSecs(lifetimeFocusSecs) : '0m');
+    _setText('hsc-lifetime-sessions', String(lifetimeTotalSessions));
+    const lifetimeBest = _bestDay(history);
+    _setText('hsc-lifetime-best-day', lifetimeBest || '—');
+    const longestStreak = (typeof Session !== 'undefined' && Session.computeLongestStreak)
+      ? Session.computeLongestStreak() : 0;
+    _setText('hsc-lifetime-streak', longestStreak > 0 ? `${longestStreak}d` : '—');
+
+    // Personal bests (lifetime view)
+    _setText('hsb-this-month', monthSecs > 0 ? _fmtSecs(monthSecs) : '—');
+    const bestWeekMs  = (typeof HistoryStats !== 'undefined') ? HistoryStats.getMaxWeekFocusMs(history)  : 0;
+    const bestMonthMs = (typeof HistoryStats !== 'undefined') ? HistoryStats.getMaxMonthFocusMs(history) : 0;
+    _setText('hsb-best-week',  bestWeekMs  > 0 ? _fmtMs(bestWeekMs)  : '—');
+    _setText('hsb-best-month', bestMonthMs > 0 ? _fmtMs(bestMonthMs) : '—');
+  }
+
+  // ── 2. Streak Row ────────────────────────────────────────────────────────
+
+  function _renderStreakRow(history) {
+    const current = (typeof Session !== 'undefined' && Session.computeDayStreak)
+      ? Session.computeDayStreak() : 0;
+    const longest = (typeof Session !== 'undefined' && Session.computeLongestStreak)
+      ? Session.computeLongestStreak() : 0;
+
+    // Avg focus — use the immutable ledger so deleting sessions cannot inflate it.
+    // Fall back to computing from visible history only if ledger is unavailable.
+    const ledger = (typeof Session !== 'undefined' && Session.getLifetimeLedger)
+      ? Session.getLifetimeLedger() : null;
+    let avgScore = ledger ? ledger.avgFocusPct : null;
+    if (avgScore === null) {
+      const completed = history.filter(s => s.outcome === 'COMPLETED');
+      if (completed.length > 0) {
+        const sum = completed.reduce((acc, s) => {
+          const total   = (s.durationMinutes || 0) * 60;
+          const focused = s.actualFocusedSeconds || 0;
+          return acc + (total > 0 ? (focused / total) * 100 : 0);
+        }, 0);
+        avgScore = Math.round(sum / completed.length);
+      }
+    }
+
+    _setText('hsr-current-streak', current > 0 ? `${current}d` : '—');
+    _setText('hsr-longest-streak', longest > 0 ? `${longest}d` : '—');
+    _setText('hsr-avg-score',      avgScore !== null ? `${avgScore}%` : '—');
+
+    // Fire emojis — show up to 5 fires for current streak
+    const firesEl = document.getElementById('hsr-fires');
+    if (firesEl) {
+      const fireCount = Math.min(5, current);
+      firesEl.textContent = fireCount > 0 ? '🔥'.repeat(fireCount) : '';
+      firesEl.title = current > 0 ? `${current}-day streak!` : 'No active streak';
+    }
+
+    // Dim fires for longest streak (max 5)
+    const firesLongestEl = document.getElementById('hsr-fires-longest');
+    if (firesLongestEl) {
+      const lFireCount = Math.min(5, longest);
+      firesLongestEl.textContent = lFireCount > 0 ? '🔥'.repeat(lFireCount) : '';
+    }
+  }
+
+  // ── 3. Streak Calendar ────────────────────────────────────────────────────
+
+  function _drawStreakCalendar(history) {
+    if (_calMode === 'month') {
+      _drawMonthCalendar(history);
+    } else {
+      _drawGithubCalendar(history);
+    }
+  }
+
+  /**
+   * GitHub-style contributions calendar:
+   *   Columns = weeks (left=oldest, right=current week)
+   *   Rows    = days  (top=Monday, bottom=Sunday)
+   *   Month labels float above columns.
+   */
+  function _drawGithubCalendar(history) {
+    // Show/hide correct calendar mode
+    const githubWrap = document.getElementById('hp-cal-wrap-github');
+    const monthWrap  = document.getElementById('hp-cal-wrap-month');
+    if (githubWrap) githubWrap.style.display = '';
+    if (monthWrap)  monthWrap.style.display  = 'none';
+
+    const canvas = document.getElementById('hp-streak-canvas');
+    if (!canvas) return;
+
+    const WEEKS = 16;
+    const DAYS  = 7;
+    const GAP   = 3;
+
+    // Compute cell size to fill the canvas wrapper width
+    const wrapW = (canvas.parentElement?.clientWidth || 280);
+    const CELL  = Math.max(10, Math.floor((wrapW - (WEEKS - 1) * GAP) / WEEKS));
+    const UNIT  = CELL + GAP;
+
+    const W = WEEKS * UNIT - GAP;
+    const H = DAYS  * UNIT - GAP;
+
+    canvas.width        = W * 2;
+    canvas.height       = H * 2;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    // Sync day-label column heights to match the canvas cell size
+    const dayColEl = document.getElementById('hp-cal-day-col');
+    if (dayColEl) {
+      Array.from(dayColEl.querySelectorAll('span')).forEach(span => {
+        span.style.height       = CELL + 'px';
+        span.style.marginBottom = GAP + 'px';
+        span.style.lineHeight   = CELL + 'px';
+        span.style.fontSize     = Math.max(7, Math.floor(CELL * 0.55)) + 'px';
+      });
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    // Build day map: isoDay → { hasCompleted, hasAttempted, totalFocusedMs }
+    const dayMap = new Map();
+    history.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const key = _isoDay(d);
+      if (!dayMap.has(key)) dayMap.set(key, { hasCompleted: false, hasAttempted: false, focusedMs: 0 });
+      const e = dayMap.get(key);
+      if (s.outcome === 'COMPLETED') e.hasCompleted = true;
+      else if (s.outcome === 'FAILED' || s.outcome === 'ABANDONED') e.hasAttempted = true;
+      e.focusedMs += Math.max(0, (s.actualFocusedSeconds || 0)) * 1000;
+    });
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayDow = (now.getDay() + 6) % 7; // 0=Mon…6=Sun
+
+    const thisMonday = new Date(now);
+    thisMonday.setDate(now.getDate() - todayDow);
+
+    for (let col = 0; col < WEEKS; col++) {
+      const weekOffset = WEEKS - 1 - col;
+      for (let row = 0; row < DAYS; row++) {
+        const d = new Date(thisMonday);
+        d.setDate(thisMonday.getDate() - weekOffset * 7 + row);
+
+        const isFuture   = d > now;
+        const isToday    = d.getTime() === now.getTime();
+        const isCurrent  = weekOffset === 0;
+        const key        = _isoDay(d);
+        const info       = dayMap.get(key);
+
+        const x = col * UNIT;
+        const y = row * UNIT;
+
+        let fillColor;
+        if (isFuture) {
+          fillColor = 'rgba(255,255,255,0.02)';
+        } else if (!info) {
+          fillColor = 'rgba(255,255,255,0.055)';
+        } else if (info.hasCompleted) {
+          // Intensity based on focus time (more focus = brighter cell)
+          const intensityHours = Math.min(4, info.focusedMs / 3600000);
+          const alpha = 0.45 + intensityHours * 0.13;
+          fillColor = isCurrent
+            ? `rgba(175,155,255,0.95)`
+            : `rgba(139,118,255,${alpha.toFixed(2)})`;
+        } else {
+          fillColor = 'rgba(139,118,255,0.20)';
+        }
+
+        // Cell fill
+        ctx.fillStyle = fillColor;
+        ctx.beginPath();
+        ctx.roundRect(x, y, CELL, CELL, Math.max(2, CELL * 0.2));
+        ctx.fill();
+
+        // Glow for current week completed cells
+        if (!isFuture && info?.hasCompleted && isCurrent) {
+          ctx.shadowColor = 'rgba(175,155,255,0.45)';
+          ctx.shadowBlur  = 4;
+          ctx.beginPath();
+          ctx.roundRect(x, y, CELL, CELL, Math.max(2, CELL * 0.2));
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // Highlight today with a bright outline
+        if (isToday) {
+          ctx.strokeStyle = 'rgba(220,205,255,0.90)';
+          ctx.lineWidth   = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(x + 0.75, y + 0.75, CELL - 1.5, CELL - 1.5, Math.max(2, CELL * 0.18));
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw month labels above columns
+    _drawCalendarMonthLabels(thisMonday, WEEKS, CELL, UNIT, GAP);
+  }
+
+  function _drawCalendarMonthLabels(thisMonday, WEEKS, CELL, UNIT, GAP) {
+    const labelsEl = document.getElementById('hp-cal-months');
+    if (!labelsEl) return;
+
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    labelsEl.innerHTML = '';
+    labelsEl.style.position = 'relative';
+
+    const seen = new Set();
+    for (let col = 0; col < WEEKS; col++) {
+      const weekOffset = WEEKS - 1 - col;
+      const weekStart  = new Date(thisMonday);
+      weekStart.setDate(thisMonday.getDate() - weekOffset * 7);
+      const monthKey = `${weekStart.getFullYear()}-${weekStart.getMonth()}`;
+      if (!seen.has(monthKey)) {
+        seen.add(monthKey);
+        const label = document.createElement('span');
+        label.textContent = MONTH_NAMES[weekStart.getMonth()];
+        label.style.cssText = `
+          position:absolute;
+          left:${col * UNIT}px;
+          font-size:7.5px;
+          font-weight:700;
+          letter-spacing:0.04em;
+          text-transform:uppercase;
+          color:rgba(200,185,255,0.50);
+          white-space:nowrap;
+        `;
+        labelsEl.appendChild(label);
+      }
+    }
+  }
+
+  /**
+   * Month-mode: traditional calendar grid for the current month.
+   */
+  function _drawMonthCalendar(history) {
+    const githubWrap = document.getElementById('hp-cal-wrap-github');
+    const monthWrap  = document.getElementById('hp-cal-wrap-month');
+    if (githubWrap) githubWrap.style.display = 'none';
+    if (monthWrap)  monthWrap.style.display  = '';
+
+    const container = document.getElementById('hp-cal-month-grid-container');
+    if (!container) return;
+
+    const now   = new Date();
+    const year  = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const MONTH_NAMES = ['January','February','March','April','May','June',
+                          'July','August','September','October','November','December'];
+    const DAY_NAMES   = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+    // Build day map — track focus time for heat-map intensity
+    const dayMap = new Map();
+    history.forEach(s => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      if (d.getFullYear() !== year || d.getMonth() !== month) return;
+      const day = d.getDate();
+      if (!dayMap.has(day)) dayMap.set(day, { hasCompleted: false, hasAttempted: false, focusedSecs: 0 });
+      const e = dayMap.get(day);
+      if (s.outcome === 'COMPLETED') e.hasCompleted = true;
+      else if (s.outcome === 'FAILED' || s.outcome === 'ABANDONED') e.hasAttempted = true;
+      e.focusedSecs += s.actualFocusedSeconds || 0;
+    });
+
+    // Max focus seconds across month (for heat intensity normalisation)
+    const maxSecs = Math.max(1, ...Array.from(dayMap.values()).map(v => v.focusedSecs));
+
+    // First day of month in Mon-based weekday (0=Mon)
+    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+
+    // Month/year header
+    let html = `<div class="hp-month-cal-header">${MONTH_NAMES[month]} <span>${year}</span></div>`;
+    html += `<table class="hp-cal-month-grid"><thead><tr>`;
+    DAY_NAMES.forEach(d => { html += `<th>${d}</th>`; });
+    html += `</tr></thead><tbody><tr>`;
+
+    // Empty cells before first day
+    for (let e = 0; e < firstDow; e++) html += `<td></td>`;
+
+    let col = firstDow;
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (col > 0 && col % 7 === 0) html += `</tr><tr>`;
+      const info = dayMap.get(day);
+      const isFuture = day > today;
+      const isToday  = day === today;
+      let cls = 'hp-cal-day-cell';
+      let style = '';
+
+      if (isFuture) {
+        cls += ' hp-day-future';
+      } else if (!info) {
+        cls += ' hp-day-empty';
+      } else if (info.hasCompleted) {
+        cls += ' hp-day-completed';
+        // Heat-map intensity: brighter = more focus time
+        const intensity = Math.min(1, info.focusedSecs / maxSecs);
+        const alpha = (0.45 + intensity * 0.45).toFixed(2);
+        style = `style="--day-intensity:${alpha}"`;
+      } else {
+        cls += ' hp-day-attempted';
+      }
+      if (isToday) cls += ' hp-day-today';
+
+      const fmtMins = info ? Math.round(info.focusedSecs / 60) : 0;
+      const titleStr = isToday ? 'Today' : `${MONTH_NAMES[month]} ${day}`;
+      const focusTitle = fmtMins > 0 ? ` · ${fmtMins}m focused` : '';
+      html += `<td><div class="${cls}" ${style} title="${titleStr}${focusTitle}">${day}</div></td>`;
+      col++;
+    }
+    // Fill remainder of last row
+    while (col % 7 !== 0) { html += `<td></td>`; col++; }
+    html += `</tr></tbody></table>`;
+    container.innerHTML = html;
+  }
+
+  // ── 4. Chart + Graph hybrid ───────────────────────────────────────────────
+
+  const CHART_CANVAS = {
+    daily:    'hp-chart-daily',
+    weekly:   'hp-chart-weekly',
+    monthly:  'hp-chart-monthly',
+    lifetime: 'hp-chart-lifetime',
+  };
+
+  function _drawViewChart(view, history) {
+    const canvasId = CHART_CANVAS[view];
+    if (!canvasId) return;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    if (_chartRafId !== null) {
+      cancelAnimationFrame(_chartRafId);
+      _chartRafId = null;
+    }
+
+    let bars;
+    let xLabelMode;
+    if (view === 'daily') {
+      bars = _buildHourlyBars(history);
+      xLabelMode = 'hour';
+    } else if (view === 'weekly') {
+      bars = _buildThisWeekBars(history);
+      xLabelMode = 'weekday';
+    } else if (view === 'monthly') {
+      bars = _buildThisMonthBars(history);
+      xLabelMode = 'date';
+    } else {
+      bars = (typeof HistoryStats !== 'undefined')
+        ? HistoryStats.buildLifetimeBars(history)
+        : [];
+      xLabelMode = 'month';
+    }
+
+    const W = (canvas.parentElement?.clientWidth || 460);
+    const H = 148;
+    canvas.width        = W * 2;
+    canvas.height       = H * 2;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    const PAD    = { top: 14, right: 10, bottom: 26, left: 34 };
+    const innerW = W - PAD.left - PAD.right;
+    const innerH = H - PAD.top  - PAD.bottom;
+
+    const maxMs = bars && bars.length ? Math.max(...bars.map(b => b.focusedMs), 1) : 1;
+
+    if (!bars || !bars.length || bars.every(b => b.focusedMs === 0)) {
+      ctx.clearRect(0, 0, W, H);
+      _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs);
+      ctx.font      = '9px "Segoe UI", sans-serif';
+      ctx.fillStyle = 'rgba(139,118,255,0.30)';
+      ctx.textAlign = 'center';
+      ctx.fillText('No sessions yet for this period', W / 2, H / 2 + 3);
+      ctx.textAlign = 'left';
+      return;
+    }
+
+    const n     = bars.length;
+    const barW  = Math.max(3, Math.floor((innerW / n) * 0.72));
+    const gap   = innerW / n;
+
+    // Label frequency: show label every N bars to avoid crowding
+    const labelEvery = n <= 7 ? 1 : n <= 12 ? 1 : n <= 24 ? 3 : n <= 31 ? 4 : 3;
+
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    const DURATION = 600;
+    let   startTs  = null;
+
+    function _frame(ts) {
+      if (!startTs) startTs = ts;
+      const raw   = Math.min(1, (ts - startTs) / DURATION);
+      const eased = 1 - Math.pow(1 - raw, 3); // cubic ease-out
+
+      ctx.clearRect(0, 0, W, H);
+      _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs);
+
+      // Collect bar center points for the line overlay
+      const pts = [];
+
+      bars.forEach((bar, i) => {
+        const isCur     = bar.isToday || bar.isCurrent;
+        const isFuture  = bar.isFuture;
+        const heightPx  = isFuture ? 0 : (bar.focusedMs / maxMs) * innerH * eased;
+        const cx        = PAD.left + i * gap + gap / 2;   // center of bar
+        const x         = cx - barW / 2;
+        const y         = PAD.top + innerH - heightPx;
+
+        // Bar gradient — current period bright, future faded, rest normal
+        if (!isFuture && bar.focusedMs > 0) {
+          const grad = ctx.createLinearGradient(0, y, 0, PAD.top + innerH);
+          if (isCur) {
+            grad.addColorStop(0, 'rgba(210,190,255,0.97)');
+            grad.addColorStop(1, 'rgba(139,118,255,0.80)');
+          } else {
+            grad.addColorStop(0, 'rgba(165,145,255,0.65)');
+            grad.addColorStop(1, 'rgba(120,100,220,0.38)');
+          }
+          ctx.fillStyle = grad;
+          ctx.shadowColor = isCur ? 'rgba(175,155,255,0.70)' : 'transparent';
+          ctx.shadowBlur  = isCur ? 10 : 0;
+        } else if (isFuture) {
+          ctx.fillStyle  = 'rgba(255,255,255,0.04)';
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle  = 'rgba(255,255,255,0.06)';
+          ctx.shadowBlur = 0;
+        }
+
+        if (heightPx > 0) {
+          ctx.beginPath();
+          ctx.roundRect(x, y, barW, heightPx, [3, 3, 0, 0]);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // Collect point for line (only non-future bars)
+        if (!isFuture) {
+          pts.push({
+            x: cx,
+            y: PAD.top + innerH - heightPx,
+            hasData: bar.focusedMs > 0,
+          });
+        }
+
+        // X axis labels
+        if (i % labelEvery === 0) {
+          let label = '';
+          if (xLabelMode === 'hour') {
+            const h = bar.label;
+            if (h === 0) label = '12a';
+            else if (h < 12) label = `${h}a`;
+            else if (h === 12) label = '12p';
+            else label = `${h - 12}p`;
+          } else if (xLabelMode === 'weekday') {
+            label = bar.isToday ? 'Today' : bar.displayLabel || String(bar.label);
+          } else if (xLabelMode === 'date') {
+            label = String(bar.label);
+          } else {
+            const d = bar.label;
+            label = MONTH_NAMES[d.getMonth()];
+          }
+
+          ctx.font      = '6.5px "Segoe UI", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isCur ? 'rgba(220,205,255,0.95)'
+                        : isFuture ? 'rgba(139,118,255,0.18)'
+                        : 'rgba(155,135,255,0.55)';
+          ctx.fillText(label, cx, H - 8);
+          ctx.textAlign = 'left';
+        }
+      });
+
+      // Draw filled area + line curve overlay (starts appearing at 40% animation progress)
+      if (eased > 0.25 && pts.length >= 2) {
+        const lineAlpha = Math.min(1, (eased - 0.25) / 0.75);
+        _drawLineOverlay(ctx, pts, lineAlpha, PAD, innerH);
+      }
+
+      if (raw < 1) {
+        _chartRafId = requestAnimationFrame(_frame);
+      } else {
+        _chartRafId = null;
+      }
+    }
+
+    _chartRafId = requestAnimationFrame(_frame);
+  }
+
+  function _drawLineOverlay(ctx, pts, alpha, PAD, innerH) {
+    if (pts.length < 2) return;
+
+    ctx.save();
+
+    // Build bezier path through bar tops
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const cur  = pts[i];
+      const cpX  = (prev.x + cur.x) / 2;
+      ctx.bezierCurveTo(cpX, prev.y, cpX, cur.y, cur.x, cur.y);
+    }
+
+    // Close path downward to fill area under curve
+    const baseY = PAD.top + innerH;
+    ctx.lineTo(pts[pts.length - 1].x, baseY);
+    ctx.lineTo(pts[0].x, baseY);
+    ctx.closePath();
+
+    // Gradient fill under the curve
+    const fillGrad = ctx.createLinearGradient(0, PAD.top, 0, baseY);
+    fillGrad.addColorStop(0,   `rgba(155,135,255,${(0.18 * alpha).toFixed(2)})`);
+    fillGrad.addColorStop(0.6, `rgba(120,100,220,${(0.08 * alpha).toFixed(2)})`);
+    fillGrad.addColorStop(1,   `rgba(90,70,180,0)`);
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+
+    // Draw the actual line on top
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const cur  = pts[i];
+      const cpX  = (prev.x + cur.x) / 2;
+      ctx.bezierCurveTo(cpX, prev.y, cpX, cur.y, cur.x, cur.y);
+    }
+    ctx.strokeStyle = `rgba(210,195,255,${(0.72 * alpha).toFixed(2)})`;
+    ctx.lineWidth   = 1.5;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    // Draw dots at each data point
+    pts.forEach(p => {
+      if (p.hasData) {
+        ctx.fillStyle = `rgba(225,210,255,${(0.90 * alpha).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    ctx.restore();
+  }
+
+  function _drawChartBg(ctx, W, H, PAD, innerW, innerH, maxMs) {
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.beginPath();
+    ctx.roundRect(PAD.left, PAD.top, innerW, innerH, 6);
+    ctx.fill();
+
+    // Faint horizontal guide lines + Y-axis time labels
+    ctx.strokeStyle = 'rgba(139,118,255,0.08)';
+    ctx.lineWidth   = 0.5;
+    ctx.setLineDash([3, 5]);
+    const fracs = [0.25, 0.50, 0.75, 1.0];
+    fracs.forEach(frac => {
+      const y = PAD.top + innerH * (1 - frac);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(PAD.left + innerW, y);
+      ctx.stroke();
+
+      // Y-axis label (time value)
+      if (maxMs && maxMs > 0) {
+        const labelMs  = maxMs * frac;
+        const labelMin = Math.round(labelMs / 60000);
+        let yLabel = labelMin >= 60
+          ? `${Math.floor(labelMin / 60)}h${labelMin % 60 > 0 ? (labelMin % 60) + 'm' : ''}`
+          : labelMin > 0 ? `${labelMin}m` : '';
+        if (yLabel) {
+          ctx.font      = '5.5px "Segoe UI", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = 'rgba(139,118,255,0.38)';
+          ctx.setLineDash([]);
+          ctx.fillText(yLabel, PAD.left - 3, y + 2);
+          ctx.setLineDash([3, 5]);
+          ctx.textAlign = 'left';
+        }
+      }
+    });
+    ctx.setLineDash([]);
+  }
+
+  // ── Chart data builders ───────────────────────────────────────────────────
+
+  /** Today broken into 24 hours (0–23). Skips empty hours before first session. */
+  function _buildHourlyBars(history) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const currentHour = new Date().getHours();
+    const bars = [];
+    for (let h = 0; h < 24; h++) {
+      const start = new Date(now); start.setHours(h, 0, 0, 0);
+      const end   = new Date(now); end.setHours(h, 59, 59, 999);
+      const slice = history.filter(s => {
+        if (!s.date) return false;
+        const t = new Date(s.date).getTime();
+        return t >= start.getTime() && t <= end.getTime();
+      });
+      bars.push({
+        label:        h,
+        focusedMs:    slice.reduce((a,s) => a + (s.actualFocusedSeconds||0)*1000, 0),
+        sessionCount: slice.length,
+        isToday:      h === currentHour,
+        isFuture:     h > currentHour,
+      });
+    }
+    return bars;
+  }
+
+  /** This week Mon–Sun (today highlighted, future days greyed out). */
+  function _buildThisWeekBars(history) {
+    const DAY_NAMES   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const now         = new Date();
+    const todayDow    = (now.getDay() + 6) % 7; // 0=Mon
+    const monday      = new Date(now);
+    monday.setDate(now.getDate() - todayDow);
+    monday.setHours(0, 0, 0, 0);
+
+    return DAY_NAMES.map((name, d) => {
+      const day    = new Date(monday); day.setDate(monday.getDate() + d);
+      const dayEnd = new Date(day);    dayEnd.setHours(23, 59, 59, 999);
+      const isFuture = d > todayDow;
+      const slice = isFuture ? [] : history.filter(s => {
+        if (!s.date) return false;
+        const t = new Date(s.date).getTime();
+        return t >= day.getTime() && t <= dayEnd.getTime();
+      });
+      return {
+        label:        name,
+        displayLabel: name,
+        focusedMs:    slice.reduce((a,s) => a + (s.actualFocusedSeconds||0)*1000, 0),
+        sessionCount: slice.length,
+        isToday:      d === todayDow,
+        isFuture,
+      };
+    });
+  }
+
+  /** Current month day-by-day (future days greyed out). */
+  function _buildThisMonthBars(history) {
+    const now    = new Date();
+    const year   = now.getFullYear();
+    const month  = now.getMonth();
+    const today  = now.getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const bars = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day    = new Date(year, month, d, 0, 0, 0, 0);
+      const dayEnd = new Date(year, month, d, 23, 59, 59, 999);
+      const isFuture = d > today;
+      const slice = isFuture ? [] : history.filter(s => {
+        if (!s.date) return false;
+        const t = new Date(s.date).getTime();
+        return t >= day.getTime() && t <= dayEnd.getTime();
+      });
+      bars.push({
+        label:        d,
+        focusedMs:    slice.reduce((a,s) => a + (s.actualFocusedSeconds||0)*1000, 0),
+        sessionCount: slice.length,
+        isToday:      d === today,
+        isFuture,
+      });
+    }
+    return bars;
+  }
+
+  // ── 5. Recent Sessions (last 10) — with multi-select + context menu ─────────
+
+  function _renderRecentSessions(history) {
+    const container = document.getElementById('hp-recent-list');
+    if (!container) return;
+
+    const recent = history.slice(0, 10);
+
+    if (!recent.length) {
+      container.innerHTML = '<div class="hp-recent-empty">✨ No sessions yet — start your first one!</div>';
+      _updateToolbar();
+      return;
+    }
+
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    container.innerHTML = recent.map((s, idx) => {
+      const outcome = String(s.outcome || 'ABANDONED').toUpperCase();
+
+      // Date: "Mon Apr 12" format + time
+      const dateStr = (() => {
+        if (!s.date) return '—';
+        const d = new Date(s.date);
+        if (!isFinite(d.getTime())) return '—';
+        const isToday = new Date(d).setHours(0,0,0,0) === new Date().setHours(0,0,0,0);
+        if (isToday) return 'Today';
+        return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+      })();
+
+      // Time of day
+      const timeStr = (() => {
+        if (!s.date) return '';
+        const d = new Date(s.date);
+        if (!isFinite(d.getTime())) return '';
+        const h = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const ampm = h >= 12 ? 'pm' : 'am';
+        const h12 = h % 12 || 12;
+        return `${h12}:${m}${ampm}`;
+      })();
+
+      // Duration
+      const durMins = Math.max(0, parseInt(s.durationMinutes, 10) || 0);
+
+      // Focus score
+      const scoreNum = (() => {
+        const total   = durMins * 60;
+        const focused = Math.max(0, parseInt(s.actualFocusedSeconds, 10) || 0);
+        return total > 0 ? Math.round((focused / total) * 100) : 0;
+      })();
+
+      // Focus rating
+      const rating = scoreNum >= 90 ? 'A+' : scoreNum >= 80 ? 'A' : scoreNum >= 70 ? 'B'
+                   : scoreNum >= 60 ? 'C'  : scoreNum >= 40 ? 'D' : scoreNum > 0 ? 'F' : '';
+      const ratingColor = scoreNum >= 80 ? 'rgba(52,211,153,0.90)'
+                        : scoreNum >= 60 ? 'rgba(167,139,250,0.90)'
+                        : scoreNum >= 40 ? 'rgba(251,191,36,0.90)'
+                        : scoreNum > 0   ? 'rgba(248,113,113,0.88)' : 'rgba(255,255,255,0.20)';
+
+      // Goal display
+      const goalStr = (() => {
+        if (!s.goalText) return '';
+        const trunc = s.goalText.length > 42 ? s.goalText.slice(0, 42) + '…' : s.goalText;
+        if (s.goalAchieved === true)  return `"${trunc}" ✓`;
+        if (s.goalAchieved === false) return `"${trunc}" ✗`;
+        return `"${trunc}"`;
+      })();
+
+      // Category emoji
+      const CATEGORY_EMOJI = { study: '📚', work: '💼', creative: '🎨', reading: '📖', other: '⚙️' };
+      const catEmoji = s.category ? (CATEGORY_EMOJI[s.category] || '') : '';
+
+      // Starred indicator
+      const starHtml = s._starred ? '<span class="hp-rr-star" title="Starred">⭐</span>' : '';
+
+      // Outcome
+      const outCls   = outcome === 'COMPLETED' ? 'hp-ri-completed'
+                     : outcome === 'FAILED'    ? 'hp-ri-failed'
+                     : 'hp-ri-abandoned';
+      const outLabel = outcome === 'COMPLETED' ? ''
+                     : outcome === 'FAILED'
+                       ? ' · <span class="hp-ri-outcome-tag hp-ri-failed-tag" title="Session ended due to distraction">failed</span>'
+                       : ' · <span class="hp-ri-outcome-tag hp-ri-abandoned-tag" title="Session was ended early">abandoned</span>';
+
+      // Focus bar (inline progress)
+      const focusBarHtml = scoreNum > 0 ? `
+        <div class="hp-rr-focus-bar" title="Focus: ${scoreNum}%">
+          <div class="hp-rr-focus-fill" style="width:${scoreNum}%;background:${ratingColor}"></div>
+        </div>` : '';
+
+      const titleTip = outcome === 'COMPLETED' ? 'Completed session'
+                     : outcome === 'FAILED'    ? 'Session failed (too many distractions)'
+                     :                           'Session abandoned early';
+
+      return `
+        <div class="hp-recent-row ${outCls}" data-idx="${idx}" style="animation-delay:${idx * 30}ms" title="${titleTip}">
+          <div class="hp-rr-check" aria-hidden="true"></div>
+          <div class="hp-rr-body">
+            <div class="hp-rr-left">
+              ${catEmoji ? `<span class="hp-rr-cat" title="${_esc(s.category || '')}">${catEmoji}</span>` : ''}
+              ${starHtml}
+              <span class="hp-rr-date">${_esc(dateStr)}</span>
+              ${timeStr ? `<span class="hp-rr-time">${_esc(timeStr)}</span>` : ''}
+              <span class="hp-rr-sep">·</span>
+              <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
+              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused">${scoreNum}%</span>` : ''}
+              ${outLabel}
+            </div>
+            <div class="hp-rr-right">
+              ${focusBarHtml}
+              ${goalStr ? `<span class="hp-rr-goal" title="Session goal">${_esc(goalStr)}</span>` : ''}
+              ${rating ? `<span class="hp-rr-rating" style="color:${ratingColor}" title="Focus grade (A+ = excellent, F = poor)">${rating}</span>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Wire click (select) and contextmenu (right-click) on every row
+    container.querySelectorAll('.hp-recent-row[data-idx]').forEach(row => {
+      row.addEventListener('click',       e => _onRowClick(e, row));
+      row.addEventListener('contextmenu', e => _onRowContextMenu(e, row));
+    });
+
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  // ── Selection helpers ─────────────────────────────────────────────────────
+
+  function _onRowClick(e, row) {
+    // Ignore clicks directly on action buttons
+    if (e.target.closest('button')) return;
+    const idx = parseInt(row.dataset.idx, 10);
+
+    if (e.shiftKey && _lastClickedIdx !== null) {
+      // Range select
+      const lo = Math.min(_lastClickedIdx, idx);
+      const hi = Math.max(_lastClickedIdx, idx);
+      for (let i = lo; i <= hi; i++) _selectedIndices.add(i);
+    } else if (e.ctrlKey || e.metaKey) {
+      // Toggle individual
+      if (_selectedIndices.has(idx)) _selectedIndices.delete(idx);
+      else                           _selectedIndices.add(idx);
+      _lastClickedIdx = idx;
+    } else {
+      // Plain click: toggle only this one (deselect all others)
+      if (_selectedIndices.has(idx) && _selectedIndices.size === 1) {
+        _selectedIndices.clear();
+        _lastClickedIdx = null;
+      } else {
+        _selectedIndices.clear();
+        _selectedIndices.add(idx);
+        _lastClickedIdx = idx;
+      }
+    }
+
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _applySelectionVisuals() {
+    const container = document.getElementById('hp-recent-list');
+    if (!container) return;
+    container.querySelectorAll('.hp-recent-row[data-idx]').forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      row.classList.toggle('hp-rr-selected', _selectedIndices.has(idx));
+    });
+  }
+
+  function _updateToolbar() {
+    const toolbar   = document.getElementById('hp-select-toolbar');
+    const countEl   = document.getElementById('hp-select-count');
+    const delBtn    = document.getElementById('hp-select-del-btn');
+    if (!toolbar) return;
+    const n = _selectedIndices.size;
+    toolbar.style.display = n > 0 ? '' : 'none';
+    if (countEl) countEl.textContent = `${n} selected`;
+    if (delBtn) {
+      if (_isAntiCheatOn()) {
+        delBtn.textContent  = '🛡 protected';
+        delBtn.disabled     = true;
+        delBtn.title        = 'Stats protection is ON — turn it off in Settings → Session to allow deletions';
+      } else {
+        delBtn.textContent  = `🗑 delete ${n > 1 ? n + ' sessions' : 'session'}`;
+        delBtn.disabled     = false;
+        delBtn.title        = '';
+      }
+    }
+  }
+
+  function _clearSelection() {
+    _selectedIndices.clear();
+    _lastClickedIdx = null;
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _selectAll() {
+    const history = _getHistory();
+    const recent  = history.slice(0, 10);
+    for (let i = 0; i < recent.length; i++) _selectedIndices.add(i);
+    _lastClickedIdx = recent.length - 1;
+    _applySelectionVisuals();
+    _updateToolbar();
+  }
+
+  function _deleteSelected() {
+    if (_selectedIndices.size === 0) return;
+    if (_isAntiCheatOn()) {
+      alert('🛡 Stats protection is ON.\n\nSessions cannot be deleted while protection is enabled — this keeps your focus stats accurate.\n\nTo allow deletions, go to Settings → Session → Stats protection and turn it off.');
+      return;
+    }
+    const count = _selectedIndices.size;
+    if (!confirm(`Delete ${count} session${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    if (typeof Session === 'undefined') return;
+    Session.deleteSessions([..._selectedIndices]);
+    _selectedIndices.clear();
+    _lastClickedIdx = null;
+    _refreshPanel();
+  }
+
+  function _refreshPanel() {
+    const history = _getHistory();
+    _syncAntiCheatBadge();
+    _renderAllViewStats(history);
+    _renderStreakRow(history);
+    _drawStreakCalendar(history);
+    _renderRecentSessions(history);
+    // Update export count in settings if open
+    const exportCount = document.getElementById('export-session-count');
+    if (exportCount) {
+      const n = (typeof Session !== 'undefined') ? Session.getHistory().length : 0;
+      exportCount.textContent = `${n} session${n !== 1 ? 's' : ''} saved`;
+    }
+  }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  function _onRowContextMenu(e, row) {
+    e.preventDefault();
+    _ctxTargetIndex = parseInt(row.dataset.idx, 10);
+
+    // Auto-select the right-clicked row if not already part of a selection
+    if (!_selectedIndices.has(_ctxTargetIndex)) {
+      _selectedIndices.clear();
+      _selectedIndices.add(_ctxTargetIndex);
+      _lastClickedIdx = _ctxTargetIndex;
+      _applySelectionVisuals();
+      _updateToolbar();
+    }
+
+    // Update star label based on current state
+    const history = _getHistory();
+    const session  = history[_ctxTargetIndex];
+    const starBtn  = document.querySelector('#hp-ctx-menu [data-action="star"]');
+    if (starBtn && session) {
+      starBtn.textContent = session._starred ? '★ Unstar session' : '⭐ Star session';
+    }
+
+    // Update "select same outcome" label
+    const sameBtn = document.querySelector('#hp-ctx-menu [data-action="select-same-outcome"]');
+    if (sameBtn && session) {
+      const o = String(session.outcome || 'ABANDONED').toLowerCase();
+      sameBtn.textContent = `◎ Select all ${o}`;
+    }
+
+    // Title bar
+    const titleEl = document.getElementById('hp-ctx-title');
+    if (titleEl && session) {
+      const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d = session.date ? new Date(session.date) : null;
+      const label = d && isFinite(d.getTime())
+        ? `${MONTH_NAMES[d.getMonth()]} ${d.getDate()} · ${session.durationMinutes || 0}m`
+        : `${session.durationMinutes || 0}m session`;
+      titleEl.textContent = label;
+    }
+
+    _showCtxMenu(e.clientX, e.clientY);
+  }
+
+  function _showCtxMenu(x, y) {
+    const menu = document.getElementById('hp-ctx-menu');
+    if (!menu) return;
+    menu.style.display = '';
+    // Position and clamp to viewport
+    menu.style.left = '0';
+    menu.style.top  = '0';
+    const vw = window.innerWidth,  vh = window.innerHeight;
+    const mw = menu.offsetWidth,   mh = menu.offsetHeight;
+    menu.style.left = `${Math.min(x, vw - mw - 6)}px`;
+    menu.style.top  = `${Math.min(y, vh - mh - 6)}px`;
+    menu.classList.add('hp-ctx-visible');
+    // Focus first item for keyboard nav
+    const first = menu.querySelector('[data-action]');
+    if (first) first.focus();
+  }
+
+  function _hideCtxMenu() {
+    const menu = document.getElementById('hp-ctx-menu');
+    if (!menu) return;
+    menu.style.display = 'none';
+    menu.classList.remove('hp-ctx-visible');
+    _ctxTargetIndex = null;
+  }
+
+  function _handleCtxAction(action) {
+    const history = _getHistory();
+    const session  = _ctxTargetIndex !== null ? history[_ctxTargetIndex] : null;
+
+    switch (action) {
+      case 'delete-one': {
+        if (_ctxTargetIndex === null) return;
+        if (_isAntiCheatOn()) {
+          alert('🛡 Stats protection is ON.\n\nSessions cannot be deleted while protection is enabled — this keeps your focus stats accurate.\n\nTo allow deletions, go to Settings → Session → Stats protection and turn it off.');
+          return;
+        }
+        if (!confirm('Delete this session? This cannot be undone.')) return;
+        if (typeof Session !== 'undefined') {
+          Session.deleteSession(_ctxTargetIndex);
+          _selectedIndices.delete(_ctxTargetIndex);
+          _ctxTargetIndex = null;
+          _refreshPanel();
+        }
+        break;
+      }
+      case 'copy': {
+        if (!session) return;
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const d     = session.date ? new Date(session.date) : null;
+        const dateS = d && isFinite(d.getTime())
+          ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()} ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
+          : 'Unknown date';
+        const dur   = session.durationMinutes || 0;
+        const focus = (() => {
+          const total   = dur * 60;
+          const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
+          return total > 0 ? Math.round((focused / total) * 100) : 0;
+        })();
+        const out   = String(session.outcome || 'ABANDONED');
+        const cat   = session.category ? ` [${session.category}]` : '';
+        const goal  = session.goalText ? ` · "${session.goalText}"` : '';
+        const text  = `DeskBuddy Session${cat}\n${dateS}\n${dur}m · ${focus}% focus · ${out}${goal}`;
+        navigator.clipboard?.writeText(text).catch(() => {});
+        break;
+      }
+      case 'details': {
+        if (!session) return;
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const d     = session.date ? new Date(session.date) : null;
+        const dateS = d && isFinite(d.getTime())
+          ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
+          : 'Unknown date';
+        const dur   = session.durationMinutes || 0;
+        const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
+        const focus = dur > 0 ? Math.round((focused / (dur * 60)) * 100) : 0;
+        const distracts = session.distractionCount || 0;
+        const out   = String(session.outcome || 'ABANDONED');
+        const cat   = session.category || '—';
+        const goal  = session.goalText  || '—';
+        const mood  = session.moodRating != null ? `${session.moodRating}/5` : '—';
+        alert(
+          `📅  ${dateS}\n` +
+          `⏱  Duration: ${dur} min\n` +
+          `🎯  Focus: ${focused}s (${focus}%)\n` +
+          `⚡  Distractions: ${distracts}\n` +
+          `✅  Outcome: ${out}\n` +
+          `🏷  Category: ${cat}\n` +
+          `📝  Goal: ${goal}\n` +
+          `😊  Mood: ${mood}`
+        );
+        break;
+      }
+      case 'star': {
+        if (_ctxTargetIndex === null || typeof Session === 'undefined') return;
+        Session.toggleStarred(_ctxTargetIndex);
+        _refreshPanel();
+        break;
+      }
+      case 'export-one': {
+        if (!session) return;
+        const payload = JSON.stringify({
+          version: 1, exportedAt: new Date().toISOString(),
+          appVersion: 'DeskBuddy', sessionCount: 1, sessions: [session],
+        }, null, 2);
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = Object.assign(document.createElement('a'), {
+          href: url, download: `deskbuddy-session-${Date.now()}.json`,
+        });
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        break;
+      }
+      case 'select-all': {
+        _selectAll();
+        break;
+      }
+      case 'select-same-outcome': {
+        if (!session) return;
+        const targetOutcome = String(session.outcome || 'ABANDONED').toUpperCase();
+        const recent = history.slice(0, 10);
+        recent.forEach((s, i) => {
+          if (String(s.outcome || 'ABANDONED').toUpperCase() === targetOutcome) {
+            _selectedIndices.add(i);
+          }
+        });
+        _applySelectionVisuals();
+        _updateToolbar();
+        break;
+      }
+    }
+  }
+
+  return { init, refresh };
+
+})();
