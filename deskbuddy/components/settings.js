@@ -53,10 +53,15 @@ const Settings = (() => {
     // ── Anti-cheat ────────────────────────────────────────────────────
     antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
     // ── Buddy appearance ──────────────────────────────────────────────
-    fullTheme:  'galaxy',    // 'galaxy' | 'classic' | 'forest' | 'ocean' | 'sunset' | 'aurora' | 'cherry' | 'midnight'
-    eyeColor:   'periwinkle',// 'periwinkle' | 'emerald' | 'rose' | 'amber' | 'lavender' | 'sky' | 'ruby' | 'teal'
-    noseStyle:  'triangle',  // 'triangle' | 'dot' | 'none'
-    mouthStyle: 'arc',       // 'arc' | 'perky' | 'minimal' | 'none'
+    fullTheme:    'galaxy',    // 'galaxy' | 'classic' | 'forest' | 'ocean' | 'sunset' | 'aurora' | 'cherry' | 'midnight'
+    eyeColor:     'periwinkle',// 'periwinkle' | 'emerald' | 'rose' | 'amber' | 'lavender' | 'sky' | 'ruby' | 'teal'
+    noseStyle:    'triangle',  // 'triangle' | 'dot' | 'none'
+    mouthStyle:   'arc',       // 'arc' | 'perky' | 'minimal' | 'none'
+    pipOpacity:   78,          // 20–95 integer % — PiP background opacity
+    companionPos: 'center',    // 'left' | 'center' | 'right' — full-mode eye position
+    blinkRate:    'normal',    // 'off' | 'slow' | 'normal' | 'fast'
+    eyeSpacing:   'normal',    // 'narrow' | 'normal' | 'wide'
+    showEyebrows: true,        // show / hide eyebrows
   };
 
   let _current = { ...DEFAULTS };

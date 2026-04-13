@@ -60,6 +60,9 @@
   if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 2);
   if (Brain.setPettingMode)    Brain.setPettingMode(Settings.get('pettingMode') || 2);
 
+  // Apply saved blink rate
+  if (Companion.setBlinkRate) Companion.setBlinkRate(Settings.get('blinkRate') || 'normal');
+
   // 10. Break reminder — init with saved interval (0 = disabled)
   BreakReminder.init(Settings.get('breakInterval'));
 
@@ -74,9 +77,37 @@
   {
     const size = Settings.get('companionSize') || 'M';
     document.body.classList.add(`companion-size-${size}`);
+
+    // Brightness: apply to <html> so the body background (full-mode themes) is
+    // also dimmed — not just #world content.
     const brightness = Settings.get('brightness') || 1.0;
+    document.documentElement.style.filter = brightness < 1.0 ? `brightness(${brightness})` : '';
+
+    // Apply saved appearance classes at boot (before first paint)
+    const theme = Settings.get('fullTheme') || 'galaxy';
+    document.body.classList.add(`theme-${theme}`);
+
+    const eyeColor = Settings.get('eyeColor') || 'periwinkle';
+    if (eyeColor !== 'periwinkle') document.body.classList.add(`eye-${eyeColor}`);
+
+    const noseStyle = Settings.get('noseStyle') || 'triangle';
+    if (noseStyle !== 'triangle') document.body.classList.add(`nose-${noseStyle}`);
+
+    const mouthStyle = Settings.get('mouthStyle') || 'arc';
+    if (mouthStyle !== 'arc') document.body.classList.add(`mouth-${mouthStyle}`);
+
+    const companionPos = Settings.get('companionPos') || 'center';
+    if (companionPos !== 'center') document.body.classList.add(`companion-pos-${companionPos}`);
+
+    const eyeSpacing = Settings.get('eyeSpacing') || 'normal';
+    if (eyeSpacing !== 'normal') document.body.classList.add(`eye-spacing-${eyeSpacing}`);
+
+    if (!Settings.get('showEyebrows')) document.body.classList.add('hide-eyebrows');
+
+    const pipOpacity = Settings.get('pipOpacity') != null ? Settings.get('pipOpacity') : 78;
     const worldEl = document.getElementById('world');
-    if (worldEl) worldEl.style.filter = `brightness(${brightness})`;
+    if (worldEl) worldEl.style.setProperty('--pip-bg-opacity', (pipOpacity / 100).toFixed(2));
+
     // Pre-fill HH:MM:SS fields with saved default (sessionLength is in minutes)
     _setDurationSeconds((Settings.get('sessionLength') || 25) * 60);
     // Pre-fill session panel break interval from saved settings
@@ -1543,8 +1574,8 @@
     const brightnessSubLabel = document.getElementById('brightness-sublabel');
 
     function _applyBrightness(v) {
-      const world = document.getElementById('world');
-      if (world) world.style.filter = `brightness(${v})`;
+      // Apply to <html> so the body background (full-mode themes) is also dimmed
+      document.documentElement.style.filter = v < 1.0 ? `brightness(${v})` : '';
       if (brightnessSlider)   brightnessSlider.value = Math.round(v * 100);
       if (brightnessSubLabel) brightnessSubLabel.textContent = `${Math.round(v * 100)}%`;
     }
@@ -2071,6 +2102,203 @@
         shortcutsList.appendChild(row);
       });
     }
+
+    // ── Full-screen theme picker ─────────────────────────────────────────
+    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean',
+                           'theme-sunset','theme-aurora','theme-cherry','theme-midnight'];
+
+    function _applyFullTheme(theme) {
+      document.body.classList.remove(...THEME_CLASSES);
+      document.body.classList.add(`theme-${theme}`);
+      const picker = document.getElementById('full-theme-picker');
+      if (picker) {
+        picker.querySelectorAll('.theme-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.theme === theme));
+      }
+    }
+
+    _applyFullTheme(Settings.get('fullTheme') || 'galaxy');
+
+    const themePicker = document.getElementById('full-theme-picker');
+    if (themePicker) {
+      themePicker.querySelectorAll('.theme-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('fullTheme', btn.dataset.theme));
+      });
+    }
+    Settings.onChange('fullTheme', (v) => _applyFullTheme(v));
+
+    // ── Eye colour picker ────────────────────────────────────────────────
+    const EYE_COLOR_CLASSES = ['eye-periwinkle','eye-emerald','eye-rose','eye-amber',
+                               'eye-lavender','eye-sky','eye-ruby','eye-teal'];
+
+    function _applyEyeColor(color) {
+      document.body.classList.remove(...EYE_COLOR_CLASSES);
+      if (color && color !== 'periwinkle') document.body.classList.add(`eye-${color}`);
+      const picker = document.getElementById('eye-color-picker');
+      if (picker) {
+        picker.querySelectorAll('.color-swatch').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.color === color));
+      }
+    }
+
+    _applyEyeColor(Settings.get('eyeColor') || 'periwinkle');
+
+    const eyeColorPicker = document.getElementById('eye-color-picker');
+    if (eyeColorPicker) {
+      eyeColorPicker.querySelectorAll('.color-swatch').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('eyeColor', btn.dataset.color));
+      });
+    }
+    Settings.onChange('eyeColor', (v) => _applyEyeColor(v));
+
+    // ── PiP opacity slider ───────────────────────────────────────────────
+    const pipOpacitySlider   = document.getElementById('pip-opacity-slider');
+    const pipOpacitySubLabel = document.getElementById('pip-opacity-sublabel');
+
+    function _applyPipOpacity(pct) {
+      const world = document.getElementById('world');
+      if (world) world.style.setProperty('--pip-bg-opacity', (pct / 100).toFixed(2));
+      if (pipOpacitySlider)   pipOpacitySlider.value = pct;
+      if (pipOpacitySubLabel) pipOpacitySubLabel.textContent = `${pct}%`;
+    }
+
+    _applyPipOpacity(Settings.get('pipOpacity') != null ? Settings.get('pipOpacity') : 78);
+
+    if (pipOpacitySlider) {
+      pipOpacitySlider.addEventListener('input', () => {
+        const v = parseInt(pipOpacitySlider.value, 10);
+        Settings.set('pipOpacity', v);
+      });
+    }
+    Settings.onChange('pipOpacity', (v) => _applyPipOpacity(v));
+
+    // ── Companion position (full-mode) ───────────────────────────────────
+    const POS_CLASSES = ['companion-pos-left','companion-pos-center','companion-pos-right'];
+
+    function _applyCompanionPos(pos) {
+      document.body.classList.remove(...POS_CLASSES);
+      if (pos && pos !== 'center') document.body.classList.add(`companion-pos-${pos}`);
+      const btns = document.getElementById('companion-pos-btns');
+      if (btns) {
+        btns.querySelectorAll('.style-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.pos === pos));
+      }
+    }
+
+    _applyCompanionPos(Settings.get('companionPos') || 'center');
+
+    const companionPosBtns = document.getElementById('companion-pos-btns');
+    if (companionPosBtns) {
+      companionPosBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('companionPos', btn.dataset.pos));
+      });
+    }
+    Settings.onChange('companionPos', (v) => _applyCompanionPos(v));
+
+    // ── Eye spacing ──────────────────────────────────────────────────────
+    const EYE_SPACING_CLASSES = ['eye-spacing-narrow','eye-spacing-wide'];
+
+    function _applyEyeSpacing(spacing) {
+      document.body.classList.remove(...EYE_SPACING_CLASSES);
+      if (spacing && spacing !== 'normal') document.body.classList.add(`eye-spacing-${spacing}`);
+      const btns = document.getElementById('eye-spacing-btns');
+      if (btns) {
+        btns.querySelectorAll('.style-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.spacing === spacing));
+      }
+    }
+
+    _applyEyeSpacing(Settings.get('eyeSpacing') || 'normal');
+
+    const eyeSpacingBtns = document.getElementById('eye-spacing-btns');
+    if (eyeSpacingBtns) {
+      eyeSpacingBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('eyeSpacing', btn.dataset.spacing));
+      });
+    }
+    Settings.onChange('eyeSpacing', (v) => _applyEyeSpacing(v));
+
+    // ── Blink rate ───────────────────────────────────────────────────────
+    function _applyBlinkRate(rate) {
+      if (Companion.setBlinkRate) Companion.setBlinkRate(rate);
+      const btns = document.getElementById('blink-rate-btns');
+      if (btns) {
+        btns.querySelectorAll('.style-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.blink === rate));
+      }
+    }
+
+    _applyBlinkRate(Settings.get('blinkRate') || 'normal');
+
+    const blinkRateBtns = document.getElementById('blink-rate-btns');
+    if (blinkRateBtns) {
+      blinkRateBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('blinkRate', btn.dataset.blink));
+      });
+    }
+    Settings.onChange('blinkRate', (v) => _applyBlinkRate(v));
+
+    // ── Eyebrows toggle ──────────────────────────────────────────────────
+    const eyebrowsToggle = document.getElementById('eyebrows-toggle');
+
+    function _applyShowEyebrows(show) {
+      document.body.classList.toggle('hide-eyebrows', !show);
+      if (eyebrowsToggle) eyebrowsToggle.checked = !!show;
+    }
+
+    _applyShowEyebrows(Settings.get('showEyebrows') !== false);
+
+    if (eyebrowsToggle) {
+      eyebrowsToggle.addEventListener('change', () =>
+        Settings.set('showEyebrows', eyebrowsToggle.checked));
+    }
+    Settings.onChange('showEyebrows', (v) => _applyShowEyebrows(v));
+
+    // ── Nose style ───────────────────────────────────────────────────────
+    const NOSE_CLASSES = ['nose-dot','nose-none'];
+
+    function _applyNoseStyle(style) {
+      document.body.classList.remove(...NOSE_CLASSES);
+      if (style && style !== 'triangle') document.body.classList.add(`nose-${style}`);
+      const btns = document.getElementById('nose-style-btns');
+      if (btns) {
+        btns.querySelectorAll('.style-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.nose === style));
+      }
+    }
+
+    _applyNoseStyle(Settings.get('noseStyle') || 'triangle');
+
+    const noseStyleBtns = document.getElementById('nose-style-btns');
+    if (noseStyleBtns) {
+      noseStyleBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('noseStyle', btn.dataset.nose));
+      });
+    }
+    Settings.onChange('noseStyle', (v) => _applyNoseStyle(v));
+
+    // ── Mouth style ──────────────────────────────────────────────────────
+    const MOUTH_CLASSES = ['mouth-perky','mouth-minimal','mouth-none'];
+
+    function _applyMouthStyle(style) {
+      document.body.classList.remove(...MOUTH_CLASSES);
+      if (style && style !== 'arc') document.body.classList.add(`mouth-${style}`);
+      const btns = document.getElementById('mouth-style-btns');
+      if (btns) {
+        btns.querySelectorAll('.style-chip').forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.mouth === style));
+      }
+    }
+
+    _applyMouthStyle(Settings.get('mouthStyle') || 'arc');
+
+    const mouthStyleBtns = document.getElementById('mouth-style-btns');
+    if (mouthStyleBtns) {
+      mouthStyleBtns.querySelectorAll('.style-chip').forEach(btn => {
+        btn.addEventListener('click', () => Settings.set('mouthStyle', btn.dataset.mouth));
+      });
+    }
+    Settings.onChange('mouthStyle', (v) => _applyMouthStyle(v));
   }
 
   // ── _wireBreakReminder ────────────────────────────────────────────────────

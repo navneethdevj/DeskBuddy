@@ -227,6 +227,59 @@
               <button class="settings-size-btn" data-size="L">L</button>
             </div>
           </div>
+
+          <!-- Full-screen theme picker -->
+          <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:7px;">
+            <div class="settings-row-label">Full-screen theme</div>
+            <div class="theme-picker" id="full-theme-picker">
+              <button class="theme-chip" data-theme="galaxy">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#130b2e,#5f3aac 70%)"></span>
+                Galaxy
+              </button>
+              <button class="theme-chip" data-theme="classic">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#111,#1c1c1c)"></span>
+                Classic
+              </button>
+              <button class="theme-chip" data-theme="forest">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#030d05,#1a5c26 70%)"></span>
+                Forest
+              </button>
+              <button class="theme-chip" data-theme="ocean">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#020810,#125a8a 70%)"></span>
+                Ocean
+              </button>
+              <button class="theme-chip" data-theme="sunset">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#160604,#b94b14 70%)"></span>
+                Sunset
+              </button>
+              <button class="theme-chip" data-theme="aurora">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#010a09,#129182 70%)"></span>
+                Aurora
+              </button>
+              <button class="theme-chip" data-theme="cherry">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#0d0208,#a51e50 70%)"></span>
+                Cherry
+              </button>
+              <button class="theme-chip" data-theme="midnight">
+                <span class="theme-swatch" style="background:linear-gradient(135deg,#010206,#1a2160 70%)"></span>
+                Midnight
+              </button>
+            </div>
+          </div>
+
+          <!-- Companion position (full-mode) -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Position (full-screen)</div>
+              <div class="settings-row-sublabel">Horizontal eye placement</div>
+            </div>
+            <div class="style-chips" id="companion-pos-btns">
+              <button class="style-chip" data-pos="left">◂ Left</button>
+              <button class="style-chip" data-pos="center">● Centre</button>
+              <button class="style-chip" data-pos="right">Right ▸</button>
+            </div>
+          </div>
+
           <div class="settings-row">
             <div>
               <div class="settings-row-label">Screen brightness</div>
@@ -234,6 +287,16 @@
             </div>
             <input type="range" id="brightness-slider" class="settings-slider"
               min="30" max="100" step="2" value="100">
+          </div>
+
+          <!-- PiP background opacity -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Overlay opacity</div>
+              <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
+            </div>
+            <input type="range" id="pip-opacity-slider" class="settings-slider"
+              min="20" max="95" step="3" value="78">
           </div>
           <div class="settings-row">
             <div class="settings-row-label">Ambient drone</div>
@@ -317,6 +380,101 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ── BUDDY APPEARANCE SECTION ─────────────────────────────── -->
+      <div class="settings-section">
+        <button class="settings-section-title" aria-expanded="false">
+          <span class="settings-section-icon">◉</span> Buddy Appearance<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-section-body">
+
+          <!-- Eye colour -->
+          <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:7px;">
+            <div class="settings-row-label">Eye colour</div>
+            <div class="color-picker" id="eye-color-picker">
+              <button class="color-swatch" data-color="periwinkle" title="Periwinkle"
+                style="background:radial-gradient(circle at 35% 35%,#a0aee8,#6472c4)"></button>
+              <button class="color-swatch" data-color="emerald" title="Emerald"
+                style="background:radial-gradient(circle at 35% 35%,#6dd48e,#28854e)"></button>
+              <button class="color-swatch" data-color="rose" title="Rose"
+                style="background:radial-gradient(circle at 35% 35%,#f0a0c8,#c84880)"></button>
+              <button class="color-swatch" data-color="amber" title="Amber"
+                style="background:radial-gradient(circle at 35% 35%,#f8d080,#d08020)"></button>
+              <button class="color-swatch" data-color="lavender" title="Lavender"
+                style="background:radial-gradient(circle at 35% 35%,#c4a8f4,#8855d0)"></button>
+              <button class="color-swatch" data-color="sky" title="Sky Blue"
+                style="background:radial-gradient(circle at 35% 35%,#90d0f8,#2880c8)"></button>
+              <button class="color-swatch" data-color="ruby" title="Ruby"
+                style="background:radial-gradient(circle at 35% 35%,#f48888,#c02020)"></button>
+              <button class="color-swatch" data-color="teal" title="Teal"
+                style="background:radial-gradient(circle at 35% 35%,#70e0d8,#159090)"></button>
+            </div>
+          </div>
+
+          <!-- Eye spacing -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Eye spacing</div>
+              <div class="settings-row-sublabel">Gap between the eyes</div>
+            </div>
+            <div class="style-chips" id="eye-spacing-btns">
+              <button class="style-chip" data-spacing="narrow">Narrow</button>
+              <button class="style-chip" data-spacing="normal">Normal</button>
+              <button class="style-chip" data-spacing="wide">Wide</button>
+            </div>
+          </div>
+
+          <!-- Blink rate -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Blink rate</div>
+              <div class="settings-row-sublabel">How often the buddy blinks</div>
+            </div>
+            <div class="style-chips" id="blink-rate-btns">
+              <button class="style-chip" data-blink="off">Off</button>
+              <button class="style-chip" data-blink="slow">Slow</button>
+              <button class="style-chip" data-blink="normal">Normal</button>
+              <button class="style-chip" data-blink="fast">Fast</button>
+            </div>
+          </div>
+
+          <!-- Eyebrows toggle -->
+          <div class="settings-row">
+            <div class="settings-row-label">Eyebrows</div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="eyebrows-toggle" checked>
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+
+          <!-- Nose style -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Nose style</div>
+            </div>
+            <div class="style-chips" id="nose-style-btns">
+              <button class="style-chip" data-nose="triangle">▼ Triangle</button>
+              <button class="style-chip" data-nose="dot">● Dot</button>
+              <button class="style-chip" data-nose="none">Hidden</button>
+            </div>
+          </div>
+
+          <!-- Mouth style -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Mouth style</div>
+            </div>
+            <div class="style-chips" id="mouth-style-btns">
+              <button class="style-chip" data-mouth="arc">Arc</button>
+              <button class="style-chip" data-mouth="perky">Perky</button>
+              <button class="style-chip" data-mouth="minimal">Minimal</button>
+              <button class="style-chip" data-mouth="none">Hidden</button>
+            </div>
+          </div>
+
         </div>
       </div>
       <hr class="settings-divider">

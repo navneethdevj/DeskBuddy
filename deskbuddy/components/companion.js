@@ -217,14 +217,19 @@ const Companion = (() => {
 
   // ===== Idle Behaviors =====
 
+  let _blinkEnabled   = true;
+  let _blinkDelayMin  = 1800;  // ms
+  let _blinkDelayRange = 2800; // jitter range (ms)
+
   function startIdleBehaviors() {
     scheduleBlink();
   }
 
   function scheduleBlink() {
-    const delay = 1800 + Math.random() * 2800;
+    if (!_blinkEnabled) return;
+    const delay = _blinkDelayMin + Math.random() * _blinkDelayRange;
     setTimeout(() => {
-      if (!el) return;
+      if (!el || !_blinkEnabled) return;
       el.classList.add('blink');
       var blinkDuration = 120 + Math.random() * 120; // 120–240 ms — snappy blink
       setTimeout(() => {
@@ -234,5 +239,26 @@ const Companion = (() => {
     }, delay);
   }
 
-  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils };
+  /**
+   * setBlinkRate — adjust how often the companion blinks.
+   * @param {'off'|'slow'|'normal'|'fast'} rate
+   */
+  function setBlinkRate(rate) {
+    switch (rate) {
+      case 'off':
+        _blinkEnabled = false;
+        break;
+      case 'slow':
+        _blinkEnabled = true; _blinkDelayMin = 4500; _blinkDelayRange = 5500;
+        break;
+      case 'fast':
+        _blinkEnabled = true; _blinkDelayMin = 600;  _blinkDelayRange = 1000;
+        break;
+      default: // 'normal'
+        _blinkEnabled = true; _blinkDelayMin = 1800; _blinkDelayRange = 2800;
+        break;
+    }
+  }
+
+  return { create, setPosition, getPosition, getCenter, getMousePush, getElement, setRotation, lookAt, resetLook, updatePupils, setBlinkRate };
 })();
