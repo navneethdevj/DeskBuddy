@@ -52,6 +52,11 @@ const Settings = (() => {
     weeklyReportLastShown:  '',  // toDateString() of Monday when report was last shown
     // ── Anti-cheat ────────────────────────────────────────────────────
     antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
+    // ── Buddy appearance ──────────────────────────────────────────────
+    fullTheme:  'galaxy',    // 'galaxy' | 'classic' | 'forest' | 'ocean' | 'sunset' | 'aurora' | 'cherry' | 'midnight'
+    eyeColor:   'periwinkle',// 'periwinkle' | 'emerald' | 'rose' | 'amber' | 'lavender' | 'sky' | 'ruby' | 'teal'
+    noseStyle:  'triangle',  // 'triangle' | 'dot' | 'none'
+    mouthStyle: 'arc',       // 'arc' | 'perky' | 'minimal' | 'none'
   };
 
   let _current = { ...DEFAULTS };
