@@ -1868,14 +1868,14 @@
         pouty: '255,188,118', grumpy: '255,138,128', overjoyed: '255,240,198',
         sulking: '205,138,192', embarrassed: '255,120,155', forgiven: '255,160,190',
         excited: '255,228,120', shy: '255,142,198', love: '255,138,180',
-        startled: '200,220,255', cozy: '255,155,130',
+        startled: '200,220,255', cozy: '255,155,130', being_patted: '255,110,145',
       };
       const EMOJI = {
         idle: '○', curious: '◉', focused: '◎', sleepy: '◔',
         suspicious: '👁', happy: '◕‿◕', scared: '○!', sad: '◕︵◕',
         crying: '😢', pouty: '◣', grumpy: '◤', overjoyed: '★',
         sulking: '◷', embarrassed: '◕///◕', forgiven: '♡✓', excited: '◕!',
-        shy: '///◕', love: '♡', startled: '◕‼', cozy: '◕‿◕♡',
+        shy: '///◕', love: '♡', startled: '◕‼', cozy: '◕‿◕♡', being_patted: 'UwU♡',
       };
       const SOUND_MAP = {
         happy: 'happy_coo', curious: 'curious_ooh', overjoyed: 'overjoyed_chirp',
@@ -1887,7 +1887,7 @@
 
       // Emotional categories
       const CATEGORIES = [
-        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'shy', 'forgiven'] },
+        { label: '✦ Positive',  states: ['happy', 'overjoyed', 'excited', 'love', 'cozy', 'being_patted', 'shy', 'forgiven'] },
         { label: '◎ Neutral',   states: ['idle', 'focused', 'curious', 'sleepy', 'embarrassed'] },
         { label: '◤ Negative',  states: ['suspicious', 'pouty', 'grumpy', 'sulking', 'scared', 'sad', 'crying', 'startled'] },
       ];

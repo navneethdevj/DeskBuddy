@@ -206,6 +206,7 @@ const Brain = (() => {
     excited:    'rgba(255, 228, 120, 0.95)',
     love:       'rgba(255, 158, 198, 0.95)',
     cozy:       'rgba(255, 148, 165, 0.90)',
+    being_patted: 'rgba(255, 115, 155, 0.95)',
     shy:        'rgba(255, 168, 210, 0.85)',
     sad:        'rgba(130, 175, 245, 0.88)',
     crying:     'rgba(110, 160, 240, 0.90)',
@@ -263,11 +264,14 @@ const Brain = (() => {
 
   // Cozy (hold/pat snuggle) — active while mouse is held near companion,
   // then lingers briefly after release before returning to normal.
-  let _mousedownNear   = false;  // true while mouse is held near companion
-  let _mousedownTime   = 0;      // epoch ms when mousedown started (used only to suppress love-click after a hold)
-  let _cozyUntil       = 0;      // epoch ms of linger expiry after release
-  let _cozyEnteredAt   = 0;      // epoch ms when cozy was first entered (gate for one-shot effects)
-  const COZY_LINGER_MS = 2500;   // how long cozy lingers after mouse is released
+  let _mousedownNear        = false;  // true while mouse is held near companion
+  let _mousedownTime        = 0;      // epoch ms when mousedown started (used only to suppress love-click after a hold)
+  let _cozyUntil            = 0;      // epoch ms of linger expiry after release
+  let _cozyEnteredAt        = 0;      // epoch ms when cozy was first entered (gate for one-shot effects)
+  let _deepCozyEnteredAt    = 0;      // epoch ms when being_patted was first entered (gate for deep one-shot effects)
+  let _lastHoldWasDeep      = false;  // whether the most recent completed hold exceeded COZY_DEEP_MS
+  const COZY_LINGER_MS      = 2500;   // how long cozy lingers after mouse is released
+  const COZY_DEEP_MS        = 1500;   // hold duration (ms) before escalating to being_patted
 
   // Rapid-pet burst — multiple quick clicks
   let _petClickTimes      = [];  // rolling timestamps of pet-zone clicks
@@ -534,7 +538,8 @@ const Brain = (() => {
       shy:         'Shy >/<',
       love:        'Loved ♡',
       startled:    'Startled !',
-      cozy:        'Cozy ♡',
+      cozy:          'Cozy ♡',
+      being_patted:  'Being Patted ♡♡',
       embarrassed: 'Embarrassed',
       forgiven:    'Forgiven ♡',
     };
@@ -591,6 +596,36 @@ const Brain = (() => {
 
     // 1b. Cozy (hold/pat snuggle) — active while held AND during linger after release
     if (_mousedownNear || now < _cozyUntil) {
+      // While actively holding: check if threshold crossed; during linger: use last-hold flag
+      const heldMs = _mousedownNear ? (now - _mousedownTime) : 0;
+      const isDeep = _mousedownNear ? (heldMs >= COZY_DEEP_MS) : _lastHoldWasDeep;
+
+      if (isDeep) {
+        // ── DEEP PETTING MODE (≥ 1.5 s hold) ─────────────────────────────
+        // One-shot entry: fires exactly once when the threshold is first crossed
+        if (_deepCozyEnteredAt === 0) {
+          _deepCozyEnteredAt = now;
+          const deepMsgs = [
+            'uuuu~♡', '*melts completely*', 'don\'t stop don\'t stop~',
+            'uuuuu i\'m so happy~', '*tail wagging intensely*',
+            '...i\'m yours~', '*kneads happily*', 'this is heaven.',
+            '*closes eyes* ...perfect.', 'ehehehe~♡♡', '*happy rumble*',
+            'you can do this forever.', '...☆彡',
+          ];
+          showWhisper(deepMsgs[Math.floor(Math.random() * deepMsgs.length)], 5000);
+          const el = Companion.getElement();
+          if (el) {
+            el.classList.add('nuzzling');
+            setTimeout(() => el.classList.remove('nuzzling'), 900);
+          }
+          if (typeof Particles !== 'undefined') Particles.burst('cozy', 14);
+          if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
+        }
+        _setQuiet('being_patted');
+        return;
+      }
+
+      // ── SHALLOW COZY (< 1.5 s hold) ─────────────────────────────────────
       // One-shot entry effects — whisper, particles, blink (fire only once per hold)
       if (_cozyEnteredAt === 0) {
         _cozyEnteredAt = now;
@@ -610,8 +645,10 @@ const Brain = (() => {
       _setQuiet('cozy');
       return;
     }
-    // Reset entry gate once cozy is fully over
-    if (_cozyEnteredAt > 0) _cozyEnteredAt = 0;
+    // Reset entry gates once cozy is fully over
+    if (_cozyEnteredAt > 0)     _cozyEnteredAt     = 0;
+    if (_deepCozyEnteredAt > 0) _deepCozyEnteredAt = 0;
+    if (_lastHoldWasDeep)       _lastHoldWasDeep   = false;
 
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
@@ -1923,8 +1960,13 @@ const Brain = (() => {
     _mousedownNear = false;
     if (held >= 250) {
       // Held long enough to count as a pat/hold — start the linger period
-      _cozyUntil = Date.now() + COZY_LINGER_MS;
+      _cozyUntil       = Date.now() + COZY_LINGER_MS;
+      _lastHoldWasDeep = held >= COZY_DEEP_MS;
+    } else {
+      _lastHoldWasDeep = false;
     }
+    // Deep cozy entry gate resets so each new hold can re-trigger entry effects
+    _deepCozyEnteredAt = 0;
     // Suppress the 'click' event that follows mouseup so it doesn't immediately
     // switch to love state and cancel the cozy linger.
     if (held >= 250) {
