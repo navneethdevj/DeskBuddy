@@ -1433,6 +1433,29 @@ const ThemeCanvas = (() => {
       });
     }
 
+    // ── Visibility-change fallback for auto-PiP ──────────────────────────
+    // When the Electron window loses focus (e.g. user switches to another
+    // app) the 'app-blur' IPC event fires the auto-PiP logic above.
+    // As a belt-and-suspenders fallback, also listen for the Web Visibility
+    // API — some Electron builds do not fire window 'blur' reliably.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && _isFullMode && Settings.get('autoPipOnBlur')) {
+        // Skip if a session is active and the user opted in to skip
+        if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
+            Session.getState && Session.getState() === 'ACTIVE') return;
+        _autoPipActive = true;
+        _exitFullMode();
+      } else if (!document.hidden && _autoPipActive && !_isFullMode &&
+                 Settings.get('autoPipRestore')) {
+        _autoPipActive = false;
+        _enterFullMode();
+        setTimeout(() => {
+          if (typeof Brain !== 'undefined' && Brain.triggerWelcomeBack)
+            Brain.triggerWelcomeBack();
+        }, 350);
+      }
+    });
+
     // ── Emotion glow ring for PiP bubble ─────────────────────────────────
     // Poll Brain's current emotion every 500 ms and mirror it onto
     // #world[data-pip-emotion] so the CSS glow keyframes can react.
@@ -1729,6 +1752,14 @@ const ThemeCanvas = (() => {
     Settings.onChange('pipShape', (v) => {
       _applyPipShape(v);
       _syncShapeChips(v);
+    });
+
+    // PiP corner picker — snap to one of 5 named positions
+    document.querySelectorAll('#pip-corner-picker .pip-corner-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (window.electronAPI && window.electronAPI.setPipCorner)
+          window.electronAPI.setPipCorner(btn.dataset.corner);
+      });
     });
 
     // Sensitivity select

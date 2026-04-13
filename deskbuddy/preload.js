@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // PiP always-on-top toggle
   setPipAlwaysOnTop: (flag) => ipcRenderer.send('set-pip-always-on-top', flag),
 
+  // Snap the PiP window to a named corner position (when in PiP mode).
+  // corner: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-right'
+  setPipCorner: (corner) => ipcRenderer.send('set-pip-corner', corner),
+
   // Fired by main after the window is shown (ready-to-show).
   onWindowReady: (fn) => {
     const handler = (_event, ...args) => fn(...args);

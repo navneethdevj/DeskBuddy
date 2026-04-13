@@ -275,7 +275,27 @@ ipcMain.on('exit-full-mode', () => {
   mainWindow.webContents.send('full-mode-exited');
 });
 
-// ── PiP always-on-top toggle from renderer ─────────────────────────────────
+// ── PiP corner snap: move window to one of 5 named positions ─────────────────
+ipcMain.on('set-pip-corner', (_event, corner) => {
+  if (!mainWindow || !_isPipMode) return;
+  const [w, h] = mainWindow.getSize();
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const m = SNAP_MARGIN;
+  const corners = {
+    'top-left':   { x: m,              y: m              },
+    'top-center': { x: Math.round((sw - w) / 2), y: m   },
+    'top-right':  { x: sw - w - m,     y: m              },
+    'bottom-left':  { x: m,            y: sh - h - m     },
+    'bottom-right': { x: sw - w - m,   y: sh - h - m     },
+  };
+  const pos = corners[corner];
+  if (!pos) return;
+  const { x, y } = _clamp(pos.x, pos.y, w);
+  mainWindow.setPosition(x, y, process.platform === 'darwin');
+  store.set('windowPos', { x, y });
+});
+
+
 ipcMain.on('set-pip-always-on-top', (_event, flag) => {
   if (!mainWindow || !_isPipMode) return;
   if (flag) {

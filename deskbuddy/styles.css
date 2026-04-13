@@ -2664,17 +2664,9 @@ body.full-mode .companion {
    panel without requiring a reload.
    ===================================================================== */
 
-/* ── Eye colour (hue-rotate on .eye preserves glints & pupil depth) ──
-   Base eye hue is ≈ 230° (blue-violet). Rotation offsets target each
-   palette colour without touching nose / mouth / glow animations.      */
-body.eye-emerald  .eye { filter: hue-rotate(270deg) saturate(1.15); }
-body.eye-rose     .eye { filter: hue-rotate(90deg)  saturate(1.20); }
-body.eye-amber    .eye { filter: hue-rotate(180deg) saturate(1.30); }
-body.eye-lavender .eye { filter: hue-rotate(40deg)  saturate(0.90); }
-body.eye-sky      .eye { filter: hue-rotate(-30deg) saturate(1.05); }
-body.eye-ruby     .eye { filter: hue-rotate(125deg) saturate(1.40); }
-body.eye-teal     .eye { filter: hue-rotate(-55deg) saturate(1.10); }
-/* periwinkle (default) — no filter */
+/* ── Eye colour — iris/pupil only (filter lives on ::before, NOT .eye)
+   Separate rules at the bottom of the file handle .eye::before filters.
+   periwinkle (default) — no filter */
 
 /* ── Nose styles ───────────────────────────────────────────────────── */
 /* Dot nose — small oval button replacing the CSS-triangle */
@@ -3285,7 +3277,47 @@ body.pip-mode #settings-panel { display: none !important; }
   flex-shrink: 0;
 }
 
-/* ── Toggle switch ────────────────────────────────────────────── */
+/* ── PiP corner picker — 5-button grid (↖ ↑ ↗ ↙ ↘) ─────────── */
+.pip-corner-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 5px;
+}
+/* position the bottom-row buttons so ↙ and ↘ span left / right */
+.pip-corner-picker .pip-corner-chip:nth-child(4) { grid-column: 1; }
+.pip-corner-picker .pip-corner-chip:nth-child(5) { grid-column: 3; }
+
+.pip-corner-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  cursor: pointer;
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(200, 190, 255, 0.60);
+  font-size: 15px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pip-corner-chip:hover {
+  border-color: rgba(160, 140, 255, 0.30);
+  background: rgba(160, 140, 255, 0.10);
+  color: rgba(220, 210, 255, 0.80);
+  transform: scale(1.08);
+}
+.pip-corner-chip:active {
+  transform: scale(0.94);
+  border-color: rgba(160, 140, 255, 0.65);
+  background: rgba(130, 110, 255, 0.20);
+  color: rgba(220, 210, 255, 0.95);
+}
+
+
 .settings-toggle {
   position: relative;
   display: inline-block;
@@ -6910,14 +6942,16 @@ body.pip-mode .companion {
 
 /* ═══════════════════════════════════════════════════════════
    EYE IRIS vs GLOW SEPARATION
-   The iris gradient is moved to .eye::before so that a
-   hue-rotate applied to ::before does NOT touch the box-shadow
-   (eye glow ring) on .eye itself.
+   - .eye background = white sclera ring (always visible)
+   - .eye::before = coloured iris (slightly inset so sclera shows)
+   - .eye box-shadow = exterior glow, colour from --eye-glow-rgb
+   - Iris filter lives only on ::before — never on .eye itself,
+     so the glow ring colour is never affected by the iris hue.
    ─────────────────────────────────────────────────────────── */
 
-/* .eye background is now transparent — colour comes from ::before */
+/* Sclera ring — pure white backing; the ::before iris sits on top */
 .eye {
-  background: transparent;
+  background: rgba(248, 248, 255, 0.92);
   /* Eye glow ring — colour controlled via --eye-glow-rgb */
   box-shadow:
     0 0 5vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.45),
@@ -6926,20 +6960,18 @@ body.pip-mode .companion {
     inset 0 -1px 2px rgba(255, 255, 255, 0.12);
 }
 
-/* Iris layer — full-cover pseudo, carries the gradient */
+/* Iris layer — slightly inset so the white sclera edge is visible */
 .eye::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: 10% 8%;   /* ≈ 15–20% sclera ring around the iris */
   border-radius: inherit;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,  #8190d9  6%,  #8795db 12%,
-    #8d9adc 18%,  #949fdd 24%,  #9aa4de 30%,
-    #a0aae0 36%,  #a6afe1 42%,  #acb4e2 48%,
-    #b2b9e3 54%,  #b8bee5 60%,  #bec3e6 66%,
-    #c4c8e7 72%,  #cbcde8 78%,  #d1d2ea 84%,
-    #d7d8eb 90%,  #ddddec 95%,  #e3e2ee 100%
+    #7b8bd8  0%,  #8190d9  8%,  #8795db 18%,
+    #8d9adc 28%,  #949fdd 38%,  #9aa4de 50%,
+    #a0aae0 62%,  #a8b0e2 74%,  #b2b9e3 84%,
+    #bec3e6 92%,  #cccfe9 97%,  #dcdde8 100%
   );
   z-index: 0;
   pointer-events: none;
@@ -6948,7 +6980,7 @@ body.pip-mode .companion {
 /* Pupil must sit above the ::before iris layer */
 .pupil { position: relative; z-index: 1; }
 
-/* ── Iris colour classes (hue-rotate on ::before only) ── */
+/* ── Iris colour classes (hue-rotate on ::before ONLY — never on .eye) ── */
 body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); }
 body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); }
 body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
