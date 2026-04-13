@@ -178,8 +178,9 @@ const Session = (() => {
   /**
    * _incrementLedger(session) — add one session's stats to the immutable ledger.
    * Called by _pushSession; NEVER called by any deletion or clearing function.
+   * @param {boolean} [skipSave] — if true, skips _saveLedger (used during bulk migration)
    */
-  function _incrementLedger(session) {
+  function _incrementLedger(session, skipSave) {
     _ledger.totalSessions++;
     if (session.outcome === 'COMPLETED') _ledger.completedSessions++;
     const focused = session.actualFocusedSeconds || 0;
@@ -190,22 +191,22 @@ const Session = (() => {
       _ledger.focusScoreSum    += (focused / total) * 100;
       _ledger.focusScoredCount += 1;
     }
-    _saveLedger();
+    if (!skipSave) _saveLedger();
   }
 
   /**
    * _migrateToLedger() — one-time backfill of existing history into the ledger.
    * Runs on first load when ledger is empty but history already exists so that
    * existing users get accurate lifetime stats immediately after the update.
+   * Uses skipSave=true during iteration to avoid N localStorage writes.
    */
   function _migrateToLedger() {
     if (_ledger.migrated) return;
     _ledger.migrated = true;
     if (_history.length > 0) {
-      _history.forEach(s => _incrementLedger(s));
-    } else {
-      _saveLedger();
+      _history.forEach(s => _incrementLedger(s, true));
     }
+    _saveLedger();
   }
 
   // ── Break tracking ─────────────────────────────────────────────────────────
