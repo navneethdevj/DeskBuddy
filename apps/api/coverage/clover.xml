@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1776096235107" clover="3.2.0">
-  <project timestamp="1776096235107" name="All files">
-    <metrics statements="272" coveredstatements="269" conditionals="96" coveredconditionals="77" methods="48" coveredmethods="47" elements="416" coveredelements="393" complexity="0" loc="272" ncloc="272" packages="8" files="16" classes="16"/>
+<coverage generated="1776099523851" clover="3.2.0">
+  <project timestamp="1776099523851" name="All files">
+    <metrics statements="279" coveredstatements="276" conditionals="97" coveredconditionals="78" methods="50" coveredmethods="49" elements="426" coveredelements="403" complexity="0" loc="279" ncloc="279" packages="8" files="16" classes="16"/>
     <package name="db">
       <metrics statements="20" coveredstatements="20" conditionals="7" coveredconditionals="6" methods="3" coveredmethods="2"/>
       <file name="prisma.ts" path="/home/runner/work/DeskBuddy/DeskBuddy/apps/api/src/db/prisma.ts">
@@ -32,7 +32,7 @@
       </file>
     </package>
     <package name="middleware">
-      <metrics statements="65" coveredstatements="65" conditionals="12" coveredconditionals="12" methods="10" coveredmethods="10"/>
+      <metrics statements="72" coveredstatements="72" conditionals="13" coveredconditionals="13" methods="12" coveredmethods="12"/>
       <file name="auth.ts" path="/home/runner/work/DeskBuddy/DeskBuddy/apps/api/src/middleware/auth.ts">
         <metrics statements="16" coveredstatements="16" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
         <line num="2" count="1" type="stmt"/>
@@ -85,22 +85,29 @@
         <line num="19" count="3" type="stmt"/>
       </file>
       <file name="rateLimiter.ts" path="/home/runner/work/DeskBuddy/DeskBuddy/apps/api/src/middleware/rateLimiter.ts">
-        <metrics statements="15" coveredstatements="15" conditionals="6" coveredconditionals="6" methods="2" coveredmethods="2"/>
-        <line num="8" count="5" type="stmt"/>
-        <line num="10" count="5" type="stmt"/>
-        <line num="11" count="5" type="stmt"/>
-        <line num="12" count="14" type="cond" truecount="2" falsecount="0"/>
-        <line num="13" count="14" type="stmt"/>
-        <line num="14" count="14" type="stmt"/>
-        <line num="16" count="14" type="cond" truecount="3" falsecount="0"/>
-        <line num="17" count="7" type="stmt"/>
-        <line num="18" count="7" type="stmt"/>
-        <line num="19" count="7" type="stmt"/>
-        <line num="22" count="7" type="cond" truecount="1" falsecount="0"/>
-        <line num="23" count="1" type="stmt"/>
-        <line num="24" count="1" type="stmt"/>
-        <line num="27" count="6" type="stmt"/>
-        <line num="28" count="6" type="stmt"/>
+        <metrics statements="22" coveredstatements="22" conditionals="7" coveredconditionals="7" methods="4" coveredmethods="4"/>
+        <line num="8" count="6" type="stmt"/>
+        <line num="11" count="6" type="stmt"/>
+        <line num="12" count="18" type="stmt"/>
+        <line num="13" count="11" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="19" count="6" type="stmt"/>
+        <line num="20" count="6" type="stmt"/>
+        <line num="21" count="18" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="18" type="stmt"/>
+        <line num="26" count="18" type="stmt"/>
+        <line num="28" count="18" type="stmt"/>
+        <line num="30" count="18" type="cond" truecount="3" falsecount="0"/>
+        <line num="31" count="9" type="stmt"/>
+        <line num="32" count="9" type="stmt"/>
+        <line num="33" count="9" type="stmt"/>
+        <line num="36" count="9" type="cond" truecount="1" falsecount="0"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="41" count="8" type="stmt"/>
+        <line num="42" count="8" type="stmt"/>
+        <line num="46" count="6" type="stmt"/>
+        <line num="47" count="1" type="stmt"/>
       </file>
       <file name="validate.ts" path="/home/runner/work/DeskBuddy/DeskBuddy/apps/api/src/middleware/validate.ts">
         <metrics statements="11" coveredstatements="11" conditionals="1" coveredconditionals="1" methods="3" coveredmethods="3"/>

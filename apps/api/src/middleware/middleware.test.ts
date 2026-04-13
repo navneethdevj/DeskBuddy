@@ -367,6 +367,28 @@ describe('rateLimiter middleware', () => {
     mw(req, makeRes(), next);
     expect(next).toHaveBeenCalledTimes(1);
   });
+
+  it('_resetRateLimiterState clears all tracked state', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('@api/middleware/rateLimiter') as {
+        rateLimiter: typeof rateLimiter;
+        _resetRateLimiterState: () => void;
+      };
+      const mw = mod.rateLimiter(OPTIONS);
+
+      // Exhaust the limit so state is non-empty
+      for (let i = 0; i < OPTIONS.max; i++) {
+        mw(makeReq({ ip: '9.9.9.9' }), makeRes(), jest.fn());
+      }
+
+      // After reset the same IP should be allowed again
+      mod._resetRateLimiterState();
+      const next = jest.fn();
+      mw(makeReq({ ip: '9.9.9.9' }), makeRes(), next);
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

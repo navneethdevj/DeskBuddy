@@ -2,16 +2,19 @@ import { useEffect } from 'react';
 import { useTaskStore } from '@web/stores/taskStore';
 import type { TaskDTO } from '@shared/types';
 import type { TaskStatus } from '@shared/constants';
+import type { UpdateTaskInput } from '@shared/schemas';
 
 interface UseTaskReturn {
   tasks: TaskDTO[];
   isLoading: boolean;
   error: string | null;
   fetchTasks: (workspaceId: string) => Promise<void>;
+  updateTask: (workspaceId: string, taskId: string, data: UpdateTaskInput) => Promise<void>;
+  deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
 }
 
 export const useTask = (workspaceId: string | null): UseTaskReturn => {
-  const { tasks, isLoading, error, fetchTasks } = useTaskStore();
+  const { tasks, isLoading, error, fetchTasks, updateTask, deleteTask } = useTaskStore();
 
   useEffect(() => {
     if (workspaceId) {
@@ -19,7 +22,7 @@ export const useTask = (workspaceId: string | null): UseTaskReturn => {
     }
   }, [workspaceId, fetchTasks]);
 
-  return { tasks, isLoading, error, fetchTasks };
+  return { tasks, isLoading, error, fetchTasks, updateTask, deleteTask };
 };
 
 export type { TaskStatus };

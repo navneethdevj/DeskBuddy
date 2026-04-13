@@ -20,7 +20,9 @@ export const usePresence = (workspaceId: string | null): UsePresenceReturn => {
   useEffect(() => {
     if (!workspaceId || !user) return;
 
-    socket.connect();
+    if (!socket.connected) {
+      socket.connect();
+    }
     socket.emit(SOCKET_EVENTS.JOIN_WORKSPACE, workspaceId);
 
     const handleUserPresence = (users: PresenceUser[]): void => {
@@ -32,6 +34,9 @@ export const usePresence = (workspaceId: string | null): UsePresenceReturn => {
     return (): void => {
       socket.emit(SOCKET_EVENTS.LEAVE_WORKSPACE, workspaceId);
       socket.off(SOCKET_EVENTS.USER_PRESENCE, handleUserPresence);
+      // Disconnect after leaving so we don't accumulate idle connections.
+      // The next workspace mount will reconnect.
+      socket.disconnect();
     };
   }, [workspaceId, user]);
 
