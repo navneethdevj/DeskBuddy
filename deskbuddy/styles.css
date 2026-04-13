@@ -2445,196 +2445,118 @@ body.full-mode::before {
 /* ── THEME: Galaxy (deep-space nebula — default) ─────────────── */
 body.full-mode.theme-galaxy {
   background:
-    radial-gradient(ellipse 82% 54% at 50% 110%, rgba(95, 58, 172, 0.52) 0%, transparent 63%),
-    radial-gradient(ellipse 56% 40% at  6% 20%,  rgba(45, 78, 195, 0.26) 0%, transparent 58%),
-    radial-gradient(ellipse 50% 34% at 94%  8%,  rgba(140, 60, 200, 0.24) 0%, transparent 56%),
-    radial-gradient(ellipse 40% 28% at 80% 62%,  rgba(58, 90, 215, 0.16) 0%, transparent 52%),
-    radial-gradient(ellipse 30% 22% at 22% 72%,  rgba(80, 55, 165, 0.14) 0%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 18% 15%, rgba(220, 222, 255, 0.55) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 55%  8%, rgba(205, 215, 255, 0.50) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 88% 22%, rgba(225, 218, 255, 0.58) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 72% 58%, rgba(200, 210, 255, 0.38) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 32% 73%, rgba(215, 212, 255, 0.45) 0%, transparent 100%),
-    radial-gradient(1px   1px   at  8% 52%, rgba(200, 218, 255, 0.40) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 93% 68%, rgba(210, 215, 255, 0.35) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 46% 88%, rgba(205, 218, 255, 0.42) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 62% 38%, rgba(215, 210, 255, 0.32) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 12% 82%, rgba(200, 215, 255, 0.42) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 76% 14%, rgba(218, 212, 255, 0.48) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 40% 44%, rgba(210, 222, 255, 0.28) 0%, transparent 100%),
-    linear-gradient(168deg, #130b2e 0%, #0c0819 36%, #110a20 64%, #170c2c 100%);
+    /* Nebula core — rich violet-blue centre bloom */
+    radial-gradient(ellipse 80% 52% at 50% 112%, rgba(88, 45, 175, 0.62) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 38% at  4% 18%,  rgba(38, 62, 210, 0.30) 0%, transparent 56%),
+    radial-gradient(ellipse 48% 34% at 96%  7%,  rgba(148, 55, 210, 0.26) 0%, transparent 52%),
+    radial-gradient(ellipse 38% 26% at 78% 60%,  rgba(55, 88, 225, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 28% 20% at 20% 70%,  rgba(75, 48, 170, 0.15) 0%, transparent 46%),
+    /* Static star field — 18 pinpoint stars */
+    radial-gradient(1.6px 1.6px at 17% 14%, rgba(225, 228, 255, 0.58) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 54%  7%, rgba(210, 220, 255, 0.52) 0%, transparent 100%),
+    radial-gradient(2.0px 2.0px at 89% 21%, rgba(230, 222, 255, 0.60) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 70% 56%, rgba(205, 215, 255, 0.40) 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 31% 74%, rgba(218, 215, 255, 0.47) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at  7% 50%, rgba(205, 222, 255, 0.42) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 94% 66%, rgba(215, 218, 255, 0.36) 0%, transparent 100%),
+    radial-gradient(2.0px 2.0px at 45% 87%, rgba(208, 222, 255, 0.44) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 61% 36%, rgba(218, 212, 255, 0.34) 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 11% 80%, rgba(202, 218, 255, 0.44) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 77% 13%, rgba(222, 215, 255, 0.50) 0%, transparent 100%),
+    radial-gradient(2.0px 2.0px at 39% 43%, rgba(215, 225, 255, 0.30) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 24% 32%, rgba(200, 212, 255, 0.36) 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 83% 44%, rgba(215, 210, 255, 0.38) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 58% 62%, rgba(208, 218, 255, 0.30) 0%, transparent 100%),
+    radial-gradient(2.0px 2.0px at  3% 28%, rgba(220, 215, 255, 0.42) 0%, transparent 100%),
+    radial-gradient(1.0px 1.0px at 66% 78%, rgba(205, 215, 255, 0.34) 0%, transparent 100%),
+    /* Base — near-black deep space */
+    linear-gradient(172deg, #0c0720 0%, #080516 38%, #0b081e 65%, #120a28 100%);
 }
 body.full-mode.theme-galaxy::before {
   content: '';
   background:
-    radial-gradient(ellipse 78% 50% at 50% 108%, rgba(105, 68, 188, 0.42) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 34% at  6% 20%,  rgba(52, 88, 210, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 44% 28% at 94%  8%,  rgba(150, 70, 210, 0.16) 0%, transparent 52%),
-    radial-gradient(ellipse 36% 22% at 80% 62%,  rgba(70, 105, 235, 0.12) 0%, transparent 50%);
+    radial-gradient(ellipse 76% 48% at 50% 110%, rgba(108, 65, 195, 0.44) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 32% at  4% 18%,  rgba(48, 75, 225, 0.20) 0%, transparent 52%),
+    radial-gradient(ellipse 42% 26% at 96%  7%,  rgba(158, 68, 225, 0.18) 0%, transparent 50%);
   animation-duration: 11s;
 }
 
 /* ── THEME: Classic (clean flat dark) ───────────────────────── */
 body.full-mode.theme-classic {
   background:
-    radial-gradient(ellipse 100% 55% at 50% 100%, rgba(32, 28, 36, 0.90) 0%, transparent 70%),
+    radial-gradient(ellipse 100% 55% at 50% 100%, rgba(30, 26, 34, 0.90) 0%, transparent 70%),
     #111111;
 }
 
-/* ── THEME: Forest (bioluminescent emerald) ─────────────────── */
+/* ── THEME: Forest (moonlit ancient forest) ─────────────────── */
 body.full-mode.theme-forest {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(22, 92, 38, 0.55) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 36% at  8% 25%,  rgba(18, 80, 40, 0.30) 0%, transparent 55%),
-    radial-gradient(ellipse 44% 28% at 90% 15%,  rgba(35, 110, 55, 0.22) 0%, transparent 52%),
-    radial-gradient(ellipse 38% 24% at 75% 65%,  rgba(15, 70, 35, 0.18) 0%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 22% 18%, rgba(80, 255, 130, 0.55) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 58% 10%, rgba(60, 230, 110, 0.48) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 84% 28%, rgba(100, 255, 150, 0.52) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 14% 55%, rgba(70, 220, 120, 0.38) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 38% 78%, rgba(50, 210, 100, 0.44) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 92% 62%, rgba(90, 240, 140, 0.35) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 65% 40%, rgba(40, 200, 90, 0.30) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 45% 85%, rgba(60, 225, 110, 0.40) 0%, transparent 100%),
-    linear-gradient(165deg, #030d05 0%, #061209 38%, #040c07 68%, #071410 100%);
+    /* Canopy overhead — heavy dark green at top, lighter centre from moonlight */
+    linear-gradient(180deg, #040e06 0%, #071508 18%, #060f07 36%, #0a1a0c 55%, #071209 80%, #050c06 100%),
+    /* Moonlight pool — soft cool glow from above-centre */
+    radial-gradient(ellipse 48% 35% at 50% 0%,    rgba(185, 225, 180, 0.10) 0%, transparent 60%),
+    /* Forest floor warm undertone */
+    radial-gradient(ellipse 80% 32% at 50% 100%,  rgba(22,  58,  18, 0.72) 0%, transparent 55%),
+    /* Side depth shadows */
+    radial-gradient(ellipse 30% 80% at   0% 50%,  rgba( 2,   8,   2, 0.80) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 80% at 100% 50%,  rgba( 2,   8,   2, 0.80) 0%, transparent 55%);
 }
 body.full-mode.theme-forest::before {
   content: '';
   background:
-    radial-gradient(ellipse 72% 48% at 50% 110%, rgba(28, 120, 52, 0.38) 0%, transparent 58%),
-    radial-gradient(ellipse 48% 32% at  8% 25%,  rgba(20, 100, 45, 0.16) 0%, transparent 52%),
-    radial-gradient(ellipse 40% 26% at 90% 15%,  rgba(40, 130, 65, 0.14) 0%, transparent 50%);
-  animation-duration: 9s;
+    radial-gradient(ellipse 52% 38% at 50%  2%,  rgba(190, 230, 188, 0.07) 0%, transparent 58%),
+    radial-gradient(ellipse 40% 28% at 22% 40%,  rgba(30, 100, 40, 0.05)   0%, transparent 48%),
+    radial-gradient(ellipse 36% 22% at 78% 35%,  rgba(28,  88, 38, 0.05)   0%, transparent 46%);
+  animation-duration: 10s;
 }
 
 /* ── THEME: Ocean (deep underwater) ─────────────────────────── */
 body.full-mode.theme-ocean {
   background:
-    radial-gradient(ellipse 76% 52% at 50% 115%, rgba(18, 72, 130, 0.58) 0%, transparent 62%),
-    radial-gradient(ellipse 52% 36% at  5% 22%,  rgba(12, 80, 115, 0.28) 0%, transparent 56%),
-    radial-gradient(ellipse 46% 30% at 92% 12%,  rgba(22, 95, 145, 0.24) 0%, transparent 54%),
-    radial-gradient(ellipse 40% 26% at 78% 68%,  rgba(10, 62, 108, 0.18) 0%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 20% 20%, rgba(100, 220, 255, 0.52) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 60% 12%, rgba(80, 200, 245, 0.46) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 86% 25%, rgba(120, 230, 255, 0.50) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 12% 58%, rgba(90, 210, 250, 0.36) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 40% 80%, rgba(70, 195, 240, 0.42) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 94% 65%, rgba(110, 225, 255, 0.32) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 67% 45%, rgba(60, 185, 235, 0.28) 0%, transparent 100%),
-    linear-gradient(170deg, #020810 0%, #030f18 38%, #021018 68%, #041220 100%);
+    /* Surface-light gradient — brightens toward top (light from above water) */
+    linear-gradient(180deg,
+      #042030 0%,   /* near-surface — lighter teal */
+      #031825 18%,
+      #021220 38%,
+      #020c18 58%,
+      #010810 80%,
+      #010609 100%  /* deep seafloor — near-black blue */
+    ),
+    /* Ambient side glow — bioluminescence feel */
+    radial-gradient(ellipse 35% 60% at   0% 60%,  rgba(10,  80, 130, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 35% 60% at 100% 55%,  rgba( 8,  70, 120, 0.25) 0%, transparent 52%),
+    /* Surface shimmer at very top */
+    radial-gradient(ellipse 100% 15% at 50%  0%,  rgba(62, 155, 210, 0.18) 0%, transparent 70%);
 }
 body.full-mode.theme-ocean::before {
   content: '';
   background:
-    radial-gradient(ellipse 74% 48% at 50% 112%, rgba(22, 95, 165, 0.36) 0%, transparent 58%),
-    radial-gradient(ellipse 50% 32% at  5% 22%,  rgba(15, 88, 138, 0.14) 0%, transparent 52%),
-    radial-gradient(ellipse 42% 28% at 92% 12%,  rgba(28, 108, 170, 0.12) 0%, transparent 50%);
-  animation-duration: 13s;
-}
-
-/* ── THEME: Sunset (golden hour) ────────────────────────────── */
-body.full-mode.theme-sunset {
-  background:
-    radial-gradient(ellipse 80% 56% at 50% 120%, rgba(185, 75, 20, 0.58) 0%, transparent 62%),
-    radial-gradient(ellipse 54% 38% at  0% 30%,  rgba(200, 100, 15, 0.30) 0%, transparent 56%),
-    radial-gradient(ellipse 48% 32% at 100% 15%,  rgba(165, 55, 35, 0.26) 0%, transparent 54%),
-    radial-gradient(ellipse 36% 24% at 70% 70%,  rgba(140, 40, 50, 0.18) 0%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 16% 20%, rgba(255, 200, 100, 0.58) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 52% 10%, rgba(255, 180, 80, 0.52) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 85% 28%, rgba(255, 210, 120, 0.56) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 10% 55%, rgba(255, 160, 70, 0.38) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 36% 76%, rgba(255, 175, 90, 0.44) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 90% 62%, rgba(255, 205, 110, 0.34) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 62% 42%, rgba(255, 155, 65, 0.28) 0%, transparent 100%),
-    linear-gradient(168deg, #160604 0%, #220d03 36%, #1c0805 65%, #2a1004 100%);
-}
-body.full-mode.theme-sunset::before {
-  content: '';
-  background:
-    radial-gradient(ellipse 76% 50% at 50% 118%, rgba(210, 90, 28, 0.40) 0%, transparent 58%),
-    radial-gradient(ellipse 52% 34% at  0% 30%,  rgba(220, 110, 20, 0.16) 0%, transparent 52%),
-    radial-gradient(ellipse 44% 28% at 100% 15%, rgba(180, 65, 40, 0.14) 0%, transparent 50%);
-  animation-duration: 8s;
-}
-
-/* ── THEME: Aurora (northern lights) ───────────────────────── */
-body.full-mode.theme-aurora {
-  background:
-    radial-gradient(ellipse 88% 45% at 50%  0%,  rgba(20, 145, 130, 0.50) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 35% at 15% 20%,  rgba(12, 115, 100, 0.28) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 30% at 85% 18%,  rgba(65, 35, 145, 0.26) 0%, transparent 52%),
-    radial-gradient(ellipse 42% 25% at 65% 60%,  rgba(18, 130, 115, 0.16) 0%, transparent 50%),
-    radial-gradient(ellipse 36% 22% at 30% 72%,  rgba(50, 30, 120, 0.14) 0%, transparent 48%),
-    radial-gradient(1.5px 1.5px at 25% 15%, rgba(100, 255, 230, 0.55) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 62%  8%, rgba(80, 240, 215, 0.48) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 90% 20%, rgba(120, 255, 240, 0.52) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 10% 50%, rgba(90, 245, 220, 0.36) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 42% 78%, rgba(140, 100, 255, 0.40) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 88% 65%, rgba(70, 235, 210, 0.32) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 55% 42%, rgba(110, 75, 245, 0.28) 0%, transparent 100%),
-    linear-gradient(168deg, #010a09 0%, #030f0d 38%, #050c14 65%, #040b0d 100%);
-}
-body.full-mode.theme-aurora::before {
-  content: '';
-  background:
-    radial-gradient(ellipse 84% 42% at 50%  0%,  rgba(25, 165, 148, 0.36) 0%, transparent 56%),
-    radial-gradient(ellipse 58% 32% at 15% 20%,  rgba(15, 138, 122, 0.14) 0%, transparent 52%),
-    radial-gradient(ellipse 48% 28% at 85% 18%,  rgba(78, 42, 168, 0.12) 0%, transparent 50%);
+    radial-gradient(ellipse 68% 22% at 50%  0%,  rgba(75, 175, 235, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 20% 40%,  rgba(15,  88, 148, 0.08) 0%, transparent 48%),
+    radial-gradient(ellipse 36% 26% at 80% 36%,  rgba(12,  80, 138, 0.07) 0%, transparent 46%);
   animation-duration: 14s;
 }
 
-/* ── THEME: Cherry (sakura midnight) ───────────────────────── */
+/* ── THEME: Cherry / Sakura (night-time blossom) ────────────── */
 body.full-mode.theme-cherry {
   background:
-    radial-gradient(ellipse 78% 52% at 50% 112%, rgba(165, 30, 80, 0.52) 0%, transparent 62%),
-    radial-gradient(ellipse 52% 36% at  5% 25%,  rgba(145, 22, 72, 0.28) 0%, transparent 56%),
-    radial-gradient(ellipse 46% 30% at 94% 12%,  rgba(125, 20, 60, 0.24) 0%, transparent 54%),
-    radial-gradient(ellipse 36% 22% at 72% 65%,  rgba(110, 15, 55, 0.16) 0%, transparent 50%),
-    radial-gradient(1.5px 1.5px at 20% 18%, rgba(255, 175, 215, 0.58) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 58% 10%, rgba(255, 155, 200, 0.50) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 88% 25%, rgba(255, 185, 220, 0.54) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 12% 56%, rgba(255, 165, 208, 0.36) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 38% 80%, rgba(255, 170, 212, 0.42) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 92% 64%, rgba(255, 180, 218, 0.32) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 64% 40%, rgba(245, 150, 195, 0.28) 0%, transparent 100%),
-    linear-gradient(168deg, #0d0208 0%, #120308 38%, #0e030a 66%, #160408 100%);
+    /* Night sky gradient — dark blue-purple top, warm deep rose at base */
+    linear-gradient(180deg, #090512 0%, #0e0618 22%, #130818 45%, #160a1a 65%, #120610 85%, #0d040e 100%),
+    /* Moonlit warm bloom in upper-right */
+    radial-gradient(ellipse 42% 36% at 75% 5%,   rgba(255, 235, 255, 0.12) 0%, transparent 60%),
+    /* Ground-level warm petal glow */
+    radial-gradient(ellipse 90% 28% at 50% 100%,  rgba(160,  42,  95, 0.32) 0%, transparent 55%),
+    /* Depth side shadows */
+    radial-gradient(ellipse 28% 80% at   0% 50%,  rgba( 8,   2,  12, 0.75) 0%, transparent 52%),
+    radial-gradient(ellipse 28% 80% at 100% 50%,  rgba( 8,   2,  12, 0.75) 0%, transparent 52%);
 }
 body.full-mode.theme-cherry::before {
   content: '';
   background:
-    radial-gradient(ellipse 74% 50% at 50% 110%, rgba(190, 38, 95, 0.38) 0%, transparent 58%),
-    radial-gradient(ellipse 50% 32% at  5% 25%,  rgba(165, 28, 82, 0.14) 0%, transparent 52%),
-    radial-gradient(ellipse 44% 26% at 94% 12%,  rgba(140, 22, 68, 0.12) 0%, transparent 50%);
+    radial-gradient(ellipse 44% 32% at 74%  5%,  rgba(255, 235, 255, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 38% 22% at 22% 32%,  rgba(185,  55, 115, 0.05) 0%, transparent 48%),
+    radial-gradient(ellipse 34% 18% at 78% 28%,  rgba(165,  45, 100, 0.05) 0%, transparent 46%);
   animation-duration: 10s;
-}
-
-/* ── THEME: Midnight (ultra-deep constellation) ─────────────── */
-body.full-mode.theme-midnight {
-  background:
-    radial-gradient(ellipse 64% 40% at 50% 108%, rgba(20, 25, 80, 0.45) 0%, transparent 60%),
-    radial-gradient(ellipse 46% 30% at  8% 20%,  rgba(15, 20, 65, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 26% at 92% 10%,  rgba(22, 28, 90, 0.20) 0%, transparent 52%),
-    radial-gradient(1.5px 1.5px at 12% 12%, rgba(210, 218, 255, 0.62) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 28% 22%, rgba(195, 205, 255, 0.52) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 52%  7%, rgba(220, 225, 255, 0.68) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 74% 15%, rgba(200, 210, 255, 0.55) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 88% 30%, rgba(215, 220, 255, 0.60) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 96% 52%, rgba(190, 202, 255, 0.45) 0%, transparent 100%),
-    radial-gradient(2px   2px   at 82% 68%, rgba(205, 215, 255, 0.50) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 62% 78%, rgba(195, 208, 255, 0.42) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 44% 88%, rgba(210, 218, 255, 0.48) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 20% 72%, rgba(200, 212, 255, 0.38) 0%, transparent 100%),
-    radial-gradient(2px   2px   at  6% 40%, rgba(215, 222, 255, 0.44) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 35% 50%, rgba(192, 205, 255, 0.30) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 70% 35%, rgba(208, 218, 255, 0.36) 0%, transparent 100%),
-    linear-gradient(175deg, #010206 0%, #020309 36%, #010207 65%, #030414 100%);
-}
-body.full-mode.theme-midnight::before {
-  content: '';
-  background:
-    radial-gradient(ellipse 60% 38% at 50% 106%, rgba(25, 32, 100, 0.32) 0%, transparent 58%),
-    radial-gradient(ellipse 44% 28% at  8% 20%,  rgba(18, 24, 80, 0.12) 0%, transparent 52%);
-  animation-duration: 16s;
 }
 
 /* Show full-mode collapse button, hide compact controls */

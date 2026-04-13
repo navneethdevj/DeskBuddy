@@ -8,184 +8,362 @@
 const ThemeCanvas = (() => {
   let _canvas = null, _ctx = null, _animId = null;
   let _particles = [], _active = false, _paused = false, _theme = 'galaxy';
+  let _frame = 0;
+  let _stars = [];  // shared star array (galaxy + future themes)
 
-  // ── Per-theme particle factories ──────────────────────────────────────────
+  function _initStars(W, H, count) {
+    _stars = Array.from({ length: count }, () => ({
+      x: Math.random() * W, y: Math.random() * H * 0.88,
+      r: 0.3 + Math.random() * 1.5,
+      alpha: 0.25 + Math.random() * 0.70,
+      twinklePhase: Math.random() * Math.PI * 2,
+      twinkleSpd:   0.010 + Math.random() * 0.028,
+    }));
+  }
+
+  // ── Branch builder shared by forest & cherry ────────────────────────────────
+  function _buildBranches(W, H, seeds) {
+    const out = [];
+    function grow(x, y, angle, length, width, depth) {
+      if (depth <= 0 || length < 5) return;
+      const ex = x + Math.cos(angle) * length;
+      const ey = y + Math.sin(angle) * length;
+      out.push({ x1: x, y1: y, x2: ex, y2: ey, w: width });
+      const sp = 0.28 + Math.random() * 0.30;
+      grow(ex, ey, angle - sp,         length * 0.68, width * 0.64, depth - 1);
+      grow(ex, ey, angle + sp * 0.85,  length * 0.65, width * 0.60, depth - 1);
+      if (depth > 2) grow(ex, ey, angle - sp * 0.3, length * 0.52, width * 0.48, depth - 2);
+    }
+    seeds.forEach(s => grow(s.x, s.y, s.angle, s.len, s.w, s.depth));
+    return out;
+  }
+
+  // ── Per-theme configs ────────────────────────────────────────────────────────
   const CFG = {
+    // ── Galaxy ──────────────────────────────────────────────────────────────
     galaxy: {
-      max: 7, rate: 0.04,
+      max: 4, rate: 0.022,
+      _nebulae: null,
+      init(W, H) {
+        _initStars(W, H, 130);
+        this._nebulae = [
+          { x: W * 0.14, y: H * 0.22, rx: W * 0.24, ry: H * 0.14, hue: 258, spd: 0.0025 },
+          { x: W * 0.80, y: H * 0.16, rx: W * 0.20, ry: H * 0.11, hue: 198, spd: 0.0032 },
+          { x: W * 0.50, y: H * 0.55, rx: W * 0.32, ry: H * 0.20, hue: 295, spd: 0.0018 },
+          { x: W * 0.28, y: H * 0.72, rx: W * 0.18, ry: H * 0.09, hue: 230, spd: 0.0028 },
+        ];
+      },
+      drawBackground(ctx, W, H) {
+        // Twinkling stars
+        _stars.forEach(s => {
+          s.twinklePhase += s.twinkleSpd;
+          const a = s.alpha * (0.45 + 0.55 * Math.sin(s.twinklePhase));
+          ctx.save();
+          ctx.globalAlpha = a;
+          if (s.r > 1.1) {  // cross-flare on bright stars
+            ctx.strokeStyle = `rgba(218, 224, 255, ${a * 0.55})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(s.x - s.r * 2.8, s.y); ctx.lineTo(s.x + s.r * 2.8, s.y); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y - s.r * 2.8); ctx.lineTo(s.x, s.y + s.r * 2.8); ctx.stroke();
+          }
+          ctx.fillStyle = 'rgba(222, 226, 255, 1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        });
+        // Nebula soft glow blobs
+        const t = _frame;
+        this._nebulae.forEach(n => {
+          const pulse = 0.038 + 0.014 * Math.sin(t * n.spd);
+          const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.rx);
+          g.addColorStop(0,   `hsla(${n.hue},72%,55%,${pulse * 1.6})`);
+          g.addColorStop(0.4, `hsla(${n.hue+18},65%,48%,${pulse * 0.7})`);
+          g.addColorStop(1,   `hsla(${n.hue},58%,38%,0)`);
+          ctx.save();
+          ctx.scale(1, n.ry / n.rx);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y * (n.rx / n.ry), n.rx, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      },
       create(W, H) {
-        return { x: Math.random() * W * 0.8, y: Math.random() * H * 0.4 - H * 0.05,
-          vx: 2.5 + Math.random() * 2, vy: 1.5 + Math.random() * 1.5,
-          len: 80 + Math.random() * 80, alpha: 0, maxAlpha: 0.55 + Math.random() * 0.3,
-          life: 0, maxLife: 60 + Math.random() * 80 };
+        return {
+          x: Math.random() * W * 0.8, y: Math.random() * H * 0.38 - H * 0.05,
+          vx: 2.8 + Math.random() * 3, vy: 1.8 + Math.random() * 2,
+          len: 85 + Math.random() * 80, alpha: 0, maxAlpha: 0.7 + Math.random() * 0.25,
+          life: 0, maxLife: 48 + Math.random() * 65,
+        };
       },
       draw(ctx, p) {
         const d = Math.hypot(p.vx, p.vy);
         const tx = p.x - (p.vx / d) * p.len, ty = p.y - (p.vy / d) * p.len;
         const g = ctx.createLinearGradient(p.x, p.y, tx, ty);
-        g.addColorStop(0, `rgba(255,255,255,${p.alpha})`);
-        g.addColorStop(1, `rgba(160,180,255,0)`);
-        ctx.save(); ctx.strokeStyle = g; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke(); ctx.restore();
+        g.addColorStop(0,   `rgba(255,255,255,${p.alpha})`);
+        g.addColorStop(0.3, `rgba(185,200,255,${p.alpha * 0.5})`);
+        g.addColorStop(1,   `rgba(140,165,255,0)`);
+        ctx.save(); ctx.strokeStyle = g; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke();
+        ctx.restore();
       },
       update(p, W, H) {
         p.x += p.vx; p.y += p.vy; p.life++;
-        p.alpha = p.life < 15 ? (p.life / 15) * p.maxAlpha
-          : p.life > p.maxLife - 20 ? Math.max(0, p.alpha - p.maxAlpha / 20) : p.maxAlpha;
+        p.alpha = p.life < 10 ? (p.life / 10) * p.maxAlpha
+          : p.life > p.maxLife - 14 ? Math.max(0, p.alpha - p.maxAlpha / 14)
+          : p.maxAlpha;
         return p.life < p.maxLife && p.x < W + p.len && p.y < H + p.len;
-      }
+      },
     },
+
+    // ── Forest ──────────────────────────────────────────────────────────────
     forest: {
-      max: 22, rate: 0.07,
+      max: 22, rate: 0.065,
+      _branches: null,
+      init(W, H) {
+        _stars = [];
+        this._branches = _buildBranches(W, H, [
+          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.18, len: H * 0.40, w: 7.5, depth: 7 },
+          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.20, len: H * 0.38, w: 7,   depth: 7 },
+          { x: -W * 0.01, y: H * 0.28, angle:  0.08,                len: W * 0.24, w: 5,   depth: 5 },
+          { x:  W * 1.01, y: H * 0.22, angle:  Math.PI - 0.12,      len: W * 0.22, w: 4.5, depth: 5 },
+        ]);
+      },
+      drawBackground(ctx, W, H) {
+        // Soft moonlight shaft from top-center
+        const cg = ctx.createRadialGradient(W / 2, -H * 0.05, 0, W / 2, H * 0.9, W * 0.55);
+        cg.addColorStop(0,   'rgba(205, 235, 190, 0.075)');
+        cg.addColorStop(0.45,'rgba(160, 210, 145, 0.030)');
+        cg.addColorStop(1,   'rgba(80,  150,  70, 0)');
+        ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
+        // Firefly-like speckles deep in the canopy
+        const t = _frame * 0.018;
+        for (let i = 0; i < 18; i++) {
+          const fx = W * ((i * 0.137 + Math.sin(t + i) * 0.04 + 1) % 1);
+          const fy = H * 0.12 + H * 0.4 * ((i * 0.211 + Math.cos(t * 0.7 + i) * 0.03 + 1) % 1);
+          const fa = 0.12 + 0.08 * Math.sin(t * 1.4 + i * 1.7);
+          const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 4);
+          fg.addColorStop(0, `rgba(145, 255, 145, ${fa * 1.8})`);
+          fg.addColorStop(1, 'rgba(80, 200, 80, 0)');
+          ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
+        }
+        // Branch silhouettes
+        const b = this._branches;
+        if (!b) return;
+        ctx.save();
+        b.forEach(seg => {
+          ctx.strokeStyle = 'rgba(4, 10, 2, 0.92)';
+          ctx.lineWidth = seg.w; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+        });
+        ctx.restore();
+      },
       create(W) {
-        return { x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 50,
-          vx: -0.8 + Math.random() * 1.6, vy: 0.8 + Math.random() * 1.2,
+        return {
+          x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 50,
+          vx: -0.9 + Math.random() * 1.8, vy: 0.7 + Math.random() * 1.3,
           rot: Math.random() * Math.PI * 2, rotV: -0.03 + Math.random() * 0.06,
-          sz: 5 + Math.random() * 7, alpha: 0.5 + Math.random() * 0.4,
-          sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.4,
-          swSpd: 0.018 + Math.random() * 0.018,
-          col: `hsl(${100 + Math.random() * 65},${58 + Math.random() * 28}%,${26 + Math.random() * 18}%)` };
+          sz: 4 + Math.random() * 8, alpha: 0.48 + Math.random() * 0.42,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.7 + Math.random() * 1.5,
+          swSpd: 0.016 + Math.random() * 0.020,
+          col: `hsl(${98 + Math.random() * 60},${52 + Math.random() * 30}%,${20 + Math.random() * 20}%)`,
+        };
       },
       draw(ctx, p) {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
         ctx.beginPath();
         ctx.moveTo(0, -p.sz);
-        ctx.bezierCurveTo(p.sz * 0.6, -p.sz * 0.5, p.sz * 0.6, p.sz * 0.5, 0, p.sz);
-        ctx.bezierCurveTo(-p.sz * 0.6, p.sz * 0.5, -p.sz * 0.6, -p.sz * 0.5, 0, -p.sz);
+        ctx.bezierCurveTo( p.sz * 0.6, -p.sz * 0.5,  p.sz * 0.6,  p.sz * 0.5, 0, p.sz);
+        ctx.bezierCurveTo(-p.sz * 0.6,  p.sz * 0.5, -p.sz * 0.6, -p.sz * 0.5, 0, -p.sz);
         ctx.fill(); ctx.restore();
       },
       update(p, W, H) {
         p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; p.rot += p.rotV; return p.y < H + 30;
-      }
+        p.y += p.vy; p.rot += p.rotV; return p.y < H + 40;
+      },
     },
+
+    // ── Cherry / Sakura ─────────────────────────────────────────────────────
     cherry: {
-      max: 28, rate: 0.09,
+      max: 32, rate: 0.09,
+      _branches: null,
+      init(W, H) {
+        _stars = [];
+        this._branches = _buildBranches(W, H, [
+          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.25, len: H * 0.46, w: 8.5, depth: 8 },
+          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.28, len: H * 0.43, w: 8,   depth: 8 },
+          { x:  W * 0.26, y: H * 0.90, angle: -Math.PI / 2 + 0.08, len: H * 0.28, w: 5.5, depth: 6 },
+          { x: -W * 0.01, y: H * 0.32, angle:  0.10,                len: W * 0.18, w: 4,   depth: 4 },
+          { x:  W * 1.01, y: H * 0.26, angle:  Math.PI - 0.14,      len: W * 0.16, w: 3.5, depth: 4 },
+        ]);
+      },
+      drawBackground(ctx, W, H) {
+        // Moon glow (upper-right)
+        const mx = W * 0.74, my = H * 0.11;
+        const mg = ctx.createRadialGradient(mx, my, 0, mx, my, W * 0.22);
+        mg.addColorStop(0,   'rgba(255, 240, 255, 0.26)');
+        mg.addColorStop(0.28,'rgba(245, 210, 248, 0.11)');
+        mg.addColorStop(1,   'rgba(210, 165, 230, 0)');
+        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
+        // Soft ground-level petal glow
+        const gg = ctx.createLinearGradient(0, H * 0.80, 0, H);
+        gg.addColorStop(0, 'rgba(220, 100, 160, 0)');
+        gg.addColorStop(1, 'rgba(180,  60, 120, 0.08)');
+        ctx.fillStyle = gg; ctx.fillRect(0, H * 0.80, W, H * 0.20);
+        // Branch silhouettes (near-black reddish)
+        const b = this._branches;
+        if (!b) return;
+        ctx.save();
+        b.forEach(seg => {
+          ctx.strokeStyle = 'rgba(18, 4, 10, 0.90)';
+          ctx.lineWidth = seg.w; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+        });
+        ctx.restore();
+      },
       create(W) {
-        return { x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 80,
-          vx: -0.4 + Math.random() * 1.2, vy: 0.5 + Math.random() * 1.0,
-          rot: Math.random() * Math.PI * 2, rotV: -0.04 + Math.random() * 0.08,
-          sz: 4 + Math.random() * 5, alpha: 0.55 + Math.random() * 0.35,
-          sw: Math.random() * Math.PI * 2, swAmp: 1 + Math.random() * 2,
-          swSpd: 0.014 + Math.random() * 0.018,
-          col: `hsl(${338 + Math.random() * 28},${68 + Math.random() * 22}%,${70 + Math.random() * 14}%)` };
+        return {
+          x: Math.random() * W * 1.3 - W * 0.15, y: -20 - Math.random() * 80,
+          vx: -0.5 + Math.random() * 1.5, vy: 0.45 + Math.random() * 1.2,
+          rot: Math.random() * Math.PI * 2, rotV: -0.05 + Math.random() * 0.10,
+          sz: 3.5 + Math.random() * 6, alpha: 0.52 + Math.random() * 0.38,
+          sw: Math.random() * Math.PI * 2, swAmp: 1.1 + Math.random() * 2.4,
+          swSpd: 0.013 + Math.random() * 0.020,
+          col: `hsl(${335 + Math.random() * 28},${62 + Math.random() * 24}%,${68 + Math.random() * 16}%)`,
+        };
       },
       draw(ctx, p) {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-p.sz, -p.sz, -p.sz, -p.sz * 2, 0, -p.sz * 2.5);
-        ctx.bezierCurveTo(p.sz, -p.sz * 2, p.sz, -p.sz, 0, 0);
-        ctx.fill(); ctx.restore();
-      },
-      update(p, W, H) {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; p.rot += p.rotV; return p.y < H + 30;
-      }
-    },
-    ocean: {
-      max: 16, rate: 0.05,
-      create(W, H) {
-        return { x: Math.random() * W, y: H + 20,
-          vx: -0.3 + Math.random() * 0.6, vy: -(0.5 + Math.random() * 1.0),
-          r: 3 + Math.random() * 8, alpha: 0.14 + Math.random() * 0.22,
-          sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9,
-          swSpd: 0.018 + Math.random() * 0.02 };
-      },
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        ctx.strokeStyle = 'rgba(140,210,255,0.85)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = 'rgba(180,230,255,0.15)'; ctx.fill(); ctx.restore();
-      },
-      update(p, W, H) {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; return p.y > -30;
-      }
-    },
-    sunset: {
-      max: 20, rate: 0.07,
-      create(W, H) {
-        return { x: W * 0.15 + Math.random() * W * 0.7, y: H * 0.65 + Math.random() * H * 0.35,
-          vx: -0.8 + Math.random() * 1.6, vy: -(0.4 + Math.random() * 1.1),
-          r: 1.5 + Math.random() * 2.5, alpha: 0.55 + Math.random() * 0.35,
-          life: 0, maxLife: 80 + Math.random() * 100,
-          sw: Math.random() * Math.PI * 2, swAmp: 0.3 + Math.random() * 0.7,
-          swSpd: 0.04 + Math.random() * 0.04,
-          hue: 15 + Math.random() * 30 };
-      },
-      draw(ctx, p) {
-        const a = p.alpha * (1 - p.life / p.maxLife);
-        ctx.save();
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
-        g.addColorStop(0, `hsla(${p.hue},100%,65%,${a * 0.7})`);
-        g.addColorStop(1, `hsla(${p.hue},100%,55%,0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = a * 0.9; ctx.fillStyle = 'rgba(255,240,190,0.95)';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.bezierCurveTo(-p.sz, -p.sz, -p.sz, -p.sz * 2.4, 0, -p.sz * 2.9);
+        ctx.bezierCurveTo( p.sz, -p.sz * 2.4,  p.sz, -p.sz, 0, 0);
+        ctx.fill();
         ctx.restore();
       },
       update(p, W, H) {
         p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; p.life++; return p.life < p.maxLife && p.y > -50;
-      }
+        p.y += p.vy; p.rot += p.rotV; return p.y < H + 40;
+      },
     },
-    aurora: {
-      max: 9, rate: 0.025,
+
+    // ── Ocean ───────────────────────────────────────────────────────────────
+    ocean: {
+      max: 24, rate: 0.062,
+      _kelp: null, _caustics: null,
+      init(W, H) {
+        _stars = [];
+        const kCount = 7 + Math.floor(Math.random() * 4);
+        this._kelp = Array.from({ length: kCount }, (_, i) => {
+          const x = ((i + 0.5) / kCount + (Math.random() - 0.5) * 0.12) * W;
+          return {
+            x, segments: 8 + Math.floor(Math.random() * 5),
+            height: H * (0.22 + Math.random() * 0.32),
+            phase: Math.random() * Math.PI * 2,
+            col: `hsl(${142 + Math.random() * 30},${58 + Math.random() * 20}%,${18 + Math.random() * 16}%)`,
+          };
+        });
+        this._caustics = Array.from({ length: 14 }, () => ({
+          x: Math.random() * W, y: H * (0.04 + Math.random() * 0.52),
+          r: 28 + Math.random() * 65,
+          phase: Math.random() * Math.PI * 2, spd: 0.012 + Math.random() * 0.022,
+        }));
+      },
+      drawBackground(ctx, W, H) {
+        // Animated caustic light patches from the surface
+        this._caustics.forEach(c => {
+          c.phase += c.spd;
+          const a = 0.018 + 0.013 * Math.sin(c.phase);
+          const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
+          g.addColorStop(0, `rgba(105, 215, 255, ${a * 2.0})`);
+          g.addColorStop(1, `rgba(55,  155, 215, 0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill();
+        });
+        // Light-shaft gradient from above
+        const sg = ctx.createLinearGradient(W / 2, 0, W / 2, H * 0.65);
+        sg.addColorStop(0, 'rgba(72, 178, 228, 0.09)');
+        sg.addColorStop(1, 'rgba(28,  98, 160, 0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.65);
+        // Kelp / seaweed
+        const kt = _frame * 0.022;
+        ctx.save();
+        this._kelp.forEach(k => {
+          const segH = k.height / k.segments;
+          ctx.strokeStyle = k.col; ctx.lineWidth = 2.8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(k.x, H);
+          for (let i = 1; i <= k.segments; i++) {
+            const fy   = H - segH * i;
+            const sway = Math.sin(kt + k.phase + i * 0.55) * (i * 2.8);
+            ctx.lineTo(k.x + sway, fy);
+          }
+          ctx.globalAlpha = 0.62; ctx.stroke(); ctx.globalAlpha = 1;
+        });
+        ctx.restore();
+        // Sandy seafloor tint
+        const fg = ctx.createLinearGradient(0, H * 0.84, 0, H);
+        fg.addColorStop(0, 'rgba(18, 52, 78, 0)');
+        fg.addColorStop(1, 'rgba(14, 38, 60, 0.65)');
+        ctx.fillStyle = fg; ctx.fillRect(0, H * 0.84, W, H * 0.16);
+      },
       create(W, H) {
-        return { x: Math.random() * W, y: Math.random() * H * 0.55,
-          vx: -0.4 + Math.random() * 0.8, vy: 0.08 + Math.random() * 0.22,
-          wx: 50 + Math.random() * 90, wy: 22 + Math.random() * 40,
-          alpha: 0.07 + Math.random() * 0.11,
-          hue: 155 + Math.random() * 65,
-          life: 0, maxLife: 160 + Math.random() * 100,
-          pulse: Math.random() * Math.PI * 2, pulseSpd: 0.018 + Math.random() * 0.02 };
-      },
-      draw(ctx, p) {
-        const a = p.alpha * (0.65 + 0.35 * Math.sin(p.pulse));
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.wx);
-        g.addColorStop(0, `hsla(${p.hue},80%,62%,${a})`);
-        g.addColorStop(1, `hsla(${p.hue + 28},88%,52%,0)`);
-        ctx.save(); ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, p.wx, p.wy, 0, 0, Math.PI * 2);
-        ctx.fill(); ctx.restore();
-      },
-      update(p, W, H) {
-        p.x += p.vx; p.y += p.vy; p.pulse += p.pulseSpd; p.life++;
-        if (p.life > p.maxLife - 30) p.alpha = Math.max(0, p.alpha - 0.003);
-        return p.life < p.maxLife;
-      }
-    },
-    midnight: {
-      max: 32, rate: 0.11,
-      create(W) {
-        return { x: Math.random() * W * 1.2 - W * 0.1, y: -10 - Math.random() * 50,
-          vx: -0.25 + Math.random() * 0.5, vy: 0.3 + Math.random() * 0.75,
-          r: 1 + Math.random() * 2.2, alpha: 0.38 + Math.random() * 0.45,
-          sw: Math.random() * Math.PI * 2, swAmp: 0.25 + Math.random() * 0.7,
-          swSpd: 0.01 + Math.random() * 0.018 };
+        if (Math.random() < 0.07) {
+          const goRight = Math.random() < 0.5;
+          return {
+            x: goRight ? -55 : W + 55,
+            y: H * 0.14 + Math.random() * H * 0.58,
+            vx: (goRight ? 1 : -1) * (0.55 + Math.random() * 1.0),
+            vy: -0.12 + Math.random() * 0.24,
+            sz: 11 + Math.random() * 20, alpha: 0.22 + Math.random() * 0.18,
+            isFish: true, col: `hsl(${192 + Math.random() * 32},${38 + Math.random() * 22}%,${28 + Math.random() * 22}%)`,
+          };
+        }
+        return {
+          x: Math.random() * W, y: H + 20,
+          vx: -0.3 + Math.random() * 0.6, vy: -(0.48 + Math.random() * 1.3),
+          r: 2 + Math.random() * 9.5, alpha: 0.11 + Math.random() * 0.22,
+          sw: Math.random() * Math.PI * 2, swAmp: 0.3 + Math.random() * 1.0,
+          swSpd: 0.016 + Math.random() * 0.022, isFish: false,
+        };
       },
       draw(ctx, p) {
         ctx.save(); ctx.globalAlpha = p.alpha;
-        ctx.shadowColor = 'rgba(180,200,255,0.5)'; ctx.shadowBlur = 3;
-        ctx.fillStyle = 'rgba(215,225,255,0.92)';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        if (p.isFish) {
+          const dir = p.vx > 0 ? 1 : -1;
+          ctx.fillStyle = p.col;
+          ctx.translate(p.x, p.y); ctx.scale(dir, 1);
+          ctx.beginPath(); ctx.ellipse(0, 0, p.sz, p.sz * 0.40, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(-p.sz * 0.72, 0);
+          ctx.lineTo(-p.sz * 1.40, -p.sz * 0.52);
+          ctx.lineTo(-p.sz * 1.40,  p.sz * 0.52);
+          ctx.closePath(); ctx.fill();
+        } else {
+          ctx.strokeStyle = 'rgba(135, 212, 255, 0.82)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = 'rgba(175, 235, 255, 0.11)'; ctx.fill();
+        }
+        ctx.restore();
       },
       update(p, W, H) {
+        if (p.isFish) { p.x += p.vx; p.y += p.vy; return p.x > -80 && p.x < W + 80; }
         p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; return p.y < H + 30;
-      }
+        p.y += p.vy; return p.y > -32;
+      },
     },
-    classic: null
+
+    classic: null,
   };
 
   function _resize() {
     if (!_canvas) return;
     _canvas.width = window.innerWidth; _canvas.height = window.innerHeight;
+    // Re-initialise per-theme static data (branches, kelp, stars) on resize
+    const cfg = CFG[_theme];
+    if (cfg && cfg.init) cfg.init(_canvas.width, _canvas.height);
   }
 
   function _tick() {
@@ -194,6 +372,10 @@ const ThemeCanvas = (() => {
     _ctx.clearRect(0, 0, W, H);
     const cfg = CFG[_theme];
     if (!cfg || _paused) { _animId = requestAnimationFrame(_tick); return; }
+    _frame++;
+    // Draw the static/animated background layer first (branches, kelp, stars, nebula…)
+    if (cfg.drawBackground) cfg.drawBackground(_ctx, W, H);
+    // Spawn and update particles
     if (_particles.length < cfg.max && Math.random() < cfg.rate)
       _particles.push(cfg.create(W, H));
     _particles = _particles.filter(p => {
@@ -214,7 +396,10 @@ const ThemeCanvas = (() => {
   }
 
   function setTheme(t) {
-    _theme = t || 'galaxy'; _particles = [];
+    _theme = t || 'galaxy'; _particles = []; _frame = 0;
+    // Initialise per-theme static data now that canvas has real dimensions
+    const cfg = CFG[_theme];
+    if (cfg && cfg.init && _canvas) cfg.init(_canvas.width, _canvas.height);
     if (!_active) { _active = true; _animId = requestAnimationFrame(_tick); }
   }
 
@@ -2398,8 +2583,7 @@ const ThemeCanvas = (() => {
     }
 
     // ── Full-screen theme picker ─────────────────────────────────────────
-    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean',
-                           'theme-sunset','theme-aurora','theme-cherry','theme-midnight'];
+    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean','theme-cherry'];
 
     function _applyFullTheme(theme) {
       document.body.classList.remove(...THEME_CLASSES);

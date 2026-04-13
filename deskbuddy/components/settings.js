@@ -53,7 +53,7 @@ const Settings = (() => {
     // ── Anti-cheat ────────────────────────────────────────────────────
     antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
     // ── Buddy appearance ──────────────────────────────────────────────
-    fullTheme:       'galaxy',      // 'galaxy'|'classic'|'forest'|'cherry'|'ocean'|'sunset'|'aurora'|'midnight'
+    fullTheme:       'galaxy',      // 'galaxy'|'classic'|'forest'|'cherry'|'ocean'
     themeParticles:  true,          // canvas particle effects on animated themes
     eyeColor:        'periwinkle',  // 'periwinkle'|'emerald'|'rose'|'amber'|'lavender'|'sky'|'ruby'|'teal'
     eyeGlowColor:    'default',     // 'default'|'emerald'|'rose'|'amber'|'sky'|'ruby'|'white'|'gold'
@@ -86,11 +86,16 @@ const Settings = (() => {
       }
     } catch (e) { /* corrupt data — start with defaults */ }
 
+    // Migrate deprecated theme names to supported ones
+    const VALID_THEMES = new Set(['galaxy', 'classic', 'forest', 'cherry', 'ocean']);
+    if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
+
     // Reconcile with main-process Store (survives localStorage clear)
     if (window.electronAPI?.getSettings) {
       window.electronAPI.getSettings().then(saved => {
         if (!saved) return;
         _current = { ...DEFAULTS, ...saved };
+        if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
         _persist();
         Object.keys(_current).forEach(key => _fire(key, _current[key]));
       }).catch(() => {});
