@@ -3303,6 +3303,22 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
   text-transform: uppercase;
   color: rgba(210, 200, 255, 0.75);
 }
+.hp-anticheat-badge {
+  font-size: 13px;
+  margin-left: 5px;
+  cursor: default;
+  opacity: 0.70;
+  vertical-align: middle;
+  transition: opacity 0.2s;
+}
+.hp-anticheat-badge:hover {
+  opacity: 1.0;
+}
+/* Disabled state for the delete button when anti-cheat is on */
+.hp-select-del-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .hp-close-btn {
   width: 24px;
   height: 24px;

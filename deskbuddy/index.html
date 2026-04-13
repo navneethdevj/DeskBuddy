@@ -197,6 +197,18 @@
             </select>
           </div>
 
+          <!-- Anti-cheat protection -->
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">🛡 Stats protection</div>
+              <div class="settings-row-sublabel">Lock stats — prevent sessions from being deleted to inflate focus scores</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="anti-cheat-toggle">
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+
         </div>
       </div>
       <hr class="settings-divider">
@@ -747,6 +759,7 @@
       <div class="hp-header">
         <div class="hp-header-left">
           <span class="hp-title">Focus Stats</span>
+          <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
         </div>
         <div class="hgraph-pills">
           <button class="hgraph-pill active" data-view="daily">Daily</button>

@@ -50,6 +50,8 @@ const Settings = (() => {
     distractionBudget:      0,   // 0 = unlimited; max distractions allowed per session
     sessionCategory:        'study', // last-used category pre-selects the pill
     weeklyReportLastShown:  '',  // toDateString() of Monday when report was last shown
+    // ── Anti-cheat ────────────────────────────────────────────────────
+    antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
   };
 
   let _current = { ...DEFAULTS };

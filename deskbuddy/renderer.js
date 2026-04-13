@@ -1474,7 +1474,21 @@
       breakAnimToggle.addEventListener('change', () => Settings.set('breakAnimEnabled', breakAnimToggle.checked));
     }
 
+    // Anti-cheat toggle
+    const antiCheatToggle = document.getElementById('anti-cheat-toggle');
+    if (antiCheatToggle) {
+      antiCheatToggle.checked = Settings.get('antiCheatEnabled');
+      antiCheatToggle.addEventListener('change', () => {
+        Settings.set('antiCheatEnabled', antiCheatToggle.checked);
+        if (typeof HistoryPanel !== 'undefined' && HistoryPanel.refresh) HistoryPanel.refresh();
+      });
+    }
+
     // ── Live change listeners ────────────────────────────────────────────
+    Settings.onChange('antiCheatEnabled', (v) => {
+      if (antiCheatToggle) antiCheatToggle.checked = v;
+      if (typeof HistoryPanel !== 'undefined' && HistoryPanel.refresh) HistoryPanel.refresh();
+    });
     Settings.onChange('mutePreset', (v) => {
       Sounds.setMutePreset(v);
       if (muteSelect) muteSelect.value = v;
@@ -1798,6 +1812,10 @@
     const clearHistoryBtn = document.getElementById('clear-history-btn');
     if (clearHistoryBtn) {
       clearHistoryBtn.addEventListener('click', () => {
+        if (Settings.get('antiCheatEnabled')) {
+          _showBackupStatus('🛡 stats protection is ON — turn it off in Session settings to clear history', 'rgba(248,113,113,0.80)');
+          return;
+        }
         const count = Session.getHistory().length;
         if (count === 0) {
           _showBackupStatus('no sessions to clear', 'rgba(200,185,255,0.60)');

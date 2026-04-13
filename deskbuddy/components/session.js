@@ -84,6 +84,13 @@ const Session = (() => {
 
   function _now() { return Date.now(); }
 
+  /** Returns true when the anti-cheat guard is active (deletions are blocked). */
+  function _isAntiCheatEnabled() {
+    return (typeof Settings !== 'undefined' && Settings.get)
+      ? Settings.get('antiCheatEnabled') !== false
+      : true;
+  }
+
   function _setState(newState) {
     const oldState = _state;
     _state = newState;
@@ -673,6 +680,7 @@ const Session = (() => {
    * @returns {boolean} true if a session was removed
    */
   function deleteSession(index) {
+    if (_isAntiCheatEnabled()) return false;
     if (index < 0 || index >= _history.length) return false;
     _history.splice(index, 1);
     _saveToStorage();
@@ -687,6 +695,7 @@ const Session = (() => {
    * @returns {number} count of sessions actually removed
    */
   function deleteSessions(indices) {
+    if (_isAntiCheatEnabled()) return 0;
     const valid = [...new Set(indices)]
       .filter(i => Number.isInteger(i) && i >= 0 && i < _history.length)
       .sort((a, b) => b - a); // remove highest index first to keep lower indices stable
@@ -699,6 +708,7 @@ const Session = (() => {
    * clearHistory() — delete all saved session history from memory and localStorage.
    */
   function clearHistory() {
+    if (_isAntiCheatEnabled()) return;
     _history = [];
     _saveToStorage();
   }
@@ -848,6 +858,7 @@ const Session = (() => {
     clearHistory,
     clearAllCache,
     toggleStarred,
+    isAntiCheatEnabled: () => _isAntiCheatEnabled(),
   };
 
 })();

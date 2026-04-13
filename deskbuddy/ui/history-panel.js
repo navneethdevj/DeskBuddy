@@ -103,6 +103,7 @@ const HistoryPanel = (() => {
     _activeView = 'daily';
 
     _clearSelection();
+    _syncAntiCheatBadge();
     _renderAllViewStats(history);
     _renderStreakRow(history);
     _drawStreakCalendar(history);
@@ -124,6 +125,19 @@ const HistoryPanel = (() => {
 
   function _getHistory() {
     return (typeof Session !== 'undefined') ? Session.getHistory() : [];
+  }
+
+  /** Returns true when anti-cheat is active and deletions should be blocked. */
+  function _isAntiCheatOn() {
+    return (typeof Session !== 'undefined' && Session.isAntiCheatEnabled)
+      ? Session.isAntiCheatEnabled()
+      : true;
+  }
+
+  /** Update the 🛡 badge visibility in the history panel header. */
+  function _syncAntiCheatBadge() {
+    const badge = document.getElementById('hp-anticheat-badge');
+    if (badge) badge.style.display = _isAntiCheatOn() ? '' : 'none';
   }
 
   function _fmtSecs(totalSecs) {
@@ -1093,7 +1107,17 @@ const HistoryPanel = (() => {
     const n = _selectedIndices.size;
     toolbar.style.display = n > 0 ? '' : 'none';
     if (countEl) countEl.textContent = `${n} selected`;
-    if (delBtn)  delBtn.textContent  = `🗑 delete ${n > 1 ? n + ' sessions' : 'session'}`;
+    if (delBtn) {
+      if (_isAntiCheatOn()) {
+        delBtn.textContent  = '🛡 protected';
+        delBtn.disabled     = true;
+        delBtn.title        = 'Stats protection is ON — turn it off in Settings → Session to allow deletions';
+      } else {
+        delBtn.textContent  = `🗑 delete ${n > 1 ? n + ' sessions' : 'session'}`;
+        delBtn.disabled     = false;
+        delBtn.title        = '';
+      }
+    }
   }
 
   function _clearSelection() {
@@ -1114,6 +1138,10 @@ const HistoryPanel = (() => {
 
   function _deleteSelected() {
     if (_selectedIndices.size === 0) return;
+    if (_isAntiCheatOn()) {
+      alert('🛡 Stats protection is ON.\n\nSessions cannot be deleted while protection is enabled — this keeps your focus stats accurate.\n\nTo allow deletions, go to Settings → Session → Stats protection and turn it off.');
+      return;
+    }
     const count = _selectedIndices.size;
     if (!confirm(`Delete ${count} session${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
     if (typeof Session === 'undefined') return;
@@ -1125,6 +1153,7 @@ const HistoryPanel = (() => {
 
   function _refreshPanel() {
     const history = _getHistory();
+    _syncAntiCheatBadge();
     _renderAllViewStats(history);
     _renderStreakRow(history);
     _drawStreakCalendar(history);
@@ -1213,6 +1242,10 @@ const HistoryPanel = (() => {
     switch (action) {
       case 'delete-one': {
         if (_ctxTargetIndex === null) return;
+        if (_isAntiCheatOn()) {
+          alert('🛡 Stats protection is ON.\n\nSessions cannot be deleted while protection is enabled — this keeps your focus stats accurate.\n\nTo allow deletions, go to Settings → Session → Stats protection and turn it off.');
+          return;
+        }
         if (!confirm('Delete this session? This cannot be undone.')) return;
         if (typeof Session !== 'undefined') {
           Session.deleteSession(_ctxTargetIndex);
