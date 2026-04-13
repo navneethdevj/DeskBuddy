@@ -2014,12 +2014,17 @@ const Brain = (() => {
     // 1. Brief overjoyed flash — residual joy spilling out
     _doJoyFlash('overjoyed', 800);
 
-    // 2. After flash: spin + sound + particles + whisper
+    // 2. After flash: wild spin + sound + particles + whisper
     setTimeout(() => {
       const el = Companion.getElement();
       if (el) {
-        el.classList.add('spinning');
-        setTimeout(() => el.classList.remove('spinning'), 700);
+        // Post long-hold: always use spinning-wild for dramatic exit
+        el.classList.add('spinning-wild');
+        // Peak particle burst
+        setTimeout(() => {
+          if (typeof Particles !== 'undefined') Particles.burst('cozy', 8);
+        }, 380);
+        setTimeout(() => el.classList.remove('spinning-wild'), 1020);
       }
       if (typeof Sounds !== 'undefined') Sounds.play('overjoyed_chirp');
       if (typeof Particles !== 'undefined') Particles.burst('cozy', 14);
@@ -2034,7 +2039,7 @@ const Brain = (() => {
     // 3. Enter dazed state — creature is happily blissed out, floating
     setTimeout(() => {
       _dazedUntil = Date.now() + 6500;
-    }, 1500);
+    }, 1800);
   }
 
   // ── IDLE LIFE — spontaneous pet-like behaviors ─────────────────────────────
@@ -2258,15 +2263,25 @@ const Brain = (() => {
         '✦ ✦ ✦ PURE. BLISS. ✦ ✦ ✦',
         '*forgets what gravity is*',
         'this is the best day of my entire life.',
+        '*spins twice and phases through the floor*',
+        '...my little legs. they just go.',
       ];
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 5000);
       if (el) {
-        el.classList.add('spinning-wild');
+        // Phase 3 = spinning-double (60%) or spinning-wild (40%) — absolute chaos
+        const useDouble = Math.random() < 0.60;
+        const spinCls   = useDouble ? 'spinning-double' : 'spinning-wild';
+        const spinDur   = useDouble ? 1240 : 1020;
+        el.classList.add(spinCls);
+        // Mid-spin particle burst
         setTimeout(() => {
-          el.classList.remove('spinning-wild');
+          if (typeof Particles !== 'undefined') Particles.burst('cozy', 10);
+        }, Math.round(spinDur * 0.42));
+        setTimeout(() => {
+          el.classList.remove(spinCls);
           el.classList.add('shiver');
           setTimeout(() => el.classList.remove('shiver'), 450);
-        }, 920);
+        }, spinDur);
       }
       if (typeof Particles !== 'undefined') Particles.burst('cozy', 18);
       if (typeof Sounds !== 'undefined') Sounds.play('love_purr');
@@ -2376,14 +2391,56 @@ const Brain = (() => {
     if (!el) return;
     const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad'];
     if (_blocked.includes(window._lastEmotion)) return;
-    el.classList.add('spinning');
-    const msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*', 'yay~!', '*goes round*'];
-    if (Math.random() < 0.65) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2000);
+
+    // Pick a spin variant: regular (60%), reverse (20%), wild (15%), double (5%)
+    const r = Math.random() * 100;
+    let spinClass, spinDuration, msgs;
+    if (r < 5) {
+      spinClass    = 'spinning-double';
+      spinDuration = 1220;
+      msgs = ['WHEEEEEE~!!', '*spins TWICE*', 'can\'t stop won\'t stop~', '꩜꩜~', '...i have no idea what i\'m doing', '(*≧▽≦) !!!'];
+    } else if (r < 20) {
+      spinClass    = 'spinning-reverse';
+      spinDuration = 870;
+      msgs = ['*spins the wrong way*', 'other direction~', '꩜ ~', 'hehe backward~', '*contrarian spin*', 'wheee~'];
+    } else if (r < 35) {
+      spinClass    = 'spinning-wild';
+      spinDuration = 1020;
+      msgs = ['WHEEE~!!', '*big spin*', '꩜ !!', '*goes absolutely feral*', 'yaaaay~!', '*zooms*'];
+    } else {
+      spinClass    = 'spinning';
+      spinDuration = 840;
+      msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*', 'yay~!', '*goes round*', 'whoa~', '*swirls*'];
+    }
+
+    // Pre-spin excitement shiver (brief anticipation wiggle ~180ms before spin)
+    el.classList.add('shiver');
     setTimeout(() => {
-      el.classList.remove('spinning');
-      // Flash happy right after the spin
-      setTimeout(_doHappyFlash, 100);
-    }, 700);
+      el.classList.remove('shiver');
+
+      // Launch spin
+      el.classList.add(spinClass);
+
+      // Whisper (70% chance)
+      if (Math.random() < 0.70) showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 2200);
+
+      // Particle burst at spin peak (fires ~40% into the animation)
+      const peakDelay = Math.round(spinDuration * 0.38);
+      setTimeout(() => {
+        if (typeof Particles !== 'undefined') Particles.burst('cozy', 5 + Math.floor(Math.random() * 4));
+      }, peakDelay);
+
+      // Flash overjoyed briefly mid-spin (45% chance)
+      if (Math.random() < 0.45) {
+        setTimeout(() => _doJoyFlash('overjoyed', 380), Math.round(spinDuration * 0.30));
+      }
+
+      // Remove spin class + flash happy after landing
+      setTimeout(() => {
+        el.classList.remove(spinClass);
+        setTimeout(_doHappyFlash, 120);
+      }, spinDuration);
+    }, 180);
   }
 
   /**
