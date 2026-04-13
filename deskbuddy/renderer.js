@@ -1205,9 +1205,21 @@
 
     Keybinds.register({
       id: 'toggle-history',
-      label: 'Open / close history',
+      label: 'Open session / history panel',
       defaultKey: 'Ctrl+Shift+H',
-      fn: () => document.getElementById('history-btn')?.click(),
+      fn: () => {
+        const panel = document.getElementById('session-panel');
+        if (panel) {
+          if (panel.classList.contains('sidebar-open')) {
+            panel.classList.remove('sidebar-open');
+            const icon = document.getElementById('sp-icon');
+            if (icon) icon.classList.remove('sp-icon-hidden');
+          } else {
+            const icon = document.getElementById('sp-icon');
+            if (icon) icon.dispatchEvent(new MouseEvent('mouseenter'));
+          }
+        }
+      },
     });
 
     Keybinds.register({
@@ -2505,6 +2517,7 @@
   // Auto-hide session sidebar: hover the brain icon to slide the panel in;
   // leave the panel to slide it away.
   // The brain icon fades out when the panel is open so it doesn't overlap.
+  // History card is embedded inside the panel and refreshes on each open.
 
   function _wireSidebar() {
     const panel = document.getElementById('session-panel');
@@ -2517,6 +2530,11 @@
       if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
       panel.classList.add('sidebar-open');
       if (icon) icon.classList.add('sp-icon-hidden');
+      // Refresh history stats each time the panel opens (deferred one rAF so
+      // layout is complete and canvas clientWidth is valid before drawing).
+      requestAnimationFrame(() => {
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+      });
     }
 
     function _scheduleClose() {
@@ -2549,64 +2567,16 @@
   }
 
   // ── _wireHistorySidebar ───────────────────────────────────────────────────
-  // Click the ◉ button to open/close the history panel.
-  // Panel also closes on Escape or clicking the ✕ button.
-  // Keyboard shortcut: Ctrl+Shift+H (toggles).
-  // Opening the history panel closes the settings panel if open.
+  // History is now embedded inside #session-panel (see _wireSidebar above).
+  // This function only inits HistoryPanel internal event handlers and runs
+  // the one-time weekly report check.
 
   function _wireHistorySidebar() {
-    const panel      = document.getElementById('history-panel');
-    const btn        = document.getElementById('history-btn');
-    const closeBtn   = document.getElementById('hp-close-btn');
-    if (!panel) return;
-
-    let _isOpen = false;
-
-    function _open() {
-      if (_isOpen) return;
-      _isOpen = true;
-
-      // Close settings panel if open
-      const settingsPanel = document.getElementById('settings-panel');
-      if (settingsPanel && settingsPanel.classList.contains('settings-open')) {
-        settingsPanel.classList.remove('settings-open');
-      }
-
-      panel.classList.add('history-panel-visible');
-      if (btn) btn.classList.add('history-panel-open');
-      // Defer refresh by one animation frame so the browser has finished
-      // layout (clientWidth is valid for canvas sizing) before drawing.
-      requestAnimationFrame(() => HistoryPanel.refresh());
-    }
-
-    function _close() {
-      if (!_isOpen) return;
-      _isOpen = false;
-      panel.classList.remove('history-panel-visible');
-      if (btn) btn.classList.remove('history-panel-open');
-    }
-
-    function _toggle() {
-      if (_isOpen) _close(); else _open();
-    }
-
-    // Button click
-    if (btn) btn.addEventListener('click', _toggle);
-
-    // ✕ close button
-    if (closeBtn) closeBtn.addEventListener('click', _close);
-
-    // Escape key
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && _isOpen) _close();
-    });
-
-    // Ctrl+Shift+H is handled via Keybinds.register in _wireKeybinds()
-
-    // Init pill click handlers
+    // Init pill clicks, calendar mode buttons, and context menu inside the
+    // embedded history card.
     HistoryPanel.init();
 
-    // Check for weekly report on each open
+    // Check for weekly report once at startup
     _checkWeeklyReport();
   }
 

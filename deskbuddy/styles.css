@@ -1130,7 +1130,14 @@ body[data-time-period="NIGHT"] .companion {
   color: rgba(255,255,255,0.78); opacity: 0;
   pointer-events: none; text-align: center; white-space: nowrap;
   z-index: 1001;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.55);
+  /* Dark pill background ensures emotion-tinted text is always readable */
+  background: rgba(0, 0, 0, 0.38);
+  border-radius: 20px;
+  padding: 3px 11px 4px;
+  /* Multi-directional dark halo for contrast on any background */
+  text-shadow:
+    0 1px 6px rgba(0,0,0,0.70),
+    0 0 12px rgba(0,0,0,0.50);
 }
 
 /* Session timer — uses CSS vars set dynamically by timer.js */
@@ -3199,115 +3206,13 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
    ===================================================================== */
 
 /* ── History toggle button — top-left, right of gear ─────────────────── */
-#history-btn {
-  position: fixed;
-  top: 14px;
-  left: 56px;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  z-index: 3000;
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  outline: none;
-  -webkit-app-region: no-drag;
-
-  background: rgba(10, 8, 22, 0.55);
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  border: 1px solid rgba(155, 135, 255, 0.18);
-
-  transition:
-    background 0.18s,
-    color      0.18s,
-    border-color 0.18s,
-    transform  0.20s cubic-bezier(0.34, 1.48, 0.64, 1),
-    box-shadow 0.18s;
-
-  box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(155, 135, 255, 0.06) inset;
-}
-body.full-mode #history-btn { display: flex; }
-body.pip-mode  #history-btn { display: none !important; }
-
-.history-btn-glyph {
-  font-size: 16px;
-  color: rgba(175, 160, 255, 0.65);
-  transition: color 0.18s, transform 0.20s;
-  line-height: 1;
-}
-#history-btn:hover {
-  background: rgba(120, 100, 210, 0.22);
-  border-color: rgba(165, 145, 255, 0.35);
-}
-#history-btn:hover .history-btn-glyph {
-  color: rgba(205, 190, 255, 0.92);
-  transform: scale(1.12);
-}
-#history-btn.history-panel-open {
-  background: rgba(139, 118, 255, 0.22);
-  border-color: rgba(167, 139, 250, 0.55);
-  box-shadow:
-    0 0 14px rgba(139, 118, 255, 0.35),
-    0 2px 8px rgba(0, 0, 0, 0.30);
-}
-#history-btn.history-panel-open .history-btn-glyph {
-  color: rgba(220, 205, 255, 0.98);
-}
-#history-btn-ring {
-  position: absolute;
-  inset: -3px;
-  border-radius: 13px;
-  border: 1.5px solid rgba(155, 135, 255, 0.22);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.22s;
-}
-#history-btn:hover #history-btn-ring,
-#history-btn.history-panel-open #history-btn-ring {
-  opacity: 1;
-}
+/* #history-btn removed — history is now embedded in #session-panel */
 
 /* =====================================================================
-   HISTORY PANEL — left-anchored glass panel, V2 spec
+   HISTORY CARD — embedded inside #session-panel (right sidebar)
    ===================================================================== */
 
-@keyframes hp-panel-in {
-  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0)     scale(1);   }
-}
-
-#history-panel {
-  position: fixed;
-  top: 58px;
-  left: 14px;
-  width: 500px;
-  max-height: calc(100vh - 80px);
-  z-index: 2990;
-  display: none;
-  flex-direction: column;
-  pointer-events: none;
-  visibility: hidden;
-  opacity: 0;
-  -webkit-app-region: no-drag;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  transition: opacity 0.18s ease, visibility 0.18s ease;
-}
-body.full-mode #history-panel { display: flex; }
-body.pip-mode  #history-panel { display: none !important; }
-
-#history-panel.history-panel-visible {
-  pointer-events: auto;
-  visibility: visible;
-  opacity: 1;
-  animation: hp-panel-in 0.22s cubic-bezier(0.34, 1.48, 0.64, 1) both;
-}
-
-/* ── Glass card ───────────────────────────────────────────────────── */
+/* ── Glass card (now embedded inside #session-panel) ─────────────── */
 #history-card {
   background: rgba(14, 11, 26, 0.46);
   backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
@@ -3319,11 +3224,6 @@ body.pip-mode  #history-panel { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  max-height: calc(100vh - 80px);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.50),
     0 1px 0 rgba(255, 255, 255, 0.12) inset;
@@ -4085,14 +3985,21 @@ body.pip-mode  #history-panel { display: none !important; }
 #session-panel {
   position: fixed;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%) translateX(calc(100% + 8px)); /* hidden off-screen */
-  width: 200px;
+  top: 10px;
+  bottom: 10px;
+  transform: translateX(calc(100% + 8px)); /* hidden off-screen */
+  width: 460px;
+  max-height: calc(100vh - 20px);
   z-index: 2500;
   display: none;          /* shown only in full-mode */
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
   padding-right: 10px;    /* gap between panel and window edge when open */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   pointer-events: auto;
   -webkit-app-region: no-drag;
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -4103,7 +4010,7 @@ body.pip-mode  #session-panel { display: none !important; }
 
 /* Slide-in when open */
 #session-panel.sidebar-open {
-  transform: translateY(-50%) translateX(0);
+  transform: translateX(0);
 }
 
 /* ── iOS-style frosted glass card ───────────────────────────────────── */
