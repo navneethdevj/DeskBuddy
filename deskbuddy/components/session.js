@@ -714,6 +714,30 @@ const Session = (() => {
   }
 
   /**
+   * hardClearHistory() — absolute complete reset of all session data.
+   *
+   * Unlike clearHistory(), this:
+   *   • bypasses the anti-cheat guard unconditionally
+   *   • wipes the visible session history (_history)
+   *   • resets the stats ledger back to zero (total sessions, focus time, etc.)
+   *   • persists both changes immediately
+   *
+   * Use this when the user explicitly wants a full "start from scratch" reset.
+   */
+  function hardClearHistory() {
+    _history = [];
+    _ledger  = { totalSessions: 0, completedSessions: 0, totalFocusedSecs: 0,
+                 totalSessionSecs: 0, focusScoreSum: 0, focusScoredCount: 0, migrated: true };
+    try { localStorage.removeItem(_STORAGE_KEY); } catch (_) {}
+    try { localStorage.removeItem(_LEDGER_KEY);  } catch (_) {}
+    if (window.electronAPI?.setSettings) {
+      // Notify Electron store too (settings key is separate; only data keys cleared)
+    }
+    _saveToStorage();
+    _saveLedger();
+  }
+
+  /**
    * clearAllCache() — wipe ALL localStorage keys used by DeskBuddy
    * (sessions + settings + any other persisted state).
    * Also resets the stats ledger since this is a full factory reset.
@@ -856,6 +880,7 @@ const Session = (() => {
     deleteSession,
     deleteSessions,
     clearHistory,
+    hardClearHistory,
     clearAllCache,
     toggleStarred,
     isAntiCheatEnabled: () => _isAntiCheatEnabled(),

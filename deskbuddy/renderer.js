@@ -1812,20 +1812,16 @@
     const clearHistoryBtn = document.getElementById('clear-history-btn');
     if (clearHistoryBtn) {
       clearHistoryBtn.addEventListener('click', () => {
-        if (Settings.get('antiCheatEnabled')) {
-          _showBackupStatus('🛡 stats protection is ON — turn it off in Session settings to clear history', 'rgba(248,113,113,0.80)');
-          return;
-        }
         const count = Session.getHistory().length;
         if (count === 0) {
           _showBackupStatus('no sessions to clear', 'rgba(200,185,255,0.60)');
           return;
         }
-        if (!confirm(`Delete all ${count} session${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
-        Session.clearHistory();
+        if (!confirm(`Complete reset: permanently delete all ${count} session${count !== 1 ? 's' : ''} and reset lifetime stats to zero?\n\nThis cannot be undone.`)) return;
+        Session.hardClearHistory();
         _updateExportCount();
         if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
-        _showBackupStatus(`cleared ${count} session${count !== 1 ? 's' : ''} ✓`, 'rgba(248,113,113,0.80)');
+        _showBackupStatus(`cleared ${count} session${count !== 1 ? 's' : ''} + stats reset ✓`, 'rgba(248,113,113,0.80)');
       });
     }
 
