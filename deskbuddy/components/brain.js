@@ -2024,7 +2024,7 @@ const Brain = (() => {
         setTimeout(() => {
           if (typeof Particles !== 'undefined') Particles.burst('cozy', 8);
         }, 380);
-        setTimeout(() => el.classList.remove('spinning-wild'), 1020);
+        setTimeout(() => el.classList.remove('spinning-wild'), 1600);
       }
       if (typeof Sounds !== 'undefined') Sounds.play('overjoyed_chirp');
       if (typeof Particles !== 'undefined') Particles.burst('cozy', 14);
@@ -2237,7 +2237,7 @@ const Brain = (() => {
         if (Math.random() < 0.42) {
           // Wild spin — more dramatic than regular spinning
           el.classList.add('spinning-wild');
-          setTimeout(() => el.classList.remove('spinning-wild'), 920);
+          setTimeout(() => el.classList.remove('spinning-wild'), 1600);
         } else {
           el.classList.add('nuzzling');
           setTimeout(() => el.classList.remove('nuzzling'), 900);
@@ -2271,7 +2271,7 @@ const Brain = (() => {
         // Phase 3 = spinning-double (60%) or spinning-wild (40%) — absolute chaos
         const useDouble = Math.random() < 0.60;
         const spinCls   = useDouble ? 'spinning-double' : 'spinning-wild';
-        const spinDur   = useDouble ? 1240 : 1020;
+        const spinDur   = useDouble ? 2000 : 1600;
         el.classList.add(spinCls);
         // Mid-spin particle burst
         setTimeout(() => {
@@ -2397,19 +2397,19 @@ const Brain = (() => {
     let spinClass, spinDuration, msgs;
     if (r < 5) {
       spinClass    = 'spinning-double';
-      spinDuration = 1220;
+      spinDuration = 2000;
       msgs = ['WHEEEEEE~!!', '*spins TWICE*', 'can\'t stop won\'t stop~', '꩜꩜~', '...i have no idea what i\'m doing', '(*≧▽≦) !!!'];
     } else if (r < 20) {
       spinClass    = 'spinning-reverse';
-      spinDuration = 870;
+      spinDuration = 1350;
       msgs = ['*spins the wrong way*', 'other direction~', '꩜ ~', 'hehe backward~', '*contrarian spin*', 'wheee~'];
     } else if (r < 35) {
       spinClass    = 'spinning-wild';
-      spinDuration = 1020;
+      spinDuration = 1600;
       msgs = ['WHEEE~!!', '*big spin*', '꩜ !!', '*goes absolutely feral*', 'yaaaay~!', '*zooms*'];
     } else {
       spinClass    = 'spinning';
-      spinDuration = 840;
+      spinDuration = 1300;
       msgs = ['wheee~', '*spins*', 'whirl~', '꩜ ~', '*dizzy~*', 'yay~!', '*goes round*', 'whoa~', '*swirls*'];
     }
 
