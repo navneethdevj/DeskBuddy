@@ -1605,14 +1605,14 @@ body[data-time-period="NIGHT"] .companion {
    COZY EMOTION — long-press snuggle; warm half-lidded eyes, rose-gold glow
    ===================================================================== */
 
-/* Cozy eye: soft half-lidded — heavy top eyelid pressed down, peeking through warmly */
+/* Cozy eye: soft half-lidded oval — heavy-lidded warmth, still peeking out (< 1.5 s hold) */
 .companion.cozy .eye {
-  width: 36vmin; height: 16vmin;
-  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  width: 36vmin; height: 22vmin;
+  border-radius: 50%;
   box-shadow:
-    0 0 4vmin rgba(255,145,120,0.70),
-    0 0 12vmin rgba(255,125,100,0.32),
-    0 0 24vmin rgba(255,105, 80,0.14);
+    0 0 4vmin rgba(255,145,120,0.88),
+    0 0 12vmin rgba(255,125,100,0.42),
+    0 0 26vmin rgba(255,105, 80,0.16);
 }
 /* Pupil: slightly dimmed and shifted down behind the drooping lid */
 .companion.cozy .pupil {
@@ -1665,44 +1665,43 @@ body[data-time-period="NIGHT"] .companion {
 
 /* =====================================================================
    BEING PATTED — deep-hold (≥ 1.5 s) pet bliss mode
-   Eyes softly closed from pure enjoyment — cute UwU crescent arc
+   Eyes gently closed from pure enjoyment — adorable UwU crescent
    ===================================================================== */
 
-/* Eyes: UwU closed — transparent background, just a soft curved arc at
-   the bottom like the pet is gently squeezing its eyes shut from love.
-   No fill, no dark gradient — just a warm pink curved line. */
+/* Eyes: UwU closed — the blue eyeball stays, height just squishes to a
+   flat crescent so the eye looks like it's pressing shut from love.
+   No color change, no dark fill — just the regular eye squeezed thin. */
 .companion.being_patted .eye {
-  width: 32vmin;
-  height: 9vmin;
-  background: transparent;
-  border: none;
-  border-bottom: 0.6vmin solid rgba(255, 140, 172, 0.90);
-  border-radius: 0 0 50% 50%;
+  width: 30vmin;
+  height: 6vmin;
+  /* background stays as the default blue eyeball gradient — no override */
+  border-radius: 50% 50% 50% 50% / 0% 0% 100% 100%;
+  overflow: hidden;
   box-shadow:
-    0 2vmin 6vmin  rgba(255, 150, 185, 0.35),
-    0 0    14vmin rgba(255, 120, 160, 0.18);
-  overflow: visible;
+    0 0 5vmin  rgba(255, 140, 175, 0.85),
+    0 0 14vmin rgba(255, 110, 150, 0.45),
+    0 0 28vmin rgba(255,  85, 125, 0.18);
   animation: pattedEyeSqueeze 1.8s ease-in-out infinite;
 }
 
-/* Remove scary eyelash arch */
+/* No scary eyelash arch — keep the closed eye clean */
 .companion.being_patted .eye::before { content: none; }
 
-/* Soft blush-pink shimmer at the arc corner — warmth */
+/* Soft warm shimmer on the closed crescent */
 .companion.being_patted .eye::after {
   background: radial-gradient(
-    ellipse at 80% 60%,
-    rgba(255, 210, 230, 0.70) 0%,
-    rgba(255, 175, 210, 0.35) 35%,
-    transparent 65%
+    ellipse at 60% 35%,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 200, 220, 0.14) 40%,
+    transparent 70%
   );
   animation: pattedEyeShimmer 1.8s ease-in-out infinite;
 }
 
 @keyframes pattedEyeSqueeze {
-  0%, 100% { height: 9vmin;   opacity: 1;    }
-  45%       { height: 7.5vmin; opacity: 0.90; }
-  70%       { height: 9.5vmin; opacity: 1;    }
+  0%, 100% { height: 6vmin;   opacity: 1;    }
+  45%       { height: 5vmin;   opacity: 0.90; }
+  70%       { height: 6.5vmin; opacity: 1;    }
 }
 
 @keyframes pattedEyeShimmer {
@@ -1987,71 +1986,71 @@ body[data-time-period="NIGHT"] .companion {
    The creature JUMPS while spinning — translateY makes it feel alive.
    ===================================================================== */
 .companion.spinning .companion-inner {
-  animation: companionSpin 1.3s cubic-bezier(.25,0,.12,1) forwards !important;
+  animation: companionSpin 0.82s cubic-bezier(.25,0,.12,1) forwards !important;
 }
 @keyframes companionSpin {
   0%   { transform: translateY(0)       translateX(0)    rotate(-8deg)   scaleX(1.06) scaleY(0.95); }  /* anticipation squat    */
-  6%   { transform: translateY(-0.5vh)  translateX(-2px) rotate(-20deg)  scaleX(1.11) scaleY(0.90); }  /* wind-up — gather coil */
-  13%  { transform: translateY(-2.2vh)  translateX( 3px) rotate( 55deg)  scaleX(0.86) scaleY(1.18); }  /* launch — rising       */
-  24%  { transform: translateY(-3.0vh)  translateX(-1px) rotate(165deg)  scaleX(0.80) scaleY(1.22); }  /* peak height — squish  */
-  42%  { transform: translateY(-1.0vh)  translateX( 2px) rotate(285deg)  scaleX(1.04) scaleY(0.97); }  /* descending            */
-  52%  { transform: translateY( 0.5vh)  translateX(0)    rotate(345deg)  scaleX(1.10) scaleY(0.88); }  /* LAND — splat squash   */
-  60%  { transform: translateY(-0.9vh)  translateX(0)    rotate(354deg)  scaleX(0.95) scaleY(1.07); }  /* spring up             */
-  72%  { transform: translateY( 0.15vh) translateX(0)    rotate(359deg)  scaleX(1.02) scaleY(0.98); }  /* settle tap            */
-  84%  { transform: translateY(-0.15vh) translateX(0)    rotate(359.5deg) scaleX(0.99) scaleY(1.01); } /* micro-float           */
+  9%   { transform: translateY(-0.5vh)  translateX(-2px) rotate(-20deg)  scaleX(1.11) scaleY(0.90); }  /* wind-up — gather coil */
+  20%  { transform: translateY(-2.2vh)  translateX( 3px) rotate( 52deg)  scaleX(0.86) scaleY(1.18); }  /* launch — rising fast  */
+  38%  { transform: translateY(-3.0vh)  translateX(-1px) rotate(148deg)  scaleX(0.80) scaleY(1.22); }  /* peak height — squish  */
+  56%  { transform: translateY(-1.0vh)  translateX( 2px) rotate(240deg)  scaleX(1.04) scaleY(0.97); }  /* descending            */
+  68%  { transform: translateY( 0.5vh)  translateX(0)    rotate(340deg)  scaleX(1.10) scaleY(0.88); }  /* LAND — splat squash   */
+  78%  { transform: translateY(-0.9vh)  translateX(0)    rotate(354deg)  scaleX(0.95) scaleY(1.07); }  /* spring up             */
+  88%  { transform: translateY( 0.15vh) translateX(0)    rotate(361deg)  scaleX(1.02) scaleY(0.98); }  /* settle tap            */
+  95%  { transform: translateY(-0.15vh) translateX(0)    rotate(359.5deg) scaleX(0.99) scaleY(1.01); } /* micro-float           */
   100% { transform: translateY(0)       translateX(0)    rotate(360deg)  scaleX(1.00) scaleY(1.00); }  /* done                  */
 }
 
 /* SPIN-WILD — deep-hold cozy spin: huge hop, extreme squash, double-bounce */
 .companion.spinning-wild .companion-inner {
-  animation: companionSpinWild 1.6s cubic-bezier(.22,0,.10,1) forwards !important;
+  animation: companionSpinWild 1.0s cubic-bezier(.22,0,.10,1) forwards !important;
 }
 @keyframes companionSpinWild {
   0%   { transform: translateY(0)       translateX(0)    rotate(-14deg)  scaleX(1.08) scaleY(0.93); }  /* crouch anticipation   */
-  5%   { transform: translateY(-0.8vh)  translateX(-4px) rotate(-30deg)  scaleX(1.15) scaleY(0.86); }  /* BIG wind-up           */
-  11%  { transform: translateY(-4.5vh)  translateX( 5px) rotate( 60deg)  scaleX(0.80) scaleY(1.28); }  /* LAUNCH — sky high     */
-  21%  { transform: translateY(-5.0vh)  translateX(-2px) rotate(175deg)  scaleX(0.74) scaleY(1.34); }  /* apex — max stretch    */
-  38%  { transform: translateY(-1.8vh)  translateX( 3px) rotate(300deg)  scaleX(0.96) scaleY(1.04); }  /* falling fast          */
-  47%  { transform: translateY( 0.8vh)  translateX(0)    rotate(355deg)  scaleX(1.14) scaleY(0.84); }  /* SLAM — pancake land   */
-  55%  { transform: translateY(-1.4vh)  translateX(0)    rotate(352deg)  scaleX(0.91) scaleY(1.12); }  /* first bounce          */
-  64%  { transform: translateY( 0.3vh)  translateX(0)    rotate(360deg)  scaleX(1.05) scaleY(0.94); }  /* second mini-tap       */
-  75%  { transform: translateY(-0.4vh)  translateX(0)    rotate(359deg)  scaleX(0.98) scaleY(1.03); }  /* micro-float           */
-  88%  { transform: translateY( 0.1vh)  translateX(0)    rotate(360.5deg) scaleX(1.01) scaleY(0.99); } /* final micro-settle    */
+  7%   { transform: translateY(-0.8vh)  translateX(-4px) rotate(-30deg)  scaleX(1.15) scaleY(0.86); }  /* BIG wind-up           */
+  18%  { transform: translateY(-4.5vh)  translateX( 5px) rotate( 56deg)  scaleX(0.80) scaleY(1.28); }  /* LAUNCH — sky high     */
+  33%  { transform: translateY(-5.0vh)  translateX(-2px) rotate(150deg)  scaleX(0.74) scaleY(1.34); }  /* apex — max stretch    */
+  50%  { transform: translateY(-1.8vh)  translateX( 3px) rotate(248deg)  scaleX(0.96) scaleY(1.04); }  /* falling fast          */
+  62%  { transform: translateY( 0.8vh)  translateX(0)    rotate(300deg)  scaleX(1.14) scaleY(0.84); }  /* SLAM — pancake land   */
+  72%  { transform: translateY(-1.4vh)  translateX(0)    rotate(352deg)  scaleX(0.91) scaleY(1.12); }  /* first bounce          */
+  81%  { transform: translateY( 0.3vh)  translateX(0)    rotate(364deg)  scaleX(1.05) scaleY(0.94); }  /* second mini-tap       */
+  89%  { transform: translateY(-0.4vh)  translateX(0)    rotate(359deg)  scaleX(0.98) scaleY(1.03); }  /* micro-float           */
+  95%  { transform: translateY( 0.1vh)  translateX(0)    rotate(360.5deg) scaleX(1.01) scaleY(0.99); } /* final micro-settle    */
   100% { transform: translateY(0)       translateX(0)    rotate(360deg)  scaleX(1.00) scaleY(1.00); }  /* done                  */
 }
 
 /* SPIN-DOUBLE — 720° double-spin: creature is absolutely losing it */
 .companion.spinning-double .companion-inner {
-  animation: companionSpinDouble 2.0s cubic-bezier(.20,0,.08,1) forwards !important;
+  animation: companionSpinDouble 1.20s cubic-bezier(.20,0,.08,1) forwards !important;
 }
 @keyframes companionSpinDouble {
   0%   { transform: translateY(0)       translateX(0)    rotate(-18deg)  scaleX(1.08) scaleY(0.92); }  /* mega crouch           */
-  4%   { transform: translateY(-0.9vh)  translateX(-4px) rotate(-34deg)  scaleX(1.16) scaleY(0.85); }  /* explosive wind-up     */
-  10%  { transform: translateY(-5.0vh)  translateX( 6px) rotate( 65deg)  scaleX(0.78) scaleY(1.30); }  /* launch — going HIGH   */
-  18%  { transform: translateY(-5.8vh)  translateX(-2px) rotate(175deg)  scaleX(0.72) scaleY(1.36); }  /* first apex — max air  */
-  27%  { transform: translateY(-4.0vh)  translateX( 3px) rotate(310deg)  scaleX(0.82) scaleY(1.20); }  /* first full rotation!  */
-  38%  { transform: translateY(-2.0vh)  translateX(-2px) rotate(460deg)  scaleX(0.88) scaleY(1.14); }  /* second spin — fast    */
-  48%  { transform: translateY(-0.4vh)  translateX( 2px) rotate(610deg)  scaleX(1.04) scaleY(0.96); }  /* almost landing        */
-  55%  { transform: translateY( 0.9vh)  translateX(0)    rotate(720deg)  scaleX(1.16) scaleY(0.82); }  /* DOUBLE-SLAM land      */
-  63%  { transform: translateY(-1.6vh)  translateX(0)    rotate(703deg)  scaleX(0.90) scaleY(1.13); }  /* big bounce            */
-  72%  { transform: translateY( 0.4vh)  translateX(0)    rotate(715deg)  scaleX(1.05) scaleY(0.94); }  /* second mini-tap       */
+  6%   { transform: translateY(-0.9vh)  translateX(-4px) rotate(-34deg)  scaleX(1.16) scaleY(0.85); }  /* explosive wind-up     */
+  16%  { transform: translateY(-5.0vh)  translateX( 6px) rotate( 60deg)  scaleX(0.78) scaleY(1.30); }  /* launch — going HIGH   */
+  28%  { transform: translateY(-5.8vh)  translateX(-2px) rotate(150deg)  scaleX(0.72) scaleY(1.36); }  /* first apex — max air  */
+  40%  { transform: translateY(-4.0vh)  translateX( 3px) rotate(270deg)  scaleX(0.82) scaleY(1.20); }  /* first full rotation!  */
+  52%  { transform: translateY(-2.0vh)  translateX(-2px) rotate(400deg)  scaleX(0.88) scaleY(1.14); }  /* second spin — fast    */
+  63%  { transform: translateY(-0.4vh)  translateX( 2px) rotate(540deg)  scaleX(1.04) scaleY(0.96); }  /* almost landing        */
+  71%  { transform: translateY( 0.9vh)  translateX(0)    rotate(630deg)  scaleX(1.16) scaleY(0.82); }  /* DOUBLE-SLAM land      */
+  80%  { transform: translateY(-1.6vh)  translateX(0)    rotate(703deg)  scaleX(0.90) scaleY(1.13); }  /* big bounce            */
+  88%  { transform: translateY( 0.4vh)  translateX(0)    rotate(715deg)  scaleX(1.05) scaleY(0.94); }  /* second mini-tap       */
   82%  { transform: translateY(-0.3vh)  translateX(0)    rotate(720deg)  scaleX(0.99) scaleY(1.02); }  /* micro-float           */
   100% { transform: translateY(0)       translateX(0)    rotate(720deg)  scaleX(1.00) scaleY(1.00); }  /* done (720 = identity) */
 }
 
 /* SPIN-REVERSE — spins the opposite way, feels playfully random */
 .companion.spinning-reverse .companion-inner {
-  animation: companionSpinReverse 1.35s cubic-bezier(.25,0,.12,1) forwards !important;
+  animation: companionSpinReverse 0.82s cubic-bezier(.25,0,.12,1) forwards !important;
 }
 @keyframes companionSpinReverse {
   0%   { transform: translateY(0)       translateX(0)    rotate( 8deg)   scaleX(1.06) scaleY(0.95); }  /* lean OTHER way        */
-  6%   { transform: translateY(-0.5vh)  translateX( 2px) rotate( 20deg)  scaleX(1.11) scaleY(0.90); }  /* reverse wind-up       */
-  13%  { transform: translateY(-2.0vh)  translateX(-3px) rotate(-50deg)  scaleX(0.87) scaleY(1.17); }  /* launch backward       */
-  24%  { transform: translateY(-2.8vh)  translateX( 1px) rotate(-175deg) scaleX(0.81) scaleY(1.21); }  /* peak — reverse squish */
-  42%  { transform: translateY(-0.9vh)  translateX(-2px) rotate(-300deg) scaleX(1.04) scaleY(0.97); }  /* descending            */
-  52%  { transform: translateY( 0.5vh)  translateX(0)    rotate(-350deg) scaleX(1.09) scaleY(0.89); }  /* land squash           */
-  60%  { transform: translateY(-0.8vh)  translateX(0)    rotate(-354deg) scaleX(0.95) scaleY(1.06); }  /* spring                */
-  74%  { transform: translateY( 0.1vh)  translateX(0)    rotate(-360deg) scaleX(1.01) scaleY(0.99); }  /* settle                */
+  9%   { transform: translateY(-0.5vh)  translateX( 2px) rotate( 20deg)  scaleX(1.11) scaleY(0.90); }  /* reverse wind-up       */
+  20%  { transform: translateY(-2.0vh)  translateX(-3px) rotate(-38deg)  scaleX(0.87) scaleY(1.17); }  /* launch backward       */
+  38%  { transform: translateY(-2.8vh)  translateX( 1px) rotate(-148deg) scaleX(0.81) scaleY(1.21); }  /* peak — reverse squish */
+  56%  { transform: translateY(-0.9vh)  translateX(-2px) rotate(-248deg) scaleX(1.04) scaleY(0.97); }  /* descending            */
+  68%  { transform: translateY( 0.5vh)  translateX(0)    rotate(-330deg) scaleX(1.09) scaleY(0.89); }  /* land squash           */
+  78%  { transform: translateY(-0.8vh)  translateX(0)    rotate(-354deg) scaleX(0.95) scaleY(1.06); }  /* spring                */
+  88%  { transform: translateY( 0.1vh)  translateX(0)    rotate(-360deg) scaleX(1.01) scaleY(0.99); }  /* settle                */
   100% { transform: translateY(0)       translateX(0)    rotate(-360deg) scaleX(1.00) scaleY(1.00); }  /* done (-360 = identity)*/
 }
 
@@ -3231,14 +3230,122 @@ body[data-timer-state="CRITICAL"] #sp-icon-ring {
    HISTORY BUTTON — right-side icon, below brain icon
    ===================================================================== */
 
-/* ── History toggle button — top-left, right of gear ─────────────────── */
-/* #history-btn removed — history is now embedded in #session-panel */
+/* ── History icon button — same glass style as sp-icon, positioned below ─ */
+#hp-icon {
+  position: fixed;
+  right: 10px;
+  top: calc(50% + 50px);
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  z-index: 2495;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+
+  background: rgba(22, 18, 40, 0.72);
+  backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  -webkit-backdrop-filter: blur(40px) saturate(2.0) brightness(1.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.20);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.20);
+
+  transition:
+    opacity       0.30s ease,
+    transform     0.30s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow    0.22s ease;
+
+  animation: hpIconBreath 3.8s ease-in-out infinite;
+}
+body.full-mode #hp-icon { display: flex; }
+body.pip-mode  #hp-icon { display: none !important; }
+
+@keyframes hpIconBreath {
+  0%, 100% {
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.42), 0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
+  }
+  50% {
+    box-shadow: 0 7px 26px rgba(0, 0, 0, 0.50), 0 0 18px rgba(100, 160, 255, 0.20), 0 0 0 0.5px rgba(255, 255, 255, 0.12) inset;
+  }
+}
+
+#hp-icon:hover {
+  transform: scale(1.10);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.58), 0 0 22px rgba(120, 170, 255, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.16) inset;
+  animation: none;
+}
+
+#hp-icon-chart {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: rgba(160, 185, 255, 0.65);
+  transition: color 0.22s ease;
+  pointer-events: none;
+}
+
+#hp-icon:hover #hp-icon-chart {
+  color: rgba(200, 215, 255, 0.97);
+}
+
+#hp-icon.hp-icon-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.88);
+  animation: none;
+}
 
 /* =====================================================================
-   HISTORY CARD — embedded inside #session-panel (right sidebar)
+   HISTORY PANEL — separate floating sidebar, full-mode only
    ===================================================================== */
 
-/* ── Glass card (now embedded inside #session-panel) ─────────────── */
+#history-panel {
+  position: fixed;
+  right: 0;
+  top: 10px;
+  bottom: 10px;
+  transform: translateX(calc(100% + 8px));
+  width: 460px;
+  max-height: calc(100vh - 20px);
+  z-index: 2490;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+body.full-mode #history-panel { display: flex; }
+body.pip-mode  #history-panel { display: none !important; }
+
+#history-panel.hp-panel-open {
+  transform: translateX(0);
+}
+
+/* =====================================================================
+   HISTORY CARD — inside #history-panel
+   ===================================================================== */
+
+/* ── History toggle button — (legacy comment kept for reference) ─── */
+/* #history-btn removed — history is now in #history-panel */
+
+/* =====================================================================
+   HISTORY CARD — inside #history-panel (right sidebar)
+   ===================================================================== */
+
+/* ── Glass card ──────────────────────────────────────────────────── */
 #history-card {
   background: rgba(14, 11, 26, 0.46);
   backdrop-filter: blur(40px) saturate(1.8) brightness(1.12);
@@ -5776,7 +5883,8 @@ body.dnd-active .companion {
   transition: filter 0.9s ease;
 }
 
-body.dnd-active #session-panel {
+body.dnd-active #session-panel,
+body.dnd-active #history-panel {
   opacity:    0.70;
   transition: opacity 0.55s ease;
 }

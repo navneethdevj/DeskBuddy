@@ -597,6 +597,21 @@
     <span id="sp-icon-ring"></span>
   </button>
 
+  <!-- History sidebar icon — floating glass chart icon, below the brain icon.
+       Hover it to open the history/stats panel. -->
+  <button id="hp-icon" title="Session history" aria-label="Open history panel">
+    <svg id="hp-icon-chart" viewBox="0 0 22 22" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Bar chart icon -->
+      <rect x="3" y="13" width="4" height="6" rx="1" fill="currentColor" opacity="0.85"/>
+      <rect x="9" y="8"  width="4" height="11" rx="1" fill="currentColor" opacity="0.85"/>
+      <rect x="15" y="4" width="4" height="15" rx="1" fill="currentColor" opacity="0.85"/>
+      <!-- Trend line over bars -->
+      <polyline points="5,12 11,7 17,3" stroke="currentColor" stroke-width="1.2"
+                stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    </svg>
+  </button>
+
   <!-- Session panel — auto-hide right sidebar, full-mode only -->
   <div id="session-panel">
 
@@ -752,8 +767,12 @@
       </div>
     </div>
 
-    <!-- ── History / Stats section (embedded in session panel) ─────── -->
-    <div id="history-card">
+
+  </div><!-- /#session-panel -->
+
+  <!-- History panel — separate floating sidebar, full-mode only -->
+  <div id="history-panel">
+  <div id="history-card">
 
       <!-- ── HEADER with view pills ──────────────────────────────────── -->
       <div class="hp-header">
@@ -982,9 +1001,8 @@
         <button class="hp-ctx-item hp-ctx-item-danger" data-action="delete-one" role="menuitem">🗑 Delete this session</button>
       </div>
 
-    </div><!-- /#history-card -->
-
-  </div><!-- /#session-panel -->
+  </div><!-- /#history-card -->
+  </div><!-- /#history-panel -->
   <div id="outcome-screen" role="dialog" aria-modal="true" aria-label="Session outcome" aria-hidden="true">
     <div id="outcome-card">
       <div id="outcome-label" class="sp-outcome-label"></div>

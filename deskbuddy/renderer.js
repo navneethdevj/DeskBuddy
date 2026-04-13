@@ -2531,7 +2531,7 @@
   // Auto-hide session sidebar: hover the brain icon to slide the panel in;
   // leave the panel to slide it away.
   // The brain icon fades out when the panel is open so it doesn't overlap.
-  // History card is embedded inside the panel and refreshes on each open.
+  // History is now in a separate #history-panel triggered by #hp-icon.
 
   function _wireSidebar() {
     const panel = document.getElementById('session-panel');
@@ -2544,11 +2544,6 @@
       if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
       panel.classList.add('sidebar-open');
       if (icon) icon.classList.add('sp-icon-hidden');
-      // Refresh history stats each time the panel opens (deferred one rAF so
-      // layout is complete and canvas clientWidth is valid before drawing).
-      requestAnimationFrame(() => {
-        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
-      });
     }
 
     function _scheduleClose() {
@@ -2581,17 +2576,46 @@
   }
 
   // ── _wireHistorySidebar ───────────────────────────────────────────────────
-  // History is now embedded inside #session-panel (see _wireSidebar above).
-  // This function only inits HistoryPanel internal event handlers and runs
-  // the one-time weekly report check.
+  // History panel is now a separate #history-panel sidebar triggered by #hp-icon.
 
   function _wireHistorySidebar() {
     // Init pill clicks, calendar mode buttons, and context menu inside the
-    // embedded history card.
+    // history card.
     HistoryPanel.init();
 
-    // Weekly report is now visible inside the history panel weekly view —
-    // no startup modal needed.
+    const panel = document.getElementById('history-panel');
+    const icon  = document.getElementById('hp-icon');
+    if (!panel || !icon) return;
+
+    let _hideTimer = null;
+
+    function _openHistory() {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+      panel.classList.add('hp-panel-open');
+      if (icon) icon.classList.add('hp-icon-hidden');
+      requestAnimationFrame(() => {
+        if (typeof HistoryPanel !== 'undefined') HistoryPanel.refresh();
+      });
+    }
+
+    function _scheduleCloseHistory() {
+      if (_hideTimer) return;
+      _hideTimer = setTimeout(() => {
+        _hideTimer = null;
+        if (panel.contains(document.activeElement)) return;
+        panel.classList.remove('hp-panel-open');
+        if (icon) icon.classList.remove('hp-icon-hidden');
+      }, 380);
+    }
+
+    icon.addEventListener('mouseenter', _openHistory);
+    panel.addEventListener('mouseenter', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+    panel.addEventListener('focusin', () => {
+      if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    });
+    panel.addEventListener('mouseleave', _scheduleCloseHistory);
   }
 
 })();
