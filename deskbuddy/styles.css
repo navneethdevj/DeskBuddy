@@ -3316,7 +3316,7 @@ body.pip-mode  #hp-icon { display: none !important; }
 
 #history-panel {
   position: fixed;
-  left: 58px;
+  left: 4px;
   top: 58px;
   transform: translateY(-8px);
   opacity: 0;
