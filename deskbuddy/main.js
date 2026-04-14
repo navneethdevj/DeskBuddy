@@ -78,26 +78,32 @@ let _snapTimer = null;
 let _isPipMode = false;   // tracks whether the compact PiP overlay is active
 
 /**
- * WhatsApp-style edge snap: after the user releases the PiP bubble, slide it
- * to whichever horizontal screen edge it's closest to, keeping the current
- * vertical position (clamped to stay on screen).  This matches the behaviour
- * of WhatsApp's floating call PiP on Android / macOS / Windows.
+ * 5-zone corner snap: after the user releases the PiP bubble, slide it
+ * to whichever of the 5 named positions (TL, TC, TR, BL, BR) has its
+ * centre closest to the current window centre.  This gives natural snap
+ * behaviour matching modern floating-overlay UX.
  */
-function _doSnapToEdge() {
+function _doSnapToNearestZone() {
   if (!mainWindow) return;
   const [curX, curY] = mainWindow.getPosition();
   const [w, h]       = mainWindow.getSize();
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
-  const m = SNAP_MARGIN;
-
-  // Snap horizontally to the nearest edge; preserve vertical position.
-  const distLeft  = curX;
-  const distRight = sw - (curX + w);
-  const snapX     = distLeft <= distRight ? m : sw - w - m;
-  const snapY     = Math.max(m, Math.min(Math.round(curY), sh - h - m));
-
-  mainWindow.setPosition(snapX, snapY, process.platform === 'darwin');
-  store.set('windowPos', { x: snapX, y: snapY });
+  const m  = SNAP_MARGIN;
+  const cx = curX + w / 2;
+  const cy = curY + h / 2;
+  const zones = [
+    { x: m,                        y: m          },   // top-left
+    { x: Math.round((sw - w) / 2), y: m          },   // top-centre
+    { x: sw - w - m,               y: m          },   // top-right
+    { x: m,                        y: sh - h - m },   // bottom-left
+    { x: sw - w - m,               y: sh - h - m },   // bottom-right
+  ];
+  const best = zones.reduce((nearest, z) => {
+    const d = Math.hypot((z.x + w / 2) - cx, (z.y + h / 2) - cy);
+    return (!nearest || d < nearest.dist) ? { ...z, dist: d } : nearest;
+  }, null);
+  mainWindow.setPosition(best.x, best.y, process.platform === 'darwin');
+  store.set('windowPos', { x: best.x, y: best.y });
 }
 
 /** Legacy 5-zone corner snap — kept for full-mode resize drags. */
@@ -168,12 +174,17 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Persist position on move; debounce-snap to nearest edge (PiP) or corner (full)
+  // Persist position on move; debounce-snap to nearest corner (PiP, when enabled) or corner (full)
   mainWindow.on('moved', () => {
     const [x, y] = mainWindow.getPosition();
     store.set('windowPos', { x, y });
     clearTimeout(_snapTimer);
-    _snapTimer = setTimeout(_isPipMode ? _doSnapToEdge : _doSnapToCorner, 400);
+    if (_isPipMode) {
+      const snapEnabled = (store.get('settings', {}).pipSnapEnabled !== false);
+      if (snapEnabled) _snapTimer = setTimeout(_doSnapToNearestZone, 420);
+    } else {
+      _snapTimer = setTimeout(_doSnapToCorner, 400);
+    }
   });
 
   // Persist size when the window is resized (e.g. via drag handle on macOS).
@@ -273,6 +284,45 @@ ipcMain.on('exit-full-mode', () => {
   // so no subsequent API resets the window level.
   mainWindow.setAlwaysOnTop(true, 'floating');
   mainWindow.webContents.send('full-mode-exited');
+});
+
+// ── PiP corner snap: move window to one of 5 named positions ─────────────────
+ipcMain.on('set-pip-corner', (_event, corner) => {
+  if (!mainWindow || !_isPipMode) return;
+  const [w, h] = mainWindow.getSize();
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const m = SNAP_MARGIN;
+  const corners = {
+    'top-left':   { x: m,              y: m              },
+    'top-center': { x: Math.round((sw - w) / 2), y: m   },
+    'top-right':  { x: sw - w - m,     y: m              },
+    'bottom-left':  { x: m,            y: sh - h - m     },
+    'bottom-right': { x: sw - w - m,   y: sh - h - m     },
+  };
+  const pos = corners[corner];
+  if (!pos) return;
+  const { x, y } = _clamp(pos.x, pos.y, w);
+  mainWindow.setPosition(x, y, process.platform === 'darwin');
+  store.set('windowPos', { x, y });
+});
+
+
+ipcMain.on('set-pip-snap-enabled', (_event, enabled) => {
+  // Persist the setting so the moved handler can read it synchronously.
+  const settings = store.get('settings', {});
+  settings.pipSnapEnabled = !!enabled;
+  store.set('settings', settings);
+  // If snap was just enabled, snap immediately to nearest zone.
+  if (enabled && mainWindow && _isPipMode) _doSnapToNearestZone();
+});
+
+ipcMain.on('set-pip-always-on-top', (_event, flag) => {
+  if (!mainWindow || !_isPipMode) return;
+  if (flag) {
+    mainWindow.setAlwaysOnTop(true, 'floating');
+  } else {
+    mainWindow.setAlwaysOnTop(false);
+  }
 });
 
 // ── Settings IPC handlers ──────────────────────────────────────────────────

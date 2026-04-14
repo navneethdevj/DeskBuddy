@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { TaskDTO } from '@shared/types';
-import type { CreateTaskInput } from '@shared/schemas';
+import type { CreateTaskInput, UpdateTaskInput } from '@shared/schemas';
 import api from '@web/lib/api';
 
 interface TaskState {
@@ -11,6 +11,8 @@ interface TaskState {
 
   fetchTasks: (workspaceId: string) => Promise<void>;
   createTask: (workspaceId: string, data: CreateTaskInput) => Promise<void>;
+  updateTask: (workspaceId: string, taskId: string, data: UpdateTaskInput) => Promise<void>;
+  deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
   handleSocketTaskCreated: (task: TaskDTO) => void;
   handleSocketTaskUpdated: (task: TaskDTO) => void;
   handleSocketTaskDeleted: (taskId: string) => void;
@@ -56,6 +58,44 @@ export const useTaskStore = create<TaskState>()(
         const { data: task } = await api.post<TaskDTO>(`/workspaces/${workspaceId}/tasks`, data);
         set((state) => {
           state.tasks.push(task);
+        });
+      } catch (err) {
+        set((state) => {
+          state.error = getErrorMessage(err);
+        });
+      }
+    },
+
+    updateTask: async (workspaceId, taskId, data) => {
+      set((state) => {
+        state.error = null;
+      });
+      try {
+        const { data: task } = await api.patch<TaskDTO>(
+          `/workspaces/${workspaceId}/tasks/${taskId}`,
+          data,
+        );
+        set((state) => {
+          const index = state.tasks.findIndex((t) => t.id === taskId);
+          if (index !== -1) {
+            state.tasks[index] = task;
+          }
+        });
+      } catch (err) {
+        set((state) => {
+          state.error = getErrorMessage(err);
+        });
+      }
+    },
+
+    deleteTask: async (workspaceId, taskId) => {
+      set((state) => {
+        state.error = null;
+      });
+      try {
+        await api.delete(`/workspaces/${workspaceId}/tasks/${taskId}`);
+        set((state) => {
+          state.tasks = state.tasks.filter((t) => t.id !== taskId);
         });
       } catch (err) {
         set((state) => {

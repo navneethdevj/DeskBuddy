@@ -30,13 +30,402 @@
       <button id="settings-close-btn" title="Close settings" aria-label="Close settings">✕</button>
     </div>
     <div id="settings-body">
+      <!-- ═══════════════════════════════════════════════════════════════
+           SECTION ORDER (top→bottom, collapsed by default):
+           1. 🎨  Appearance   — themes, display, PiP
+           2. 👁  Eyes         — colour, glow, shape, spacing, pupil, blink
+           3. 😊  Face         — eyebrows, nose, mouth, mouth thickness
+           4. ✨  Buddy Glow   — glow intensity, ambient glow colour
+           5. ♪   Sound        — volume, mute preset, ticks
+           6. ⏱   Session      — duration, step, celebration, stats
+           7. ☕  Breaks       — reminder, interval, animation
+           8. ◎   Behaviour    — sensitivity, phone detection
+           9. ✦   Personality  — idle speed, expressiveness, petting
+           10. ◕  Expressions  — preview playground
+           11. ⊘  Do Not Disturb
+           12. ⌨  Shortcuts
+           13. 💾  Backup & Presets
+      ═══════════════════════════════════════════════════════════════ -->
 
-      <!-- ── SOUND SECTION ─────────────────────────────────────── -->
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">♪</span> Sound<span class="settings-chevron" aria-hidden="true"></span>
+      
+      <!-- ════════════════════════════════════════════════
+           GROUP 1: Appearance  (Display / Eyes / Face / Glow)
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">🎨</span>Appearance<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
+        <div class="settings-group-body">
+
+          <!-- sub: Display -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">🖥</span>Display<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div class="settings-row-label">Companion size</div>
+                <div class="settings-size-btns" id="companion-size-btns">
+                  <button class="settings-size-btn" data-size="S">S</button>
+                  <button class="settings-size-btn" data-size="M">M</button>
+                  <button class="settings-size-btn" data-size="L">L</button>
+                </div>
+              </div>
+              <div class="settings-row settings-row-col">
+                <div class="settings-row-label">Full-screen theme</div>
+                <div class="theme-picker" id="full-theme-picker">
+                  <button class="theme-chip" data-theme="galaxy"><span class="theme-swatch" style="background:linear-gradient(135deg,#0c0720,#5c2db2 70%)"></span>Galaxy</button>
+                  <button class="theme-chip" data-theme="classic"><span class="theme-swatch" style="background:linear-gradient(135deg,#111,#1c1c1c)"></span>Classic</button>
+                  <button class="theme-chip" data-theme="forest"><span class="theme-swatch" style="background:linear-gradient(135deg,#040e06,#0a2a0e 70%)"></span>Forest</button>
+                  <button class="theme-chip" data-theme="cherry"><span class="theme-swatch" style="background:linear-gradient(135deg,#090512,#8a1840 70%)"></span>Sakura</button>
+                  <button class="theme-chip" data-theme="ocean"><span class="theme-swatch" style="background:linear-gradient(135deg,#010609,#042030 70%)"></span>Ocean</button>
+                  <button class="theme-chip" data-theme="midnight"><span class="theme-swatch" style="background:linear-gradient(135deg,#01020a,#08102a 70%)"></span>Midnight</button>
+                  <button class="theme-chip" data-theme="snow"><span class="theme-swatch" style="background:linear-gradient(135deg,#0a0e18,#1a2240 70%)"></span>Snow</button>
+                  <button class="theme-chip" data-theme="aurora"><span class="theme-swatch" style="background:linear-gradient(135deg,#020d10,#073020 70%)"></span>Aurora</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Particle effects</div>
+                  <div class="settings-row-sublabel">Falling leaves, snow, embers &amp; more</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="theme-particles-toggle" checked>
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Position (full-screen)</div>
+                  <div class="settings-row-sublabel">Horizontal eye placement</div>
+                </div>
+                <div class="style-chips" id="companion-pos-btns">
+                  <button class="style-chip" data-pos="left">&#9666; Left</button>
+                  <button class="style-chip" data-pos="center">&#9679; Centre</button>
+                  <button class="style-chip" data-pos="right">Right &#9656;</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Screen brightness</div>
+                  <div class="settings-row-sublabel" id="brightness-sublabel">100%</div>
+                </div>
+                <input type="range" id="brightness-slider" class="settings-slider" min="30" max="100" step="2" value="100">
+              </div>
+            </div>
+          </div>
+
+          <!-- sub: Eyes -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">👁</span>Eyes<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row settings-row-col">
+                <div class="settings-row-label">Iris colour</div>
+                <div class="color-picker" id="eye-color-picker">
+                  <button class="color-swatch" data-color="periwinkle" title="Default"    style="background:radial-gradient(circle at 35% 35%,#a0aee8,#6472c4)"></button>
+                  <button class="color-swatch" data-color="emerald"    title="Emerald"    style="background:radial-gradient(circle at 35% 35%,#6dd48e,#28854e)"></button>
+                  <button class="color-swatch" data-color="rose"       title="Rose"       style="background:radial-gradient(circle at 35% 35%,#f0a0c8,#c84880)"></button>
+                  <button class="color-swatch" data-color="amber"      title="Amber"      style="background:radial-gradient(circle at 35% 35%,#f8d080,#d08020)"></button>
+                  <button class="color-swatch" data-color="lavender"   title="Lavender"   style="background:radial-gradient(circle at 35% 35%,#c4a8f4,#8855d0)"></button>
+                  <button class="color-swatch" data-color="sky"        title="Sky Blue"   style="background:radial-gradient(circle at 35% 35%,#90d0f8,#2880c8)"></button>
+                  <button class="color-swatch" data-color="ruby"       title="Ruby"       style="background:radial-gradient(circle at 35% 35%,#f48888,#c02020)"></button>
+                  <button class="color-swatch" data-color="teal"       title="Teal"       style="background:radial-gradient(circle at 35% 35%,#70e0d8,#159090)"></button>
+                </div>
+              </div>
+              <div class="settings-row settings-row-col">
+                <div>
+                  <div class="settings-row-label">Eye glow colour</div>
+                  <div class="settings-row-sublabel">Ring glow — independent from iris</div>
+                </div>
+                <div class="color-picker" id="eye-glow-picker">
+                  <button class="color-swatch glow-swatch" data-glow="default" title="Default"  style="background:radial-gradient(circle at 35% 35%,#b0baee,#7080d0)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="emerald" title="Emerald"  style="background:radial-gradient(circle at 35% 35%,#60d888,#1a8040)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="rose"    title="Rose"     style="background:radial-gradient(circle at 35% 35%,#f080b8,#c03070)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="amber"   title="Amber"    style="background:radial-gradient(circle at 35% 35%,#ffcc50,#e08010)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="sky"     title="Sky"      style="background:radial-gradient(circle at 35% 35%,#70d8f8,#2070c8)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="ruby"    title="Ruby"     style="background:radial-gradient(circle at 35% 35%,#f86060,#b81818)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="white"   title="White"    style="background:radial-gradient(circle at 35% 35%,#fff,#c0c8d8)"></button>
+                  <button class="color-swatch glow-swatch" data-glow="gold"    title="Gold"     style="background:radial-gradient(circle at 35% 35%,#ffe080,#d4a010)"></button>
+                </div>
+              </div>
+              <div class="settings-row settings-row-col">
+                <div>
+                  <div class="settings-row-label">Eye shape</div>
+                  <div class="settings-row-sublabel">Neutral-state shape — emotions still override</div>
+                </div>
+                <div class="style-chips" id="eye-roundness-btns">
+                  <button class="style-chip" data-roundness="round">Round</button>
+                  <button class="style-chip" data-roundness="squish">Squish</button>
+                  <button class="style-chip" data-roundness="almond">Almond</button>
+                  <button class="style-chip" data-roundness="droopy">Droopy</button>
+                  <button class="style-chip" data-roundness="tall">Tall</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Eye size</div>
+                <div class="style-chips" id="pupil-size-btns">
+                  <button class="style-chip" data-pupil="small">Small</button>
+                  <button class="style-chip" data-pupil="normal">Normal</button>
+                  <button class="style-chip" data-pupil="large">Large</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Blink rate</div>
+                <div class="style-chips" id="blink-rate-btns">
+                  <button class="style-chip" data-blink="off">Off</button>
+                  <button class="style-chip" data-blink="slow">Slow</button>
+                  <button class="style-chip" data-blink="normal">Normal</button>
+                  <button class="style-chip" data-blink="fast">Fast</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- sub: Face -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">😊</span>Face<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div class="settings-row-label">Eyebrows</div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="eyebrows-toggle" checked>
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Nose style</div>
+                <div class="style-chips" id="nose-style-btns">
+                  <button class="style-chip" data-nose="triangle">&#9660; Triangle</button>
+                  <button class="style-chip" data-nose="dot">&#9679; Dot</button>
+                  <button class="style-chip" data-nose="none">Hidden</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Mouth shape</div>
+                <div class="style-chips" id="mouth-style-btns">
+                  <button class="style-chip" data-mouth="arc">Arc</button>
+                  <button class="style-chip" data-mouth="wide">Wide</button>
+                  <button class="style-chip" data-mouth="cat">Cat</button>
+                  <button class="style-chip" data-mouth="flat">Flat</button>
+                  <button class="style-chip" data-mouth="none">Hidden</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Mouth thickness</div>
+                <div class="style-chips" id="mouth-thickness-btns">
+                  <button class="style-chip" data-thickness="thin">Thin</button>
+                  <button class="style-chip" data-thickness="normal">Normal</button>
+                  <button class="style-chip" data-thickness="thick">Thick</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- sub: Buddy Glow -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">✨</span>Buddy Glow<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Glow intensity</div>
+                  <div class="settings-row-sublabel">Ambient light around the companion</div>
+                </div>
+                <div class="style-chips" id="glow-intensity-btns">
+                  <button class="style-chip" data-glow-int="off">Off</button>
+                  <button class="style-chip" data-glow-int="subtle">Subtle</button>
+                  <button class="style-chip" data-glow-int="normal">Normal</button>
+                  <button class="style-chip" data-glow-int="vivid">Vivid</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">PiP overlay opacity</div>
+                  <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
+                </div>
+                <input type="range" id="pip-opacity-slider" class="settings-slider" min="20" max="95" step="3" value="78">
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Always on top (PiP)</div>
+                  <div class="settings-row-sublabel">Keep overlay above all windows</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-always-on-top-toggle" checked>
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Overlay shape</div>
+                </div>
+                <div class="pip-shape-picker" id="pip-shape-picker">
+                  <button class="pip-shape-chip" data-shape="square" title="Square">
+                    <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="3" ry="3" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Square
+                  </button>
+                  <button class="pip-shape-chip" data-shape="rounded" title="Rounded">
+                    <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="7" ry="7" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Rounded
+                  </button>
+                  <button class="pip-shape-chip" data-shape="circle" title="Circle">
+                    <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Circle
+                  </button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Snap to corner</div>
+                  <div class="settings-row-sublabel">Auto-snap to nearest corner on release</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="pip-snap-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ════════════════════════════════════════════════
+           GROUP 2: Focus & Sessions  (Session / Breaks)
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">⏱</span>Focus &amp; Sessions<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-group-body">
+
+          <!-- sub: Session -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">🎯</span>Session<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Default duration</div>
+                  <div class="settings-row-sublabel">Pre-filled on session start</div>
+                </div>
+                <select id="session-length-select" class="settings-select">
+                  <option value="15">15 min</option><option value="20">20 min</option><option value="25">25 min</option>
+                  <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+                  <option value="90">90 min</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Timer step</div>
+                  <div class="settings-row-sublabel">+/&#8722; button increment</div>
+                </div>
+                <select id="timer-step-select" class="settings-select">
+                  <option value="1">1 min</option><option value="5">5 min</option><option value="10">10 min</option>
+                  <option value="15">15 min</option><option value="30">30 min</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Session celebration</div>
+                  <div class="settings-row-sublabel">Confetti + banner on completion</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="celebration-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row settings-row-hint" id="session-stats-row">
+                <div>
+                  <div class="settings-row-sublabel" id="sessions-today-label">&#8212; sessions today</div>
+                  <div class="settings-row-sublabel" id="focus-today-label">&#8212; min focused today</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Daily focus goal</div>
+                  <div class="settings-row-sublabel">Screen Time-style daily arc</div>
+                </div>
+                <select id="daily-goal-select" class="settings-select">
+                  <option value="0">Off</option><option value="60">1 h</option><option value="90">1.5 h</option>
+                  <option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Distraction budget</div>
+                  <div class="settings-row-sublabel">Warn after N distractions per session</div>
+                </div>
+                <select id="distraction-budget-select" class="settings-select">
+                  <option value="0">Unlimited</option><option value="2">2</option><option value="3">3</option>
+                  <option value="5">5</option><option value="8">8</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">&#128737; Stats protection</div>
+                  <div class="settings-row-sublabel">Prevent sessions from being deleted</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="anti-cheat-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- sub: Breaks -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">☕</span>Breaks<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Break reminders</div>
+                  <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="break-reminder-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row" id="break-interval-row">
+                <div class="settings-row-label">Remind every</div>
+                <select id="break-interval-select" class="settings-select">
+                  <option value="15">15 min</option><option value="20">20 min</option><option value="25">25 min</option>
+                  <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Break animation</div>
+                  <div class="settings-row-sublabel">Glow + card when a break starts</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="break-anim-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <hr class="settings-divider">
+
+      <!-- ════════════════════════════════════════════════
+           GROUP 3: Sound
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#127925;</span>Sound<span class="settings-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="settings-group-body">
           <div class="settings-row">
             <div>
               <div class="settings-row-label">Mute preset</div>
@@ -54,6 +443,13 @@
           </div>
           <div class="settings-row">
             <div>
+              <div class="settings-row-label">Master volume</div>
+              <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
+            </div>
+            <input type="range" id="volume-slider" class="settings-slider" min="0" max="100" step="1" value="70">
+          </div>
+          <div class="settings-row">
+            <div>
               <div class="settings-row-label">Timer ticks</div>
               <div class="settings-row-sublabel">Soft clock sound while focused</div>
             </div>
@@ -61,179 +457,6 @@
               <input type="checkbox" id="ticks-enabled-toggle">
               <span class="settings-toggle-track"></span>
             </label>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Master volume</div>
-              <div class="settings-row-sublabel" id="volume-sublabel">70%</div>
-            </div>
-            <input type="range" id="volume-slider" class="settings-slider"
-              min="0" max="100" step="1" value="70">
-          </div>
-        </div>
-      </div>
-      <hr class="settings-divider">
-
-      <!-- ── BREAK REMINDER SECTION ────────────────────────────── -->
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">☕</span> Break Reminders<span class="settings-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="settings-section-body">
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Break reminders</div>
-              <div class="settings-row-sublabel">Nudge you to rest after X minutes</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="break-reminder-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-          <div class="settings-row" id="break-interval-row">
-            <div class="settings-row-label">Remind every</div>
-            <select id="break-interval-select" class="settings-select">
-              <option value="15">15 min</option>
-              <option value="20">20 min</option>
-              <option value="25">25 min</option>
-              <option value="30">30 min</option>
-              <option value="45">45 min</option>
-              <option value="60">60 min</option>
-            </select>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Break animation</div>
-              <div class="settings-row-sublabel">Glow + card when a break starts</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="break-anim-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <hr class="settings-divider">
-
-      <!-- ── SESSION SECTION ──────────────────────────────────── -->
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">⏱</span> Session<span class="settings-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="settings-section-body">
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Default duration</div>
-              <div class="settings-row-sublabel">Pre-filled on session start</div>
-            </div>
-            <select id="session-length-select" class="settings-select">
-              <option value="15">15 min</option>
-              <option value="20">20 min</option>
-              <option value="25">25 min</option>
-              <option value="30">30 min</option>
-              <option value="45">45 min</option>
-              <option value="60">60 min</option>
-              <option value="90">90 min</option>
-            </select>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Timer step</div>
-              <div class="settings-row-sublabel">+/− button increment size</div>
-            </div>
-            <select id="timer-step-select" class="settings-select">
-              <option value="1">1 min</option>
-              <option value="5">5 min</option>
-              <option value="10">10 min</option>
-              <option value="15">15 min</option>
-              <option value="30">30 min</option>
-            </select>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Session celebration</div>
-              <div class="settings-row-sublabel">Confetti + banner on completion</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="celebration-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-          <div class="settings-row settings-row-hint" id="session-stats-row">
-            <div>
-              <div class="settings-row-sublabel" id="sessions-today-label">— sessions today</div>
-              <div class="settings-row-sublabel" id="focus-today-label">— min focused today</div>
-            </div>
-          </div>
-
-          <!-- Daily focus goal -->
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Daily focus goal</div>
-              <div class="settings-row-sublabel">Screen Time-style daily progress arc</div>
-            </div>
-            <select id="daily-goal-select" class="settings-select">
-              <option value="0">Off</option>
-              <option value="60">1 h</option>
-              <option value="90">1.5 h</option>
-              <option value="120">2 h</option>
-              <option value="180">3 h</option>
-              <option value="240">4 h</option>
-            </select>
-          </div>
-
-          <!-- Distraction budget -->
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Distraction budget</div>
-              <div class="settings-row-sublabel">Warn after N distractions per session</div>
-            </div>
-            <select id="distraction-budget-select" class="settings-select">
-              <option value="0">Unlimited</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="5">5</option>
-              <option value="8">8</option>
-            </select>
-          </div>
-
-          <!-- Anti-cheat protection -->
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">🛡 Stats protection</div>
-              <div class="settings-row-sublabel">Lock stats — prevent sessions from being deleted to inflate focus scores</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="anti-cheat-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-
-        </div>
-      </div>
-      <hr class="settings-divider">
-
-      <!-- ── DISPLAY SECTION ───────────────────────────────────── -->
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">✧</span> Display<span class="settings-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="settings-section-body">
-          <div class="settings-row">
-            <div class="settings-row-label">Companion size</div>
-            <div class="settings-size-btns" id="companion-size-btns">
-              <button class="settings-size-btn" data-size="S">S</button>
-              <button class="settings-size-btn" data-size="M">M</button>
-              <button class="settings-size-btn" data-size="L">L</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Screen brightness</div>
-              <div class="settings-row-sublabel" id="brightness-sublabel">100%</div>
-            </div>
-            <input type="range" id="brightness-slider" class="settings-slider"
-              min="30" max="100" step="2" value="100">
           </div>
           <div class="settings-row">
             <div class="settings-row-label">Ambient drone</div>
@@ -249,175 +472,166 @@
               <span class="settings-toggle-track"></span>
             </label>
           </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Auto-collapse on app switch</div>
-              <div class="settings-row-sublabel">Switch to compact overlay when you leave DeskBuddy</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="auto-pip-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-          <div class="settings-row" id="auto-pip-delay-row">
-            <div>
-              <div class="settings-row-label">Collapse delay</div>
-              <div class="settings-row-sublabel">Wait before collapsing (prevents brief alt-tabs)</div>
-            </div>
-            <select id="auto-pip-delay-select" class="settings-select">
-              <option value="0">Instant</option>
-              <option value="2">2 s</option>
-              <option value="5">5 s</option>
-              <option value="10">10 s</option>
-            </select>
-          </div>
-          <div class="settings-row" id="auto-pip-restore-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Restore on return</div>
-              <div class="settings-row-sublabel">Re-expand to full mode when you come back</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="auto-pip-restore-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-          <div class="settings-row" id="auto-pip-skip-session-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Stay full during sessions</div>
-              <div class="settings-row-sublabel">Don't collapse while a focus session is active</div>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="auto-pip-skip-session-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Overlay shape</div>
-              <div class="settings-row-sublabel">Shape of the compact overlay window</div>
-            </div>
-            <div class="pip-shape-picker" id="pip-shape-picker">
-              <button class="pip-shape-chip" data-shape="square" title="Square">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                  <rect x="2" y="2" width="18" height="18" rx="3" ry="3" stroke="currentColor" stroke-width="1.8" fill="none"/>
-                </svg>
-                Square
-              </button>
-              <button class="pip-shape-chip" data-shape="rounded" title="Rounded">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                  <rect x="2" y="2" width="18" height="18" rx="7" ry="7" stroke="currentColor" stroke-width="1.8" fill="none"/>
-                </svg>
-                Rounded
-              </button>
-              <button class="pip-shape-chip" data-shape="circle" title="Circle">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                  <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.8" fill="none"/>
-                </svg>
-                Circle
-              </button>
-            </div>
-          </div>
         </div>
       </div>
       <hr class="settings-divider">
 
-      <!-- ── BEHAVIOUR SECTION ─────────────────────────────────── -->
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">◎</span> Behaviour<span class="settings-chevron" aria-hidden="true"></span>
+      <!-- ════════════════════════════════════════════════
+           GROUP 4: Behaviour & Personality  (Behaviour / Personality)
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#129504;</span>Behaviour &amp; Personality<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Focus sensitivity</div>
-              <div class="settings-row-sublabel">How strictly distraction is detected</div>
+        <div class="settings-group-body">
+
+          <!-- sub: Behaviour -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">&#9678;</span>Behaviour<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Focus sensitivity</div>
+                  <div class="settings-row-sublabel">How strictly distraction is detected</div>
+                </div>
+                <select id="settings-sensitivity-select" class="settings-select">
+                  <option value="GENTLE">Gentle</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="STRICT">Strict</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">Phone detection</div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="phone-detection-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Auto-collapse on app switch</div>
+                  <div class="settings-row-sublabel">Switch to compact overlay when you leave</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="auto-pip-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row" id="auto-pip-delay-row">
+                <div>
+                  <div class="settings-row-label">Collapse delay</div>
+                  <div class="settings-row-sublabel">Wait before collapsing</div>
+                </div>
+                <select id="auto-pip-delay-select" class="settings-select">
+                  <option value="0">Instant</option>
+                  <option value="2">2 s</option>
+                  <option value="5">5 s</option>
+                  <option value="10">10 s</option>
+                </select>
+              </div>
+              <div class="settings-row" id="auto-pip-restore-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Restore on return</div>
+                  <div class="settings-row-sublabel">Re-expand when you come back</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="auto-pip-restore-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row" id="auto-pip-skip-session-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Stay full during sessions</div>
+                  <div class="settings-row-sublabel">Don&#x2019;t collapse while a session is active</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="auto-pip-skip-session-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
             </div>
-            <select id="settings-sensitivity-select" class="settings-select">
-              <option value="GENTLE">Gentle</option>
-              <option value="NORMAL">Normal</option>
-              <option value="STRICT">Strict</option>
-            </select>
           </div>
-          <div class="settings-row">
-            <div class="settings-row-label">Phone detection</div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="phone-detection-toggle">
-              <span class="settings-toggle-track"></span>
-            </label>
+
+          <!-- sub: Personality -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">&#10022;</span>Personality<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Idle speed</div>
+                  <div class="settings-row-sublabel" id="idle-speed-sublabel">Default</div>
+                </div>
+                <div class="settings-triple-btn" id="idle-speed-btns">
+                  <button class="settings-triple-btn-item" data-val="1">&#x1F422; Calm</button>
+                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
+                  <button class="settings-triple-btn-item" data-val="3">&#x26A1; Hyper</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Expressiveness</div>
+                  <div class="settings-row-sublabel" id="express-sublabel">Default</div>
+                </div>
+                <div class="settings-triple-btn" id="express-btns">
+                  <button class="settings-triple-btn-item" data-val="1">&#x1F338; Subtle</button>
+                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
+                  <button class="settings-triple-btn-item" data-val="3">&#x1F4A5; Drama</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Petting</div>
+                  <div class="settings-row-sublabel">Hold near buddy to snuggle</div>
+                </div>
+                <div class="settings-triple-btn" id="petting-btns">
+                  <button class="settings-triple-btn-item" data-val="1">&#x1F43E; Gentle</button>
+                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
+                  <button class="settings-triple-btn-item" data-val="3">&#x1F495; Eager</button>
+                </div>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
+      <hr class="settings-divider">
 
-      <!-- ── BUDDY PERSONALITY SECTION ────────────────────────────── -->
-      <hr class="settings-divider">
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">✦</span> Buddy Personality<span class="settings-chevron" aria-hidden="true"></span>
+      <!-- ════════════════════════════════════════════════
+           GROUP 5: Expressions
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#9685;</span>Expressions<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Idle speed</div>
-              <div class="settings-row-sublabel" id="idle-speed-sublabel">Default</div>
-            </div>
-            <div class="settings-triple-btn" id="idle-speed-btns">
-              <button class="settings-triple-btn-item" data-val="1" title="Slow & calm">🐢 Calm</button>
-              <button class="settings-triple-btn-item" data-val="2" title="Default rhythm">✦ Default</button>
-              <button class="settings-triple-btn-item" data-val="3" title="Hyper & frequent">⚡ Hyper</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Expressiveness</div>
-              <div class="settings-row-sublabel" id="express-sublabel">Default</div>
-            </div>
-            <div class="settings-triple-btn" id="express-btns">
-              <button class="settings-triple-btn-item" data-val="1" title="Subtle reactions">🌸 Subtle</button>
-              <button class="settings-triple-btn-item" data-val="2" title="Default vibes">✦ Default</button>
-              <button class="settings-triple-btn-item" data-val="3" title="Maximum drama">💥 Drama</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Petting</div>
-              <div class="settings-row-sublabel">Hold near buddy to snuggle · escalates with hold duration</div>
-            </div>
-            <div class="settings-triple-btn" id="petting-btns">
-              <button class="settings-triple-btn-item" data-val="1" title="Hold 0.8 s to start, 1.5 s for deep bliss">🐾 Gentle</button>
-              <button class="settings-triple-btn-item" data-val="2" title="Hold 0.5 s to start, 1.5 s for deep bliss">✦ Default</button>
-              <button class="settings-triple-btn-item" data-val="3" title="Instantly cozy, 1 s for deep bliss">💕 Eager</button>
-            </div>
-          </div>
-      <hr class="settings-divider">
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">◕</span> Expressions<span class="settings-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="settings-section-body">
+        <div class="settings-group-body">
           <div class="settings-row" style="align-items:center;">
             <div>
               <div class="settings-row-label">Preview duration</div>
               <div class="settings-row-sublabel" id="preview-dur-sublabel">3 s</div>
             </div>
-            <input type="range" id="preview-dur-slider" class="settings-slider"
-              min="1" max="10" step="1" value="3" style="width:90px;">
+            <input type="range" id="preview-dur-slider" class="settings-slider" min="1" max="10" step="1" value="3" style="width:90px;">
           </div>
-          <div class="settings-row-sublabel" id="emotion-grid-hint" style="padding:4px 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.26);">
-            tap to preview · hold to extend preview<br>
-            <span style="color:rgba(255,155,130,0.52);">♡ cozy</span><span style="color:rgba(255,255,255,0.18);"> = hold &lt; 1.5 s · </span><span style="color:rgba(255,110,145,0.52);">being_patted</span><span style="color:rgba(255,255,255,0.18);"> = hold ≥ 1.5 s, escalates · </span><span style="color:rgba(255,230,60,0.55);">✦ ecstatic</span><span style="color:rgba(255,255,255,0.18);"> = ≥ 16 s flash · </span><span style="color:rgba(200,165,255,0.55);">◕~◕ dazed</span><span style="color:rgba(255,255,255,0.18);"> = post-hold bliss fog</span>
+          <div class="settings-row-sublabel" id="emotion-grid-hint"
+               style="padding:4px 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.26);">
+            tap to preview &middot; hold to extend
           </div>
-          <!-- Category groups built dynamically by renderer.js -->
           <div id="emotion-grid"></div>
         </div>
       </div>
-
-      <!-- ── DND SECTION ──────────────────────────────────────────── -->
       <hr class="settings-divider">
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">⊘</span> Do Not Disturb<span class="settings-chevron" aria-hidden="true"></span>
+
+      <!-- ════════════════════════════════════════════════
+           GROUP 6: Do Not Disturb
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#8856;</span>Do Not Disturb<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
+        <div class="settings-group-body">
           <div class="settings-row">
             <div>
               <div class="settings-row-label">Focus lock</div>
@@ -428,42 +642,58 @@
           <div class="settings-row" id="dnd-duration-row">
             <div class="settings-row-label">Duration</div>
             <select id="dnd-duration-select" class="settings-select">
-              <option value="15">15 min</option>
-              <option value="20">20 min</option>
-              <option value="25" selected>25 min</option>
-              <option value="30">30 min</option>
-              <option value="45">45 min</option>
-              <option value="60">60 min</option>
-              <option value="90">90 min</option>
-              <option value="0">Until I turn it off</option>
+              <option value="15">15 min</option><option value="20">20 min</option><option value="25" selected>25 min</option>
+              <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+              <option value="90">90 min</option><option value="0">Until I turn it off</option>
             </select>
           </div>
-          <div class="settings-row-sublabel" style="padding: 0 12px 8px; font-size:10.5px; color:rgba(255,255,255,0.32);">
-            Companion goes quiet &amp; still. Sounds reduced to reminders only. Press the keybind or click the indicator to cancel early.
+          <div class="settings-row-sublabel" style="padding:0 12px 8px;font-size:10.5px;color:rgba(255,255,255,0.32);">
+            Companion goes quiet &amp; still. Press keybind or click indicator to cancel.
           </div>
         </div>
       </div>
-
-      <!-- ── SHORTCUTS SECTION ─────────────────────────────────────── -->
       <hr class="settings-divider">
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">⌨</span> Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
+
+      <!-- ════════════════════════════════════════════════
+           GROUP 7: Shortcuts
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#9000;</span>Shortcuts<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
+        <div class="settings-group-body">
           <div id="shortcuts-list"></div>
         </div>
       </div>
-
-    </div><!-- /#settings-body — Shortcuts section end -->
-
-      <!-- ── BACKUP SECTION ────────────────────────────────────────── -->
       <hr class="settings-divider">
-      <div class="settings-section">
-        <button class="settings-section-title" aria-expanded="false">
-          <span class="settings-section-icon">💾</span> Backup<span class="settings-chevron" aria-hidden="true"></span>
+
+      <!-- ════════════════════════════════════════════════
+           GROUP 8: Backup & Presets
+           ════════════════════════════════════════════════ -->
+      <div class="settings-group">
+        <button class="settings-group-title" aria-expanded="false">
+          <span class="settings-section-icon">&#128190;</span>Backup &amp; Presets<span class="settings-chevron" aria-hidden="true"></span>
         </button>
-        <div class="settings-section-body">
+        <div class="settings-group-body">
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Copy appearance preset</div>
+              <div class="settings-row-sublabel">Theme, eyes &amp; face &#8594; clipboard</div>
+            </div>
+            <button id="copy-preset-btn" class="settings-action-btn">copy</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Paste appearance preset</div>
+              <div class="settings-row-sublabel">Apply a preset from clipboard</div>
+            </div>
+            <button id="paste-preset-btn" class="settings-action-btn">paste</button>
+          </div>
+          <div id="preset-status" style="display:none;font-size:11px;padding:4px 0 2px;color:rgba(200,185,255,0.80);"></div>
+
+          <hr class="settings-sub-divider">
+
           <div class="settings-row">
             <div class="settings-row-info">
               <div class="settings-row-label">Export history</div>
@@ -478,10 +708,28 @@
             </div>
             <button id="import-history-btn" class="settings-action-btn">import</button>
           </div>
-          <div id="backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
+          <div id="backup-status" style="display:none;font-size:11px;padding:4px 0 2px;color:rgba(200,185,255,0.80);"></div>
 
-          <!-- ── Danger zone: clear history / clear cache ── -->
           <hr class="settings-sub-divider">
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Export all settings</div>
+              <div class="settings-row-sublabel">Save every preference to a file</div>
+            </div>
+            <button id="export-settings-btn" class="settings-action-btn">export</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label">Import all settings</div>
+              <div class="settings-row-sublabel">Restore from a full settings backup</div>
+            </div>
+            <button id="import-settings-btn" class="settings-action-btn">import</button>
+          </div>
+          <div id="settings-backup-status" style="display:none;font-size:11px;padding:4px 0 2px;color:rgba(200,185,255,0.80);"></div>
+
+          <hr class="settings-sub-divider">
+
           <div class="settings-row">
             <div class="settings-row-info">
               <div class="settings-row-label">Clear session history</div>
@@ -496,21 +744,6 @@
             </div>
             <button id="clear-cache-btn" class="settings-action-btn settings-action-btn-danger">wipe</button>
           </div>
-          <hr class="settings-sub-divider">
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Export settings</div>
-              <div class="settings-row-sublabel">Save all preferences to a file</div>
-            </div>
-            <button id="export-settings-btn" class="settings-action-btn">export</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Import settings</div>
-              <div class="settings-row-sublabel">Restore preferences from a backup</div>
-            </div>
-            <button id="import-settings-btn" class="settings-action-btn">import</button>
-          </div>
           <div class="settings-row">
             <div class="settings-row-info">
               <div class="settings-row-label">Reset to defaults</div>
@@ -518,11 +751,10 @@
             </div>
             <button id="reset-settings-btn" class="settings-action-btn settings-action-btn-danger">reset</button>
           </div>
-          <div id="settings-backup-status" style="display:none; font-size:11px; padding: 4px 0 2px; color: rgba(200,185,255,0.80);"></div>
+
         </div>
       </div>
 
-    </div><!-- /#settings-body (buddy personality outer section) -->
     </div><!-- /#settings-body -->
   </div><!-- /#settings-panel -->
 
