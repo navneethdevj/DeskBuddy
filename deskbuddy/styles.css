@@ -183,7 +183,13 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 1.5vmin;
+  /* User-selected eye glow — applied here so emotion box-shadow overrides on .eye never kill it */
+  filter: drop-shadow(0 0 3.5vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.50))
+          drop-shadow(0 0 10vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.22))
+          drop-shadow(0 0 20vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.08));
+  transition: filter 0.35s ease;
 }
+body.glow-off .eye-wrap { filter: none; }
 
 /* Eye — soft periwinkle radial gradient: dreamy blue-violet center fading
    to whisper-lavender at edges.  --gaze-x / --gaze-y shift the deeper
@@ -195,24 +201,18 @@ html, body {
   height: 48vmin;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,
-    #8190d9  6%,
-    #8795db 12%,
-    #8d9adc 18%,
-    #949fdd 24%,
-    #9aa4de 30%,
-    #a0aae0 36%,
-    #a6afe1 42%,
-    #acb4e2 48%,
-    #b2b9e3 54%,
-    #b8bee5 60%,
-    #bec3e6 66%,
-    #c4c8e7 72%,
-    #cbcde8 78%,
-    #d1d2ea 84%,
-    #d7d8eb 90%,
-    #ddddec 95%,
-    #e3e2ee 100%
+    #3d4ea8  0%,
+    #4b5cb8  8%,
+    #5868c2 16%,
+    #6372c8 24%,
+    #6e7ccc 32%,
+    #7a88d0 42%,
+    #8290d4 52%,
+    #8c9ad8 62%,
+    #96a2da 72%,
+    #9eaadc 82%,
+    #a6b0de 92%,
+    #adb6e0 100%
   );
   border-radius: 50%;
   position: relative;
@@ -223,10 +223,7 @@ html, body {
               transform 0.22s cubic-bezier(.4, 0, .2, 1),
               opacity 0.30s ease,
               box-shadow 0.22s ease;
-  box-shadow: 0 0 5vmin  rgba(120, 135, 235, 0.45),
-              0 0 14vmin rgba(120, 135, 235, 0.20),
-              0 0 26vmin rgba(120, 135, 235, 0.08),
-              inset 0 -1px 2px rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -1px 2px rgba(255, 255, 255, 0.12);
 }
 
 /* ===== Expression: Idle (resting, soft-eyed, present) ===== */
@@ -2589,7 +2586,68 @@ body.full-mode.theme-cherry::before {
   animation-duration: 10s;
 }
 
-/* Show full-mode collapse button, hide compact controls */
+/* ── THEME: Midnight (city night sky with moon and distant cityscape) ── */
+body.full-mode.theme-midnight {
+  background:
+    linear-gradient(180deg, #01020a 0%, #030510 22%, #050818 45%, #06091e 65%, #040714 85%, #020510 100%),
+    /* Moon glow — soft silver upper-right */
+    radial-gradient(ellipse 28% 22% at 80% 8%,   rgba(210, 220, 255, 0.22) 0%, transparent 65%),
+    /* Horizon city-light warm haze */
+    radial-gradient(ellipse 100% 18% at 50% 100%, rgba(40, 48, 110, 0.55) 0%, transparent 60%),
+    /* Deep side darkness */
+    radial-gradient(ellipse 28% 80% at   0% 55%,  rgba(0, 0,  8, 0.80) 0%, transparent 50%),
+    radial-gradient(ellipse 28% 80% at 100% 55%,  rgba(0, 0,  8, 0.80) 0%, transparent 50%);
+}
+body.full-mode.theme-midnight::before {
+  content: '';
+  background:
+    radial-gradient(ellipse 26% 20% at 80% 8%, rgba(225, 232, 255, 0.14) 0%, transparent 52%),
+    radial-gradient(ellipse 60% 10% at 50% 100%, rgba(50, 60, 135, 0.30) 0%, transparent 55%);
+  animation-duration: 18s;
+}
+
+/* ── THEME: Snow (winter night, soft drifting snow) ─────────────────── */
+body.full-mode.theme-snow {
+  background:
+    linear-gradient(180deg, #0a0e18 0%, #0d1220 25%, #101526 50%, #0e1222 75%, #0a0e1c 100%),
+    /* Soft blue moonlight wash */
+    radial-gradient(ellipse 55% 40% at 50% 0%,   rgba(140, 165, 230, 0.14) 0%, transparent 65%),
+    /* Snow-glow on the ground */
+    radial-gradient(ellipse 100% 22% at 50% 100%, rgba(160, 185, 240, 0.20) 0%, transparent 60%),
+    /* Side depth */
+    radial-gradient(ellipse 28% 80% at   0% 55%,  rgba(5, 8, 20, 0.75) 0%, transparent 50%),
+    radial-gradient(ellipse 28% 80% at 100% 55%,  rgba(5, 8, 20, 0.75) 0%, transparent 50%);
+}
+body.full-mode.theme-snow::before {
+  content: '';
+  background:
+    radial-gradient(ellipse 58% 36% at 50% 0%, rgba(160, 185, 245, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 18% at 50% 100%, rgba(175, 198, 248, 0.12) 0%, transparent 55%);
+  animation-duration: 20s;
+}
+
+/* ── THEME: Aurora (northern lights, deep polar night) ───────────────── */
+body.full-mode.theme-aurora {
+  background:
+    linear-gradient(180deg, #020d10 0%, #041410 22%, #061808 45%, #051610 65%, #031108 85%, #020d08 100%),
+    /* Aurora curtain bands — left teal, right green, centre glow */
+    radial-gradient(ellipse 60% 55% at 20% 30%,  rgba(20, 165, 145, 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 45% at 78% 25%,  rgba(45, 195, 80,  0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 50% 18%,  rgba(28, 178, 115, 0.20) 0%, transparent 62%),
+    /* Ground reflection */
+    radial-gradient(ellipse 80% 20% at 50% 100%, rgba(12, 80, 55, 0.45) 0%, transparent 58%),
+    /* Deep polar darkness on sides */
+    radial-gradient(ellipse 25% 80% at   0% 50%, rgba(0, 6, 4, 0.88) 0%, transparent 50%),
+    radial-gradient(ellipse 25% 80% at 100% 50%, rgba(0, 6, 4, 0.88) 0%, transparent 50%);
+}
+body.full-mode.theme-aurora::before {
+  content: '';
+  background:
+    radial-gradient(ellipse 62% 52% at 18% 30%, rgba(22, 175, 150, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 52% 44% at 80% 26%, rgba(48, 205, 88, 0.10)  0%, transparent 58%),
+    radial-gradient(ellipse 48% 38% at 50% 20%, rgba(30, 185, 120, 0.12) 0%, transparent 55%);
+  animation-duration: 12s;
+}
 body.full-mode #full-collapse-btn  { display: block; }
 body.full-mode #compact-expand-btn { display: none;  }
 
@@ -2776,11 +2834,6 @@ body.mouth-none .mouth { opacity: 0; pointer-events: none; }
 body.full-mode.companion-pos-left  .eyes { justify-content: flex-start; padding-left: 10vw; }
 body.full-mode.companion-pos-right .eyes { justify-content: flex-end;   padding-right: 10vw; }
 /* center is the default — no override needed */
-
-/* ── Eye spacing ───────────────────────────────────────────────────── */
-body.eye-spacing-narrow .eyes { gap: 2vmin; }
-body.eye-spacing-wide   .eyes { gap: 12vmin; }
-/* normal uses the default gap — no override */
 
 /* ── Eyebrow visibility ────────────────────────────────────────────── */
 body.hide-eyebrows .brow { opacity: 0; pointer-events: none; }
@@ -7070,31 +7123,57 @@ body.mouth-thick .mouth-cat .mouth::before,
 body.mouth-thick .mouth-cat .mouth::after  { border-width: 0.52vmin !important; }
 
 /* ═══════════════════════════════════════════════════════════
-   EYE ROUNDNESS
+   EYE SHAPE
+   Five distinct neutral-state shapes. No !important so emotion shapes
+   naturally override — the setting controls the companion's resting face.
+   Specificity: (0,2,1) < emotion rules (0,3,0) so emotions always win.
    ─────────────────────────────────────────────────────────── */
-body.eye-roundness-soft .eye {
-  border-radius: 44% !important;
-  transition: border-radius 0.22s cubic-bezier(.4,0,.2,1);
-}
-body.eye-roundness-oval .eye {
-  border-radius: 42% 42% 48% 48% !important;
-  transition: border-radius 0.22s cubic-bezier(.4,0,.2,1);
+
+/* SQUISH — rounded rectangle; clearly not circular */
+body.eye-roundness-squish .eye {
+  border-radius: 24%;
 }
 
+/* ALMOND — flat cat/fox eye; wide horizontal with tight vertical radii */
+body.eye-roundness-almond .eye {
+  border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%;
+}
+
+/* DROOPY — heavy-lidded; flat top edge, fully rounded bottom */
+body.eye-roundness-droopy .eye {
+  border-radius: 8% 8% 50% 50%;
+}
+
+/* TALL — elongated vertical oval; more upright and wide-eyed */
+body.eye-roundness-tall .eye {
+  border-radius: 50% 50% 50% 50% / 65% 65% 65% 65%;
+}
+
+/* keep old names as aliases so saved settings still resolve */
+body.eye-roundness-soft .eye { border-radius: 24%; }
+body.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
+
 /* ═══════════════════════════════════════════════════════════
-   PUPIL SIZE
+   EYE SIZE (was "Pupil size")
+   Scale the whole .eye element — iris + pupil scale together.
+   Pupil width/height are reset to default so we rely purely on
+   the visual scale transform for size.
    ─────────────────────────────────────────────────────────── */
+body.pupil-small .eye  { transform: scale(0.78) !important; }
+body.pupil-large .eye  { transform: scale(1.30) !important; }
+
+/* reset standalone pupil overrides — whole-eye scale makes them redundant */
 body.pupil-small .pupil {
-  width: 12vmin !important;
-  height: 12vmin !important;
-  margin-top: -6vmin !important;
-  margin-left: -6vmin !important;
+  width: 18vmin !important;
+  height: 18vmin !important;
+  margin-top: -9vmin !important;
+  margin-left: -9vmin !important;
 }
 body.pupil-large .pupil {
-  width: 24vmin !important;
-  height: 24vmin !important;
-  margin-top: -12vmin !important;
-  margin-left: -12vmin !important;
+  width: 18vmin !important;
+  height: 18vmin !important;
+  margin-top: -9vmin !important;
+  margin-left: -9vmin !important;
 }
 
 /* ═══════════════════════════════════════════════════════════

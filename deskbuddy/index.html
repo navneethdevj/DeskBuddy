@@ -79,6 +79,9 @@
                   <button class="theme-chip" data-theme="forest"><span class="theme-swatch" style="background:linear-gradient(135deg,#040e06,#0a2a0e 70%)"></span>Forest</button>
                   <button class="theme-chip" data-theme="cherry"><span class="theme-swatch" style="background:linear-gradient(135deg,#090512,#8a1840 70%)"></span>Sakura</button>
                   <button class="theme-chip" data-theme="ocean"><span class="theme-swatch" style="background:linear-gradient(135deg,#010609,#042030 70%)"></span>Ocean</button>
+                  <button class="theme-chip" data-theme="midnight"><span class="theme-swatch" style="background:linear-gradient(135deg,#01020a,#08102a 70%)"></span>Midnight</button>
+                  <button class="theme-chip" data-theme="snow"><span class="theme-swatch" style="background:linear-gradient(135deg,#0a0e18,#1a2240 70%)"></span>Snow</button>
+                  <button class="theme-chip" data-theme="aurora"><span class="theme-swatch" style="background:linear-gradient(135deg,#020d10,#073020 70%)"></span>Aurora</button>
                 </div>
               </div>
               <div class="settings-row">
@@ -147,29 +150,21 @@
                   <button class="color-swatch glow-swatch" data-glow="gold"    title="Gold"     style="background:radial-gradient(circle at 35% 35%,#ffe080,#d4a010)"></button>
                 </div>
               </div>
-              <div class="settings-row">
+              <div class="settings-row settings-row-col">
                 <div>
                   <div class="settings-row-label">Eye shape</div>
-                  <div class="settings-row-sublabel">Overall roundness</div>
+                  <div class="settings-row-sublabel">Neutral-state shape — emotions still override</div>
                 </div>
                 <div class="style-chips" id="eye-roundness-btns">
                   <button class="style-chip" data-roundness="round">Round</button>
-                  <button class="style-chip" data-roundness="soft">Soft</button>
-                  <button class="style-chip" data-roundness="oval">Oval</button>
+                  <button class="style-chip" data-roundness="squish">Squish</button>
+                  <button class="style-chip" data-roundness="almond">Almond</button>
+                  <button class="style-chip" data-roundness="droopy">Droopy</button>
+                  <button class="style-chip" data-roundness="tall">Tall</button>
                 </div>
               </div>
               <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">Eye spacing</div>
-                </div>
-                <div class="style-chips" id="eye-spacing-btns">
-                  <button class="style-chip" data-spacing="narrow">Narrow</button>
-                  <button class="style-chip" data-spacing="normal">Normal</button>
-                  <button class="style-chip" data-spacing="wide">Wide</button>
-                </div>
-              </div>
-              <div class="settings-row">
-                <div class="settings-row-label">Pupil size</div>
+                <div class="settings-row-label">Eye size</div>
                 <div class="style-chips" id="pupil-size-btns">
                   <button class="style-chip" data-pupil="small">Small</button>
                   <button class="style-chip" data-pupil="normal">Normal</button>
@@ -283,16 +278,13 @@
               </div>
               <div class="settings-row">
                 <div>
-                  <div class="settings-row-label">Overlay position</div>
-                  <div class="settings-row-sublabel">Snap PiP bubble to a screen corner</div>
+                  <div class="settings-row-label">Snap to corner</div>
+                  <div class="settings-row-sublabel">Auto-snap to nearest corner on release</div>
                 </div>
-                <div class="pip-corner-picker" id="pip-corner-picker">
-                  <button class="pip-corner-chip" data-corner="top-left"    title="Top left">↖</button>
-                  <button class="pip-corner-chip" data-corner="top-center"  title="Top center">↑</button>
-                  <button class="pip-corner-chip" data-corner="top-right"   title="Top right">↗</button>
-                  <button class="pip-corner-chip" data-corner="bottom-left" title="Bottom left">↙</button>
-                  <button class="pip-corner-chip" data-corner="bottom-right" title="Bottom right">↘</button>
-                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="pip-snap-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
             </div>
           </div>

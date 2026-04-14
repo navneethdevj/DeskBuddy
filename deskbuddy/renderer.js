@@ -124,10 +124,10 @@ const ThemeCanvas = (() => {
       init(W, H) {
         _stars = [];
         this._branches = _buildBranches(W, H, [
-          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.18, len: H * 0.40, w: 7.5, depth: 7 },
-          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.20, len: H * 0.38, w: 7,   depth: 7 },
-          { x: -W * 0.01, y: H * 0.28, angle:  0.08,                len: W * 0.24, w: 5,   depth: 5 },
-          { x:  W * 1.01, y: H * 0.22, angle:  Math.PI - 0.12,      len: W * 0.22, w: 4.5, depth: 5 },
+          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.20, len: H * 0.30, w: 7.5, depth: 6 },
+          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.22, len: H * 0.28, w: 7,   depth: 6 },
+          { x: -W * 0.01, y: H * 0.30, angle:  0.06,                len: W * 0.18, w: 4.5, depth: 4 },
+          { x:  W * 1.01, y: H * 0.24, angle:  Math.PI - 0.10,      len: W * 0.16, w: 4,   depth: 4 },
         ]);
       },
       drawBackground(ctx, W, H) {
@@ -148,12 +148,12 @@ const ThemeCanvas = (() => {
           fg.addColorStop(1, 'rgba(80, 200, 80, 0)');
           ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
         }
-        // Branch silhouettes
+        // Branch silhouettes — warm brown so they read as natural wood, not scary silhouettes
         const b = this._branches;
         if (!b) return;
         ctx.save();
         b.forEach(seg => {
-          ctx.strokeStyle = 'rgba(4, 10, 2, 0.92)';
+          ctx.strokeStyle = `rgba(${62 + Math.round(seg.w * 4)}, ${38 + Math.round(seg.w * 3)}, ${18}, ${Math.min(0.82, 0.45 + seg.w * 0.04)})`;
           ctx.lineWidth = seg.w; ctx.lineCap = 'round';
           ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
         });
@@ -192,11 +192,11 @@ const ThemeCanvas = (() => {
       init(W, H) {
         _stars = [];
         this._branches = _buildBranches(W, H, [
-          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.25, len: H * 0.46, w: 8.5, depth: 8 },
-          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.28, len: H * 0.43, w: 8,   depth: 8 },
-          { x:  W * 0.26, y: H * 0.90, angle: -Math.PI / 2 + 0.08, len: H * 0.28, w: 5.5, depth: 6 },
-          { x: -W * 0.01, y: H * 0.32, angle:  0.10,                len: W * 0.18, w: 4,   depth: 4 },
-          { x:  W * 1.01, y: H * 0.26, angle:  Math.PI - 0.14,      len: W * 0.16, w: 3.5, depth: 4 },
+          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.22, len: H * 0.32, w: 8.5, depth: 7 },
+          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.25, len: H * 0.30, w: 8,   depth: 7 },
+          { x:  W * 0.24, y: H * 0.92, angle: -Math.PI / 2 + 0.06, len: H * 0.20, w: 5,   depth: 5 },
+          { x: -W * 0.01, y: H * 0.34, angle:  0.08,                len: W * 0.14, w: 3.5, depth: 4 },
+          { x:  W * 1.01, y: H * 0.28, angle:  Math.PI - 0.12,      len: W * 0.12, w: 3,   depth: 4 },
         ]);
       },
       drawBackground(ctx, W, H) {
@@ -212,12 +212,12 @@ const ThemeCanvas = (() => {
         gg.addColorStop(0, 'rgba(220, 100, 160, 0)');
         gg.addColorStop(1, 'rgba(180,  60, 120, 0.08)');
         ctx.fillStyle = gg; ctx.fillRect(0, H * 0.80, W, H * 0.20);
-        // Branch silhouettes (near-black reddish)
+        // Branch silhouettes — warm pinkish-brown cherry wood
         const b = this._branches;
         if (!b) return;
         ctx.save();
         b.forEach(seg => {
-          ctx.strokeStyle = 'rgba(18, 4, 10, 0.90)';
+          ctx.strokeStyle = `rgba(${80 + Math.round(seg.w * 5)}, ${35 + Math.round(seg.w * 2)}, ${42}, ${Math.min(0.80, 0.42 + seg.w * 0.04)})`;
           ctx.lineWidth = seg.w; ctx.lineCap = 'round';
           ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
         });
@@ -256,14 +256,15 @@ const ThemeCanvas = (() => {
       _kelp: null, _caustics: null,
       init(W, H) {
         _stars = [];
-        const kCount = 7 + Math.floor(Math.random() * 4);
+        const kCount = 10 + Math.floor(Math.random() * 6);
         this._kelp = Array.from({ length: kCount }, (_, i) => {
-          const x = ((i + 0.5) / kCount + (Math.random() - 0.5) * 0.12) * W;
+          const x = ((i + 0.5) / kCount + (Math.random() - 0.5) * 0.10) * W;
           return {
-            x, segments: 8 + Math.floor(Math.random() * 5),
-            height: H * (0.22 + Math.random() * 0.32),
+            x, segments: 6 + Math.floor(Math.random() * 4),
+            height: H * (0.14 + Math.random() * 0.20),
             phase: Math.random() * Math.PI * 2,
-            col: `hsl(${142 + Math.random() * 30},${58 + Math.random() * 20}%,${18 + Math.random() * 16}%)`,
+            col: `hsl(${138 + Math.random() * 28},${65 + Math.random() * 22}%,${16 + Math.random() * 14}%)`,
+            thick: 4.5 + Math.random() * 4.0,
           };
         });
         this._caustics = Array.from({ length: 14 }, () => ({
@@ -293,7 +294,7 @@ const ThemeCanvas = (() => {
         ctx.save();
         this._kelp.forEach(k => {
           const segH = k.height / k.segments;
-          ctx.strokeStyle = k.col; ctx.lineWidth = 2.8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.strokeStyle = k.col; ctx.lineWidth = k.thick; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
           ctx.beginPath(); ctx.moveTo(k.x, H);
           for (let i = 1; i <= k.segments; i++) {
             const fy   = H - segH * i;
@@ -356,6 +357,207 @@ const ThemeCanvas = (() => {
     },
 
     classic: null,
+
+    // ── Midnight (city night sky: stars, moon, shooting stars) ────────────
+    midnight: {
+      max: 5, rate: 0.012,
+      _stars: null, _buildings: null,
+      init(W, H) {
+        // Dense star field
+        this._stars = Array.from({ length: 160 }, () => ({
+          x: Math.random() * W, y: Math.random() * H * 0.82,
+          r: 0.28 + Math.random() * 1.2,
+          alpha: 0.30 + Math.random() * 0.65,
+          twinklePhase: Math.random() * Math.PI * 2,
+          twinkleSpd: 0.008 + Math.random() * 0.022,
+        }));
+        // City silhouette — blocky building outlines along the bottom
+        const bldCount = 18 + Math.floor(Math.random() * 8);
+        this._buildings = Array.from({ length: bldCount }, (_, i) => {
+          const bw = W * (0.048 + Math.random() * 0.068);
+          const bh = H * (0.06 + Math.random() * 0.18);
+          const bx = (i / bldCount) * W + (Math.random() - 0.5) * (W / bldCount) * 0.4;
+          return { x: bx, y: H - bh, w: bw, h: bh };
+        });
+      },
+      drawBackground(ctx, W, H) {
+        // Twinkling stars
+        this._stars.forEach(s => {
+          s.twinklePhase += s.twinkleSpd;
+          const a = s.alpha * (0.40 + 0.60 * Math.sin(s.twinklePhase));
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.fillStyle = 'rgba(215, 222, 255, 1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        });
+        // Moon (upper-right, solid disc with soft halo)
+        const mx = W * 0.80, my = H * 0.09, mr = Math.min(W, H) * 0.038;
+        const mg = ctx.createRadialGradient(mx, my, mr * 0.3, mx, my, mr * 2.8);
+        mg.addColorStop(0,   'rgba(230, 238, 255, 0.22)');
+        mg.addColorStop(0.55,'rgba(200, 215, 255, 0.08)');
+        mg.addColorStop(1,   'rgba(160, 185, 255, 0)');
+        ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr * 2.8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(242, 246, 255, 0.92)';
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+        // City silhouette
+        if (this._buildings) {
+          ctx.save(); ctx.fillStyle = 'rgba(4, 6, 16, 0.88)';
+          this._buildings.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+          // Occasional lit windows
+          this._buildings.forEach(b => {
+            const wCount = Math.floor(b.w / 7);
+            for (let i = 0; i < wCount; i++) {
+              if (Math.random() < 0.30) {
+                const wx = b.x + 3 + i * 7, wy = b.y + 4 + Math.random() * (b.h - 10);
+                ctx.fillStyle = `rgba(${230 + Math.random() * 25}, ${190 + Math.random() * 40}, 80, 0.55)`;
+                ctx.fillRect(wx, wy, 3, 4);
+              }
+            }
+          });
+          ctx.restore();
+        }
+      },
+      create(W, H) {
+        return {
+          x: Math.random() * W * 0.7, y: Math.random() * H * 0.35 - H * 0.05,
+          vx: 2.2 + Math.random() * 2.8, vy: 1.5 + Math.random() * 2,
+          len: 75 + Math.random() * 90, alpha: 0, maxAlpha: 0.6 + Math.random() * 0.3,
+          life: 0, maxLife: 40 + Math.random() * 60,
+        };
+      },
+      draw(ctx, p) {
+        const d = Math.hypot(p.vx, p.vy);
+        const tx = p.x - (p.vx / d) * p.len, ty = p.y - (p.vy / d) * p.len;
+        const g = ctx.createLinearGradient(p.x, p.y, tx, ty);
+        g.addColorStop(0,   `rgba(240,244,255,${p.alpha})`);
+        g.addColorStop(0.4, `rgba(195,210,255,${p.alpha * 0.45})`);
+        g.addColorStop(1,   'rgba(155,175,255,0)');
+        ctx.save(); ctx.strokeStyle = g; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke(); ctx.restore();
+      },
+      update(p, W, H) {
+        p.x += p.vx; p.y += p.vy; p.life++;
+        p.alpha = p.life < 8 ? (p.life / 8) * p.maxAlpha
+          : p.life > p.maxLife - 12 ? Math.max(0, p.alpha - p.maxAlpha / 12) : p.maxAlpha;
+        return p.life < p.maxLife && p.x < W + p.len && p.y < H + p.len;
+      },
+    },
+
+    // ── Snow (winter night: falling snowflakes, starry sky) ─────────────
+    snow: {
+      max: 55, rate: 0.20,
+      init(W, H) { _initStars(W, H, 85); },
+      drawBackground(ctx, W, H) {
+        // Faint stars
+        _stars.forEach(s => {
+          s.twinklePhase += s.twinkleSpd;
+          const a = s.alpha * 0.48 * (0.50 + 0.50 * Math.sin(s.twinklePhase));
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.fillStyle = 'rgba(200, 215, 255, 1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.85, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        });
+        // Snow glow on ground
+        const gg = ctx.createLinearGradient(0, H * 0.82, 0, H);
+        gg.addColorStop(0, 'rgba(160, 185, 240, 0)');
+        gg.addColorStop(1, 'rgba(165, 192, 248, 0.14)');
+        ctx.fillStyle = gg; ctx.fillRect(0, H * 0.82, W, H * 0.18);
+      },
+      create(W) {
+        const big = Math.random() < 0.18;
+        return {
+          x: Math.random() * W * 1.1 - W * 0.05,
+          y: -12 - Math.random() * 40,
+          vx: -0.6 + Math.random() * 1.2,
+          vy: big ? (0.35 + Math.random() * 0.5) : (0.55 + Math.random() * 1.1),
+          r: big ? (3.5 + Math.random() * 4.5) : (0.8 + Math.random() * 2.8),
+          alpha: big ? (0.35 + Math.random() * 0.25) : (0.50 + Math.random() * 0.40),
+          sw: Math.random() * Math.PI * 2,
+          swAmp: 0.5 + Math.random() * 1.5,
+          swSpd: 0.010 + Math.random() * 0.018,
+        };
+      },
+      draw(ctx, p) {
+        ctx.save(); ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = 'rgba(215, 230, 255, 1)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+        if (p.r > 3) {  // add faint halo on large flakes
+          const hg = ctx.createRadialGradient(p.x, p.y, p.r, p.x, p.y, p.r * 2.4);
+          hg.addColorStop(0, `rgba(200, 222, 255, ${p.alpha * 0.30})`);
+          hg.addColorStop(1, 'rgba(200, 222, 255, 0)');
+          ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      },
+      update(p, W, H) {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
+        return p.y < H + 20;
+      },
+    },
+
+    // ── Aurora (northern lights: wavering curtain bands + stars) ─────────
+    aurora: {
+      max: 0, rate: 0,
+      _bands: null, _auroraFrame: 0,
+      init(W, H) {
+        _initStars(W, H, 100);
+        this._bands = Array.from({ length: 5 }, (_, i) => ({
+          phase:  (i / 5) * Math.PI * 2,
+          spd:    0.006 + Math.random() * 0.010,
+          hue:    140 + i * 24,       // teal → green → cyan range
+          yBase:  H * (0.08 + i * 0.06),
+          amp:    H * (0.04 + Math.random() * 0.06),
+          alpha:  0.12 + Math.random() * 0.10,
+          width:  H * (0.08 + Math.random() * 0.10),
+        }));
+      },
+      drawBackground(ctx, W, H) {
+        this._auroraFrame = (this._auroraFrame || 0) + 1;
+        // Twinkling stars (dimmed under aurora)
+        _stars.forEach(s => {
+          s.twinklePhase += s.twinkleSpd;
+          const a = s.alpha * 0.55 * (0.40 + 0.60 * Math.sin(s.twinklePhase));
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.fillStyle = 'rgba(205, 225, 255, 1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        });
+        // Aurora curtain bands — each is a wavy horizontal glow strip
+        const t = this._auroraFrame;
+        this._bands.forEach(band => {
+          band.phase += band.spd;
+          const yCenter = band.yBase + Math.sin(band.phase) * band.amp;
+          const top    = yCenter - band.width / 2;
+          const bottom = yCenter + band.width / 2;
+          const g = ctx.createLinearGradient(0, top, 0, bottom);
+          const a = band.alpha * (0.70 + 0.30 * Math.sin(band.phase * 1.8 + t * 0.005));
+          g.addColorStop(0,   `hsla(${band.hue}, 80%, 52%, 0)`);
+          g.addColorStop(0.3, `hsla(${band.hue}, 85%, 60%, ${a * 0.60})`);
+          g.addColorStop(0.5, `hsla(${band.hue}, 90%, 64%, ${a})`);
+          g.addColorStop(0.7, `hsla(${band.hue}, 85%, 58%, ${a * 0.55})`);
+          g.addColorStop(1,   `hsla(${band.hue}, 78%, 50%, 0)`);
+          // Wave along x using a sinusoidal vertical offset per x
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(0, yCenter + Math.sin(band.phase) * band.amp * 0.5);
+          for (let xi = 0; xi <= W; xi += 8) {
+            const yo = Math.sin(xi / W * Math.PI * 3 + band.phase) * band.amp * 0.55;
+            ctx.lineTo(xi, yCenter + yo);
+          }
+          ctx.lineTo(W, bottom + band.amp); ctx.lineTo(0, bottom + band.amp); ctx.closePath();
+          ctx.fillStyle = g; ctx.fill();
+          ctx.restore();
+        });
+        // Horizon reflection glow
+        const rg = ctx.createLinearGradient(0, H * 0.75, 0, H);
+        rg.addColorStop(0, 'rgba(18, 95, 62, 0)');
+        rg.addColorStop(1, 'rgba(14, 72, 48, 0.22)');
+        ctx.fillStyle = rg; ctx.fillRect(0, H * 0.75, W, H * 0.25);
+      },
+      create() { return null; },
+      draw() {},
+      update() { return false; },
+    },
   };
 
   function _resize() {
@@ -517,9 +719,6 @@ const ThemeCanvas = (() => {
 
     const companionPos = Settings.get('companionPos') || 'center';
     if (companionPos !== 'center') document.body.classList.add(`companion-pos-${companionPos}`);
-
-    const eyeSpacing = Settings.get('eyeSpacing') || 'normal';
-    if (eyeSpacing !== 'normal') document.body.classList.add(`eye-spacing-${eyeSpacing}`);
 
     const eyeRoundness = Settings.get('eyeRoundness') || 'round';
     if (eyeRoundness !== 'round') document.body.classList.add(`eye-roundness-${eyeRoundness}`);
@@ -1939,13 +2138,16 @@ const ThemeCanvas = (() => {
       _syncShapeChips(v);
     });
 
-    // PiP corner picker — snap to one of 5 named positions
-    document.querySelectorAll('#pip-corner-picker .pip-corner-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (window.electronAPI && window.electronAPI.setPipCorner)
-          window.electronAPI.setPipCorner(btn.dataset.corner);
+    // PiP snap toggle — auto-snap to nearest of 5 corners on drag release
+    const pipSnapToggle = document.getElementById('pip-snap-toggle');
+    if (pipSnapToggle) {
+      pipSnapToggle.checked = Settings.get('pipSnapEnabled') !== false;
+      pipSnapToggle.addEventListener('change', () => {
+        Settings.set('pipSnapEnabled', pipSnapToggle.checked);
+        if (window.electronAPI && window.electronAPI.setPipSnapEnabled)
+          window.electronAPI.setPipSnapEnabled(pipSnapToggle.checked);
       });
-    });
+    }
 
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');
@@ -2583,7 +2785,8 @@ const ThemeCanvas = (() => {
     }
 
     // ── Full-screen theme picker ─────────────────────────────────────────
-    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean','theme-cherry'];
+    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean','theme-cherry',
+                           'theme-midnight','theme-snow','theme-aurora'];
 
     function _applyFullTheme(theme) {
       document.body.classList.remove(...THEME_CLASSES);
@@ -2672,29 +2875,6 @@ const ThemeCanvas = (() => {
       });
     }
     Settings.onChange('companionPos', (v) => _applyCompanionPos(v));
-
-    // ── Eye spacing ──────────────────────────────────────────────────────
-    const EYE_SPACING_CLASSES = ['eye-spacing-narrow','eye-spacing-wide'];
-
-    function _applyEyeSpacing(spacing) {
-      document.body.classList.remove(...EYE_SPACING_CLASSES);
-      if (spacing && spacing !== 'normal') document.body.classList.add(`eye-spacing-${spacing}`);
-      const btns = document.getElementById('eye-spacing-btns');
-      if (btns) {
-        btns.querySelectorAll('.style-chip').forEach(btn =>
-          btn.classList.toggle('active', btn.dataset.spacing === spacing));
-      }
-    }
-
-    _applyEyeSpacing(Settings.get('eyeSpacing') || 'normal');
-
-    const eyeSpacingBtns = document.getElementById('eye-spacing-btns');
-    if (eyeSpacingBtns) {
-      eyeSpacingBtns.querySelectorAll('.style-chip').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('eyeSpacing', btn.dataset.spacing));
-      });
-    }
-    Settings.onChange('eyeSpacing', (v) => _applyEyeSpacing(v));
 
     // ── Blink rate ───────────────────────────────────────────────────────
     function _applyBlinkRate(rate) {
@@ -2822,8 +3002,10 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('eyeGlowColor', (v) => _applyEyeGlow(v));
 
-    // ── Eye roundness ────────────────────────────────────────────────────
-    const EYE_ROUND_CLASSES = ['eye-roundness-soft','eye-roundness-oval'];
+    // ── Eye shape ────────────────────────────────────────────────────────
+    const EYE_ROUND_CLASSES = ['eye-roundness-squish','eye-roundness-almond',
+      'eye-roundness-droopy','eye-roundness-tall',
+      'eye-roundness-soft','eye-roundness-oval']; // keep old names for migrated settings
 
     function _applyEyeRoundness(r) {
       document.body.classList.remove(...EYE_ROUND_CLASSES);
@@ -2916,7 +3098,7 @@ const ThemeCanvas = (() => {
     }
 
     // ── Appearance preset copy / paste ───────────────────────────────────
-    const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness','eyeSpacing',
+    const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
       'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 

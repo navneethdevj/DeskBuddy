@@ -87,7 +87,8 @@ const Settings = (() => {
     } catch (e) { /* corrupt data — start with defaults */ }
 
     // Migrate deprecated theme names to supported ones
-    const VALID_THEMES = new Set(['galaxy', 'classic', 'forest', 'cherry', 'ocean']);
+    const VALID_THEMES = new Set(['galaxy', 'classic', 'forest', 'cherry', 'ocean',
+                                   'midnight', 'snow', 'aurora']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
     // Migrate deprecated mouth style names
