@@ -38,6 +38,41 @@ const ThemeCanvas = (() => {
     return out;
   }
 
+  // ── Mountain builder for snow theme ─────────────────────────────────────────
+  function _buildMountains(W, H) {
+    function makeRange(numPeaks, peakMin, peakMax, valleyMin, valleyMax, baseY) {
+      const step = W / (numPeaks + 1);
+      const pts  = [{ x: -10, y: baseY }];
+      for (let i = 0; i <= numPeaks; i++) {
+        if (i < numPeaks) {
+          pts.push({
+            x: step * (i + 0.5) + (Math.random() - 0.5) * step * 0.55,
+            y: H * (peakMin  + Math.random() * (peakMax  - peakMin)),
+          });
+        }
+        pts.push({
+          x: step * (i + 1) + (Math.random() - 0.5) * step * 0.22,
+          y: H * (valleyMin + Math.random() * (valleyMax - valleyMin)),
+        });
+      }
+      pts.push({ x: W + 10, y: baseY });
+      pts.push({ x: W + 10, y: H + 10 });
+      pts.push({ x: -10,    y: H + 10 });
+      return pts;
+    }
+    return [
+      // Farthest range — pale blue silhouette, highest on horizon
+      { pts: makeRange(8, 0.30, 0.46, 0.50, 0.58, H * 0.58),
+        fill: 'rgba(60, 78, 122, 0.45)', snowFade: H * 0.05 },
+      // Middle range
+      { pts: makeRange(5, 0.42, 0.56, 0.60, 0.66, H * 0.70),
+        fill: 'rgba(30, 42, 78, 0.68)',  snowFade: H * 0.06 },
+      // Near ridge — darkest foreground
+      { pts: makeRange(3, 0.55, 0.66, 0.68, 0.74, H * 0.82),
+        fill: 'rgba(14, 22, 48, 0.90)',  snowFade: H * 0.07 },
+    ];
+  }
+
   // ── Per-theme configs ────────────────────────────────────────────────────────
   const CFG = {
     // ── Galaxy ──────────────────────────────────────────────────────────────
@@ -120,44 +155,99 @@ const ThemeCanvas = (() => {
     // ── Forest ──────────────────────────────────────────────────────────────
     forest: {
       max: 22, rate: 0.065,
-      _branches: null,
+      _branches: null, _leaves: null, _bushes: null,
       init(W, H) {
         _stars = [];
+        // Shorter seeds so branches stay in the lower screen border
         this._branches = _buildBranches(W, H, [
-          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.20, len: H * 0.30, w: 7.5, depth: 6 },
-          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.22, len: H * 0.28, w: 7,   depth: 6 },
-          { x: -W * 0.01, y: H * 0.30, angle:  0.06,                len: W * 0.18, w: 4.5, depth: 4 },
-          { x:  W * 1.01, y: H * 0.24, angle:  Math.PI - 0.10,      len: W * 0.16, w: 4,   depth: 4 },
+          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.22, len: H * 0.22, w: 9,   depth: 5 },
+          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.24, len: H * 0.21, w: 8.5, depth: 5 },
+          { x:  W * 0.12, y: H * 1.01, angle: -Math.PI / 2 + 0.10, len: H * 0.16, w: 6,   depth: 4 },
+          { x:  W * 0.88, y: H * 1.01, angle: -Math.PI / 2 - 0.12, len: H * 0.15, w: 5.5, depth: 4 },
+          { x: -W * 0.01, y: H * 0.38, angle:  0.08,                len: W * 0.13, w: 4.5, depth: 3 },
+          { x:  W * 1.01, y: H * 0.34, angle:  Math.PI - 0.10,      len: W * 0.12, w: 4,   depth: 3 },
         ]);
+        // Pre-compute leaf clusters at twig tips (only below mid-screen)
+        const HORIZON = H * 0.50;
+        this._leaves = [];
+        if (this._branches) {
+          this._branches.forEach(seg => {
+            if (seg.w > 2.8 || seg.y2 < HORIZON) return;
+            for (let k = 0; k < Math.ceil(2 + seg.w * 0.8); k++) {
+              this._leaves.push({
+                x: seg.x2 + (Math.random() - 0.5) * 32,
+                y: seg.y2 - Math.random() * 18,
+                r: 7 + Math.random() * 16,
+                hue: 92 + Math.floor(Math.random() * 55),
+                l:   18 + Math.floor(Math.random() * 18),
+                a:   0.55 + Math.random() * 0.30,
+              });
+            }
+          });
+        }
+        // Pre-compute bushes along the bottom edge
+        this._bushes = Array.from({ length: 18 }, (_, i) => ({
+          x: W * 0.03 + (i / 17) * W * 0.94,
+          y: H * (0.88 + Math.random() * 0.09),
+          r: 22 + Math.random() * 36,
+          hue: 96 + Math.floor(Math.random() * 44),
+          l:   15 + Math.floor(Math.random() * 14),
+          a:   0.58 + Math.random() * 0.30,
+        }));
       },
       drawBackground(ctx, W, H) {
-        // Soft moonlight shaft from top-center
+        const HORIZON = H * 0.50;
+        // Soft moonlight shaft
         const cg = ctx.createRadialGradient(W / 2, -H * 0.05, 0, W / 2, H * 0.9, W * 0.55);
         cg.addColorStop(0,   'rgba(205, 235, 190, 0.075)');
         cg.addColorStop(0.45,'rgba(160, 210, 145, 0.030)');
         cg.addColorStop(1,   'rgba(80,  150,  70, 0)');
         ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
-        // Firefly-like speckles deep in the canopy
+        // Fireflies
         const t = _frame * 0.018;
         for (let i = 0; i < 18; i++) {
           const fx = W * ((i * 0.137 + Math.sin(t + i) * 0.04 + 1) % 1);
-          const fy = H * 0.12 + H * 0.4 * ((i * 0.211 + Math.cos(t * 0.7 + i) * 0.03 + 1) % 1);
+          const fy = H * 0.20 + H * 0.35 * ((i * 0.211 + Math.cos(t * 0.7 + i) * 0.03 + 1) % 1);
           const fa = 0.12 + 0.08 * Math.sin(t * 1.4 + i * 1.7);
           const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 4);
           fg.addColorStop(0, `rgba(145, 255, 145, ${fa * 1.8})`);
           fg.addColorStop(1, 'rgba(80, 200, 80, 0)');
           ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
         }
-        // Branch silhouettes — warm brown so they read as natural wood, not scary silhouettes
-        const b = this._branches;
-        if (!b) return;
-        ctx.save();
-        b.forEach(seg => {
-          ctx.strokeStyle = `rgba(${62 + Math.round(seg.w * 4)}, ${38 + Math.round(seg.w * 3)}, ${18}, ${Math.min(0.82, 0.45 + seg.w * 0.04)})`;
-          ctx.lineWidth = seg.w; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
-        });
-        ctx.restore();
+        // Bushes (bottom edge undergrowth)
+        if (this._bushes) {
+          this._bushes.forEach(b => {
+            ctx.save(); ctx.globalAlpha = b.a;
+            ctx.fillStyle = `hsl(${b.hue}, 58%, ${b.l}%)`;
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          });
+        }
+        // Branches — warm brown, confined to lower half
+        const br = this._branches;
+        if (br) {
+          ctx.save(); ctx.lineCap = 'round';
+          br.forEach(seg => {
+            if (seg.y1 < HORIZON && seg.y2 < HORIZON) return;
+            const r = Math.min(255, 95 + Math.round(seg.w * 5));
+            const g = Math.min(200, 58 + Math.round(seg.w * 4));
+            const a = Math.min(0.92, 0.58 + seg.w * 0.05);
+            ctx.strokeStyle = `rgba(${r}, ${g}, 22, ${a})`;
+            ctx.lineWidth = seg.w;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+          });
+          ctx.restore();
+        }
+        // Leaf clusters on twig tips
+        if (this._leaves) {
+          ctx.save();
+          this._leaves.forEach(lf => {
+            ctx.globalAlpha = lf.a;
+            ctx.fillStyle = `hsl(${lf.hue}, 62%, ${lf.l}%)`;
+            ctx.beginPath(); ctx.arc(lf.x, lf.y, lf.r, 0, Math.PI * 2); ctx.fill();
+          });
+          ctx.restore();
+        }
       },
       create(W) {
         return {
@@ -167,7 +257,7 @@ const ThemeCanvas = (() => {
           sz: 4 + Math.random() * 8, alpha: 0.48 + Math.random() * 0.42,
           sw: Math.random() * Math.PI * 2, swAmp: 0.7 + Math.random() * 1.5,
           swSpd: 0.016 + Math.random() * 0.020,
-          col: `hsl(${98 + Math.random() * 60},${52 + Math.random() * 30}%,${20 + Math.random() * 20}%)`,
+          col: `hsl(${98 + Math.random() * 60},${52 + Math.random() * 30}%,${22 + Math.random() * 22}%)`,
         };
       },
       draw(ctx, p) {
@@ -188,18 +278,39 @@ const ThemeCanvas = (() => {
     // ── Cherry / Sakura ─────────────────────────────────────────────────────
     cherry: {
       max: 32, rate: 0.09,
-      _branches: null,
+      _branches: null, _blossoms: null,
       init(W, H) {
         _stars = [];
+        // Shorter seeds — branches frame the border, not the face
         this._branches = _buildBranches(W, H, [
-          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.22, len: H * 0.32, w: 8.5, depth: 7 },
-          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.25, len: H * 0.30, w: 8,   depth: 7 },
-          { x:  W * 0.24, y: H * 0.92, angle: -Math.PI / 2 + 0.06, len: H * 0.20, w: 5,   depth: 5 },
-          { x: -W * 0.01, y: H * 0.34, angle:  0.08,                len: W * 0.14, w: 3.5, depth: 4 },
-          { x:  W * 1.01, y: H * 0.28, angle:  Math.PI - 0.12,      len: W * 0.12, w: 3,   depth: 4 },
+          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.24, len: H * 0.23, w: 10,  depth: 5 },
+          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.26, len: H * 0.22, w: 9.5, depth: 5 },
+          { x:  W * 0.20, y: H * 1.01, angle: -Math.PI / 2 + 0.08, len: H * 0.16, w: 6,   depth: 4 },
+          { x:  W * 0.80, y: H * 1.01, angle: -Math.PI / 2 - 0.10, len: H * 0.15, w: 5.5, depth: 4 },
+          { x: -W * 0.01, y: H * 0.40, angle:  0.10,                len: W * 0.12, w: 3.5, depth: 3 },
+          { x:  W * 1.01, y: H * 0.36, angle:  Math.PI - 0.12,      len: W * 0.11, w: 3,   depth: 3 },
         ]);
+        // Pre-compute blossom clusters at twig tips
+        const HORIZON = H * 0.50;
+        this._blossoms = [];
+        if (this._branches) {
+          this._branches.forEach(seg => {
+            if (seg.w > 2.6 || seg.y2 < HORIZON) return;
+            for (let k = 0; k < Math.ceil(2 + seg.w * 0.9); k++) {
+              this._blossoms.push({
+                x: seg.x2 + (Math.random() - 0.5) * 28,
+                y: seg.y2 - Math.random() * 16,
+                r: 6 + Math.random() * 14,
+                hue: 330 + Math.floor(Math.random() * 28),
+                l:   72 + Math.floor(Math.random() * 16),
+                a:   0.52 + Math.random() * 0.32,
+              });
+            }
+          });
+        }
       },
       drawBackground(ctx, W, H) {
+        const HORIZON = H * 0.50;
         // Moon glow (upper-right)
         const mx = W * 0.74, my = H * 0.11;
         const mg = ctx.createRadialGradient(mx, my, 0, mx, my, W * 0.22);
@@ -207,21 +318,47 @@ const ThemeCanvas = (() => {
         mg.addColorStop(0.28,'rgba(245, 210, 248, 0.11)');
         mg.addColorStop(1,   'rgba(210, 165, 230, 0)');
         ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
-        // Soft ground-level petal glow
+        // Soft ground petal glow
         const gg = ctx.createLinearGradient(0, H * 0.80, 0, H);
         gg.addColorStop(0, 'rgba(220, 100, 160, 0)');
         gg.addColorStop(1, 'rgba(180,  60, 120, 0.08)');
         ctx.fillStyle = gg; ctx.fillRect(0, H * 0.80, W, H * 0.20);
-        // Branch silhouettes — warm pinkish-brown cherry wood
+        // Blossom ground clusters along bottom
+        if (this._blossoms) {
+          ctx.save();
+          this._blossoms.forEach(bl => {
+            ctx.globalAlpha = bl.a;
+            ctx.fillStyle = `hsl(${bl.hue}, 72%, ${bl.l}%)`;
+            ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r, 0, Math.PI * 2); ctx.fill();
+          });
+          ctx.restore();
+        }
+        // Branches — warm pinkish-brown cherry wood, confined to lower half
         const b = this._branches;
-        if (!b) return;
-        ctx.save();
-        b.forEach(seg => {
-          ctx.strokeStyle = `rgba(${80 + Math.round(seg.w * 5)}, ${35 + Math.round(seg.w * 2)}, ${42}, ${Math.min(0.80, 0.42 + seg.w * 0.04)})`;
-          ctx.lineWidth = seg.w; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
-        });
-        ctx.restore();
+        if (b) {
+          ctx.save(); ctx.lineCap = 'round';
+          b.forEach(seg => {
+            if (seg.y1 < HORIZON && seg.y2 < HORIZON) return;
+            const r = Math.min(255, 105 + Math.round(seg.w * 6));
+            const g = Math.min(180,  42 + Math.round(seg.w * 2.5));
+            const bv = Math.min(120, 45 + Math.round(seg.w * 3));
+            const a  = Math.min(0.92, 0.56 + seg.w * 0.05);
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${bv}, ${a})`;
+            ctx.lineWidth = seg.w;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+          });
+          ctx.restore();
+        }
+        // Blossom clusters on twig tips
+        if (this._blossoms) {
+          ctx.save();
+          this._blossoms.forEach(bl => {
+            ctx.globalAlpha = bl.a * 0.85;
+            ctx.fillStyle = `hsl(${bl.hue}, 78%, ${bl.l + 6}%)`;
+            ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r * 0.7, 0, Math.PI * 2); ctx.fill();
+          });
+          ctx.restore();
+        }
       },
       create(W) {
         return {
@@ -256,15 +393,16 @@ const ThemeCanvas = (() => {
       _kelp: null, _caustics: null,
       init(W, H) {
         _stars = [];
-        const kCount = 10 + Math.floor(Math.random() * 6);
+        // More strands, shorter and thicker so they stay near the seafloor
+        const kCount = 18 + Math.floor(Math.random() * 8);
         this._kelp = Array.from({ length: kCount }, (_, i) => {
-          const x = ((i + 0.5) / kCount + (Math.random() - 0.5) * 0.10) * W;
+          const x = ((i + 0.5) / kCount + (Math.random() - 0.5) * 0.08) * W;
           return {
-            x, segments: 6 + Math.floor(Math.random() * 4),
-            height: H * (0.14 + Math.random() * 0.20),
+            x, segments: 5 + Math.floor(Math.random() * 4),
+            height: H * (0.10 + Math.random() * 0.12),   // max ~22% — well below the face
             phase: Math.random() * Math.PI * 2,
             col: `hsl(${138 + Math.random() * 28},${65 + Math.random() * 22}%,${16 + Math.random() * 14}%)`,
-            thick: 4.5 + Math.random() * 4.0,
+            thick: 9 + Math.random() * 7,                // thicker strands: 9–16px
           };
         });
         this._caustics = Array.from({ length: 14 }, () => ({
@@ -443,45 +581,92 @@ const ThemeCanvas = (() => {
       },
     },
 
-    // ── Snow (winter night: falling snowflakes, starry sky) ─────────────
+    // ── Snow (winter night: mountains, falling snowflakes with wind) ─────────
     snow: {
-      max: 55, rate: 0.20,
-      init(W, H) { _initStars(W, H, 85); },
+      max: 60, rate: 0.22,
+      _mountains: null,
+      init(W, H) {
+        _initStars(W, H, 90);
+        // Restrict stars to the sky (upper 48%) so they don't appear inside mountains
+        _stars.forEach(s => { s.y = s.y * 0.48; });
+        this._mountains = _buildMountains(W, H);
+      },
       drawBackground(ctx, W, H) {
-        // Faint stars
+        // Twinkling stars (sky only)
         _stars.forEach(s => {
           s.twinklePhase += s.twinkleSpd;
-          const a = s.alpha * 0.48 * (0.50 + 0.50 * Math.sin(s.twinklePhase));
+          const a = s.alpha * 0.52 * (0.48 + 0.52 * Math.sin(s.twinklePhase));
           ctx.save(); ctx.globalAlpha = a;
           ctx.fillStyle = 'rgba(200, 215, 255, 1)';
           ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.85, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         });
+        // Moon disc with soft halo (upper-left)
+        const mx = W * 0.28, my = H * 0.13, mr = Math.min(W, H) * 0.042;
+        const moonHalo = ctx.createRadialGradient(mx, my, mr * 0.4, mx, my, mr * 3.2);
+        moonHalo.addColorStop(0,   'rgba(235, 245, 255, 0.20)');
+        moonHalo.addColorStop(0.55,'rgba(210, 228, 255, 0.08)');
+        moonHalo.addColorStop(1,   'rgba(180, 205, 255, 0)');
+        ctx.fillStyle = moonHalo;
+        ctx.beginPath(); ctx.arc(mx, my, mr * 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(240, 248, 255, 0.90)';
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+        // Mountain layers — back to front, each with a snow-cap gradient
+        if (this._mountains) {
+          this._mountains.forEach(layer => {
+            const pts = layer.pts;
+            ctx.save();
+            // Fill mountain silhouette
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+            ctx.fillStyle = layer.fill;
+            ctx.fill();
+            // Snow-cap: clip to mountain shape and apply a top-fade white gradient
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+            ctx.clip();
+            // Find the highest peak (smallest y) among terrain points (exclude closing corners)
+            const terrainPts = pts.slice(1, pts.length - 3);
+            const topY = terrainPts.reduce((min, p) => (p.y < min ? p.y : min), Infinity);
+            const sg = ctx.createLinearGradient(0, topY - 4, 0, topY + layer.snowFade);
+            sg.addColorStop(0,    'rgba(225, 240, 255, 0.72)');
+            sg.addColorStop(0.45, 'rgba(200, 225, 252, 0.32)');
+            sg.addColorStop(1,    'rgba(180, 210, 248, 0)');
+            ctx.fillStyle = sg;
+            ctx.fillRect(0, topY - 4, W, layer.snowFade + 8);
+            ctx.restore();
+          });
+        }
         // Snow glow on ground
         const gg = ctx.createLinearGradient(0, H * 0.82, 0, H);
         gg.addColorStop(0, 'rgba(160, 185, 240, 0)');
-        gg.addColorStop(1, 'rgba(165, 192, 248, 0.14)');
+        gg.addColorStop(1, 'rgba(165, 192, 248, 0.16)');
         ctx.fillStyle = gg; ctx.fillRect(0, H * 0.82, W, H * 0.18);
       },
       create(W) {
         const big = Math.random() < 0.18;
         return {
-          x: Math.random() * W * 1.1 - W * 0.05,
+          x: Math.random() * W * 1.3 - W * 0.15,
           y: -12 - Math.random() * 40,
-          vx: -0.6 + Math.random() * 1.2,
-          vy: big ? (0.35 + Math.random() * 0.5) : (0.55 + Math.random() * 1.1),
-          r: big ? (3.5 + Math.random() * 4.5) : (0.8 + Math.random() * 2.8),
+          vx: -0.4 + Math.random() * 0.8,
+          vy: big ? (0.35 + Math.random() * 0.50) : (0.55 + Math.random() * 1.10),
+          r:  big ? (3.5 + Math.random() * 4.5)   : (0.8  + Math.random() * 2.8),
           alpha: big ? (0.35 + Math.random() * 0.25) : (0.50 + Math.random() * 0.40),
           sw: Math.random() * Math.PI * 2,
           swAmp: 0.5 + Math.random() * 1.5,
           swSpd: 0.010 + Math.random() * 0.018,
+          windResp: 0.4 + Math.random() * 1.2,
         };
       },
       draw(ctx, p) {
         ctx.save(); ctx.globalAlpha = p.alpha;
         ctx.fillStyle = 'rgba(215, 230, 255, 1)';
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        if (p.r > 3) {  // add faint halo on large flakes
+        if (p.r > 3) {
           const hg = ctx.createRadialGradient(p.x, p.y, p.r, p.x, p.y, p.r * 2.4);
           hg.addColorStop(0, `rgba(200, 222, 255, ${p.alpha * 0.30})`);
           hg.addColorStop(1, 'rgba(200, 222, 255, 0)');
@@ -490,7 +675,14 @@ const ThemeCanvas = (() => {
         ctx.restore();
       },
       update(p, W, H) {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
+        // Wind: slow sustained direction + fast gusts, each flake responds differently
+        const wind = Math.sin(_frame * 0.005) * 1.4 + Math.sin(_frame * 0.022) * 0.5;
+        p.sw += p.swSpd;
+        p.x  += p.vx + Math.sin(p.sw) * p.swAmp + wind * p.windResp;
+        p.y  += p.vy;
+        // Wrap flakes at horizontal edges so wind doesn't deplete the left side
+        if (p.x < -30) p.x = W + 20;
+        if (p.x > W + 30) p.x = -20;
         return p.y < H + 20;
       },
     },
@@ -1676,8 +1868,10 @@ const ThemeCanvas = (() => {
   // The window is always interactive in PiP mode — no click-through.
 
   let _isFullMode = true;  // starts in full-screen
-  let _autoPipActive = false; // true when auto-PiP triggered the collapse
-  let _autoPipTimer  = null;  // pending delay timer for deferred collapse
+  let _autoPipActive   = false; // true when auto-PiP triggered the collapse
+  let _autoPipTimer    = null;  // pending delay timer for deferred collapse
+  let _autoPipCooldown = false; // true briefly after collapsing — ignore focus events
+  let _autoPipCooldownTimer = null;
   let _pendingShareCard = null; // queued when session ends while in PiP mode
 
   // ── Mode toggle ───────────────────────────────────────────────────────────
@@ -1778,21 +1972,25 @@ const ThemeCanvas = (() => {
         if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
             Session.getState && Session.getState() === 'ACTIVE') return;
 
+        function _doCollapse() {
+          _autoPipActive = true;
+          // Cooldown: ignore focus events for 900 ms after collapsing so the
+          // window resize / alwaysOnTop transition can't immediately restore us.
+          _autoPipCooldown = true;
+          clearTimeout(_autoPipCooldownTimer);
+          _autoPipCooldownTimer = setTimeout(() => { _autoPipCooldown = false; }, 900);
+          _exitFullMode();
+        }
+
         const delaySec = Settings.get('autoPipDelay') || 0;
         if (delaySec > 0) {
-          // Deferred collapse — cancel any previously scheduled one first
           clearTimeout(_autoPipTimer);
           _autoPipTimer = setTimeout(() => {
             _autoPipTimer = null;
-            // Re-check: window may have been focused again before timer fired
-            if (_isFullMode && Settings.get('autoPipOnBlur')) {
-              _autoPipActive = true;
-              _exitFullMode();
-            }
+            if (_isFullMode && Settings.get('autoPipOnBlur')) _doCollapse();
           }, delaySec * 1000);
         } else {
-          _autoPipActive = true;
-          _exitFullMode();
+          _doCollapse();
         }
       });
 
@@ -1803,6 +2001,9 @@ const ThemeCanvas = (() => {
           clearTimeout(_autoPipTimer);
           _autoPipTimer = null;
         }
+        // Ignore focus events during the post-collapse cooldown (prevents the
+        // window resize / alwaysOnTop call from immediately restoring full mode).
+        if (_autoPipCooldown) return;
 
         if (_autoPipActive && !_isFullMode && Settings.get('autoPipRestore')) {
           _autoPipActive = false;
@@ -1818,19 +2019,47 @@ const ThemeCanvas = (() => {
     }
 
     // ── Visibility-change fallback for auto-PiP ──────────────────────────
-    // When the Electron window loses focus (e.g. user switches to another
-    // app) the 'app-blur' IPC event fires the auto-PiP logic above.
-    // As a belt-and-suspenders fallback, also listen for the Web Visibility
-    // API — some Electron builds do not fire window 'blur' reliably.
+    // In some Electron builds the IPC 'app-blur' is unreliable; also handles
+    // document.hidden changes (e.g. the window being minimised).
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && _isFullMode && Settings.get('autoPipOnBlur')) {
-        // Skip if a session is active and the user opted in to skip
         if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
             Session.getState && Session.getState() === 'ACTIVE') return;
         _autoPipActive = true;
+        _autoPipCooldown = true;
+        clearTimeout(_autoPipCooldownTimer);
+        _autoPipCooldownTimer = setTimeout(() => { _autoPipCooldown = false; }, 900);
         _exitFullMode();
       } else if (!document.hidden && _autoPipActive && !_isFullMode &&
-                 Settings.get('autoPipRestore')) {
+                 !_autoPipCooldown && Settings.get('autoPipRestore')) {
+        _autoPipActive = false;
+        _enterFullMode();
+        setTimeout(() => {
+          if (typeof Brain !== 'undefined' && Brain.triggerWelcomeBack)
+            Brain.triggerWelcomeBack();
+        }, 350);
+      }
+    });
+
+    // Additional fallback using the renderer's own window blur/focus events
+    // (fires reliably in Electron when the native window gains/loses focus).
+    window.addEventListener('blur', () => {
+      if (!_isFullMode || !Settings.get('autoPipOnBlur')) return;
+      if (Settings.get('autoPipSkipSession') && typeof Session !== 'undefined' &&
+          Session.getState && Session.getState() === 'ACTIVE') return;
+      // Only act if neither the IPC handler nor the visibility handler already did
+      if (_autoPipActive) return;
+      _autoPipActive = true;
+      _autoPipCooldown = true;
+      clearTimeout(_autoPipCooldownTimer);
+      _autoPipCooldownTimer = setTimeout(() => { _autoPipCooldown = false; }, 900);
+      _exitFullMode();
+    });
+
+    window.addEventListener('focus', () => {
+      if (_autoPipCooldown) return;
+      if (_autoPipTimer) { clearTimeout(_autoPipTimer); _autoPipTimer = null; }
+      if (_autoPipActive && !_isFullMode && Settings.get('autoPipRestore')) {
         _autoPipActive = false;
         _enterFullMode();
         setTimeout(() => {

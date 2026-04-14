@@ -2606,23 +2606,27 @@ body.full-mode.theme-midnight::before {
   animation-duration: 18s;
 }
 
-/* ── THEME: Snow (winter night, soft drifting snow) ─────────────────── */
+/* ── THEME: Snow (winter night, mountains, wind-swept snowflakes) ──────── */
 body.full-mode.theme-snow {
   background:
-    linear-gradient(180deg, #0a0e18 0%, #0d1220 25%, #101526 50%, #0e1222 75%, #0a0e1c 100%),
-    /* Soft blue moonlight wash */
-    radial-gradient(ellipse 55% 40% at 50% 0%,   rgba(140, 165, 230, 0.14) 0%, transparent 65%),
+    /* Night sky — deep blue so canvas mountain silhouettes read clearly */
+    linear-gradient(180deg, #080f28 0%, #0b1432 25%, #0e1a3a 50%, #0c1530 75%, #09122a 100%),
+    /* Moon glow — soft silver upper-left */
+    radial-gradient(ellipse 24% 18% at 28% 12%,  rgba(210, 228, 255, 0.20) 0%, transparent 65%),
+    /* Cool moonlight wash from top */
+    radial-gradient(ellipse 62% 42% at 50%  0%,  rgba(140, 168, 240, 0.13) 0%, transparent 62%),
     /* Snow-glow on the ground */
-    radial-gradient(ellipse 100% 22% at 50% 100%, rgba(160, 185, 240, 0.20) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 22% at 50% 100%, rgba(162, 188, 244, 0.20) 0%, transparent 60%),
     /* Side depth */
-    radial-gradient(ellipse 28% 80% at   0% 55%,  rgba(5, 8, 20, 0.75) 0%, transparent 50%),
-    radial-gradient(ellipse 28% 80% at 100% 55%,  rgba(5, 8, 20, 0.75) 0%, transparent 50%);
+    radial-gradient(ellipse 28% 80% at   0% 55%,  rgba(4, 7, 18, 0.65) 0%, transparent 50%),
+    radial-gradient(ellipse 28% 80% at 100% 55%,  rgba(4, 7, 18, 0.65) 0%, transparent 50%);
 }
 body.full-mode.theme-snow::before {
   content: '';
   background:
-    radial-gradient(ellipse 58% 36% at 50% 0%, rgba(160, 185, 245, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 90% 18% at 50% 100%, rgba(175, 198, 248, 0.12) 0%, transparent 55%);
+    radial-gradient(ellipse 60% 38% at 50%  0%,  rgba(160, 188, 248, 0.11) 0%, transparent 62%),
+    radial-gradient(ellipse 26% 18% at 28% 12%,  rgba(220, 235, 255, 0.09) 0%, transparent 56%),
+    radial-gradient(ellipse 90% 18% at 50% 100%, rgba(178, 200, 250, 0.14) 0%, transparent 56%);
   animation-duration: 20s;
 }
 
@@ -2709,33 +2713,53 @@ body.nose-none .nose { opacity: 0; pointer-events: none; }
 
 /* ── Mouth styles ──────────────────────────────────────────────────── */
 
-/* Wide — much bigger, prominent U-shape arc (very expressive) */
+/* Wide — dramatically larger arc (~2× the default), very expressive */
 body.mouth-wide .mouth {
-  width: 14vmin;
-  height: 6.5vmin;
+  width: 18vmin;
+  height: 10vmin;
   border-radius: 0 0 50% 50%;
-  border-bottom-color: rgba(155, 165, 238, 0.75);
-  border-left-color:   rgba(155, 165, 238, 0.38);
-  border-right-color:  rgba(155, 165, 238, 0.38);
+  border-bottom-color: rgba(155, 165, 238, 0.80);
+  border-left-color:   rgba(155, 165, 238, 0.42);
+  border-right-color:  rgba(155, 165, 238, 0.42);
   border-top-color:    transparent;
-  border-width: 0.36vmin;
+  border-width: 0.42vmin;
 }
 body.mouth-wide .companion.happy    .mouth,
-body.mouth-wide .companion.overjoyed .mouth { width: 16vmin; height: 7vmin; }
-body.mouth-wide .companion.love     .mouth { width: 15vmin; height: 6.5vmin; }
-body.mouth-wide .companion.excited  .mouth { width: 14vmin; height: 7vmin; }
-body.mouth-wide .companion.sad      .mouth { width: 11vmin; height: 4.5vmin; }
-body.mouth-wide .companion.crying   .mouth { width: 10vmin; height: 4vmin; }
-body.mouth-wide .companion.grumpy   .mouth { width: 10vmin; }
+body.mouth-wide .companion.overjoyed .mouth { width: 23vmin; height: 14vmin; }
+body.mouth-wide .companion.love     .mouth { width: 20vmin; height: 12vmin;
+  border-bottom-color: rgba(255, 138, 180, 0.82);
+  border-left-color:   rgba(255, 138, 180, 0.40);
+  border-right-color:  rgba(255, 138, 180, 0.40); }
+body.mouth-wide .companion.excited  .mouth { width: 21vmin; height: 13vmin; }
+body.mouth-wide .companion.sad      .mouth {
+  width: 15vmin; height: 7vmin;
+  border-radius: 50% 50% 0 0;
+  border-bottom-color: transparent;
+  border-top-color: rgba(120, 145, 210, 0.68);
+  border-left-color: rgba(120, 145, 210, 0.34);
+  border-right-color: rgba(120, 145, 210, 0.34);
+}
+body.mouth-wide .companion.crying   .mouth {
+  width: 14vmin; height: 6vmin;
+  border-radius: 50% 50% 0 0;
+  border-bottom-color: transparent;
+  border-top-color: rgba(120, 145, 210, 0.72);
+  border-left-color: rgba(120, 145, 210, 0.36);
+  border-right-color: rgba(120, 145, 210, 0.36);
+}
+body.mouth-wide .companion.grumpy   .mouth { width: 14vmin; height: 3vmin; }
 body.mouth-wide .companion.pouty    .mouth,
-body.mouth-wide .companion.sulking  .mouth { width: 10vmin; height: 3.5vmin; }
-body.mouth-wide .companion.curious  .mouth { width: 7vmin; height: 7vmin; }
+body.mouth-wide .companion.sulking  .mouth { width: 13vmin; height: 5vmin; }
+body.mouth-wide .companion.scared   .mouth,
+body.mouth-wide .companion.startled .mouth { width: 5vmin; height: 5vmin; border-radius: 50%; }
+body.mouth-wide .companion.curious  .mouth { width: 10vmin; height: 10vmin; }
 
-/* Cat — twin-lobe W shape: two small arcs side-by-side.
-   The main element is a spacer; ::before/::after are the actual lobes. */
+/* Cat — twin-lobe ω shape: two arcs that meet/overlap at center.
+   Lobes (6.5vmin) are wider than half the container (12vmin / 2 = 6vmin) so they
+   cross in the middle, forming the connected ω join. */
 body.mouth-cat .mouth {
-  width: 11vmin;
-  height: 4vmin;
+  width: 12vmin;
+  height: 5.5vmin;
   border: none !important;
   background: transparent;
   overflow: visible;
@@ -2745,86 +2769,111 @@ body.mouth-cat .mouth::after {
   content: '';
   position: absolute;
   top: 0;
-  width: 4.8vmin;
-  height: 4vmin;
-  border: 0.30vmin solid transparent;
-  border-bottom-color: rgba(145, 155, 225, 0.62);
+  width: 6.5vmin;
+  height: 5.5vmin;
+  border: 0.34vmin solid transparent;
+  border-bottom-color: rgba(145, 155, 225, 0.72);
   border-radius: 0 0 50% 50%;
 }
-body.mouth-cat .mouth::before { left: 0; }
-body.mouth-cat .mouth::after  { right: 0; }
-/* Happy cat — wider lobes, brighter */
+/* Overlap at center: push both lobes inward so their inner edges meet */
+body.mouth-cat .mouth::before { left:  -0.5vmin; }
+body.mouth-cat .mouth::after  { right: -0.5vmin; }
+
+/* Happy cat — wider lobes meeting at center, bright color */
 body.mouth-cat .companion.happy    .mouth,
 body.mouth-cat .companion.overjoyed .mouth {
-  width: 14vmin;
-  height: 5vmin;
+  width: 16vmin; height: 7vmin;
 }
 body.mouth-cat .companion.happy    .mouth::before,
 body.mouth-cat .companion.happy    .mouth::after,
 body.mouth-cat .companion.overjoyed .mouth::before,
 body.mouth-cat .companion.overjoyed .mouth::after {
-  width: 6.5vmin; height: 5vmin;
-  border-bottom-color: rgba(200, 170, 255, 0.90);
+  width: 8.5vmin; height: 7vmin;
+  border-bottom-color: rgba(200, 170, 255, 0.92);
 }
+/* Sad cat — lobes flip to frown (top arcs) */
 body.mouth-cat .companion.sad      .mouth,
 body.mouth-cat .companion.crying   .mouth {
-  /* Flip to a frown: two small arcs pointing up */
-  width: 11vmin; height: 4vmin;
+  width: 12vmin; height: 5vmin;
 }
 body.mouth-cat .companion.sad      .mouth::before,
 body.mouth-cat .companion.sad      .mouth::after,
 body.mouth-cat .companion.crying   .mouth::before,
 body.mouth-cat .companion.crying   .mouth::after {
   top: unset; bottom: 0;
+  width: 6.5vmin; height: 5vmin;
   border-bottom-color: transparent;
-  border-top-color: rgba(100, 130, 205, 0.68);
+  border-top-color: rgba(100, 130, 205, 0.72);
   border-radius: 50% 50% 0 0;
 }
-body.mouth-cat .companion.grumpy   .mouth { width: 9vmin; height: 1vmin; }
+/* Scared cat — single circle O */
+body.mouth-cat .companion.scared   .mouth,
+body.mouth-cat .companion.startled .mouth {
+  width: 4vmin; height: 4vmin;
+  background: transparent;
+}
+body.mouth-cat .companion.scared   .mouth::before,
+body.mouth-cat .companion.startled .mouth::before {
+  width: 4vmin; height: 4vmin; left: 0;
+  border: 0.34vmin solid rgba(195, 210, 255, 0.72);
+  border-radius: 50%; top: 0;
+}
+body.mouth-cat .companion.scared   .mouth::after,
+body.mouth-cat .companion.startled .mouth::after { display: none; }
+/* Grumpy cat — tight flat twin-line */
+body.mouth-cat .companion.grumpy   .mouth { width: 10vmin; height: 1.5vmin; }
 body.mouth-cat .companion.grumpy   .mouth::before,
 body.mouth-cat .companion.grumpy   .mouth::after {
-  height: 1vmin; border-radius: 1vmin;
-  border-bottom-color: rgba(255, 138, 128, 0.65);
+  width: 5.5vmin; height: 1.5vmin; border-radius: 1vmin;
+  border-bottom-color: rgba(255, 138, 128, 0.70);
 }
 
-/* Flat — near-straight line, very subtle and restrained */
+/* Flat — a geometrically straight horizontal line (height: 0, border-bottom only)
+   Emotions use only subtle arcs, never the same depth as Arc style */
 body.mouth-flat .mouth {
-  width: 8vmin;
-  height: 1.2vmin;
-  border-radius: 1vmin;
-  border-bottom-color: rgba(140, 150, 215, 0.52);
-  border-left-color:   transparent;
-  border-right-color:  transparent;
-  border-top-color:    transparent;
-  border-width: 0.22vmin;
+  width: 9vmin;
+  height: 0;
+  border-radius: 0;
+  border-bottom: 0.30vmin solid rgba(145, 155, 220, 0.65);
+  border-left:   none;
+  border-right:  none;
+  border-top:    none;
 }
+/* Happy flat — allow a shallow smile but keep it understated */
 body.mouth-flat .companion.happy    .mouth,
 body.mouth-flat .companion.overjoyed .mouth {
-  width: 11vmin; height: 4vmin;
+  width: 11vmin; height: 3.5vmin;
+  border: 0.30vmin solid transparent;
   border-radius: 0 0 50% 50%;
   border-bottom-color: rgba(200, 170, 255, 0.80);
-  border-left-color:   rgba(200, 170, 255, 0.40);
-  border-right-color:  rgba(200, 170, 255, 0.40);
 }
-body.mouth-flat .companion.love      .mouth { width: 10vmin; height: 3.5vmin; border-radius: 0 0 50% 50%; border-bottom-color: rgba(255, 138, 180, 0.80); border-left-color: rgba(255, 138, 180, 0.38); border-right-color: rgba(255, 138, 180, 0.38); }
-body.mouth-flat .companion.excited   .mouth { width: 10vmin; height: 4vmin; border-radius: 0 0 50% 50%; }
+body.mouth-flat .companion.love      .mouth {
+  width: 10vmin; height: 3vmin;
+  border: 0.30vmin solid transparent;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(255, 138, 180, 0.80);
+}
+body.mouth-flat .companion.excited   .mouth {
+  width: 10vmin; height: 3.5vmin;
+  border: 0.30vmin solid transparent;
+  border-radius: 0 0 50% 50%;
+  border-bottom-color: rgba(190, 160, 255, 0.78);
+}
 body.mouth-flat .companion.sad       .mouth,
 body.mouth-flat .companion.crying    .mouth {
-  width: 7vmin; height: 2.2vmin;
-  border-radius: 50% 50% 0 0;
-  border-bottom-color: transparent;
-  border-top-color: rgba(100, 130, 205, 0.58);
-  border-left-color: rgba(100, 130, 205, 0.28);
-  border-right-color: rgba(100, 130, 205, 0.28);
+  width: 7vmin; height: 0;
+  border-bottom: 0.30vmin solid rgba(120, 145, 210, 0.62);
+  transform: translateY(0.8vmin) rotate(10deg);
 }
-body.mouth-flat .companion.grumpy    .mouth { width: 9vmin; }
+body.mouth-flat .companion.grumpy    .mouth {
+  width: 10vmin; height: 0;
+  border-bottom: 0.30vmin solid rgba(255, 138, 128, 0.68);
+  transform: rotate(-3deg);
+}
 body.mouth-flat .companion.scared    .mouth,
 body.mouth-flat .companion.startled  .mouth {
-  width: 2.5vmin; height: 2.5vmin; border-radius: 50%;
-  border-bottom-color: rgba(195, 218, 255, 0.65);
-  border-top-color: rgba(195, 218, 255, 0.65);
-  border-left-color: rgba(195, 218, 255, 0.45);
-  border-right-color: rgba(195, 218, 255, 0.45);
+  width: 3vmin; height: 3vmin; border-radius: 50%;
+  border: 0.28vmin solid rgba(195, 218, 255, 0.70);
 }
 
 /* Hidden mouth */
