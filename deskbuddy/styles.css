@@ -2416,6 +2416,12 @@ body.pip-mode .eye-wrap,
 body.pip-mode #compact-expand-btn,
 body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
 
+/* Lock position: when pip-drag-locked is set, disable dragging entirely so
+   the window stays at an exact pixel position the user chose. */
+body.pip-mode.pip-drag-locked .companion       { -webkit-app-region: no-drag; cursor: default; }
+body.pip-mode.pip-drag-locked .companion-inner { -webkit-app-region: no-drag; }
+body.pip-mode.pip-drag-locked #world           { -webkit-app-region: no-drag; }
+
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
   gap: 3vmin;
@@ -2755,11 +2761,12 @@ body.mouth-wide .companion.startled .mouth { width: 5vmin; height: 5vmin; border
 body.mouth-wide .companion.curious  .mouth { width: 10vmin; height: 10vmin; }
 
 /* Cat — twin-lobe ω shape: two arcs that meet/overlap at center.
-   Lobes (6.5vmin) are wider than half the container (12vmin / 2 = 6vmin) so they
-   cross in the middle, forming the connected ω join. */
+   Lobe ratio ≥ 1.0 (8vmin wide × 7vmin tall) gives visible ω depth.
+   3vmin total center junction (1.5vmin each side) creates a clear dip.
+   Thicker border (0.45vmin) stays visible at small viewport sizes.     */
 body.mouth-cat .mouth {
-  width: 12vmin;
-  height: 5.5vmin;
+  width: 14vmin;
+  height: 7vmin;
   border: none !important;
   background: transparent;
   overflow: visible;
@@ -2769,41 +2776,38 @@ body.mouth-cat .mouth::after {
   content: '';
   position: absolute;
   top: 0;
-  width: 6.5vmin;
-  height: 5.5vmin;
-  border: 0.34vmin solid transparent;
-  border-bottom-color: rgba(145, 155, 225, 0.72);
+  width: 8vmin;
+  height: 7vmin;
+  border: 0.45vmin solid transparent;
+  border-bottom-color: rgba(145, 155, 225, 0.82);
+  border-left-color:   rgba(145, 155, 225, 0.25);
+  border-right-color:  rgba(145, 155, 225, 0.25);
   border-radius: 0 0 50% 50%;
 }
-/* Overlap at center: push both lobes inward so their inner edges meet */
-body.mouth-cat .mouth::before { left:  -0.5vmin; }
-body.mouth-cat .mouth::after  { right: -0.5vmin; }
+/* 1.5vmin each side = 3vmin total center junction = clear ω dip */
+body.mouth-cat .mouth::before { left:  -1.5vmin; }
+body.mouth-cat .mouth::after  { right: -1.5vmin; }
 
-/* Happy cat — wider lobes meeting at center, bright color */
-body.mouth-cat .companion.happy    .mouth,
-body.mouth-cat .companion.overjoyed .mouth {
-  width: 16vmin; height: 7vmin;
-}
-body.mouth-cat .companion.happy    .mouth::before,
-body.mouth-cat .companion.happy    .mouth::after,
+/* Happy cat — larger, brighter */
+body.mouth-cat .companion.happy     .mouth,
+body.mouth-cat .companion.overjoyed .mouth { width: 18vmin; height: 8.5vmin; }
+body.mouth-cat .companion.happy     .mouth::before,
+body.mouth-cat .companion.happy     .mouth::after,
 body.mouth-cat .companion.overjoyed .mouth::before,
 body.mouth-cat .companion.overjoyed .mouth::after {
-  width: 8.5vmin; height: 7vmin;
-  border-bottom-color: rgba(200, 170, 255, 0.92);
+  width: 10vmin; height: 8.5vmin;
+  border-bottom-color: rgba(200, 170, 255, 0.94);
 }
 /* Sad cat — lobes flip to frown (top arcs) */
-body.mouth-cat .companion.sad      .mouth,
-body.mouth-cat .companion.crying   .mouth {
-  width: 12vmin; height: 5vmin;
-}
-body.mouth-cat .companion.sad      .mouth::before,
-body.mouth-cat .companion.sad      .mouth::after,
-body.mouth-cat .companion.crying   .mouth::before,
-body.mouth-cat .companion.crying   .mouth::after {
-  top: unset; bottom: 0;
-  width: 6.5vmin; height: 5vmin;
+body.mouth-cat .companion.sad    .mouth,
+body.mouth-cat .companion.crying .mouth { width: 14vmin; height: 6.5vmin; }
+body.mouth-cat .companion.sad    .mouth::before,
+body.mouth-cat .companion.sad    .mouth::after,
+body.mouth-cat .companion.crying .mouth::before,
+body.mouth-cat .companion.crying .mouth::after {
+  width: 8vmin; height: 6.5vmin; top: unset; bottom: 0;
   border-bottom-color: transparent;
-  border-top-color: rgba(100, 130, 205, 0.72);
+  border-top-color: rgba(100, 130, 205, 0.80);
   border-radius: 50% 50% 0 0;
 }
 /* Scared cat — single circle O */
@@ -2815,7 +2819,7 @@ body.mouth-cat .companion.startled .mouth {
 body.mouth-cat .companion.scared   .mouth::before,
 body.mouth-cat .companion.startled .mouth::before {
   width: 4vmin; height: 4vmin; left: 0;
-  border: 0.34vmin solid rgba(195, 210, 255, 0.72);
+  border: 0.45vmin solid rgba(195, 210, 255, 0.72);
   border-radius: 50%; top: 0;
 }
 body.mouth-cat .companion.scared   .mouth::after,
@@ -3669,6 +3673,16 @@ body.pip-mode #settings-panel { display: none !important; }
 body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
 body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
 body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
+
+/* ── Size L: prevent eye collision on wide expressions ──────── */
+/* At scale 1.22 × 45vmin = 54.9vmin per eye; two eyes + gap would exceed 100vmin.
+   These overrides shrink the widest emotion shapes back inside the viewport.      */
+body.companion-size-L .companion.curious   .eye-left  { width: 38vmin; height: 50vmin; }
+body.companion-size-L .companion.curious   .eye-right { width: 32vmin; height: 44vmin; }
+body.companion-size-L .companion.overjoyed .eye       { width: 40vmin; }
+body.companion-size-L .companion.excited   .eye       { width: 36vmin; }
+body.companion-size-L .companion.love      .eye       { width: 38vmin; }
+body.companion-size-L .eyes                           { gap: 8vmin; }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
@@ -6581,12 +6595,6 @@ body.dnd-active .companion {
   transition: filter 0.9s ease;
 }
 
-body.dnd-active #session-panel,
-body.dnd-active #history-panel {
-  opacity:    0.70;
-  transition: opacity 0.55s ease;
-}
-
 /* Hide in pip/compact mode — no room */
 body.pip-mode #dnd-indicator {
   display: none !important;
@@ -7138,14 +7146,16 @@ body.pip-mode .companion {
 /* Pupil must sit above the ::before iris layer */
 .pupil { position: relative; z-index: 1; }
 
-/* ── Iris colour classes (hue-rotate on ::before ONLY — never on .eye) ── */
-body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); }
-body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); }
-body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
-body.eye-lavender .eye::before { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
-body.eye-sky      .eye::before { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
-body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); }
-body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
+/* ── Iris colour — hue-rotate the full eye gradient (not the ::before glint) ── */
+/* ::before and ::after glints are near-white so hue-rotating them is harmless,  */
+/* but the real colour change happens on the iris radial-gradient in .eye itself. */
+body.eye-emerald  .eye { filter: hue-rotate(270deg) saturate(1.15); }
+body.eye-rose     .eye { filter: hue-rotate(92deg)  saturate(1.20); }
+body.eye-amber    .eye { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
+body.eye-lavender .eye { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
+body.eye-sky      .eye { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
+body.eye-ruby     .eye { filter: hue-rotate(140deg) saturate(1.30); }
+body.eye-teal     .eye { filter: hue-rotate(230deg) saturate(1.10); }
 /* periwinkle = default, no filter */
 
 /* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
@@ -7183,34 +7193,35 @@ body.mouth-thick .mouth-cat .mouth::after  { border-width: 0.52vmin !important; 
 
 /* ═══════════════════════════════════════════════════════════
    EYE SHAPE
-   Five distinct neutral-state shapes. No !important so emotion shapes
-   naturally override — the setting controls the companion's resting face.
-   Specificity: (0,2,1) < emotion rules (0,3,0) so emotions always win.
+   Five distinct neutral-state shapes. Specificity raised to (0,3,1) by
+   prepending body.full-mode — this beats emotion rules (0,3,0) so the
+   user's chosen shape survives brief emotion flashes. Only applies in
+   full-mode (PiP renders too small for nuanced shape differences anyway).
    ─────────────────────────────────────────────────────────── */
 
 /* SQUISH — rounded rectangle; clearly not circular */
-body.eye-roundness-squish .eye {
+body.full-mode.eye-roundness-squish .eye {
   border-radius: 24%;
 }
 
 /* ALMOND — flat cat/fox eye; wide horizontal with tight vertical radii */
-body.eye-roundness-almond .eye {
+body.full-mode.eye-roundness-almond .eye {
   border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%;
 }
 
 /* DROOPY — heavy-lidded; flat top edge, fully rounded bottom */
-body.eye-roundness-droopy .eye {
+body.full-mode.eye-roundness-droopy .eye {
   border-radius: 8% 8% 50% 50%;
 }
 
 /* TALL — elongated vertical oval; more upright and wide-eyed */
-body.eye-roundness-tall .eye {
+body.full-mode.eye-roundness-tall .eye {
   border-radius: 50% 50% 50% 50% / 65% 65% 65% 65%;
 }
 
 /* keep old names as aliases so saved settings still resolve */
-body.eye-roundness-soft .eye { border-radius: 24%; }
-body.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
+body.full-mode.eye-roundness-soft .eye { border-radius: 24%; }
+body.full-mode.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
 
 /* ═══════════════════════════════════════════════════════════
    EYE SIZE (was "Pupil size")

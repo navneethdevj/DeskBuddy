@@ -11,6 +11,10 @@ const Companion = (() => {
   let y = 0;
   let rotation = 0;
 
+  // Cached DOM references — set in create(), reused every rAF frame to avoid
+  // the 216,000+ querySelectorAll calls per hour that happen at 60fps.
+  let _pupilEls = null;
+
   let mouseX = 0;
   let mouseY = 0;
 
@@ -69,6 +73,9 @@ const Companion = (() => {
     `;
 
     container.appendChild(el);
+
+    // Cache frequently-queried elements so updatePupils() never re-queries the DOM.
+    _pupilEls = Array.from(el.querySelectorAll('.pupil'));
 
     x = 0;
     y = 0;
@@ -204,7 +211,7 @@ const Companion = (() => {
     }
 
     if (!el) return;
-    var pupils = el.querySelectorAll('.pupil');
+    const pupils = _pupilEls || el.querySelectorAll('.pupil');
     for (var i = 0; i < pupils.length; i++) {
       pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
     }

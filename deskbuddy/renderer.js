@@ -1552,6 +1552,7 @@ const ThemeCanvas = (() => {
 
   // ── Helper: open the panel programmatically (auto-reveal on completion/break) ──
   function _panelOpen() {
+    if (typeof DND !== 'undefined' && DND.isActive()) return;  // never force-open during DND
     const panel = document.getElementById('session-panel');
     const icon  = document.getElementById('sp-icon');
     if (panel) panel.classList.add('sidebar-open');
@@ -2377,6 +2378,17 @@ const ThemeCanvas = (() => {
           window.electronAPI.setPipSnapEnabled(pipSnapToggle.checked);
       });
     }
+
+    // PiP drag lock — disable dragging so the window stays at a fixed position
+    const pipLockToggle = document.getElementById('pip-lock-toggle');
+    if (pipLockToggle) {
+      pipLockToggle.checked = Settings.get('pipDragLocked') || false;
+      pipLockToggle.addEventListener('change', () => {
+        Settings.set('pipDragLocked', pipLockToggle.checked);
+        document.body.classList.toggle('pip-drag-locked', pipLockToggle.checked);
+      });
+    }
+    document.body.classList.toggle('pip-drag-locked', Settings.get('pipDragLocked') || false);
 
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');
@@ -3254,6 +3266,15 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('eyeRoundness', (v) => _applyEyeRoundness(v));
 
+    // Safety net: re-apply eye roundness every 4 s in case an emotion temporarily
+    // removed the body class (belt-and-suspenders alongside the specificity fix).
+    setInterval(() => {
+      const r = Settings.get('eyeRoundness') || 'round';
+      if (r !== 'round' && !document.body.classList.contains(`eye-roundness-${r}`)) {
+        _applyEyeRoundness(r);
+      }
+    }, 4000);
+
     // ── Pupil size ───────────────────────────────────────────────────────
     const PUPIL_CLASSES = ['pupil-small','pupil-large'];
 
@@ -3816,7 +3837,16 @@ const ThemeCanvas = (() => {
     }
 
     DND.onActivate(() => _syncDNDBtn());
-    DND.onDeactivate(() => _syncDNDBtn());
+    DND.onDeactivate(() => {
+      _syncDNDBtn();
+      // Close any force-opened session panel when DND ends
+      const panel = document.getElementById('session-panel');
+      const icon  = document.getElementById('sp-icon');
+      if (panel && !panel.contains(document.activeElement)) {
+        panel.classList.remove('sidebar-open');
+        if (icon) icon.classList.remove('sp-icon-hidden');
+      }
+    });
     _syncDNDBtn();  // set initial state
   }
 

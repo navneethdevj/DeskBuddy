@@ -38,6 +38,8 @@ const Settings = (() => {
     autoPipRestore:         true,  // restore full mode when the user returns
     autoPipSkipSession:     false, // skip auto-collapse when a focus session is running
     pipShape:               'square', // 'square' | 'rounded' | 'circle' — overlay window shape in PiP mode
+    pipSnapEnabled:         true,     // auto-snap to nearest corner on drag release
+    pipDragLocked:          false,    // when true, dragging the PiP window is disabled
     // ── Buddy personality ──────────────────────────────────────────────
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)

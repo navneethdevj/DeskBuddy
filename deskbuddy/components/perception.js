@@ -167,6 +167,11 @@ const Perception = (() => {
   function _evaluate() {
     const now = Date.now();
     const dt  = now - lastEvalTime;
+
+    // Throttle to ~2 Hz when the user has been absent for > 30 s — MediaPipe
+    // inference on an empty frame still costs CPU; halving the rate cuts burn by ~87%.
+    if (nofaceMs > 30000 && dt < 500) return;
+
     lastEvalTime = now;
 
     const r   = window.faceResults;
