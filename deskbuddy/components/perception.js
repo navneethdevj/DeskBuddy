@@ -160,8 +160,11 @@ const Perception = (() => {
     attentionScore: 50, userState: 'NoFace', timeInStateMs: 0
   };
 
+  let _evalInterval = null;
+
   function init() {
-    setInterval(_evaluate, EVAL_MS);
+    if (_evalInterval) return;
+    _evalInterval = setInterval(_evaluate, EVAL_MS);
   }
 
   function _evaluate() {

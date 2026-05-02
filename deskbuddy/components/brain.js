@@ -355,7 +355,11 @@ const Brain = (() => {
 
   // ===== Public API =====
 
+  let _started = false;
+
   function start() {
+    if (_started) return;
+    _started = true;
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('click', _onScreenClick);
@@ -369,14 +373,29 @@ const Brain = (() => {
   }
 
   function stop() {
-    if (animFrameId) {
-      cancelAnimationFrame(animFrameId);
-      animFrameId = null;
-    }
-    if (stateTimer) {
-      clearTimeout(stateTimer);
-      stateTimer = null;
-    }
+    _started = false;
+
+    if (animFrameId)        { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    if (stateTimer)         { clearTimeout(stateTimer);          stateTimer = null; }
+    if (_timerInt)          { clearInterval(_timerInt);          _timerInt = null; }
+    if (_ftParticleInt)     { clearInterval(_ftParticleInt);     _ftParticleInt = null; }
+    if (tearInterval)       { clearInterval(tearInterval);       tearInterval = null; }
+    if (_poolDrainInt)      { clearInterval(_poolDrainInt);      _poolDrainInt = null; }
+    if (sulkCheckInterval)  { clearInterval(sulkCheckInterval);  sulkCheckInterval = null; }
+    if (overjoyedTimer)     { clearTimeout(overjoyedTimer);      overjoyedTimer = null; }
+    if (_idleLifeTimer)     { clearTimeout(_idleLifeTimer);      _idleLifeTimer = null; }
+    if (_curiousLookTimer)  { clearTimeout(_curiousLookTimer);   _curiousLookTimer = null; }
+    if (_curiousChirpTimer) { clearTimeout(_curiousChirpTimer);  _curiousChirpTimer = null; }
+    if (_welcomeBackSeqId1) { clearTimeout(_welcomeBackSeqId1);  _welcomeBackSeqId1 = null; }
+    if (_welcomeBackSeqId2) { clearTimeout(_welcomeBackSeqId2);  _welcomeBackSeqId2 = null; }
+    if (_sulkSafetyId)      { clearTimeout(_sulkSafetyId);       _sulkSafetyId = null; }
+    if (_rhythmHoldTimer)   { clearTimeout(_rhythmHoldTimer);    _rhythmHoldTimer = null; }
+
+    document.removeEventListener('mousemove',  onMouseMove);
+    document.removeEventListener('keydown',    onKeyDown);
+    document.removeEventListener('click',      _onScreenClick);
+    document.removeEventListener('mousedown',  _onMouseDown);
+    document.removeEventListener('mouseup',    _onMouseUp);
   }
 
   function getState() {
@@ -2637,12 +2656,12 @@ const Brain = (() => {
 
   /** Register a callback fired when phone-checking posture is sustained. */
   function onPhoneDetected(fn) {
-    _phoneCallbacks.push(fn);
+    if (!_phoneCallbacks.includes(fn)) _phoneCallbacks.push(fn);
   }
 
   /** Register a callback fired on each 5-minute focused milestone. fn(minutesMark). */
   function onMilestone(fn) {
-    _milestoneCallbacks.push(fn);
+    if (!_milestoneCallbacks.includes(fn)) _milestoneCallbacks.push(fn);
   }
 
   /**

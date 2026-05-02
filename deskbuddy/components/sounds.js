@@ -607,6 +607,13 @@ const Sounds = (() => {
     master.connect(masterGain);
     osc1.start(time); osc1.stop(time + dur + 0.02);
     osc2.start(time); osc2.stop(time + dur + 0.02);
+    osc1.onended = () => {
+      try { g1.disconnect();     } catch (_) {}
+      try { g2.disconnect();     } catch (_) {}
+      try { master.disconnect(); } catch (_) {}
+      try { osc1.disconnect();   } catch (_) {}
+      try { osc2.disconnect();   } catch (_) {}
+    };
     return master;
   }
 
