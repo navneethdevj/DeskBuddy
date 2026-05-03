@@ -820,6 +820,12 @@ const ThemeCanvas = (() => {
   // 0. Settings — load persisted preferences (synchronous from localStorage)
   Settings.init();
 
+  // PLAN: Chunk 7A — migrate deprecated themes to galaxy
+  const _savedTheme = Settings.get('fullTheme');
+  if (_savedTheme === 'midnight' || _savedTheme === 'aurora') {
+    Settings.set('fullTheme', 'galaxy');
+  }
+
   // 1. Audio context — register gesture listeners so AudioContext can resume
   Sounds.init();
   // Soundscape drone — passes saved enabled state so drone respects user preference from startup
@@ -955,6 +961,18 @@ const ThemeCanvas = (() => {
   _wireDND();
   _wireSidebar();
   _wireHistorySidebar();
+
+  // PLAN: Chunk 7E — set time-of-day theme period attribute
+  function _applyThemePeriod() {
+    const h = new Date().getHours();
+    let period = 'night';
+    if (h >= 5  && h < 8)  period = 'dawn';
+    else if (h >= 8  && h < 18) period = 'day';
+    else if (h >= 18 && h < 21) period = 'dusk';
+    document.body.setAttribute('data-theme-period', period);
+  }
+  _applyThemePeriod();
+  setInterval(_applyThemePeriod, 30 * 60 * 1000); // update every 30 min
 
   // 12. Sync main-process window state with the initial full-mode.
   // Without this, createWindow()'s alwaysOnTop=false is fine but the
@@ -1552,6 +1570,7 @@ const ThemeCanvas = (() => {
 
   // ── Helper: open the panel programmatically (auto-reveal on completion/break) ──
   function _panelOpen() {
+    if (typeof DND !== 'undefined' && DND.isActive()) return; // PLAN: Chunk 1A — don't open during DND
     const panel = document.getElementById('session-panel');
     const icon  = document.getElementById('sp-icon');
     if (panel) panel.classList.add('sidebar-open');
@@ -1700,6 +1719,17 @@ const ThemeCanvas = (() => {
       if (msg) msg.classList.remove('active');
       setTimeout(() => { overlay.innerHTML = ''; }, 700);
     }, 4000);
+  }
+
+  // PLAN: Chunk 8B — Smart break suggestion
+  function _generateBreakSuggestion(stats) {
+    const dur  = stats?.focusMinutes || 0;
+    const dist = stats?.distractionCount || 0;
+    if (dist > 5) return '🧘 Try a quick 5-min meditation to reset focus!';
+    if (dur > 45) return '🚶 Long session! A short walk will refresh your brain.';
+    if (dur > 25) return '💧 Stay hydrated — grab some water!';
+    if (dur > 15) return '👁️ Rest your eyes — look 20 feet away for 20 seconds.';
+    return '☕ Take a proper break — you\'ve earned it!';
   }
 
   // ── Break card — context-aware modal with emoji + message ────────────────
@@ -1931,6 +1961,18 @@ const ThemeCanvas = (() => {
     // WhatsApp-style PiP hover overlay: click the expand button to restore
     const pipExpandBtn = document.getElementById('pip-expand-btn');
     if (pipExpandBtn) pipExpandBtn.addEventListener('click', () => _enterFullMode());
+
+    // PLAN: Chunk 1F — PiP drag lock toggle
+    let _pipDragLocked = false;
+    const lockBtn = document.getElementById('pip-lock-btn');
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        _pipDragLocked = !_pipDragLocked;
+        lockBtn.textContent = _pipDragLocked ? '🔐' : '🔒';
+        lockBtn.title = _pipDragLocked ? 'Unlock position' : 'Lock position (prevent drag)';
+        document.getElementById('world')?.classList.toggle('pip-drag-locked', _pipDragLocked);
+      });
+    }
 
     // Clicking anywhere on the circular bubble (that isn't an eye / interactive
     // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
@@ -3815,7 +3857,14 @@ const ThemeCanvas = (() => {
       });
     }
 
-    DND.onActivate(() => _syncDNDBtn());
+    DND.onActivate(() => {
+      _syncDNDBtn();
+      // PLAN: Chunk 1A — close panels on DND start so user enters focus mode cleanly
+      const sp = document.getElementById('session-panel');
+      const hp = document.getElementById('history-panel');
+      if (sp) sp.classList.remove('sidebar-open');
+      if (hp) hp.classList.remove('hp-panel-open');
+    });
     DND.onDeactivate(() => _syncDNDBtn());
     _syncDNDBtn();  // set initial state
   }
