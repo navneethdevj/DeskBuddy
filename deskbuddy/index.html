@@ -286,6 +286,41 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+              <!-- ── PiP border ─────────────────────────────── -->
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Overlay border</div>
+                  <div class="settings-row-sublabel">Show a custom border around the bubble</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-border-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div id="pip-border-options" class="pip-border-options" aria-hidden="true">
+                <div class="settings-row">
+                  <div class="settings-row-label">Border colour</div>
+                  <div class="pip-border-color-wrap">
+                    <input type="color" id="pip-border-color-picker" value="#a090ff" title="Border colour">
+                    <span id="pip-border-color-hex" class="pip-border-color-hex">#a090ff</span>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div>
+                    <div class="settings-row-label">Border width</div>
+                    <div class="settings-row-sublabel" id="pip-border-width-sublabel">2 px</div>
+                  </div>
+                  <input type="range" id="pip-border-width-slider" class="settings-slider" min="1" max="8" step="1" value="2">
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-label">Border style</div>
+                  <div class="pip-border-style-picker" id="pip-border-style-picker">
+                    <button class="pip-border-style-chip active" data-style="solid" title="Solid">Solid</button>
+                    <button class="pip-border-style-chip" data-style="dashed" title="Dashed">Dashed</button>
+                    <button class="pip-border-style-chip" data-style="dotted" title="Dotted">Dotted</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

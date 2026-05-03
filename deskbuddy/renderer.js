@@ -927,6 +927,17 @@ const ThemeCanvas = (() => {
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.setProperty('--pip-bg-opacity', (pipOpacity / 100).toFixed(2));
 
+    // PiP border — apply saved values as CSS custom properties on #world
+    if (worldEl) {
+      const borderEnabled = Settings.get('pipBorderEnabled');
+      const borderColor   = Settings.get('pipBorderColor')  || '#a090ff';
+      const borderWidth   = Settings.get('pipBorderWidth')  != null ? Settings.get('pipBorderWidth') : 2;
+      const borderStyle   = Settings.get('pipBorderStyle')  || 'solid';
+      worldEl.style.setProperty('--pip-border-style', borderStyle);
+      worldEl.style.setProperty('--pip-border-color', borderEnabled ? borderColor : 'transparent');
+      worldEl.style.setProperty('--pip-border-width', borderEnabled ? `${borderWidth}px` : '0px');
+    }
+
     // Initialise canvas-based theme particle system
     ThemeCanvas.init();
     ThemeCanvas.setTheme(theme);
@@ -2389,6 +2400,68 @@ const ThemeCanvas = (() => {
       });
     }
     document.body.classList.toggle('pip-drag-locked', Settings.get('pipDragLocked') || false);
+
+    // PiP border — toggle, colour, width, style
+    {
+      const wEl          = document.getElementById('world');
+      const borderToggle = document.getElementById('pip-border-toggle');
+      const borderOpts   = document.getElementById('pip-border-options');
+      const colorPicker  = document.getElementById('pip-border-color-picker');
+      const colorHex     = document.getElementById('pip-border-color-hex');
+      const widthSlider  = document.getElementById('pip-border-width-slider');
+      const widthLabel   = document.getElementById('pip-border-width-sublabel');
+
+      function _applyBorder() {
+        const enabled = Settings.get('pipBorderEnabled');
+        const color   = Settings.get('pipBorderColor')  || '#a090ff';
+        const width   = Settings.get('pipBorderWidth')  != null ? Settings.get('pipBorderWidth') : 2;
+        const style   = Settings.get('pipBorderStyle')  || 'solid';
+        if (wEl) {
+          wEl.style.setProperty('--pip-border-style', style);
+          wEl.style.setProperty('--pip-border-color', enabled ? color   : 'transparent');
+          wEl.style.setProperty('--pip-border-width', enabled ? `${width}px` : '0px');
+        }
+        if (borderOpts) borderOpts.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+        if (borderToggle) borderToggle.checked = !!enabled;
+        if (colorPicker)  colorPicker.value    = color;
+        if (colorHex)     colorHex.textContent  = color;
+        if (widthSlider)  widthSlider.value     = width;
+        if (widthLabel)   widthLabel.textContent = `${width} px`;
+        document.querySelectorAll('#pip-border-style-picker .pip-border-style-chip')
+          .forEach(c => c.classList.toggle('active', c.dataset.style === style));
+      }
+
+      _applyBorder();  // sync UI to saved settings
+
+      if (borderToggle) {
+        borderToggle.addEventListener('change', () => {
+          Settings.set('pipBorderEnabled', borderToggle.checked);
+        });
+      }
+      if (colorPicker) {
+        colorPicker.addEventListener('input', () => {
+          Settings.set('pipBorderColor', colorPicker.value);
+          if (colorHex) colorHex.textContent = colorPicker.value;
+        });
+      }
+      if (widthSlider) {
+        widthSlider.addEventListener('input', () => {
+          const w = parseInt(widthSlider.value, 10);
+          Settings.set('pipBorderWidth', w);
+          if (widthLabel) widthLabel.textContent = `${w} px`;
+        });
+      }
+      document.querySelectorAll('#pip-border-style-picker .pip-border-style-chip')
+        .forEach(btn => {
+          btn.addEventListener('click', () => Settings.set('pipBorderStyle', btn.dataset.style));
+        });
+
+      // React to every setting change live
+      Settings.onChange('pipBorderEnabled', () => _applyBorder());
+      Settings.onChange('pipBorderColor',   () => _applyBorder());
+      Settings.onChange('pipBorderWidth',   () => _applyBorder());
+      Settings.onChange('pipBorderStyle',   () => _applyBorder());
+    }
 
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');

@@ -40,6 +40,10 @@ const Settings = (() => {
     pipShape:               'square', // 'square' | 'rounded' | 'circle' — overlay window shape in PiP mode
     pipSnapEnabled:         true,     // auto-snap to nearest corner on drag release
     pipDragLocked:          false,    // when true, dragging the PiP window is disabled
+    pipBorderEnabled:       false,    // show a custom outline border around the PiP bubble
+    pipBorderColor:         '#a090ff', // CSS hex colour for the border
+    pipBorderWidth:         2,        // border thickness in px (1–8)
+    pipBorderStyle:         'solid',  // 'solid' | 'dashed' | 'dotted'
     // ── Buddy personality ──────────────────────────────────────────────
     idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
     expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
