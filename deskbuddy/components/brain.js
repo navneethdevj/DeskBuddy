@@ -73,7 +73,8 @@ const Brain = (() => {
   const LOVE_HOLD_MS           = 3000;  // love lasts this long after click
 
   // Startled: sudden large mouse jerk triggers it
-  const STARTLED_DIST_THRESHOLD = 280;  // px jump in a single mousemove event
+  const STARTLED_DIST_THRESHOLD = 380;  // PLAN: Chunk 8F — raised from 280 to reduce hair-trigger
+  const STARTLED_VELOCITY       = 0.8;  // PLAN: Chunk 8F — px/ms minimum velocity
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
@@ -97,6 +98,10 @@ const Brain = (() => {
   // Study encouragement: reward deep focus
   const ENCOURAGEMENT_FOCUS_MIN    = 75;       // focusLevel threshold
   const ENCOURAGEMENT_GAP_MS       = 4 * 60 * 1000; // 4 minutes between encouragements
+
+  // PLAN: Chunk 8A — Flow state: extended deep focus
+  const FLOW_STATE_MIN_MINUTES = 12;
+  const FLOW_STATE_FOCUS_MIN   = 85;
 
   // Milestone: celebrate every 5 continuous focused minutes
   const MILESTONE_INTERVAL_MINUTES = 5;
@@ -198,6 +203,8 @@ const Brain = (() => {
   // Whisper queue
   let _whisperQueue = [];
   let _whisperBusy  = false;
+  let _whisperCancelled = false; // PLAN: Chunk 1H — cancel queued whispers on stop()
+  let _inFlowState  = false; // PLAN: Chunk 8A — deep focus flow state
 
   // Emotion-tinted whisper colors — each mood gives the text a unique tint
   const _WHISPER_COLORS = {
@@ -295,6 +302,7 @@ const Brain = (() => {
   let _startledUntil = 0;        // epoch ms when startled state expires
   let _prevMouseX    = -1000;    // previous mousemove X for speed detection
   let _prevMouseY    = -1000;
+  let _lastMouseTime = 0;        // PLAN: Chunk 8F — for velocity calculation
 
   // Idle life timer
   let _idleLifeTimer = null;
@@ -364,6 +372,7 @@ const Brain = (() => {
     enterState('idle');
     tick();
     _startFocusTimer();
+    _checkMorningRitual(); // PLAN: Chunk 8G
     _startIdleLife();
   }
 
@@ -376,6 +385,16 @@ const Brain = (() => {
       clearTimeout(stateTimer);
       stateTimer = null;
     }
+    // PLAN: Chunk 1H — clear all intervals/timers on stop to prevent leaks
+    if (_timerInt)         { clearInterval(_timerInt);       _timerInt       = null; }
+    if (_ftParticleInt)    { clearInterval(_ftParticleInt);  _ftParticleInt  = null; }
+    if (overjoyedTimer)    { clearTimeout(overjoyedTimer);   overjoyedTimer  = null; }
+    if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+    // Cancel queued whispers
+    _whisperCancelled = true;
+    _whisperBusy = false;
+    _whisperQueue = [];
+    setTimeout(() => { _whisperCancelled = false; }, 150);
   }
 
   function getState() {
@@ -1274,12 +1293,15 @@ const Brain = (() => {
     mouseY = e.clientY;
     lastMouseMoveTime = now;
 
-    // Startled: detect a sudden large jump in cursor position
+    // PLAN: Chunk 8F — Startled: require BOTH large jump AND high velocity
     if (_prevMouseX >= 0) {
       const dx = e.clientX - _prevMouseX;
       const dy = e.clientY - _prevMouseY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist >= STARTLED_DIST_THRESHOLD && now > _startledUntil + 2500) {
+      const dt       = now - (_lastMouseTime || now);
+      const velocity = dt > 0 ? dist / dt : 0;
+      _lastMouseTime = now;
+      if (dist >= STARTLED_DIST_THRESHOLD && velocity >= STARTLED_VELOCITY && now > _startledUntil + 2500) {
         _startledUntil = now + STARTLED_HOLD_MS;
         // Whisper 50% of the time
         if (Math.random() < 0.5) {
@@ -1585,10 +1607,12 @@ const Brain = (() => {
             showWhisper('...📱?', 2500);
             // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
+            _handlePhoneDetected(); // PLAN: Chunk 5 — session escalation
           }
         } else if (!p || !p.facePresent || p.headPitch < PHONE_PITCH_RESET) {
           // Reset when face absent or head has lifted back up
           _phoneCheckMs = 0;
+          _handlePhoneGone(); // PLAN: Chunk 5
         }
       }
 
@@ -1597,6 +1621,7 @@ const Brain = (() => {
       const timerState   = typeof Timer   !== 'undefined' ? Timer.getState?.()                      : undefined;
       const sessionState = typeof Session !== 'undefined' ? Session.getCurrentStats?.()?.state : undefined;
       if (timerState === 'FOCUSED' && sessionState === 'ACTIVE') {
+        if (_continuousFocusedMs === 0) _checkMemoryWhisper(); // PLAN: Chunk 8C — on new streak start
         _continuousFocusedMs += 1000;
         const minutesMark = Math.floor(_continuousFocusedMs / 60000);
         if (minutesMark >= _nextMilestoneMinutes && _nextMilestoneMinutes <= MILESTONE_MAX_MINUTES) {
@@ -1610,10 +1635,52 @@ const Brain = (() => {
         _nextMilestoneMinutes = MILESTONE_INTERVAL_MINUTES;
       }
 
+      _checkFlowState(); // PLAN: Chunk 8A
+
     }, 1000);
   }
 
   // ── CHUNK 5 — new helper functions ────────────────────────────────────────
+
+  // PLAN: Chunk 5 — phone detection session escalation
+  let _phoneSessionEscalateTimer = null;
+  function _handlePhoneDetected() {
+    if (typeof Session !== 'undefined' && Session.getState?.() === 'ACTIVE') {
+      if (!_phoneSessionEscalateTimer) {
+        _phoneSessionEscalateTimer = setTimeout(() => {
+          if (typeof Session !== 'undefined') Session.pause?.('phone_distraction');
+          showWhisper('📱 Put the phone down — let\'s get back to studying!', 5000);
+          _phoneSessionEscalateTimer = null;
+        }, 30000);
+      }
+    }
+  }
+  function _handlePhoneGone() {
+    if (_phoneSessionEscalateTimer) {
+      clearTimeout(_phoneSessionEscalateTimer);
+      _phoneSessionEscalateTimer = null;
+    }
+  }
+
+  /** Check/enter/exit flow state (deep focus for 12+ min at 85%+ focus). PLAN: Chunk 8A */
+  function _checkFlowState() {
+    const inSession  = typeof Session !== 'undefined' && Session.getState?.() === 'ACTIVE';
+    const focused    = focusLevel >= FLOW_STATE_FOCUS_MIN;
+    const longEnough = _focusSecs >= FLOW_STATE_MIN_MINUTES * 60;
+    const should     = inSession && focused && longEnough;
+    if (should && !_inFlowState) {
+      _inFlowState = true;
+      document.body.classList.add('flow-state');
+      showWhisper('✨ You\'re in the zone! Deep focus achieved!', 4000);
+      if (typeof Particles !== 'undefined') {
+        for (let i = 0; i < 5; i++) setTimeout(() => Particles.spawn('star'), i * 120);
+      }
+      if (typeof Sounds !== 'undefined') Sounds.play?.('overjoyed_chirp');
+    } else if (!should && _inFlowState) {
+      _inFlowState = false;
+      document.body.classList.remove('flow-state');
+    }
+  }
 
   /** Fire the milestone callback and companion celebration. */
   function _fireMilestone(minutesMark) {
@@ -1906,9 +1973,10 @@ const Brain = (() => {
     el.style.transition     = 'opacity 0.2s ease';
     el.style.opacity        = '0.72';
     setTimeout(() => {
+      if (_whisperCancelled) { _whisperBusy = false; return; } // PLAN: Chunk 1H
       el.style.transition   = 'opacity 0.6s ease';
       el.style.opacity      = '0';
-      setTimeout(_nextWhisper, 700);  // 700 > 600 so fade fully completes
+      setTimeout(() => { if (!_whisperCancelled) _nextWhisper(); else _whisperBusy = false; }, 700);
     }, durationMs);
   }
 
@@ -2780,6 +2848,44 @@ const Brain = (() => {
     }, 700);
   }
 
+  /** Show history-aware whispers after 5+ sessions. PLAN: Chunk 8C */
+  function _checkMemoryWhisper() {
+    if (typeof Session === 'undefined') return;
+    const history = Session.getHistory?.();
+    if (!history || history.length < 5) return;
+    const recent  = history.slice(0, 5);
+    const avgFocus = recent.reduce((a, s) => a + (s.focusPercent || 0), 0) / recent.length;
+    const streak   = recent.filter(s => s.outcome === 'COMPLETED').length;
+    if (streak >= 5) {
+      showWhisper('🏆 5-session streak! You\'re on fire!', 5000);
+    } else if (avgFocus > 80) {
+      showWhisper(`📈 Your focus has been amazing lately — ${Math.round(avgFocus)}% average!`, 5000);
+    } else if (avgFocus < 50) {
+      showWhisper('💪 Let\'s have a great session — you\'ve been working hard!', 5000);
+    }
+  }
+
+  /** Show a personalised morning greeting once per day if started 5am-10am. PLAN: Chunk 8G */
+  function _checkMorningRitual() {
+    const now  = new Date();
+    const hour = now.getHours();
+    if (hour < 5 || hour > 10) return;
+    const today        = now.toDateString();
+    const lastGreeting = localStorage.getItem('deskbuddy_morning_greeted');
+    if (lastGreeting === today) return;
+    localStorage.setItem('deskbuddy_morning_greeted', today);
+    const greetings = [
+      '🌅 Good morning! Ready for a productive day?',
+      '🌞 Rise and shine! Let\'s make today amazing!',
+      '☀️ Morning! I\'ve been waiting for you!',
+      '🌄 New day, new focus! Let\'s go! ✦',
+    ];
+    setTimeout(() => {
+      if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 3000);
+      showWhisper(greetings[Math.floor(Math.random() * greetings.length)], 5000);
+    }, 2000);
+  }
+
   // ── TYPING RHYTHM REACTIONS ───────────────────────────────────────────────
 
   function _setTypingRhythm(newState) {
@@ -2938,6 +3044,25 @@ const Brain = (() => {
     _cozyDeepMs = n === 1 ? 2000 : n === 3 ? 1000 : 1500;
   }
 
+  /** Wire the wave gesture reaction. PLAN: Chunk 4B */
+  function _onWaveDetected() {
+    if (_dndActive) return;
+    if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 2500);
+    if (typeof Sounds !== 'undefined') Sounds.play?.('overjoyed_chirp');
+    showWhisper('👋 *wave* Hi there!', 3500);
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 3; i++) setTimeout(() => Particles.spawn('heart'), i * 100);
+    }
+  }
+
+  /** Wire the multi-face reaction. PLAN: Chunk 4D */
+  function _onMultiFaceDetected() {
+    if (_dndActive) return;
+    window._lastEmotion = 'curious';
+    if (typeof Emotion !== 'undefined') Emotion.setState('curious');
+    showWhisper('👀 Oh! There\'s more than one of you!', 4000);
+  }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
@@ -2949,5 +3074,7 @@ const Brain = (() => {
            setIdleSpeed, setExpressiveness, setPettingMode,
            startTearEffect, stopTearEffect,
            triggerWelcomeBack: _welcomeBackSequence,
-           triggerLookSequence };
+           triggerLookSequence,
+           onWaveDetected: _onWaveDetected,      // PLAN: Chunk 4B
+           onMultiFaceDetected: _onMultiFaceDetected }; // PLAN: Chunk 4D
 })();
