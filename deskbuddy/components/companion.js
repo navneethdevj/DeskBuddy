@@ -69,6 +69,18 @@ const Companion = (() => {
         </div>
         <div class="nose"></div>
         <div class="mouth"></div>
+        <div class="whiskers">
+          <div class="whisker-group whisker-left">
+            <div class="whisker whisker-l1"></div>
+            <div class="whisker whisker-l2"></div>
+            <div class="whisker whisker-l3"></div>
+          </div>
+          <div class="whisker-group whisker-right">
+            <div class="whisker whisker-r1"></div>
+            <div class="whisker whisker-r2"></div>
+            <div class="whisker whisker-r3"></div>
+          </div>
+        </div>
       </div>
     `;
 
