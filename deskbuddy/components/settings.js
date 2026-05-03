@@ -75,6 +75,10 @@ const Settings = (() => {
     pipOpacity:      78,            // 20–95 integer % — PiP background opacity
     pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
     companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
+    eyeDistance:     6,             // vmin gap between eyes (0–16)
+    eyeOffsetX:      0,             // vw horizontal fine-offset (-30 to +30)
+    eyeOffsetY:      0,             // vh vertical fine-offset (-15 to +15)
+    eyeTilt:         0,             // deg tilt on both eye-wraps (-12 to +12)
   };
 
   let _current = { ...DEFAULTS };

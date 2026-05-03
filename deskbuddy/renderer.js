@@ -3190,6 +3190,61 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('companionPos', (v) => _applyCompanionPos(v));
 
+    // ── Eye horizontal fine-offset (slider) ──────────────────────────────
+    const eyeOffSlider = document.getElementById('eye-offset-slider');
+    const eyeOffSub    = document.getElementById('eye-offset-sub');
+
+    function _applyEyeOffset(v) {
+      v = v ?? 0;
+      if (v === 0) {
+        document.body.classList.remove('has-eyes-offset-x');
+        document.documentElement.style.removeProperty('--eyes-offset-x');
+      } else {
+        document.body.classList.add('has-eyes-offset-x');
+        document.documentElement.style.setProperty('--eyes-offset-x', v + 'vw');
+      }
+      if (eyeOffSlider) eyeOffSlider.value = v;
+      if (eyeOffSub)    eyeOffSub.textContent = v < -8 ? 'Left' : v > 8 ? 'Right' : 'Center';
+    }
+
+    if (eyeOffSlider) {
+      eyeOffSlider.addEventListener('input', () => {
+        const v = parseInt(eyeOffSlider.value, 10);
+        Settings.set('eyeOffsetX', v); _applyEyeOffset(v);
+      });
+    }
+    // Center quick-preset button also resets the fine-offset slider
+    document.querySelector('[data-pos="center"]')
+      ?.addEventListener('click', () => { Settings.set('eyeOffsetX', 0); _applyEyeOffset(0); });
+    Settings.onChange('eyeOffsetX', (v) => _applyEyeOffset(v ?? 0));
+    _applyEyeOffset(Settings.get('eyeOffsetX') ?? 0);
+
+    // ── Eye vertical fine-offset (slider) ────────────────────────────────
+    const eyeOffYSlider = document.getElementById('eye-offset-y-slider');
+    const eyeOffYSub    = document.getElementById('eye-offset-y-sub');
+
+    function _applyEyeOffsetY(v) {
+      v = v ?? 0;
+      if (v === 0) {
+        document.body.classList.remove('has-eyes-offset-y');
+        document.documentElement.style.removeProperty('--eyes-offset-y');
+      } else {
+        document.body.classList.add('has-eyes-offset-y');
+        document.documentElement.style.setProperty('--eyes-offset-y', v + 'vh');
+      }
+      if (eyeOffYSlider) eyeOffYSlider.value = v;
+      if (eyeOffYSub)    eyeOffYSub.textContent = v < -4 ? 'Up' : v > 4 ? 'Down' : 'Center';
+    }
+
+    if (eyeOffYSlider) {
+      eyeOffYSlider.addEventListener('input', () => {
+        const v = parseInt(eyeOffYSlider.value, 10);
+        Settings.set('eyeOffsetY', v); _applyEyeOffsetY(v);
+      });
+    }
+    Settings.onChange('eyeOffsetY', (v) => _applyEyeOffsetY(v ?? 0));
+    _applyEyeOffsetY(Settings.get('eyeOffsetY') ?? 0);
+
     // ── Blink rate ───────────────────────────────────────────────────────
     function _applyBlinkRate(rate) {
       if (Companion.setBlinkRate) Companion.setBlinkRate(rate);
@@ -3209,6 +3264,48 @@ const ThemeCanvas = (() => {
       });
     }
     Settings.onChange('blinkRate', (v) => _applyBlinkRate(v));
+
+    // ── Eye distance slider ──────────────────────────────────────────────
+    const eyeDistSlider = document.getElementById('eye-dist-slider');
+    const eyeDistSub    = document.getElementById('eye-dist-sub');
+
+    function _applyEyeDist(v) {
+      v = v ?? 6;
+      document.documentElement.style.setProperty('--eyes-gap', v + 'vmin');
+      if (eyeDistSlider) eyeDistSlider.value = v;
+      if (eyeDistSub)    eyeDistSub.textContent = v < 2 ? 'Close' : v > 11 ? 'Wide' : 'Default';
+    }
+
+    if (eyeDistSlider) {
+      eyeDistSlider.addEventListener('input', () => {
+        const v = parseFloat(eyeDistSlider.value);
+        Settings.set('eyeDistance', v); _applyEyeDist(v);
+      });
+    }
+    Settings.onChange('eyeDistance', (v) => _applyEyeDist(v ?? 6));
+    _applyEyeDist(Settings.get('eyeDistance') ?? 6);
+
+    // ── Eye tilt slider ──────────────────────────────────────────────────
+    const eyeTiltSlider = document.getElementById('eye-tilt-slider');
+    const eyeTiltSub    = document.getElementById('eye-tilt-sub');
+
+    function _applyEyeTilt(v) {
+      v = v ?? 0;
+      document.documentElement.style.setProperty('--eye-tilt', v + 'deg');
+      if (eyeTiltSlider) eyeTiltSlider.value = v;
+      if (eyeTiltSub) {
+        eyeTiltSub.textContent = v < -3 ? 'Tilted left' : v > 3 ? 'Tilted right' : 'Straight';
+      }
+    }
+
+    if (eyeTiltSlider) {
+      eyeTiltSlider.addEventListener('input', () => {
+        const v = parseFloat(eyeTiltSlider.value);
+        Settings.set('eyeTilt', v); _applyEyeTilt(v);
+      });
+    }
+    Settings.onChange('eyeTilt', (v) => _applyEyeTilt(v ?? 0));
+    _applyEyeTilt(Settings.get('eyeTilt') ?? 0);
 
     // ── Eyebrows toggle ──────────────────────────────────────────────────
     const eyebrowsToggle = document.getElementById('eyebrows-toggle');
@@ -3423,7 +3520,8 @@ const ThemeCanvas = (() => {
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
       'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
-      'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
+      'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos',
+      'eyeDistance','eyeOffsetX','eyeOffsetY','eyeTilt'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');
     const pastePresetBtn = document.getElementById('paste-preset-btn');

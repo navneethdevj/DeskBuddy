@@ -183,11 +183,12 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 1.5vmin;
+  rotate: var(--eye-tilt, 0deg);
   /* User-selected eye glow — applied here so emotion box-shadow overrides on .eye never kill it */
   filter: drop-shadow(0 0 3.5vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.50))
           drop-shadow(0 0 10vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.22))
           drop-shadow(0 0 20vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.08));
-  transition: filter 0.35s ease;
+  transition: filter 0.35s ease, rotate 0.3s cubic-bezier(.4, 0, .2, 1);
 }
 body.glow-off .eye-wrap { filter: none; }
 
@@ -2963,6 +2964,19 @@ body.mouth-none .mouth { opacity: 0; pointer-events: none; }
 body.full-mode.companion-pos-left  .eyes { justify-content: flex-start; padding-left: 10vw; }
 body.full-mode.companion-pos-right .eyes { justify-content: flex-end;   padding-right: 10vw; }
 /* center is the default — no override needed */
+
+/* ── Fine eye offsets (slider-driven, composable with companion-pos) ── */
+body.full-mode.has-eyes-offset-x .eyes {
+  justify-content: center;
+  padding-left: 0; padding-right: 0;
+  transform: translateX(var(--eyes-offset-x, 0vw));
+}
+/* Y-offset uses the CSS individual-transform `translate` property so it
+   stacks cleanly on top of any translateX from has-eyes-offset-x above.
+   (Individual transform props compose before `transform` in the pipeline.) */
+body.full-mode.has-eyes-offset-y .eyes {
+  translate: 0 var(--eyes-offset-y, 0vh);
+}
 
 /* ── Eyebrow visibility ────────────────────────────────────────────── */
 body.hide-eyebrows .brow { opacity: 0; pointer-events: none; }
@@ -7266,6 +7280,82 @@ body.mouth-thin  .mouth-cat .mouth::before,
 body.mouth-thin  .mouth-cat .mouth::after  { border-width: 0.13vmin !important; }
 body.mouth-thick .mouth-cat .mouth::before,
 body.mouth-thick .mouth-cat .mouth::after  { border-width: 0.52vmin !important; }
+
+/* ── WHISKERS ─────────────────────────────────────────────────────── */
+/* Visible only when body.mouth-cat is active. 3 lines per side.
+   Each line sways on an independent duration + delay for organic motion. */
+.whiskers {
+  position: absolute;
+  top: calc(50% + 26vmin); left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0; pointer-events: none;
+  opacity: 0; transition: opacity 0.4s ease;
+}
+body.mouth-cat .whiskers { opacity: 1; }
+
+.whisker-group { position: absolute; top: 0; }
+.whisker-left  { right: 1.2vmin; }
+.whisker-right { left:  1.2vmin; }
+
+.whisker {
+  position: absolute; height: 0.22vmin; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(180,170,240,0.72) 0%,
+    rgba(180,170,240,0.30) 70%, transparent 100%);
+  animation: whiskerSway 3.5s ease-in-out infinite;
+}
+.whisker-left .whisker {
+  right: 0; transform-origin: right center;
+  background: linear-gradient(270deg, rgba(180,170,240,0.72) 0%,
+    rgba(180,170,240,0.30) 70%, transparent 100%);
+}
+
+.whisker-l1, .whisker-r1 { width: 9vmin; }
+.whisker-l2, .whisker-r2 { width: 10.5vmin; }
+.whisker-l3, .whisker-r3 { width: 8vmin; }
+
+.whisker-left  .whisker-l1 { top: -1.0vmin; transform: rotate(10deg)  translateX(-100%); }
+.whisker-left  .whisker-l2 { top:  0vmin;   transform: rotate(-2deg)  translateX(-100%); }
+.whisker-left  .whisker-l3 { top:  1.2vmin; transform: rotate(-14deg) translateX(-100%); }
+.whisker-right .whisker-r1 { top: -1.0vmin; transform: rotate(-10deg); }
+.whisker-right .whisker-r2 { top:  0vmin;   transform: rotate(2deg);  }
+.whisker-right .whisker-r3 { top:  1.2vmin; transform: rotate(14deg); }
+
+@keyframes whiskerSway {
+  0%, 100% { rotate: 0deg;  }
+  30%       { rotate: 2deg;  }
+  60%       { rotate: -1deg; }
+}
+.whisker-l1, .whisker-r1 { animation-delay: 0s;   animation-duration: 3.2s; }
+.whisker-l2, .whisker-r2 { animation-delay: 0.4s; animation-duration: 3.8s; }
+.whisker-l3, .whisker-r3 { animation-delay: 0.8s; animation-duration: 3.0s; }
+
+/* Emotion tints — left side */
+body.mouth-cat .companion.happy     .whisker,
+body.mouth-cat .companion.overjoyed .whisker {
+  background: linear-gradient(90deg, rgba(200,165,235,0.80) 0%, transparent 100%);
+}
+body.mouth-cat .companion.love .whisker {
+  background: linear-gradient(90deg, rgba(255,140,185,0.78) 0%, transparent 100%);
+}
+body.mouth-cat .companion.grumpy .whisker {
+  background: linear-gradient(90deg, rgba(255,138,128,0.65) 0%, transparent 100%);
+}
+body.mouth-cat .companion.sleepy .whiskers { opacity: 0.38; }
+
+/* Emotion tints — right side direction flip */
+body.mouth-cat .whisker-right .whisker {
+  background: linear-gradient(270deg, rgba(180,170,240,0.72) 0%, transparent 100%);
+}
+body.mouth-cat .companion.happy     .whisker-right .whisker,
+body.mouth-cat .companion.overjoyed .whisker-right .whisker {
+  background: linear-gradient(270deg, rgba(200,165,235,0.80) 0%, transparent 100%);
+}
+body.mouth-cat .companion.love .whisker-right .whisker {
+  background: linear-gradient(270deg, rgba(255,140,185,0.78) 0%, transparent 100%);
+}
+body.mouth-cat .companion.grumpy .whisker-right .whisker {
+  background: linear-gradient(270deg, rgba(255,138,128,0.65) 0%, transparent 100%);
+}
 
 /* ═══════════════════════════════════════════════════════════
    EYE SHAPE
