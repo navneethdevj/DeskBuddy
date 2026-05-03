@@ -1804,6 +1804,10 @@ const ThemeCanvas = (() => {
     if (titleEl) titleEl.textContent = title;
     if (bodyEl)  bodyEl.textContent  = body;
 
+    // PLAN: Chunk 8B — append smart break suggestion below the main message
+    const suggestion = _generateBreakSuggestion(stats);
+    if (bodyEl && suggestion) bodyEl.textContent += `\n\n${suggestion}`;
+
     // Break elapsed time
     if (budgetEl) {
       const elapsedMs   = Session.getBreakElapsedMs ? Session.getBreakElapsedMs() : 0;
