@@ -3869,7 +3869,16 @@ const ThemeCanvas = (() => {
       if (sp) sp.classList.remove('sidebar-open');
       if (hp) hp.classList.remove('hp-panel-open');
     });
-    DND.onDeactivate(() => _syncDNDBtn());
+    DND.onDeactivate(() => {
+      _syncDNDBtn();
+      // Close any panel that may have been opened while DND was active
+      const panel = document.getElementById('session-panel');
+      const icon  = document.getElementById('sp-icon');
+      if (panel && !panel.contains(document.activeElement)) {
+        panel.classList.remove('sidebar-open');
+        if (icon) icon.classList.remove('sp-icon-hidden');
+      }
+    });
     _syncDNDBtn();  // set initial state
   }
 

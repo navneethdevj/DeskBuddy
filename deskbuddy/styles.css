@@ -2761,52 +2761,48 @@ body.mouth-wide .companion.curious  .mouth { width: 10vmin; height: 10vmin; }
    PLAN: Chunk 1D — fixed proportions: 7vmin wide × 3.5vmin tall lobes,
    overlapping at center so tips point UP and center dips DOWN. */
 body.mouth-cat .mouth {
-  width: 14vmin;
-  height: 3.5vmin;
-  border: none !important;
-  background: transparent;
-  overflow: visible;
+  width: 14vmin; height: 7vmin;
+  border: none !important; background: transparent; overflow: visible;
 }
 body.mouth-cat .mouth::before,
 body.mouth-cat .mouth::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 7vmin;
-  height: 3.5vmin;
-  border: 0.34vmin solid transparent;
-  border-bottom-color: rgba(145, 155, 225, 0.72);
-  border-radius: 0 0 60% 60% / 0 0 100% 100%;
+  content: ''; position: absolute; top: 0;
+  width: 8vmin; height: 7vmin;
+  border: 0.45vmin solid transparent;
+  border-bottom-color: rgba(145, 155, 225, 0.82);
+  border-left-color:   rgba(145, 155, 225, 0.25);
+  border-right-color:  rgba(145, 155, 225, 0.25);
+  border-radius: 0 0 50% 50%;
 }
-/* Overlap at center: push both lobes inward so inner edges meet at the ω join */
-body.mouth-cat .mouth::before { left:  -0.5vmin; }
-body.mouth-cat .mouth::after  { right: -0.5vmin; }
+/* 1.5vmin each side = 3vmin total center junction = clear ω dip */
+body.mouth-cat .mouth::before { left:  -1.5vmin; }
+body.mouth-cat .mouth::after  { right: -1.5vmin; }
 
-/* Happy cat — wider lobes meeting at center, bright color */
+/* Happy cat — wider, brighter */
 body.mouth-cat .companion.happy    .mouth,
 body.mouth-cat .companion.overjoyed .mouth {
-  width: 16vmin; height: 7vmin;
+  width: 18vmin; height: 8.5vmin;
 }
 body.mouth-cat .companion.happy    .mouth::before,
 body.mouth-cat .companion.happy    .mouth::after,
 body.mouth-cat .companion.overjoyed .mouth::before,
 body.mouth-cat .companion.overjoyed .mouth::after {
-  width: 8.5vmin; height: 7vmin;
-  border-bottom-color: rgba(200, 170, 255, 0.92);
+  width: 10vmin; height: 8.5vmin;
+  border-bottom-color: rgba(200, 170, 255, 0.94);
 }
-/* Sad cat — lobes flip to frown (top arcs) */
+/* Sad cat — flip to frown (top arcs) */
 body.mouth-cat .companion.sad      .mouth,
 body.mouth-cat .companion.crying   .mouth {
-  width: 12vmin; height: 5vmin;
+  width: 14vmin; height: 6.5vmin;
 }
 body.mouth-cat .companion.sad      .mouth::before,
 body.mouth-cat .companion.sad      .mouth::after,
 body.mouth-cat .companion.crying   .mouth::before,
 body.mouth-cat .companion.crying   .mouth::after {
   top: unset; bottom: 0;
-  width: 6.5vmin; height: 5vmin;
+  width: 8vmin; height: 6.5vmin;
   border-bottom-color: transparent;
-  border-top-color: rgba(100, 130, 205, 0.72);
+  border-top-color: rgba(100, 130, 205, 0.80);
   border-radius: 50% 50% 0 0;
 }
 /* Scared cat — single circle O */
@@ -3674,6 +3670,14 @@ body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom 
 body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
 /* PLAN: Chunk 1C — size L: increase eye gap to prevent overlap at 1.22x scale */
 body.companion-size-L { --eyes-gap: 14vmin; }
+
+/* ── Size L: prevent eye collision on wide emotion expressions ── */
+body.companion-size-L .companion.curious    .eye-left  { width: 38vmin; height: 50vmin; }
+body.companion-size-L .companion.curious    .eye-right { width: 32vmin; height: 44vmin; }
+body.companion-size-L .companion.overjoyed  .eye       { width: 40vmin; }
+body.companion-size-L .companion.excited    .eye       { width: 36vmin; }
+body.companion-size-L .companion.love       .eye       { width: 38vmin; }
+body.companion-size-L .eyes                            { gap: 8vmin; }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
@@ -6586,13 +6590,7 @@ body.dnd-active .companion {
   transition: filter 0.9s ease;
 }
 
-/* ── PLAN: Chunk 1A — DND active: dim panels and block accidental hover ── */
-body.dnd-active #session-panel,
-body.dnd-active #history-panel {
-  opacity: 0.70;
-  pointer-events: none;
-  transition: opacity 0.55s ease;
-}
+/* DND controls companion behaviour only — panels are closed by JS, not dimmed by CSS */
 
 /* Hide in pip/compact mode — no room */
 body.pip-mode #dnd-indicator {
@@ -7145,15 +7143,15 @@ body.pip-mode .companion {
 /* Pupil must sit above the ::before iris layer */
 .pupil { position: relative; z-index: 1; }
 
-/* ── Iris colour classes (hue-rotate on ::before ONLY — never on .eye) ── */
-/* PLAN: Chunk 1B — animation:none cancels eyeShimmer under any specificity conflict */
-body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); animation: none; }
-body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); animation: none; }
-body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); animation: none; }
-body.eye-lavender .eye::before { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); animation: none; }
-body.eye-sky      .eye::before { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); animation: none; }
-body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); animation: none; }
-body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); animation: none; }
+/* ── Iris colour — hue-rotate the FULL eye gradient ── */
+/* ::before/::after glints are near-white → hue-rotating white keeps them white */
+body.eye-emerald  .eye { filter: hue-rotate(270deg) saturate(1.15); }
+body.eye-rose     .eye { filter: hue-rotate(92deg)  saturate(1.20); }
+body.eye-amber    .eye { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
+body.eye-lavender .eye { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
+body.eye-sky      .eye { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
+body.eye-ruby     .eye { filter: hue-rotate(140deg) saturate(1.30); }
+body.eye-teal     .eye { filter: hue-rotate(230deg) saturate(1.10); }
 /* periwinkle = default, no filter */
 
 /* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
