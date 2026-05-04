@@ -56,6 +56,16 @@ const Brain = (() => {
   const NOFACE_SAD_MS              = 12000;   // 12s → sad
   const NOFACE_CRYING_MS           = 25000;   // 25s → crying
 
+  // Emotion min-hold guard — prevents rapid oscillation between non-priority emotions.
+  // Applied in _setQuiet(); priority states (love/cozy/scared/etc.) bypass this guard.
+  const QUIET_MIN_HOLD_MS = 280;
+  // States exempt from the guard — always transition immediately.
+  const QUIET_PRIORITY = new Set([
+    'love', 'cozy', 'being_patted', 'startled', 'scared', 'crying', 'sad',
+    'overjoyed', 'sulking', 'ecstatic', 'dazed',
+  ]);
+  let _quietEmotionSetAt = 0;  // epoch ms of last committed quiet-emotion change
+
   // ── NEW PERSONALITY CONSTANTS ──────────────────────────────────────────────
 
   // Excited: rapid typing triggers it
@@ -608,9 +618,19 @@ const Brain = (() => {
    * transition side-effects (overjoyed arc, tears, etc.) don't fire.
    */
   function _setQuiet(emotion) {
+    const now = Date.now();
+    // Min-hold guard: skip non-priority → non-priority transitions that happen too fast.
+    // This prevents perception-signal oscillation from causing visible emotion flashing.
+    if (emotion !== window._lastEmotion &&
+        !QUIET_PRIORITY.has(emotion) &&
+        !QUIET_PRIORITY.has(window._lastEmotion) &&
+        (now - _quietEmotionSetAt) < QUIET_MIN_HOLD_MS) {
+      return;
+    }
     if (window._lastEmotion !== emotion) {
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+      _quietEmotionSetAt     = now;
     }
     Emotion.setState(emotion);
     _updateStatus(emotion);

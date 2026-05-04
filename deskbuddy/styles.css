@@ -2295,6 +2295,53 @@ body.pip-shape-circle.pip-mode #world  { border-radius: 50%; }
 body.pip-shape-rounded.pip-mode #world { border-radius: 32px; }
 body.pip-shape-square.pip-mode #world  { border-radius: 16px; }
 
+/* ═══════════════════════════════════════════════════════════════════
+   PiP Decorative Border — solid / glow / fading
+   Controlled by body classes:
+     pip-border-enabled          — master toggle
+     pip-border-style-solid      — 1px–8px opaque border
+     pip-border-style-glow       — same border + diffuse outer glow
+     pip-border-style-fading     — border pulses in/out (keyframe)
+   CSS vars (set via renderer.js):
+     --pip-border-color (default #8fa4ff)
+     --pip-border-width (default 2px)
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --pip-border-color: #8fa4ff;
+  --pip-border-width: 2px;
+}
+
+/* Base — only active in pip mode with border enabled */
+body.pip-border-enabled.pip-mode #world {
+  border: var(--pip-border-width) solid var(--pip-border-color);
+  box-sizing: border-box;
+  /* default box-shadow cleared; each style overrides below */
+  box-shadow: none;
+}
+
+/* Solid — clean opaque ring, no extra glow */
+body.pip-border-enabled.pip-border-style-solid.pip-mode #world {
+  box-shadow: none;
+}
+
+/* Glow — border + soft diffuse halo outside the window */
+body.pip-border-enabled.pip-border-style-glow.pip-mode #world {
+  box-shadow:
+    0 0 calc(var(--pip-border-width) * 3)   var(--pip-border-color),
+    0 0 calc(var(--pip-border-width) * 8)   color-mix(in srgb, var(--pip-border-color) 55%, transparent),
+    0 0 calc(var(--pip-border-width) * 18)  color-mix(in srgb, var(--pip-border-color) 20%, transparent);
+}
+
+/* Fading — border pulses opacity 100% → 30% → 100% over 2.8 s */
+body.pip-border-enabled.pip-border-style-fading.pip-mode #world {
+  animation: pip-border-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes pip-border-pulse {
+  0%, 100% { border-color: var(--pip-border-color); }
+  50%       { border-color: color-mix(in srgb, var(--pip-border-color) 30%, transparent); }
+}
+
 /* ── Clip body corners to match #world — ensures glow box-shadows
    (which render outside #world's bounds) are also clipped and the
    OS-level window corners remain truly transparent.               */
@@ -3220,6 +3267,39 @@ body.hide-eyebrows .brow { opacity: 0; pointer-events: none; }
   border-color: rgba(165, 145, 255, 0.55);
   color: rgba(245, 240, 255, 1);
   box-shadow: 0 0 8px rgba(150, 125, 255, 0.28);
+}
+
+/* ── PiP border sub-options (hidden when master toggle is off) ──────── */
+.pip-border-opts { display: none; }
+.pip-border-opts.pip-border-visible { display: flex; }
+
+/* ── PiP border color row ────────────────────────────────────────────── */
+.pip-border-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pip-color-input {
+  width: 36px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+}
+.pip-border-color-hint {
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(200, 190, 240, 0.72);
+  min-width: 54px;
+}
+
+/* ── Settings subsection divider ─────────────────────────────────────── */
+.settings-subsection-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 8px 0;
 }
 
 /* =====================================================================

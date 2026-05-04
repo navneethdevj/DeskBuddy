@@ -3476,6 +3476,84 @@ const ThemeCanvas = (() => {
         }
       });
     }
+
+    // ── PiP border controls ──────────────────────────────────────────────
+    function _applyPipBorder() {
+      const enabled = !!Settings.get('pipBorderEnabled');
+      const style   = Settings.get('pipBorderStyle') || 'solid';
+      const color   = Settings.get('pipBorderColor') || '#8fa4ff';
+      const width   = Settings.get('pipBorderWidth') != null ? Settings.get('pipBorderWidth') : 2;
+
+      document.body.classList.toggle('pip-border-enabled', enabled);
+      ['solid', 'glow', 'fading'].forEach(s =>
+        document.body.classList.toggle('pip-border-style-' + s, s === style));
+      document.documentElement.style.setProperty('--pip-border-color', color);
+      document.documentElement.style.setProperty('--pip-border-width', width + 'px');
+    }
+
+    function _setPipBorderOptsVisible(visible) {
+      document.querySelectorAll('.pip-border-opts').forEach(el => {
+        el.classList.toggle('pip-border-visible', visible);
+      });
+    }
+
+    const pipBorderToggle = document.getElementById('pip-border-toggle');
+    if (pipBorderToggle) {
+      pipBorderToggle.checked = !!Settings.get('pipBorderEnabled');
+      _setPipBorderOptsVisible(pipBorderToggle.checked);
+      pipBorderToggle.addEventListener('change', () => {
+        Settings.set('pipBorderEnabled', pipBorderToggle.checked);
+        _setPipBorderOptsVisible(pipBorderToggle.checked);
+        _applyPipBorder();
+      });
+    }
+
+    { const savedStyle = Settings.get('pipBorderStyle') || 'solid';
+      document.querySelectorAll('[data-pip-border-style]').forEach(btn => {
+        if (btn.dataset.pipBorderStyle === savedStyle) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-pip-border-style]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          Settings.set('pipBorderStyle', btn.dataset.pipBorderStyle);
+          _applyPipBorder();
+        });
+      });
+    }
+
+    const pipBorderWidthSlider = document.getElementById('pip-border-width-slider');
+    const pipBorderWidthLabel  = document.getElementById('pip-border-width-sublabel');
+    if (pipBorderWidthSlider) {
+      const savedW = Settings.get('pipBorderWidth') != null ? Settings.get('pipBorderWidth') : 2;
+      pipBorderWidthSlider.value = savedW;
+      if (pipBorderWidthLabel) pipBorderWidthLabel.textContent = savedW + 'px';
+      pipBorderWidthSlider.addEventListener('input', () => {
+        const v = parseInt(pipBorderWidthSlider.value, 10);
+        Settings.set('pipBorderWidth', v);
+        if (pipBorderWidthLabel) pipBorderWidthLabel.textContent = v + 'px';
+        _applyPipBorder();
+      });
+    }
+
+    const pipBorderColorPicker = document.getElementById('pip-border-color-picker');
+    const pipBorderColorHint   = document.getElementById('pip-border-color-hint');
+    if (pipBorderColorPicker) {
+      const savedC = Settings.get('pipBorderColor') || '#8fa4ff';
+      pipBorderColorPicker.value = savedC;
+      if (pipBorderColorHint) pipBorderColorHint.textContent = savedC;
+      pipBorderColorPicker.addEventListener('input', () => {
+        const c = pipBorderColorPicker.value;
+        Settings.set('pipBorderColor', c);
+        if (pipBorderColorHint) pipBorderColorHint.textContent = c;
+        _applyPipBorder();
+      });
+    }
+
+    Settings.onChange('pipBorderEnabled', () => _applyPipBorder());
+    Settings.onChange('pipBorderStyle',   () => _applyPipBorder());
+    Settings.onChange('pipBorderWidth',   () => _applyPipBorder());
+    Settings.onChange('pipBorderColor',   () => _applyPipBorder());
+
+    _applyPipBorder();
   }
 
   // ── _wireBreakReminder ────────────────────────────────────────────────────
