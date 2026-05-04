@@ -324,6 +324,21 @@ const Brain = (() => {
   // Happy flash during observe state — rate-limit so it stays special
   let _lastHappyFlashTime = 0;
 
+  // Sleepy cycling — hold each emotion for a natural duration before switching
+  // Prevents the jarring 1-second slot-based cycling that caused random emotion flashes.
+  let _sleepyCurrentEmotion = 'curious';
+  let _sleepyEmotionSince   = 0;          // epoch ms when current sleepy emotion started
+  const SLEEPY_HOLD_MIN_MS  = 7000;       // hold each emotion at least 7 s
+  const SLEEPY_HOLD_MAX_MS  = 14000;      // up to 14 s before switching
+  let _sleepyHoldMs = SLEEPY_HOLD_MIN_MS; // duration for current slot (randomised on switch)
+
+  // Emotion stability guard — prevent rapid micro-flickers at perception state boundaries.
+  // Low-priority emotions (focused/idle/suspicious/pouty) must hold for at least this long
+  // before a different low-priority emotion is accepted.
+  const EMOTION_STABLE_MS = 1800;
+  let _lastLowPrioEmotion    = null;
+  let _lastLowPrioChangedAt  = 0;
+
   // Milestone celebration
   let _continuousFocusedMs    = 0;
   let _nextMilestoneMinutes   = MILESTONE_INTERVAL_MINUTES;
@@ -732,6 +747,11 @@ const Brain = (() => {
     const tms = p.timeInStateMs;
     let emotion;
 
+    // Reset sleepy cycling state when the user is NOT in Sleepy state
+    if (p.userState !== 'Sleepy' && _sleepyEmotionSince !== 0) {
+      _sleepyEmotionSince = 0;
+    }
+
     switch (p.userState) {
       case 'Focused':
         // face-api concept: react to user expressions
@@ -783,12 +803,21 @@ const Brain = (() => {
 
       case 'Sleepy':
         // Companion stays wide-awake and motivates the user — alternate emotions
-        // to feel more alive rather than locked to a single expression.
-        // Cycle: curious 10s → focused 8s → happy 4s → repeat (22s period)
-        { const slot = Math.floor(now / 1000) % 22;
-          if      (slot < 10) emotion = 'curious';
-          else if (slot < 18) emotion = 'focused';
-          else                emotion = 'happy';
+        // naturally rather than snapping on a 1-second global clock.
+        { if (_sleepyEmotionSince === 0) {
+            // First entry — pick a random starting emotion
+            const first = ['curious', 'focused', 'happy'][Math.floor(Math.random() * 3)];
+            _sleepyCurrentEmotion = first;
+            _sleepyEmotionSince   = now;
+            _sleepyHoldMs         = SLEEPY_HOLD_MIN_MS + Math.random() * (SLEEPY_HOLD_MAX_MS - SLEEPY_HOLD_MIN_MS);
+          } else if ((now - _sleepyEmotionSince) >= _sleepyHoldMs) {
+            // Time to switch — pick a different emotion
+            const pool = ['curious', 'focused', 'happy'].filter(e => e !== _sleepyCurrentEmotion);
+            _sleepyCurrentEmotion = pool[Math.floor(Math.random() * pool.length)];
+            _sleepyEmotionSince   = now;
+            _sleepyHoldMs         = SLEEPY_HOLD_MIN_MS + Math.random() * (SLEEPY_HOLD_MAX_MS - SLEEPY_HOLD_MIN_MS);
+          }
+          emotion = _sleepyCurrentEmotion;
         }
         if ((now - _lastSleepyNudge) >= 30000) {
           _lastSleepyNudge = now;
@@ -828,6 +857,25 @@ const Brain = (() => {
       if      (_ts === 'CRITICAL')   emotion = 'grumpy';
       else if (_ts === 'DISTRACTED') emotion = 'pouty';
       else if (_ts === 'DRIFTING')   emotion = 'suspicious';
+    }
+
+    // ── Emotion stability guard ───────────────────────────────────────────────
+    // Prevent rapid micro-flicker at perception-state boundaries.  Low-priority
+    // ambient emotions (focused/idle/suspicious/pouty/curious) must be stable for
+    // EMOTION_STABLE_MS before a *different* low-priority emotion is accepted.
+    // High-priority or distress emotions always go through immediately.
+    const LOW_PRIO = new Set(['focused','idle','suspicious','pouty','curious']);
+    if (LOW_PRIO.has(emotion) && LOW_PRIO.has(_lastLowPrioEmotion)
+        && emotion !== _lastLowPrioEmotion
+        && (now - _lastLowPrioChangedAt) < EMOTION_STABLE_MS) {
+      emotion = _lastLowPrioEmotion; // hold the current one a bit longer
+    } else if (LOW_PRIO.has(emotion) && emotion !== _lastLowPrioEmotion) {
+      _lastLowPrioEmotion   = emotion;
+      _lastLowPrioChangedAt = now;
+    } else if (!LOW_PRIO.has(emotion)) {
+      // Reset for next time
+      _lastLowPrioEmotion   = null;
+      _lastLowPrioChangedAt = 0;
     }
 
     // Track changes for audio + manage tears
@@ -2146,8 +2194,9 @@ const Brain = (() => {
 
   function _spontaneousBehavior() {
     if (_dndActive) return;
-    // Don't interrupt timed or distress states
-    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy', 'dazed', 'ecstatic'];
+    // Don't interrupt timed or distress states, or active petting sessions
+    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled',
+                     'excited', 'shy', 'dazed', 'ecstatic', 'being_patted', 'cozy'];
     if (blocked.includes(window._lastEmotion)) return;
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -2408,7 +2457,8 @@ const Brain = (() => {
   function _doHappyFlash() {
     const now = Date.now();
     if ((now - _lastHappyFlashTime) < 12000) { _doWhisperCoo(); return; }
-    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
+    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled',
+                      'excited', 'shy', 'being_patted', 'cozy'];
     if (_blocked.includes(window._lastEmotion)) return;
     _lastHappyFlashTime = now;
     const prev = window._lastEmotion || 'focused';

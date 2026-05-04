@@ -924,6 +924,10 @@ const ThemeCanvas = (() => {
     const pupilSize = Settings.get('pupilSize') || 'normal';
     if (pupilSize !== 'normal') document.body.classList.add(`pupil-${pupilSize}`);
 
+    // Apply eye size CSS variable from slider setting
+    const eyeSize = Settings.get('eyeSize') != null ? Settings.get('eyeSize') : 100;
+    document.documentElement.style.setProperty('--eye-scale', (eyeSize / 100).toFixed(2));
+
     const glowIntensity = Settings.get('glowIntensity') || 'normal';
     if (glowIntensity !== 'normal') document.body.classList.add(`glow-${glowIntensity}`);
 
@@ -3326,13 +3330,46 @@ const ThemeCanvas = (() => {
     function _applyPupilSize(s) {
       document.body.classList.remove(...PUPIL_CLASSES);
       if (s && s !== 'normal') document.body.classList.add(`pupil-${s}`);
-      const btns = document.getElementById('pupil-size-btns');
-      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
-        btn.classList.toggle('active', btn.dataset.pupil === s));
+      // Sync legacy body class to new slider
+      const legacyMap = { small: 78, normal: 100, large: 120 };
+      if (legacyMap[s] != null) {
+        const val = legacyMap[s];
+        Settings.set('eyeSize', val);
+        document.documentElement.style.setProperty('--eye-scale', (val / 100).toFixed(2));
+        const sl = document.getElementById('eye-size-slider');
+        if (sl) { sl.value = val; }
+        const lb = document.getElementById('eye-size-sublabel');
+        if (lb) lb.textContent = val + '%';
+      }
     }
 
     _applyPupilSize(Settings.get('pupilSize') || 'normal');
 
+    // ── Eye size slider ──────────────────────────────────────────────────────
+    function _applyEyeSize(val) {
+      const scale = Math.max(0.60, Math.min(1.20, val / 100));
+      document.documentElement.style.setProperty('--eye-scale', scale.toFixed(2));
+      const sl = document.getElementById('eye-size-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('eye-size-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    // Initialise slider from saved setting
+    { const savedSize = Settings.get('eyeSize') != null ? Settings.get('eyeSize') : 100;
+      _applyEyeSize(savedSize); }
+
+    const eyeSizeSlider = document.getElementById('eye-size-slider');
+    if (eyeSizeSlider) {
+      eyeSizeSlider.addEventListener('input', () => {
+        const v = parseInt(eyeSizeSlider.value, 10);
+        Settings.set('eyeSize', v);
+        _applyEyeSize(v);
+      });
+    }
+    Settings.onChange('eyeSize', (v) => _applyEyeSize(Number(v) || 100));
+
+    // Sync old pupil-size-btns if present (no-op after HTML change)
     const pupilSizeBtns = document.getElementById('pupil-size-btns');
     if (pupilSizeBtns) {
       pupilSizeBtns.querySelectorAll('.style-chip').forEach(btn => {
@@ -3394,7 +3431,7 @@ const ThemeCanvas = (() => {
 
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
-      'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'eyeSize','pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');

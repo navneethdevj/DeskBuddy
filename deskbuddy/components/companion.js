@@ -64,7 +64,26 @@ const Companion = (() => {
           </div>
         </div>
         <div class="nose"></div>
-        <div class="mouth"></div>
+        <div class="mouth">
+          <svg class="cat-mouth-svg" viewBox="-20 -8 40 30" fill="none"
+               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path class="cat-mouth-path cat-mouth-left"  fill="none"/>
+            <path class="cat-mouth-path cat-mouth-right" fill="none"/>
+            <path class="cat-mouth-open"                 fill="none"/>
+          </svg>
+        </div>
+        <div class="whiskers">
+          <div class="whisker-group whisker-left">
+            <div class="whisker wl1"></div>
+            <div class="whisker wl2"></div>
+            <div class="whisker wl3"></div>
+          </div>
+          <div class="whisker-group whisker-right">
+            <div class="whisker wr1"></div>
+            <div class="whisker wr2"></div>
+            <div class="whisker wr3"></div>
+          </div>
+        </div>
       </div>
     `;
 
