@@ -70,6 +70,9 @@ const Companion = (() => {
 
     container.appendChild(el);
 
+    // Cache frequently-queried DOM elements to avoid per-frame querySelectorAll
+    this._pupilEls = Array.from(el.querySelectorAll('.pupil'));
+
     x = 0;
     y = 0;
     applyPosition();
@@ -204,7 +207,7 @@ const Companion = (() => {
     }
 
     if (!el) return;
-    var pupils = el.querySelectorAll('.pupil');
+    var pupils = this._pupilEls || el.querySelectorAll('.pupil');
     for (var i = 0; i < pupils.length; i++) {
       pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
     }

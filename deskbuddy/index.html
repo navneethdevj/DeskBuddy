@@ -245,13 +245,6 @@
               </div>
               <div class="settings-row">
                 <div>
-                  <div class="settings-row-label">PiP overlay opacity</div>
-                  <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
-                </div>
-                <input type="range" id="pip-opacity-slider" class="settings-slider" min="20" max="95" step="3" value="78">
-              </div>
-              <div class="settings-row">
-                <div>
                   <div class="settings-row-label">Always on top (PiP)</div>
                   <div class="settings-row-sublabel">Keep overlay above all windows</div>
                 </div>
@@ -278,12 +271,30 @@
               </div>
               <div class="settings-row">
                 <div>
+                  <div class="settings-row-label">Background opacity</div>
+                  <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
+                  <div class="settings-row-sublabel" style="font-size:9px;opacity:0.6">Eyes and face are always fully visible</div>
+                </div>
+                <input type="range" id="pip-opacity-slider" class="settings-slider" min="20" max="95" step="3" value="78">
+              </div>
+              <div class="settings-row">
+                <div>
                   <div class="settings-row-label">Snap to corner</div>
                   <div class="settings-row-sublabel">Auto-snap to nearest corner on release</div>
                 </div>
                 <label class="toggle-switch">
                   <input type="checkbox" id="pip-snap-toggle" checked>
                   <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Lock position</div>
+                  <div class="settings-row-sublabel">Prevent dragging in compact mode</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-lock-toggle">
+                  <span class="settings-toggle-track"></span>
                 </label>
               </div>
             </div>

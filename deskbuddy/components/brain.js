@@ -185,6 +185,7 @@ const Brain = (() => {
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
   let sulkCheckInterval = null;
+  let _sulkSafetyId     = null;  // 90s hard-stop for sulk if session ends mid-sulk
 
   // Focus timer
   let _focusSecs  = 0;
@@ -390,6 +391,7 @@ const Brain = (() => {
     if (_ftParticleInt)    { clearInterval(_ftParticleInt);  _ftParticleInt  = null; }
     if (overjoyedTimer)    { clearTimeout(overjoyedTimer);   overjoyedTimer  = null; }
     if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+    if (_sulkSafetyId)     { clearTimeout(_sulkSafetyId);    _sulkSafetyId   = null; }
     // Cancel queued whispers
     _whisperCancelled = true;
     _whisperBusy = false;
@@ -1478,6 +1480,7 @@ const Brain = (() => {
         focusedMs += 500;
         if (focusedMs >= 10000) {
           clearInterval(sulkCheckInterval); sulkCheckInterval = null;
+          if (_sulkSafetyId) { clearTimeout(_sulkSafetyId); _sulkSafetyId = null; }
           window._emotionChanged = { from: 'sulking', to: 'forgiven' };
           window._lastEmotion    = null;
           enterState('observe');
@@ -1486,6 +1489,17 @@ const Brain = (() => {
         focusedMs = Math.max(0, focusedMs - 250);
       }
     }, 500);
+
+    // Safety: if a session ends while companion is mid-sulk, clear after 90s
+    if (_sulkSafetyId) clearTimeout(_sulkSafetyId);
+    _sulkSafetyId = setTimeout(() => {
+      _sulkSafetyId = null;
+      if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+      if (['sulking', 'pouty'].includes(window._lastEmotion)) {
+        window._lastEmotion = null;
+        Emotion.setState('idle');
+      }
+    }, 90000);
   }
 
   // ── FOCUS TIMER ───────────────────────────────────────────────────────────
@@ -1510,6 +1524,7 @@ const Brain = (() => {
 
   /** Spawn one tiny particle near the focus timer element. */
   function _spawnFocusParticle() {
+    if (document.querySelectorAll('.focus-particle').length >= 14) return;
     const el = document.getElementById('focus-timer');
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -1566,7 +1581,7 @@ const Brain = (() => {
 
         // Update color to reflect session timer state
         const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
-        if (timerState !== _lastFocusTimerState) {
+        if (timerState !== _lastFocusTimerState || !_ftParticleInt) {
           _lastFocusTimerState = timerState;
           const c = _focusTimerColors[timerState] || _focusTimerColors.FOCUSED;
           timerEl.style.color      = c.color;

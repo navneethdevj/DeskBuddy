@@ -68,6 +68,7 @@ const Settings = (() => {
     glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
     pipOpacity:      78,            // 20–95 integer % — PiP background opacity
     pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
+    pipDragLocked:   false,         // when true, PiP window position is locked (no drag)
     companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
   };
 

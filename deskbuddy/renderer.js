@@ -1978,6 +1978,17 @@ const ThemeCanvas = (() => {
       });
     }
 
+    // Settings panel lock toggle — persists via Settings, drives body.pip-drag-locked
+    const pipLockToggle = document.getElementById('pip-lock-toggle');
+    if (pipLockToggle) {
+      pipLockToggle.checked = Settings.get('pipDragLocked') || false;
+      pipLockToggle.addEventListener('change', () => {
+        Settings.set('pipDragLocked', pipLockToggle.checked);
+        document.body.classList.toggle('pip-drag-locked', pipLockToggle.checked);
+      });
+    }
+    document.body.classList.toggle('pip-drag-locked', Settings.get('pipDragLocked') || false);
+
     // Clicking anywhere on the circular bubble (that isn't an eye / interactive
     // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
     const worldEl = document.getElementById('world');
@@ -3291,6 +3302,15 @@ const ThemeCanvas = (() => {
     }
 
     _applyEyeRoundness(Settings.get('eyeRoundness') || 'round');
+
+    // Belt-and-suspenders: if a transient emotion CSS interaction ever removes
+    // the class, re-apply the stored preference within 4s.
+    setInterval(() => {
+      const r = Settings.get('eyeRoundness') || 'round';
+      if (r !== 'round' && !document.body.classList.contains(`eye-roundness-${r}`)) {
+        _applyEyeRoundness(r);
+      }
+    }, 4000);
 
     const eyeRoundBtns = document.getElementById('eye-roundness-btns');
     if (eyeRoundBtns) {

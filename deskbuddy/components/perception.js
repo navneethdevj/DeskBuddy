@@ -177,6 +177,9 @@ const Perception = (() => {
 
   function _evaluate() {
     const now = Date.now();
+    // Throttle to ~2Hz when no face has been present for more than 30s —
+    // saves CPU (MediaPipe inference with zero useful output).
+    if (nofaceMs > 30000 && now - lastEvalTime < 500) return;
     const dt  = now - lastEvalTime;
     lastEvalTime = now;
 

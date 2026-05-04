@@ -2418,6 +2418,10 @@ body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
 /* PLAN: Chunk 1F — PiP drag lock: cursor feedback when drag is disabled */
 body.pip-mode .world.pip-drag-locked { cursor: default !important; }
 body.pip-mode .world.pip-drag-locked .companion { -webkit-app-region: no-drag; }
+/* Settings-panel-driven lock: toggled via body.pip-drag-locked class */
+body.pip-mode.pip-drag-locked .companion       { -webkit-app-region: no-drag; }
+body.pip-mode.pip-drag-locked .companion-inner { -webkit-app-region: no-drag; }
+body.pip-mode.pip-drag-locked #world           { -webkit-app-region: no-drag; cursor: default; }
 
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
@@ -7194,41 +7198,41 @@ body.mouth-thick .mouth-cat .mouth::after  { border-width: 0.52vmin !important; 
    Specificity: (0,2,1) < emotion rules (0,3,0) so emotions always win.
    ─────────────────────────────────────────────────────────── */
 
-/* PLAN: Chunk 1E — eye shape: use .companion .eye for higher specificity
-   so shapes win over base emotion rules but not emotion override rules.
-   Also add smooth transition so shapes reassert cleanly after emotion fade. */
-body.eye-roundness-squish .companion .eye,
-body.eye-roundness-almond .companion .eye,
-body.eye-roundness-droopy .companion .eye,
-body.eye-roundness-tall   .companion .eye {
+/* Eye-roundness: 3-class specificity (body.full-mode.eye-roundness-X .eye)
+   beats emotion rules (body .companion.X .eye = 2 classes) so the user's
+   chosen shape is never overridden by a transient emotion. */
+body.full-mode.eye-roundness-squish .eye,
+body.full-mode.eye-roundness-almond .eye,
+body.full-mode.eye-roundness-droopy .eye,
+body.full-mode.eye-roundness-tall   .eye {
   transition: border-radius 0.22s cubic-bezier(.4,0,.2,1),
               width 0.22s cubic-bezier(.4,0,.2,1),
               height 0.22s cubic-bezier(.4,0,.2,1);
 }
 
 /* SQUISH — rounded rectangle; clearly not circular */
-body.eye-roundness-squish .companion .eye {
+body.full-mode.eye-roundness-squish .eye {
   border-radius: 24%;
 }
 
 /* ALMOND — flat cat/fox eye; wide horizontal with tight vertical radii */
-body.eye-roundness-almond .companion .eye {
+body.full-mode.eye-roundness-almond .eye {
   border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%;
 }
 
 /* DROOPY — heavy-lidded; flat top edge, fully rounded bottom */
-body.eye-roundness-droopy .companion .eye {
+body.full-mode.eye-roundness-droopy .eye {
   border-radius: 8% 8% 50% 50%;
 }
 
 /* TALL — elongated vertical oval; more upright and wide-eyed */
-body.eye-roundness-tall .companion .eye {
+body.full-mode.eye-roundness-tall .eye {
   border-radius: 50% 50% 50% 50% / 65% 65% 65% 65%;
 }
 
 /* keep old names as aliases so saved settings still resolve */
-body.eye-roundness-soft .companion .eye { border-radius: 24%; }
-body.eye-roundness-oval .companion .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
+body.full-mode.eye-roundness-soft .eye { border-radius: 24%; }
+body.full-mode.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
 
 /* ═══════════════════════════════════════════════════════════
    EYE SIZE (was "Pupil size")
