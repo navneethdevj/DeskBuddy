@@ -6,6 +6,9 @@
   --timer-glow-color:  transparent;
   --timer-shake-px:    0px;
   --timer-pulse-speed: none;
+  /* Nose & mouth scale — driven by sliders in settings (renderer.js) */
+  --nose-scale:  1;
+  --mouth-scale: 1;
 }
 
 /* ===== Base Reset ===== */
@@ -1259,11 +1262,12 @@ body[data-time-period="NIGHT"] .companion {
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 1.1vmin solid transparent;
-  border-right: 1.1vmin solid transparent;
-  border-top: 1.4vmin solid rgba(150, 155, 230, 0.48);
+  border-left:  calc(1.1vmin * var(--nose-scale)) solid transparent;
+  border-right: calc(1.1vmin * var(--nose-scale)) solid transparent;
+  border-top:   calc(1.4vmin * var(--nose-scale)) solid rgba(150, 155, 230, 0.48);
   pointer-events: none;
-  transition: border-top-color 0.35s ease, opacity 0.35s ease;
+  transition: border-top-color 0.35s ease, opacity 0.35s ease,
+              border-left-width 0.25s ease, border-right-width 0.25s ease, border-top-width 0.25s ease;
   will-change: opacity;
 }
 
@@ -1292,7 +1296,10 @@ body[data-time-period="NIGHT"] .companion {
   left: 50%;
   width: 8vmin;
   height: 4vmin;
-  transform: translateX(-50%);
+  /* translateX(-50%) centers it; scale applies from top-center so the arc grows
+     downward/sideways without shifting the vertical anchor. */
+  transform: translateX(-50%) scale(var(--mouth-scale));
+  transform-origin: 50% 0%;
   /* Neutral: gentle smile arc */
   border: 0.28vmin solid transparent;
   border-radius: 0 0 50% 50%;
@@ -1308,7 +1315,8 @@ body[data-time-period="NIGHT"] .companion {
               border-left-color   0.32s ease,
               border-right-color  0.32s ease,
               border-width        0.32s ease,
-              opacity             0.32s ease;
+              opacity             0.32s ease,
+              transform           0.25s ease;
   pointer-events: none;
   will-change: border-radius, width, height;
 }
@@ -2315,7 +2323,6 @@ body.pip-shape-square.pip-mode #world  { border-radius: 16px; }
 body.pip-border-enabled.pip-mode #world {
   border: var(--pip-border-width) solid var(--pip-border-color);
   box-sizing: border-box;
-  /* default box-shadow cleared; each style overrides below */
   box-shadow: none;
 }
 
@@ -2324,23 +2331,40 @@ body.pip-border-enabled.pip-border-style-solid.pip-mode #world {
   box-shadow: none;
 }
 
-/* Glow — border + soft diffuse halo outside the window */
+/* Glow — border + large diffuse halo.
+   Using filter: drop-shadow() on #world renders OUTSIDE the element bounds
+   including into the transparent window corners, giving a true outer glow
+   that's clearly distinct from the solid style.
+   Three layers: tight bright halo → medium soft halo → wide diffuse fade. */
 body.pip-border-enabled.pip-border-style-glow.pip-mode #world {
-  box-shadow:
-    0 0 calc(var(--pip-border-width) * 3)   var(--pip-border-color),
-    0 0 calc(var(--pip-border-width) * 8)   color-mix(in srgb, var(--pip-border-color) 55%, transparent),
-    0 0 calc(var(--pip-border-width) * 18)  color-mix(in srgb, var(--pip-border-color) 20%, transparent);
+  filter:
+    drop-shadow(0 0 max(5px,  calc(var(--pip-border-width) * 1.5)) var(--pip-border-color))
+    drop-shadow(0 0 max(14px, calc(var(--pip-border-width) * 4))   color-mix(in srgb, var(--pip-border-color) 60%, transparent))
+    drop-shadow(0 0 max(28px, calc(var(--pip-border-width) * 8))   color-mix(in srgb, var(--pip-border-color) 28%, transparent));
 }
 
-/* Fading — border pulses opacity 100% → 30% → 100% over 2.8 s */
+/* Fading — border pulses from fully opaque to fully transparent and back.
+   A brief drop-shadow at peak opacity makes the fade-in visually punchy. */
 body.pip-border-enabled.pip-border-style-fading.pip-mode #world {
   animation: pip-border-pulse 2.8s ease-in-out infinite;
 }
 
 @keyframes pip-border-pulse {
-  0%, 100% { border-color: var(--pip-border-color); }
-  50%       { border-color: color-mix(in srgb, var(--pip-border-color) 30%, transparent); }
+  0%, 100% {
+    border-color: var(--pip-border-color);
+    filter: drop-shadow(0 0 max(6px, calc(var(--pip-border-width) * 2)) color-mix(in srgb, var(--pip-border-color) 70%, transparent));
+  }
+  50% {
+    border-color: transparent;
+    filter: none;
+  }
 }
+
+/* ── PiP drag cursor feedback ──────────────────────────────────────────
+   Show grab cursor when pip is unlocked and draggable (after long-press). */
+body.pip-mode:not(.pip-drag-locked) #world { cursor: grab; }
+#world.pip-dragging                         { cursor: grabbing !important; }
+#world.pip-dragging *                       { pointer-events: none !important; }
 
 /* ── Clip body corners to match #world — ensures glow box-shadows
    (which render outside #world's bounds) are also clipped and the
@@ -2743,14 +2767,15 @@ body.full-mode .companion {
 /* ── Nose styles ───────────────────────────────────────────────────── */
 /* Dot nose — small oval button replacing the CSS-triangle */
 body.nose-dot .nose {
-  width: 2.4vmin;
-  height: 1.8vmin;
+  width:  calc(2.4vmin * var(--nose-scale));
+  height: calc(1.8vmin * var(--nose-scale));
   border-left:  none;
   border-right: none;
   border-top:   none;
   background: rgba(150, 155, 230, 0.50);
   border-radius: 50%;
-  transition: background 0.35s ease, opacity 0.35s ease;
+  transition: background 0.35s ease, opacity 0.35s ease,
+              width 0.25s ease, height 0.25s ease;
 }
 /* Emotion tints for dot nose (mirror triangle colours) */
 body.nose-dot .companion.happy .nose,
@@ -2829,12 +2854,16 @@ body.mouth-cat .cat-mouth-svg { display: block; }
 
 /* Hide the CSS border-based mouth when cat style is active */
 body.mouth-cat .mouth {
-  width: 18vmin;
-  height: 14vmin;
+  width:  calc(20vmin * var(--mouth-scale));
+  height: calc(16vmin * var(--mouth-scale));
   border: none !important;
   background: transparent !important;
   overflow: visible;
   top: calc(50% + 27vmin);
+  /* Override the scale transform from the generic .mouth rule so the cat
+     mouth container doesn't double-scale — the SVG inside scales naturally
+     with the container size. */
+  transform: translateX(-50%);
 }
 
 .cat-mouth-svg {
@@ -2867,10 +2896,10 @@ body.mouth-cat .mouth {
 }
 
 /* ═══ NEUTRAL ω — calm resting cat mouth ═══
-   Left arc: from center-top (-1,0) curving down-left then ending at (-14, 4)
-   Right arc: mirror                                                          */
-body.mouth-cat .companion .cat-mouth-left  { d: path('M -1 0 C -3 5 -9 9 -14 5'); }
-body.mouth-cat .companion .cat-mouth-right { d: path('M  1 0 C  3 5  9 9  14 5'); }
+   Left arc: from center-top (-1,0) curving down-left then ending at (-17, 6)
+   Right arc: mirror — slightly larger than before for better visibility     */
+body.mouth-cat .companion .cat-mouth-left  { d: path('M -1 0 C -4 6 -11 12 -17 7'); }
+body.mouth-cat .companion .cat-mouth-right { d: path('M  1 0 C  4 6  11 12  17 7'); }
 body.mouth-cat .companion .cat-mouth-open  { d: path(''); opacity: 0; }
 
 /* ═══ HAPPY ω — wider, lifted cheeks, broader arcs ═══ */
@@ -3031,78 +3060,111 @@ body.mouth-cat .companion.ecstatic .cat-mouth-open {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   WHISKERS — 3 per side, shown only when cat mouth is selected
+   WHISKERS — completely rebuilt from scratch to match reference images.
+   3 long thin lines per side, emanating from the cheek/nose area,
+   fanning out horizontally with slight upward/downward angles.
+
+   Layout:
+     .whiskers — full-size transparent overlay (position: absolute over companion-inner)
+     .whisker-group — zero-width anchor point positioned at nose/cheek level
+     .whisker-left  — left anchor: inner tip at 50% - 11vmin from left
+     .whisker-right — right anchor: inner tip at 50% + 11vmin from left
+     .whisker — each hair: 30vmin long, 0.2vmin tall, anchored at inner tip
+                Left whiskers: right: 0, transform-origin: right center (extends LEFT)
+                Right whiskers: left: 0, transform-origin: left center (extends RIGHT)
+
+   Angles (matching reference images — mostly flat, slight fan):
+     Top:    ±20° (angled upward toward the outside)
+     Middle: ±4°  (nearly horizontal, very slight upward lean)
+     Bottom: ∓14° (angled slightly downward toward the outside)
    ═══════════════════════════════════════════════════════════ */
 .whiskers {
-  display: none;  /* hidden by default — activated by body.mouth-cat */
+  display: none;
   pointer-events: none;
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
+  overflow: visible;
 }
 body.mouth-cat .whiskers { display: block; }
 
+/* Anchor point — positioned at nose/muzzle level */
 .whisker-group {
   position: absolute;
-  /* vertically centred at the nose level */
-  top:  calc(50% + 24vmin);
-  width: 20vmin;
-  height: 12vmin;
+  top:    calc(50% + 21vmin);   /* nose / cheek vertical level              */
+  height: 11vmin;               /* spans the three whisker positions         */
+  width:  0;                    /* zero-width anchor — whiskers extend out   */
 }
-.whisker-left  { left:  calc(50% - 40vmin); }
-.whisker-right { right: calc(50% - 40vmin); left: auto; }
 
+/* Left anchor: right tip of whiskers sits 11vmin left of face center */
+.whisker-left  { left: calc(50% - 11vmin); }
+
+/* Right anchor: left tip of whiskers sits 11vmin right of face center */
+.whisker-right { left: calc(50% + 11vmin); }
+
+/* Base whisker style */
 .whisker {
   position: absolute;
-  width: 18vmin;
-  height: 0.25vmin;
-  border-radius: 0.25vmin;
-  background: rgba(180, 185, 240, 0.55);
-  transform-origin: right center;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  width:        30vmin;
+  height:       0.20vmin;
+  border-radius: 2px;
+  background:   rgba(200, 205, 250, 0.58);
+  transition:   background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
 }
+
+/* Left whiskers: right edge at anchor, extend LEFT */
+.whisker-left .whisker {
+  right: 0;
+  transform-origin: right center;
+}
+
+/* Right whiskers: left edge at anchor, extend RIGHT */
 .whisker-right .whisker {
+  left: 0;
   transform-origin: left center;
 }
 
-/* Left whiskers — fan upward/middle/downward from right origin */
-.whisker-left .wl1 { top: 10%; transform: rotate(-18deg); }
-.whisker-left .wl2 { top: 38%; transform: rotate(-2deg);  }
-.whisker-left .wl3 { top: 62%; transform: rotate(14deg);  }
+/* ── Vertical position & fan angles (left side) ─────────────────────── */
+/* Top whisker: 0 from group top, angled upward */
+.whisker-left .wl1 { top: 0;      transform: rotate(-20deg); }
+/* Middle: nearly flat with a tiny upward lean */
+.whisker-left .wl2 { top: 5vmin;  transform: rotate(-4deg);  }
+/* Bottom: slight downward angle */
+.whisker-left .wl3 { top: 10vmin; transform: rotate(13deg);  }
 
-/* Right whiskers — mirror fan from left origin */
-.whisker-right .wr1 { top: 10%; transform: rotate(18deg);  }
-.whisker-right .wr2 { top: 38%; transform: rotate(2deg);   }
-.whisker-right .wr3 { top: 62%; transform: rotate(-14deg); }
+/* ── Mirror on the right side ─────────────────────────────────────────── */
+.whisker-right .wr1 { top: 0;      transform: rotate(20deg);  }
+.whisker-right .wr2 { top: 5vmin;  transform: rotate(4deg);   }
+.whisker-right .wr3 { top: 10vmin; transform: rotate(-13deg); }
 
-/* Whisker colour tints per emotion */
-body.mouth-cat .companion.happy    .whisker,
-body.mouth-cat .companion.overjoyed .whisker { background: rgba(200, 170, 255, 0.65); }
-body.mouth-cat .companion.love      .whisker { background: rgba(255, 138, 180, 0.60); }
-body.mouth-cat .companion.excited   .whisker { background: rgba(255, 220, 120, 0.65); }
+/* ── Emotion colour tints ──────────────────────────────────────────────── */
+body.mouth-cat .companion.happy     .whisker,
+body.mouth-cat .companion.overjoyed .whisker { background: rgba(210, 180, 255, 0.68); }
+body.mouth-cat .companion.love      .whisker { background: rgba(255, 148, 188, 0.62); }
+body.mouth-cat .companion.excited   .whisker { background: rgba(255, 225, 130, 0.68); }
 body.mouth-cat .companion.sad       .whisker,
-body.mouth-cat .companion.crying    .whisker { background: rgba(100, 130, 210, 0.50); }
+body.mouth-cat .companion.crying    .whisker { background: rgba(100, 135, 220, 0.52); }
 body.mouth-cat .companion.scared    .whisker,
-body.mouth-cat .companion.startled  .whisker { background: rgba(195, 218, 255, 0.60); }
-body.mouth-cat .companion.grumpy    .whisker { background: rgba(255, 138, 128, 0.55); }
+body.mouth-cat .companion.startled  .whisker { background: rgba(200, 222, 255, 0.62); }
+body.mouth-cat .companion.grumpy    .whisker { background: rgba(255, 140, 130, 0.58); }
 
-/* Whisker splay — droop slightly in sad/grumpy, perk up in happy */
-body.mouth-cat .companion.happy    .whisker-left  .wl1,
-body.mouth-cat .companion.overjoyed .whisker-left .wl1 { transform: rotate(-28deg); }
-body.mouth-cat .companion.happy    .whisker-left  .wl3,
-body.mouth-cat .companion.overjoyed .whisker-left .wl3 { transform: rotate(6deg);  }
-body.mouth-cat .companion.happy    .whisker-right .wr1,
-body.mouth-cat .companion.overjoyed .whisker-right .wr1 { transform: rotate(28deg); }
-body.mouth-cat .companion.happy    .whisker-right .wr3,
-body.mouth-cat .companion.overjoyed .whisker-right .wr3 { transform: rotate(-6deg); }
+/* ── Emotion splay: whiskers perk up in happy, droop in sad ─────────── */
+body.mouth-cat .companion.happy     .whisker-left  .wl1,
+body.mouth-cat .companion.overjoyed .whisker-left  .wl1 { transform: rotate(-30deg); }
+body.mouth-cat .companion.happy     .whisker-left  .wl3,
+body.mouth-cat .companion.overjoyed .whisker-left  .wl3 { transform: rotate(4deg);   }
+body.mouth-cat .companion.happy     .whisker-right .wr1,
+body.mouth-cat .companion.overjoyed .whisker-right .wr1 { transform: rotate(30deg);  }
+body.mouth-cat .companion.happy     .whisker-right .wr3,
+body.mouth-cat .companion.overjoyed .whisker-right .wr3 { transform: rotate(-4deg);  }
 
-body.mouth-cat .companion.sad .whisker-left  .wl1,
-body.mouth-cat .companion.crying .whisker-left  .wl1 { transform: rotate(-8deg);  }
-body.mouth-cat .companion.sad .whisker-left  .wl3,
-body.mouth-cat .companion.crying .whisker-left  .wl3 { transform: rotate(24deg);  }
-body.mouth-cat .companion.sad .whisker-right .wr1,
-body.mouth-cat .companion.crying .whisker-right .wr1 { transform: rotate(8deg);   }
-body.mouth-cat .companion.sad .whisker-right .wr3,
-body.mouth-cat .companion.crying .whisker-right .wr3 { transform: rotate(-24deg); }
+body.mouth-cat .companion.sad    .whisker-left  .wl1,
+body.mouth-cat .companion.crying .whisker-left  .wl1 { transform: rotate(-8deg);   }
+body.mouth-cat .companion.sad    .whisker-left  .wl3,
+body.mouth-cat .companion.crying .whisker-left  .wl3 { transform: rotate(26deg);   }
+body.mouth-cat .companion.sad    .whisker-right .wr1,
+body.mouth-cat .companion.crying .whisker-right .wr1 { transform: rotate(8deg);    }
+body.mouth-cat .companion.sad    .whisker-right .wr3,
+body.mouth-cat .companion.crying .whisker-right .wr3 { transform: rotate(-26deg);  }
 
 /* Flat — a geometrically straight horizontal line (height: 0, border-bottom only)
    Emotions use only subtle arcs, never the same depth as Arc style */
@@ -7453,18 +7515,66 @@ body.pip-mode .companion {
 /* Pupil must sit above the ::before iris layer */
 .pupil { position: relative; z-index: 1; }
 
-/* ── Iris colour — hue-rotate ONLY the iris layer (::before), NOT the whole eye.
-   Applying filter to .eye would also tint the white sclera background and the
-   box-shadow border ring.  Keeping the filter on ::before isolates the tinting
-   to just the coloured iris, leaving sclera and glow ring untouched.           */
-body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); }
-body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); }
-body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
-body.eye-lavender .eye::before { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
-body.eye-sky      .eye::before { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
-body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); }
-body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
-/* periwinkle = default, no filter */
+/* ── Iris colour — replace the ::before background gradient per colour.
+   Using explicit radial-gradients (instead of hue-rotate filter) guarantees
+   vivid, clearly distinguishable iris colours in every Electron/Chrome build.
+   Periwinkle = default (already defined in .eye::before above, no override).  */
+body.eye-emerald .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #1c9060 0%, #28aa70 12%, #38b880 28%,
+    #50c890 45%, #6ed6a2 62%, #92e0b8 78%,
+    #b4eccf 92%, #d4f6e4 100%
+  );
+}
+body.eye-rose .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #b81a60 0%, #cc3078 12%, #de4892 28%,
+    #ec60a8 45%, #f47ebc 62%, #f8a0ce 78%,
+    #fcc0de 92%, #fedced 100%
+  );
+}
+body.eye-amber .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #a84010 0%, #c46020 12%, #d87830 28%,
+    #ec9840 45%, #f4b055 62%, #f8c875 78%,
+    #fbdc9e 92%, #feefcc 100%
+  );
+}
+body.eye-lavender .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #6230b8 0%, #7a48cc 12%, #9060de 28%,
+    #a678ec 45%, #bc94f4 62%, #d0b4fa 78%,
+    #e4d4fd 92%, #f0e8fe 100%
+  );
+}
+body.eye-sky .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #1058b8 0%, #1c72cc 12%, #2a8cde 28%,
+    #38a8ec 45%, #52bef5 62%, #78d0fa 78%,
+    #a8e2fc 92%, #d4f0fe 100%
+  );
+}
+body.eye-ruby .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #981010 0%, #b42828 12%, #cc4040 28%,
+    #de5858 45%, #ea7070 62%, #f29090 78%,
+    #f8b4b4 92%, #fdd8d8 100%
+  );
+}
+body.eye-teal .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #087070 0%, #109090 12%, #1ca8a0 28%,
+    #28c0b0 45%, #40d0c0 62%, #60dccc 78%,
+    #90e8e0 92%, #bef4ef 100%
+  );
+}
 
 /* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
 body.eye-glow-default  { --eye-glow-rgb: 120, 135, 235; }
