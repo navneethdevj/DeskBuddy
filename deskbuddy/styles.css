@@ -1779,9 +1779,9 @@ body[data-time-period="NIGHT"] .companion {
   100% { transform: rotate( 0.0deg) scale(1.000); }
 }
 @keyframes pattedGlow {
-  0%,100% { filter: drop-shadow(0 0  7vmin rgba(255,135,105,0.60)) drop-shadow(0 0 20vmin rgba(255,110,82,0.28)); }
-  15%     { filter: drop-shadow(0 0 22vmin rgba(255,175,140,0.95)) drop-shadow(0 0 45vmin rgba(255,145,118,0.52)); }
-  50%     { filter: drop-shadow(0 0 12vmin rgba(255,150,120,0.75)) drop-shadow(0 0 30vmin rgba(255,120,92,0.38)); }
+  0%,100% { filter: drop-shadow(0 0  7vmin rgba(255,100,175,0.60)) drop-shadow(0 0 20vmin rgba(255, 72,148,0.28)); }
+  15%     { filter: drop-shadow(0 0 22vmin rgba(255,165,215,0.95)) drop-shadow(0 0 45vmin rgba(255,125,192,0.52)); }
+  50%     { filter: drop-shadow(0 0 12vmin rgba(255,128,190,0.75)) drop-shadow(0 0 30vmin rgba(255, 90,158,0.38)); }
 }
 
 /* Inner head: independent bob motion layered on the lean */
@@ -3062,23 +3062,15 @@ body.mouth-cat .companion.ecstatic .cat-mouth-open {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   WHISKERS — completely rebuilt from scratch to match reference images.
-   3 long thin lines per side, emanating from the cheek/nose area,
-   fanning out horizontally with slight upward/downward angles.
+   WHISKERS — each strand independently positioned.
+   Six divs are direct children of .whiskers (no group wrapper):
+     .wl1/.wl2/.wl3  — left whiskers  (extend leftward)
+     .wr1/.wr2/.wr3  — right whiskers (extend rightward)
 
-   Layout:
-     .whiskers — full-size transparent overlay (position: absolute over companion-inner)
-     .whisker-group — zero-width anchor point positioned at nose/cheek level
-     .whisker-left  — left anchor: inner tip at 50% - 11vmin from left
-     .whisker-right — right anchor: inner tip at 50% + 11vmin from left
-     .whisker — each hair: 30vmin long, 0.2vmin tall, anchored at inner tip
-                Left whiskers: right: 0, transform-origin: right center (extends LEFT)
-                Right whiskers: left: 0, transform-origin: left center (extends RIGHT)
-
-   Angles (matching reference images — mostly flat, slight fan):
-     Top:    ±20° (angled upward toward the outside)
-     Middle: ±4°  (nearly horizontal, very slight upward lean)
-     Bottom: ∓14° (angled slightly downward toward the outside)
+   Each element is absolutely placed within the .whiskers overlay:
+     • inner tip is precisely anchored at the left/right cheek pad
+     • transform-origin sits at that inner tip so rotate() fans the strand
+     • no shared group anchor — every strand is fully independent
    ═══════════════════════════════════════════════════════════ */
 .whiskers {
   display: none;
@@ -3089,72 +3081,74 @@ body.mouth-cat .companion.ecstatic .cat-mouth-open {
 }
 body.mouth-cat .whiskers { display: block; }
 
-/* Anchor point — positioned at nose/muzzle level */
-.whisker-group {
-  position: absolute;
-  top:    calc(50% + 21vmin);   /* nose / cheek vertical level              */
-  height: 11vmin;               /* spans the three whisker positions         */
-  width:  0;                    /* zero-width anchor — whiskers extend out   */
-}
-
-/* ── Muzzle blush pads — the soft pink ovals where whiskers root (reference images) ── */
-.whisker-group::before {
-  content: '';
-  position: absolute;
-  width:  10vmin;
-  height: 7vmin;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 40%,
-    rgba(255, 190, 200, 0.38) 0%,
-    rgba(255, 175, 190, 0.22) 50%,
-    transparent 75%);
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-.whisker-left::before  { right: calc(-5vmin); }
-.whisker-right::before { left:  calc(-5vmin); }
-
-/* Left anchor: right tip of whiskers sits 11vmin left of face center */
-.whisker-left  { left: calc(50% - 11vmin); }
-
-/* Right anchor: left tip of whiskers sits 11vmin right of face center */
-.whisker-right { left: calc(50% + 11vmin); }
-
-/* Base whisker style */
+/* Base style shared by every whisker strand */
 .whisker {
   position: absolute;
-  width:        30vmin;
-  height:       0.20vmin;
-  border-radius: 2px;
-  background:   rgba(200, 205, 250, 0.58);
-  transition:   background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
+  height:        0.22vmin;
+  border-radius: 999px;
+  background:    rgba(200, 205, 250, 0.58);
+  transition:    background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
 }
 
-/* Left whiskers: right edge at anchor, extend LEFT */
-.whisker-left .whisker {
-  right: 0;
+/* ── LEFT WHISKERS ──────────────────────────────────────────────────────
+   The right edge of each strand is the inner tip, anchored at the left
+   cheek pad (~9 vmin left of face centre, at nose level).
+   transform-origin: right center → rotate() fans the free (left) end. */
+
+/* top-left: inner tip slightly high, fanning upward */
+.wl1 {
+  width:  26vmin;
+  top:    calc(50% + 19vmin);
+  right:  calc(50% + 9vmin);
   transform-origin: right center;
+  transform: rotate(-22deg);
+}
+/* middle-left: at cheek-pad centre, nearly horizontal */
+.wl2 {
+  width:  28vmin;
+  top:    calc(50% + 21.5vmin);
+  right:  calc(50% + 9vmin);
+  transform-origin: right center;
+  transform: rotate(-4deg);
+}
+/* bottom-left: inner tip slightly low, fanning downward */
+.wl3 {
+  width:  26vmin;
+  top:    calc(50% + 24vmin);
+  right:  calc(50% + 9vmin);
+  transform-origin: right center;
+  transform: rotate(14deg);
 }
 
-/* Right whiskers: left edge at anchor, extend RIGHT */
-.whisker-right .whisker {
-  left: 0;
+/* ── RIGHT WHISKERS ─────────────────────────────────────────────────────
+   The left edge of each strand is the inner tip, anchored at the right
+   cheek pad (~9 vmin right of face centre, at nose level).
+   transform-origin: left center → rotate() fans the free (right) end. */
+
+/* top-right */
+.wr1 {
+  width:  26vmin;
+  top:    calc(50% + 19vmin);
+  left:   calc(50% + 9vmin);
   transform-origin: left center;
+  transform: rotate(22deg);
 }
-
-/* ── Vertical position & fan angles (left side) ─────────────────────── */
-/* Top whisker: 0 from group top, angled upward */
-.whisker-left .wl1 { top: 0;      transform: rotate(-20deg); }
-/* Middle: nearly flat with a tiny upward lean */
-.whisker-left .wl2 { top: 5vmin;  transform: rotate(-4deg);  }
-/* Bottom: slight downward angle */
-.whisker-left .wl3 { top: 10vmin; transform: rotate(13deg);  }
-
-/* ── Mirror on the right side ─────────────────────────────────────────── */
-.whisker-right .wr1 { top: 0;      transform: rotate(20deg);  }
-.whisker-right .wr2 { top: 5vmin;  transform: rotate(4deg);   }
-.whisker-right .wr3 { top: 10vmin; transform: rotate(-13deg); }
+/* middle-right */
+.wr2 {
+  width:  28vmin;
+  top:    calc(50% + 21.5vmin);
+  left:   calc(50% + 9vmin);
+  transform-origin: left center;
+  transform: rotate(4deg);
+}
+/* bottom-right */
+.wr3 {
+  width:  26vmin;
+  top:    calc(50% + 24vmin);
+  left:   calc(50% + 9vmin);
+  transform-origin: left center;
+  transform: rotate(-14deg);
+}
 
 /* ── Emotion colour tints ──────────────────────────────────────────────── */
 body.mouth-cat .companion.happy     .whisker,
@@ -3168,23 +3162,23 @@ body.mouth-cat .companion.startled  .whisker { background: rgba(200, 222, 255, 0
 body.mouth-cat .companion.grumpy    .whisker { background: rgba(255, 140, 130, 0.58); }
 
 /* ── Emotion splay: whiskers perk up in happy, droop in sad ─────────── */
-body.mouth-cat .companion.happy     .whisker-left  .wl1,
-body.mouth-cat .companion.overjoyed .whisker-left  .wl1 { transform: rotate(-30deg); }
-body.mouth-cat .companion.happy     .whisker-left  .wl3,
-body.mouth-cat .companion.overjoyed .whisker-left  .wl3 { transform: rotate(4deg);   }
-body.mouth-cat .companion.happy     .whisker-right .wr1,
-body.mouth-cat .companion.overjoyed .whisker-right .wr1 { transform: rotate(30deg);  }
-body.mouth-cat .companion.happy     .whisker-right .wr3,
-body.mouth-cat .companion.overjoyed .whisker-right .wr3 { transform: rotate(-4deg);  }
+body.mouth-cat .companion.happy     .wl1,
+body.mouth-cat .companion.overjoyed .wl1 { transform: rotate(-30deg); }
+body.mouth-cat .companion.happy     .wl3,
+body.mouth-cat .companion.overjoyed .wl3 { transform: rotate(4deg);   }
+body.mouth-cat .companion.happy     .wr1,
+body.mouth-cat .companion.overjoyed .wr1 { transform: rotate(30deg);  }
+body.mouth-cat .companion.happy     .wr3,
+body.mouth-cat .companion.overjoyed .wr3 { transform: rotate(-4deg);  }
 
-body.mouth-cat .companion.sad    .whisker-left  .wl1,
-body.mouth-cat .companion.crying .whisker-left  .wl1 { transform: rotate(-8deg);   }
-body.mouth-cat .companion.sad    .whisker-left  .wl3,
-body.mouth-cat .companion.crying .whisker-left  .wl3 { transform: rotate(26deg);   }
-body.mouth-cat .companion.sad    .whisker-right .wr1,
-body.mouth-cat .companion.crying .whisker-right .wr1 { transform: rotate(8deg);    }
-body.mouth-cat .companion.sad    .whisker-right .wr3,
-body.mouth-cat .companion.crying .whisker-right .wr3 { transform: rotate(-26deg);  }
+body.mouth-cat .companion.sad    .wl1,
+body.mouth-cat .companion.crying .wl1 { transform: rotate(-8deg);   }
+body.mouth-cat .companion.sad    .wl3,
+body.mouth-cat .companion.crying .wl3 { transform: rotate(26deg);   }
+body.mouth-cat .companion.sad    .wr1,
+body.mouth-cat .companion.crying .wr1 { transform: rotate(8deg);    }
+body.mouth-cat .companion.sad    .wr3,
+body.mouth-cat .companion.crying .wr3 { transform: rotate(-26deg);  }
 
 /* Flat — a geometrically straight horizontal line (height: 0, border-bottom only)
    Emotions use only subtle arcs, never the same depth as Arc style */

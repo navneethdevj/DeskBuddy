@@ -73,16 +73,12 @@ const Companion = (() => {
           </svg>
         </div>
         <div class="whiskers">
-          <div class="whisker-group whisker-left">
-            <div class="whisker wl1"></div>
-            <div class="whisker wl2"></div>
-            <div class="whisker wl3"></div>
-          </div>
-          <div class="whisker-group whisker-right">
-            <div class="whisker wr1"></div>
-            <div class="whisker wr2"></div>
-            <div class="whisker wr3"></div>
-          </div>
+          <div class="whisker wl1"></div>
+          <div class="whisker wl2"></div>
+          <div class="whisker wl3"></div>
+          <div class="whisker wr1"></div>
+          <div class="whisker wr2"></div>
+          <div class="whisker wr3"></div>
         </div>
       </div>
     `;
