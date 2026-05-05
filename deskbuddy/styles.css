@@ -2484,16 +2484,18 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window is draggable: companion body acts as the drag handle.
-   Interactive children (eye-wraps, hover overlay) stay no-drag. */
-body.pip-mode .companion    { -webkit-app-region: drag; }
+/* PiP window: disable native webkit drag on all elements.
+   Dragging is handled exclusively via the long-press IPC mechanism in renderer.js
+   (moveWindowBy IPC), so the user never accidentally drags the pip when
+   clicking / patting the companion. */
+body.pip-mode #world,
+body.pip-mode .companion,
+body.pip-mode .companion-inner,
 body.pip-mode .eye-wrap,
 body.pip-mode #compact-expand-btn,
 body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
-/* PLAN: Chunk 1F — PiP drag lock: cursor feedback when drag is disabled */
-body.pip-mode .world.pip-drag-locked { cursor: default !important; }
-body.pip-mode .world.pip-drag-locked .companion { -webkit-app-region: no-drag; }
-/* Settings-panel-driven lock: toggled via body.pip-drag-locked class */
+
+/* Drag-locked state: same as above (no native drag), lock toggle prevents IPC drag too */
 body.pip-mode.pip-drag-locked .companion       { -webkit-app-region: no-drag; }
 body.pip-mode.pip-drag-locked .companion-inner { -webkit-app-region: no-drag; }
 body.pip-mode.pip-drag-locked #world           { -webkit-app-region: no-drag; cursor: default; }
@@ -3094,6 +3096,24 @@ body.mouth-cat .whiskers { display: block; }
   height: 11vmin;               /* spans the three whisker positions         */
   width:  0;                    /* zero-width anchor — whiskers extend out   */
 }
+
+/* ── Muzzle blush pads — the soft pink ovals where whiskers root (reference images) ── */
+.whisker-group::before {
+  content: '';
+  position: absolute;
+  width:  10vmin;
+  height: 7vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%,
+    rgba(255, 190, 200, 0.38) 0%,
+    rgba(255, 175, 190, 0.22) 50%,
+    transparent 75%);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.whisker-left::before  { right: calc(-5vmin); }
+.whisker-right::before { left:  calc(-5vmin); }
 
 /* Left anchor: right tip of whiskers sits 11vmin left of face center */
 .whisker-left  { left: calc(50% - 11vmin); }

@@ -1970,28 +1970,116 @@ const ThemeCanvas = (() => {
     const pipExpandBtn = document.getElementById('pip-expand-btn');
     if (pipExpandBtn) pipExpandBtn.addEventListener('click', () => _enterFullMode());
 
-    // PLAN: Chunk 1F — PiP drag lock toggle
-    let _pipDragLocked = false;
-    const lockBtn = document.getElementById('pip-lock-btn');
-    if (lockBtn) {
-      lockBtn.addEventListener('click', () => {
-        _pipDragLocked = !_pipDragLocked;
-        lockBtn.textContent = _pipDragLocked ? '🔐' : '🔒';
-        lockBtn.title = _pipDragLocked ? 'Unlock position' : 'Lock position (prevent drag)';
-        document.getElementById('world')?.classList.toggle('pip-drag-locked', _pipDragLocked);
-      });
+    // ── PiP lock toggle (Settings panel) ──────────────────────────────────
+    // Persists via Settings.  When ON the window is immovable.
+    // When OFF the user can long-press to drag the window to any position.
+    const pipLockToggle = document.getElementById('pip-lock-toggle');
+    function _pipIsLocked() {
+      return !!Settings.get('pipDragLocked');
     }
 
-    // Settings panel lock toggle — persists via Settings, drives body.pip-drag-locked
-    const pipLockToggle = document.getElementById('pip-lock-toggle');
     if (pipLockToggle) {
-      pipLockToggle.checked = Settings.get('pipDragLocked') || false;
+      pipLockToggle.checked = _pipIsLocked();
       pipLockToggle.addEventListener('change', () => {
         Settings.set('pipDragLocked', pipLockToggle.checked);
         document.body.classList.toggle('pip-drag-locked', pipLockToggle.checked);
       });
     }
-    document.body.classList.toggle('pip-drag-locked', Settings.get('pipDragLocked') || false);
+    document.body.classList.toggle('pip-drag-locked', _pipIsLocked());
+
+    // Keep legacy pip-lock-btn (if present in HTML) in sync
+    const lockBtn = document.getElementById('pip-lock-btn');
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        const newLocked = !_pipIsLocked();
+        Settings.set('pipDragLocked', newLocked);
+        document.body.classList.toggle('pip-drag-locked', newLocked);
+        lockBtn.textContent = newLocked ? '🔐' : '🔒';
+        lockBtn.title = newLocked ? 'Unlock position' : 'Lock position (prevent drag)';
+        if (pipLockToggle) pipLockToggle.checked = newLocked;
+      });
+    }
+    Settings.onChange('pipDragLocked', (v) => {
+      document.body.classList.toggle('pip-drag-locked', !!v);
+      if (pipLockToggle) pipLockToggle.checked = !!v;
+    });
+
+    // ── Long-press drag for PiP window ────────────────────────────────────
+    // Long-press (500 ms hold without moving) activates drag mode.
+    // While dragging, pointermove deltas are sent via IPC to move the OS window.
+    // Dragging ends on pointerup.  If position is locked, drag is disabled.
+    {
+      const LONG_PRESS_MS = 500;
+      let   _lpTimer      = null;
+      let   _dragging     = false;
+      let   _lastPX       = 0;
+      let   _lastPY       = 0;
+      const world         = document.getElementById('world');
+
+      function _startDrag(e) {
+        _dragging = true;
+        _lastPX   = e.screenX;
+        _lastPY   = e.screenY;
+        world.classList.add('pip-dragging');
+        if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+          window.electronAPI.setIgnoreMouseEvents(false);
+        }
+      }
+
+      function _stopDrag() {
+        if (!_dragging) return;
+        _dragging = false;
+        world.classList.remove('pip-dragging');
+      }
+
+      function _onDragPointerDown(e) {
+        if (!document.body.classList.contains('pip-mode')) return;
+        if (_pipIsLocked()) return;
+        // Only primary button / single touch
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        const downX = e.screenX;
+        const downY = e.screenY;
+
+        _lpTimer = setTimeout(() => {
+          _lpTimer = null;
+          // Confirm pointer hasn't moved >6 screen-px (distinguishes from scroll)
+          if (Math.abs(e.screenX - downX) < 6 && Math.abs(e.screenY - downY) < 6) {
+            _startDrag(e);
+          }
+        }, LONG_PRESS_MS);
+      }
+
+      function _onDragPointerMove(e) {
+        if (_dragging) {
+          const dx = e.screenX - _lastPX;
+          const dy = e.screenY - _lastPY;
+          _lastPX  = e.screenX;
+          _lastPY  = e.screenY;
+          if (window.electronAPI && window.electronAPI.moveWindowBy && (dx !== 0 || dy !== 0)) {
+            window.electronAPI.moveWindowBy(dx, dy);
+          }
+          e.stopPropagation();
+        }
+        // Cancel long-press if pointer has moved enough
+        if (_lpTimer && (Math.abs(e.movementX) > 4 || Math.abs(e.movementY) > 4)) {
+          clearTimeout(_lpTimer);
+          _lpTimer = null;
+        }
+      }
+
+      function _onDragPointerUp() {
+        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+        _stopDrag();
+      }
+
+      if (world) {
+        world.addEventListener('pointerdown', _onDragPointerDown, { passive: true });
+        window.addEventListener('pointermove',   _onDragPointerMove, { passive: false });
+        window.addEventListener('pointerup',     _onDragPointerUp);
+        window.addEventListener('pointercancel', _onDragPointerUp);
+      }
+    }
 
     // Clicking anywhere on the circular bubble (that isn't an eye / interactive
     // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
@@ -3429,9 +3517,56 @@ const ThemeCanvas = (() => {
       });
     }
 
+    // ── Nose size slider ─────────────────────────────────────────────────
+    function _applyNoseScale(val) {
+      const scale = Math.max(0.5, Math.min(2.0, val / 100));
+      document.documentElement.style.setProperty('--nose-scale', scale.toFixed(2));
+      const sl = document.getElementById('nose-scale-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('nose-scale-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    { const saved = Settings.get('noseScale') != null ? Settings.get('noseScale') : 100;
+      _applyNoseScale(saved); }
+
+    const noseScaleSlider = document.getElementById('nose-scale-slider');
+    if (noseScaleSlider) {
+      noseScaleSlider.addEventListener('input', () => {
+        const v = parseInt(noseScaleSlider.value, 10);
+        Settings.set('noseScale', v);
+        _applyNoseScale(v);
+      });
+    }
+    Settings.onChange('noseScale', (v) => _applyNoseScale(Number(v) || 100));
+
+    // ── Mouth size slider ────────────────────────────────────────────────
+    function _applyMouthScale(val) {
+      const scale = Math.max(0.5, Math.min(2.0, val / 100));
+      document.documentElement.style.setProperty('--mouth-scale', scale.toFixed(2));
+      const sl = document.getElementById('mouth-scale-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('mouth-scale-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    { const saved = Settings.get('mouthScale') != null ? Settings.get('mouthScale') : 100;
+      _applyMouthScale(saved); }
+
+    const mouthScaleSlider = document.getElementById('mouth-scale-slider');
+    if (mouthScaleSlider) {
+      mouthScaleSlider.addEventListener('input', () => {
+        const v = parseInt(mouthScaleSlider.value, 10);
+        Settings.set('mouthScale', v);
+        _applyMouthScale(v);
+      });
+    }
+    Settings.onChange('mouthScale', (v) => _applyMouthScale(Number(v) || 100));
+
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
-      'eyeSize','pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'eyeSize','pupilSize','blinkRate','showEyebrows','noseStyle','noseScale',
+      'mouthStyle','mouthThickness','mouthScale',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');
