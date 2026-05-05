@@ -83,4 +83,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings backup
   exportSettings: (jsonString) => ipcRenderer.invoke('settings:export', jsonString),
   importSettings: ()           => ipcRenderer.invoke('settings:import'),
+
+  // Move the window by a pixel delta — used by the long-press PiP drag.
+  moveWindowBy: (dx, dy) => ipcRenderer.send('move-window-by', dx, dy),
 });

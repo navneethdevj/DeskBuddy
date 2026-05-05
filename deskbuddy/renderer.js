@@ -820,6 +820,12 @@ const ThemeCanvas = (() => {
   // 0. Settings — load persisted preferences (synchronous from localStorage)
   Settings.init();
 
+  // PLAN: Chunk 7A — migrate deprecated themes to galaxy
+  const _savedTheme = Settings.get('fullTheme');
+  if (_savedTheme === 'midnight' || _savedTheme === 'aurora') {
+    Settings.set('fullTheme', 'galaxy');
+  }
+
   // 1. Audio context — register gesture listeners so AudioContext can resume
   Sounds.init();
   // Soundscape drone — passes saved enabled state so drone respects user preference from startup
@@ -918,6 +924,10 @@ const ThemeCanvas = (() => {
     const pupilSize = Settings.get('pupilSize') || 'normal';
     if (pupilSize !== 'normal') document.body.classList.add(`pupil-${pupilSize}`);
 
+    // Apply eye size CSS variable from slider setting
+    const eyeSize = Settings.get('eyeSize') != null ? Settings.get('eyeSize') : 100;
+    document.documentElement.style.setProperty('--eye-scale', (eyeSize / 100).toFixed(2));
+
     const glowIntensity = Settings.get('glowIntensity') || 'normal';
     if (glowIntensity !== 'normal') document.body.classList.add(`glow-${glowIntensity}`);
 
@@ -955,6 +965,18 @@ const ThemeCanvas = (() => {
   _wireDND();
   _wireSidebar();
   _wireHistorySidebar();
+
+  // PLAN: Chunk 7E — set time-of-day theme period attribute
+  function _applyThemePeriod() {
+    const h = new Date().getHours();
+    let period = 'night';
+    if (h >= 5  && h < 8)  period = 'dawn';
+    else if (h >= 8  && h < 18) period = 'day';
+    else if (h >= 18 && h < 21) period = 'dusk';
+    document.body.setAttribute('data-theme-period', period);
+  }
+  _applyThemePeriod();
+  setInterval(_applyThemePeriod, 30 * 60 * 1000); // update every 30 min
 
   // 12. Sync main-process window state with the initial full-mode.
   // Without this, createWindow()'s alwaysOnTop=false is fine but the
@@ -1552,6 +1574,7 @@ const ThemeCanvas = (() => {
 
   // ── Helper: open the panel programmatically (auto-reveal on completion/break) ──
   function _panelOpen() {
+    if (typeof DND !== 'undefined' && DND.isActive()) return; // PLAN: Chunk 1A — don't open during DND
     const panel = document.getElementById('session-panel');
     const icon  = document.getElementById('sp-icon');
     if (panel) panel.classList.add('sidebar-open');
@@ -1702,6 +1725,17 @@ const ThemeCanvas = (() => {
     }, 4000);
   }
 
+  // PLAN: Chunk 8B — Smart break suggestion
+  function _generateBreakSuggestion(stats) {
+    const dur  = stats?.focusMinutes || 0;
+    const dist = stats?.distractionCount || 0;
+    if (dist > 5) return '🧘 Try a quick 5-min meditation to reset focus!';
+    if (dur > 45) return '🚶 Long session! A short walk will refresh your brain.';
+    if (dur > 25) return '💧 Stay hydrated — grab some water!';
+    if (dur > 15) return '👁️ Rest your eyes — look 20 feet away for 20 seconds.';
+    return '☕ Take a proper break — you\'ve earned it!';
+  }
+
   // ── Break card — context-aware modal with emoji + message ────────────────
 
   function _fireBreakCard(stats) {
@@ -1773,6 +1807,10 @@ const ThemeCanvas = (() => {
     if (emojiEl) emojiEl.textContent = emoji;
     if (titleEl) titleEl.textContent = title;
     if (bodyEl)  bodyEl.textContent  = body;
+
+    // PLAN: Chunk 8B — append smart break suggestion below the main message
+    const suggestion = _generateBreakSuggestion(stats);
+    if (bodyEl && suggestion) bodyEl.textContent += `\n\n${suggestion}`;
 
     // Break elapsed time
     if (budgetEl) {
@@ -1931,6 +1969,117 @@ const ThemeCanvas = (() => {
     // WhatsApp-style PiP hover overlay: click the expand button to restore
     const pipExpandBtn = document.getElementById('pip-expand-btn');
     if (pipExpandBtn) pipExpandBtn.addEventListener('click', () => _enterFullMode());
+
+    // ── PiP lock toggle (Settings panel) ──────────────────────────────────
+    // Persists via Settings.  When ON the window is immovable.
+    // When OFF the user can long-press to drag the window to any position.
+    const pipLockToggle = document.getElementById('pip-lock-toggle');
+    function _pipIsLocked() {
+      return !!Settings.get('pipDragLocked');
+    }
+
+    if (pipLockToggle) {
+      pipLockToggle.checked = _pipIsLocked();
+      pipLockToggle.addEventListener('change', () => {
+        Settings.set('pipDragLocked', pipLockToggle.checked);
+        document.body.classList.toggle('pip-drag-locked', pipLockToggle.checked);
+      });
+    }
+    document.body.classList.toggle('pip-drag-locked', _pipIsLocked());
+
+    // Keep legacy pip-lock-btn (if present in HTML) in sync
+    const lockBtn = document.getElementById('pip-lock-btn');
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        const newLocked = !_pipIsLocked();
+        Settings.set('pipDragLocked', newLocked);
+        document.body.classList.toggle('pip-drag-locked', newLocked);
+        lockBtn.textContent = newLocked ? '🔐' : '🔒';
+        lockBtn.title = newLocked ? 'Unlock position' : 'Lock position (prevent drag)';
+        if (pipLockToggle) pipLockToggle.checked = newLocked;
+      });
+    }
+    Settings.onChange('pipDragLocked', (v) => {
+      document.body.classList.toggle('pip-drag-locked', !!v);
+      if (pipLockToggle) pipLockToggle.checked = !!v;
+    });
+
+    // ── Long-press drag for PiP window ────────────────────────────────────
+    // Long-press (500 ms hold without moving) activates drag mode.
+    // While dragging, pointermove deltas are sent via IPC to move the OS window.
+    // Dragging ends on pointerup.  If position is locked, drag is disabled.
+    {
+      const LONG_PRESS_MS = 500;
+      let   _lpTimer      = null;
+      let   _dragging     = false;
+      let   _lastPX       = 0;
+      let   _lastPY       = 0;
+      const world         = document.getElementById('world');
+
+      function _startDrag(e) {
+        _dragging = true;
+        _lastPX   = e.screenX;
+        _lastPY   = e.screenY;
+        world.classList.add('pip-dragging');
+        if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+          window.electronAPI.setIgnoreMouseEvents(false);
+        }
+      }
+
+      function _stopDrag() {
+        if (!_dragging) return;
+        _dragging = false;
+        world.classList.remove('pip-dragging');
+      }
+
+      function _onDragPointerDown(e) {
+        if (!document.body.classList.contains('pip-mode')) return;
+        if (_pipIsLocked()) return;
+        // Only primary button / single touch
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        const downX = e.screenX;
+        const downY = e.screenY;
+
+        _lpTimer = setTimeout(() => {
+          _lpTimer = null;
+          // Confirm pointer hasn't moved >6 screen-px (distinguishes from scroll)
+          if (Math.abs(e.screenX - downX) < 6 && Math.abs(e.screenY - downY) < 6) {
+            _startDrag(e);
+          }
+        }, LONG_PRESS_MS);
+      }
+
+      function _onDragPointerMove(e) {
+        if (_dragging) {
+          const dx = e.screenX - _lastPX;
+          const dy = e.screenY - _lastPY;
+          _lastPX  = e.screenX;
+          _lastPY  = e.screenY;
+          if (window.electronAPI && window.electronAPI.moveWindowBy && (dx !== 0 || dy !== 0)) {
+            window.electronAPI.moveWindowBy(dx, dy);
+          }
+          e.stopPropagation();
+        }
+        // Cancel long-press if pointer has moved enough
+        if (_lpTimer && (Math.abs(e.movementX) > 4 || Math.abs(e.movementY) > 4)) {
+          clearTimeout(_lpTimer);
+          _lpTimer = null;
+        }
+      }
+
+      function _onDragPointerUp() {
+        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+        _stopDrag();
+      }
+
+      if (world) {
+        world.addEventListener('pointerdown', _onDragPointerDown, { passive: true });
+        window.addEventListener('pointermove',   _onDragPointerMove, { passive: false });
+        window.addEventListener('pointerup',     _onDragPointerUp);
+        window.addEventListener('pointercancel', _onDragPointerUp);
+      }
+    }
 
     // Clicking anywhere on the circular bubble (that isn't an eye / interactive
     // child) also expands back to full mode — same as tapping a WhatsApp call bubble.
@@ -3246,6 +3395,15 @@ const ThemeCanvas = (() => {
 
     _applyEyeRoundness(Settings.get('eyeRoundness') || 'round');
 
+    // Belt-and-suspenders: if a transient emotion CSS interaction ever removes
+    // the class, re-apply the stored preference within 4s.
+    setInterval(() => {
+      const r = Settings.get('eyeRoundness') || 'round';
+      if (r !== 'round' && !document.body.classList.contains(`eye-roundness-${r}`)) {
+        _applyEyeRoundness(r);
+      }
+    }, 4000);
+
     const eyeRoundBtns = document.getElementById('eye-roundness-btns');
     if (eyeRoundBtns) {
       eyeRoundBtns.querySelectorAll('.style-chip').forEach(btn => {
@@ -3260,13 +3418,46 @@ const ThemeCanvas = (() => {
     function _applyPupilSize(s) {
       document.body.classList.remove(...PUPIL_CLASSES);
       if (s && s !== 'normal') document.body.classList.add(`pupil-${s}`);
-      const btns = document.getElementById('pupil-size-btns');
-      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
-        btn.classList.toggle('active', btn.dataset.pupil === s));
+      // Sync legacy body class to new slider
+      const legacyMap = { small: 78, normal: 100, large: 120 };
+      if (legacyMap[s] != null) {
+        const val = legacyMap[s];
+        Settings.set('eyeSize', val);
+        document.documentElement.style.setProperty('--eye-scale', (val / 100).toFixed(2));
+        const sl = document.getElementById('eye-size-slider');
+        if (sl) { sl.value = val; }
+        const lb = document.getElementById('eye-size-sublabel');
+        if (lb) lb.textContent = val + '%';
+      }
     }
 
     _applyPupilSize(Settings.get('pupilSize') || 'normal');
 
+    // ── Eye size slider ──────────────────────────────────────────────────────
+    function _applyEyeSize(val) {
+      const scale = Math.max(0.60, Math.min(1.20, val / 100));
+      document.documentElement.style.setProperty('--eye-scale', scale.toFixed(2));
+      const sl = document.getElementById('eye-size-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('eye-size-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    // Initialise slider from saved setting
+    { const savedSize = Settings.get('eyeSize') != null ? Settings.get('eyeSize') : 100;
+      _applyEyeSize(savedSize); }
+
+    const eyeSizeSlider = document.getElementById('eye-size-slider');
+    if (eyeSizeSlider) {
+      eyeSizeSlider.addEventListener('input', () => {
+        const v = parseInt(eyeSizeSlider.value, 10);
+        Settings.set('eyeSize', v);
+        _applyEyeSize(v);
+      });
+    }
+    Settings.onChange('eyeSize', (v) => _applyEyeSize(Number(v) || 100));
+
+    // Sync old pupil-size-btns if present (no-op after HTML change)
     const pupilSizeBtns = document.getElementById('pupil-size-btns');
     if (pupilSizeBtns) {
       pupilSizeBtns.querySelectorAll('.style-chip').forEach(btn => {
@@ -3326,9 +3517,56 @@ const ThemeCanvas = (() => {
       });
     }
 
+    // ── Nose size slider ─────────────────────────────────────────────────
+    function _applyNoseScale(val) {
+      const scale = Math.max(0.5, Math.min(2.0, val / 100));
+      document.documentElement.style.setProperty('--nose-scale', scale.toFixed(2));
+      const sl = document.getElementById('nose-scale-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('nose-scale-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    { const saved = Settings.get('noseScale') != null ? Settings.get('noseScale') : 100;
+      _applyNoseScale(saved); }
+
+    const noseScaleSlider = document.getElementById('nose-scale-slider');
+    if (noseScaleSlider) {
+      noseScaleSlider.addEventListener('input', () => {
+        const v = parseInt(noseScaleSlider.value, 10);
+        Settings.set('noseScale', v);
+        _applyNoseScale(v);
+      });
+    }
+    Settings.onChange('noseScale', (v) => _applyNoseScale(Number(v) || 100));
+
+    // ── Mouth size slider ────────────────────────────────────────────────
+    function _applyMouthScale(val) {
+      const scale = Math.max(0.5, Math.min(2.0, val / 100));
+      document.documentElement.style.setProperty('--mouth-scale', scale.toFixed(2));
+      const sl = document.getElementById('mouth-scale-slider');
+      if (sl) sl.value = val;
+      const lb = document.getElementById('mouth-scale-sublabel');
+      if (lb) lb.textContent = val + '%';
+    }
+
+    { const saved = Settings.get('mouthScale') != null ? Settings.get('mouthScale') : 100;
+      _applyMouthScale(saved); }
+
+    const mouthScaleSlider = document.getElementById('mouth-scale-slider');
+    if (mouthScaleSlider) {
+      mouthScaleSlider.addEventListener('input', () => {
+        const v = parseInt(mouthScaleSlider.value, 10);
+        Settings.set('mouthScale', v);
+        _applyMouthScale(v);
+      });
+    }
+    Settings.onChange('mouthScale', (v) => _applyMouthScale(Number(v) || 100));
+
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
-      'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'eyeSize','pupilSize','blinkRate','showEyebrows','noseStyle','noseScale',
+      'mouthStyle','mouthThickness','mouthScale',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');
@@ -3373,6 +3611,84 @@ const ThemeCanvas = (() => {
         }
       });
     }
+
+    // ── PiP border controls ──────────────────────────────────────────────
+    function _applyPipBorder() {
+      const enabled = !!Settings.get('pipBorderEnabled');
+      const style   = Settings.get('pipBorderStyle') || 'solid';
+      const color   = Settings.get('pipBorderColor') || '#8fa4ff';
+      const width   = Settings.get('pipBorderWidth') != null ? Settings.get('pipBorderWidth') : 2;
+
+      document.body.classList.toggle('pip-border-enabled', enabled);
+      ['solid', 'glow', 'fading'].forEach(s =>
+        document.body.classList.toggle('pip-border-style-' + s, s === style));
+      document.documentElement.style.setProperty('--pip-border-color', color);
+      document.documentElement.style.setProperty('--pip-border-width', width + 'px');
+    }
+
+    function _setPipBorderOptsVisible(visible) {
+      document.querySelectorAll('.pip-border-opts').forEach(el => {
+        el.classList.toggle('pip-border-visible', visible);
+      });
+    }
+
+    const pipBorderToggle = document.getElementById('pip-border-toggle');
+    if (pipBorderToggle) {
+      pipBorderToggle.checked = !!Settings.get('pipBorderEnabled');
+      _setPipBorderOptsVisible(pipBorderToggle.checked);
+      pipBorderToggle.addEventListener('change', () => {
+        Settings.set('pipBorderEnabled', pipBorderToggle.checked);
+        _setPipBorderOptsVisible(pipBorderToggle.checked);
+        _applyPipBorder();
+      });
+    }
+
+    { const savedStyle = Settings.get('pipBorderStyle') || 'solid';
+      document.querySelectorAll('[data-pip-border-style]').forEach(btn => {
+        if (btn.dataset.pipBorderStyle === savedStyle) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-pip-border-style]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          Settings.set('pipBorderStyle', btn.dataset.pipBorderStyle);
+          _applyPipBorder();
+        });
+      });
+    }
+
+    const pipBorderWidthSlider = document.getElementById('pip-border-width-slider');
+    const pipBorderWidthLabel  = document.getElementById('pip-border-width-sublabel');
+    if (pipBorderWidthSlider) {
+      const savedW = Settings.get('pipBorderWidth') != null ? Settings.get('pipBorderWidth') : 2;
+      pipBorderWidthSlider.value = savedW;
+      if (pipBorderWidthLabel) pipBorderWidthLabel.textContent = savedW + 'px';
+      pipBorderWidthSlider.addEventListener('input', () => {
+        const v = parseInt(pipBorderWidthSlider.value, 10);
+        Settings.set('pipBorderWidth', v);
+        if (pipBorderWidthLabel) pipBorderWidthLabel.textContent = v + 'px';
+        _applyPipBorder();
+      });
+    }
+
+    const pipBorderColorPicker = document.getElementById('pip-border-color-picker');
+    const pipBorderColorHint   = document.getElementById('pip-border-color-hint');
+    if (pipBorderColorPicker) {
+      const savedC = Settings.get('pipBorderColor') || '#8fa4ff';
+      pipBorderColorPicker.value = savedC;
+      if (pipBorderColorHint) pipBorderColorHint.textContent = savedC;
+      pipBorderColorPicker.addEventListener('input', () => {
+        const c = pipBorderColorPicker.value;
+        Settings.set('pipBorderColor', c);
+        if (pipBorderColorHint) pipBorderColorHint.textContent = c;
+        _applyPipBorder();
+      });
+    }
+
+    Settings.onChange('pipBorderEnabled', () => _applyPipBorder());
+    Settings.onChange('pipBorderStyle',   () => _applyPipBorder());
+    Settings.onChange('pipBorderWidth',   () => _applyPipBorder());
+    Settings.onChange('pipBorderColor',   () => _applyPipBorder());
+
+    _applyPipBorder();
   }
 
   // ── _wireBreakReminder ────────────────────────────────────────────────────
@@ -3815,8 +4131,24 @@ const ThemeCanvas = (() => {
       });
     }
 
-    DND.onActivate(() => _syncDNDBtn());
-    DND.onDeactivate(() => _syncDNDBtn());
+    DND.onActivate(() => {
+      _syncDNDBtn();
+      // PLAN: Chunk 1A — close panels on DND start so user enters focus mode cleanly
+      const sp = document.getElementById('session-panel');
+      const hp = document.getElementById('history-panel');
+      if (sp) sp.classList.remove('sidebar-open');
+      if (hp) hp.classList.remove('hp-panel-open');
+    });
+    DND.onDeactivate(() => {
+      _syncDNDBtn();
+      // Close any panel that may have been opened while DND was active
+      const panel = document.getElementById('session-panel');
+      const icon  = document.getElementById('sp-icon');
+      if (panel && !panel.contains(document.activeElement)) {
+        panel.classList.remove('sidebar-open');
+        if (icon) icon.classList.remove('sp-icon-hidden');
+      }
+    });
     _syncDNDBtn();  // set initial state
   }
 

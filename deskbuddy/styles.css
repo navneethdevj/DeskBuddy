@@ -6,6 +6,9 @@
   --timer-glow-color:  transparent;
   --timer-shake-px:    0px;
   --timer-pulse-speed: none;
+  /* Nose & mouth scale — driven by sliders in settings (renderer.js) */
+  --nose-scale:  1;
+  --mouth-scale: 1;
 }
 
 /* ===== Base Reset ===== */
@@ -170,7 +173,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6vmin;
+  gap: var(--eyes-gap, 6vmin); /* PLAN: Chunk 1C — overridable via CSS var */
   width: 100%;
   height: 100%;
   top: 0;
@@ -1259,11 +1262,12 @@ body[data-time-period="NIGHT"] .companion {
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 1.1vmin solid transparent;
-  border-right: 1.1vmin solid transparent;
-  border-top: 1.4vmin solid rgba(150, 155, 230, 0.48);
+  border-left:  calc(1.1vmin * var(--nose-scale)) solid transparent;
+  border-right: calc(1.1vmin * var(--nose-scale)) solid transparent;
+  border-top:   calc(1.4vmin * var(--nose-scale)) solid rgba(150, 155, 230, 0.48);
   pointer-events: none;
-  transition: border-top-color 0.35s ease, opacity 0.35s ease;
+  transition: border-top-color 0.35s ease, opacity 0.35s ease,
+              border-left-width 0.25s ease, border-right-width 0.25s ease, border-top-width 0.25s ease;
   will-change: opacity;
 }
 
@@ -1292,7 +1296,10 @@ body[data-time-period="NIGHT"] .companion {
   left: 50%;
   width: 8vmin;
   height: 4vmin;
-  transform: translateX(-50%);
+  /* translateX(-50%) centers it; scale applies from top-center so the arc grows
+     downward/sideways without shifting the vertical anchor. */
+  transform: translateX(-50%) scale(var(--mouth-scale));
+  transform-origin: 50% 0%;
   /* Neutral: gentle smile arc */
   border: 0.28vmin solid transparent;
   border-radius: 0 0 50% 50%;
@@ -1308,7 +1315,8 @@ body[data-time-period="NIGHT"] .companion {
               border-left-color   0.32s ease,
               border-right-color  0.32s ease,
               border-width        0.32s ease,
-              opacity             0.32s ease;
+              opacity             0.32s ease,
+              transform           0.25s ease;
   pointer-events: none;
   will-change: border-radius, width, height;
 }
@@ -1771,9 +1779,9 @@ body[data-time-period="NIGHT"] .companion {
   100% { transform: rotate( 0.0deg) scale(1.000); }
 }
 @keyframes pattedGlow {
-  0%,100% { filter: drop-shadow(0 0  7vmin rgba(255,135,105,0.60)) drop-shadow(0 0 20vmin rgba(255,110,82,0.28)); }
-  15%     { filter: drop-shadow(0 0 22vmin rgba(255,175,140,0.95)) drop-shadow(0 0 45vmin rgba(255,145,118,0.52)); }
-  50%     { filter: drop-shadow(0 0 12vmin rgba(255,150,120,0.75)) drop-shadow(0 0 30vmin rgba(255,120,92,0.38)); }
+  0%,100% { filter: drop-shadow(0 0  7vmin rgba(255,100,175,0.60)) drop-shadow(0 0 20vmin rgba(255, 72,148,0.28)); }
+  15%     { filter: drop-shadow(0 0 22vmin rgba(255,165,215,0.95)) drop-shadow(0 0 45vmin rgba(255,125,192,0.52)); }
+  50%     { filter: drop-shadow(0 0 12vmin rgba(255,128,190,0.75)) drop-shadow(0 0 30vmin rgba(255, 90,158,0.38)); }
 }
 
 /* Inner head: independent bob motion layered on the lean */
@@ -2295,6 +2303,69 @@ body.pip-shape-circle.pip-mode #world  { border-radius: 50%; }
 body.pip-shape-rounded.pip-mode #world { border-radius: 32px; }
 body.pip-shape-square.pip-mode #world  { border-radius: 16px; }
 
+/* ═══════════════════════════════════════════════════════════════════
+   PiP Decorative Border — solid / glow / fading
+   Controlled by body classes:
+     pip-border-enabled          — master toggle
+     pip-border-style-solid      — 1px–8px opaque border
+     pip-border-style-glow       — same border + diffuse outer glow
+     pip-border-style-fading     — border pulses in/out (keyframe)
+   CSS vars (set via renderer.js):
+     --pip-border-color (default #8fa4ff)
+     --pip-border-width (default 2px)
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --pip-border-color: #8fa4ff;
+  --pip-border-width: 2px;
+}
+
+/* Base — only active in pip mode with border enabled */
+body.pip-border-enabled.pip-mode #world {
+  border: var(--pip-border-width) solid var(--pip-border-color);
+  box-sizing: border-box;
+  box-shadow: none;
+}
+
+/* Solid — clean opaque ring, no extra glow */
+body.pip-border-enabled.pip-border-style-solid.pip-mode #world {
+  box-shadow: none;
+}
+
+/* Glow — border + large diffuse halo.
+   Using filter: drop-shadow() on #world renders OUTSIDE the element bounds
+   including into the transparent window corners, giving a true outer glow
+   that's clearly distinct from the solid style.
+   Three layers: tight bright halo → medium soft halo → wide diffuse fade. */
+body.pip-border-enabled.pip-border-style-glow.pip-mode #world {
+  filter:
+    drop-shadow(0 0 max(5px,  calc(var(--pip-border-width) * 1.5)) var(--pip-border-color))
+    drop-shadow(0 0 max(14px, calc(var(--pip-border-width) * 4))   color-mix(in srgb, var(--pip-border-color) 60%, transparent))
+    drop-shadow(0 0 max(28px, calc(var(--pip-border-width) * 8))   color-mix(in srgb, var(--pip-border-color) 28%, transparent));
+}
+
+/* Fading — border pulses from fully opaque to fully transparent and back.
+   A brief drop-shadow at peak opacity makes the fade-in visually punchy. */
+body.pip-border-enabled.pip-border-style-fading.pip-mode #world {
+  animation: pip-border-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes pip-border-pulse {
+  0%, 100% {
+    border-color: var(--pip-border-color);
+    filter: drop-shadow(0 0 max(6px, calc(var(--pip-border-width) * 2)) color-mix(in srgb, var(--pip-border-color) 70%, transparent));
+  }
+  50% {
+    border-color: transparent;
+    filter: none;
+  }
+}
+
+/* ── PiP drag cursor feedback ──────────────────────────────────────────
+   Show grab cursor when pip is unlocked and draggable (after long-press). */
+body.pip-mode:not(.pip-drag-locked) #world { cursor: grab; }
+#world.pip-dragging                         { cursor: grabbing !important; }
+#world.pip-dragging *                       { pointer-events: none !important; }
+
 /* ── Clip body corners to match #world — ensures glow box-shadows
    (which render outside #world's bounds) are also clipped and the
    OS-level window corners remain truly transparent.               */
@@ -2370,12 +2441,16 @@ body.pip-mode #world[data-pip-emotion="crying"] {
 
 body.pip-mode #pip-hover-overlay {
   display: flex;
-  pointer-events: auto;
+  /* Keep pointer-events: none by default so the companion drag region is clear.
+     Only enable pointer-events when the overlay is actually visible (on hover),
+     so the user can click the expand button without blocking native window drag. */
+  pointer-events: none;
 }
 
 body.pip-mode #world:hover #pip-hover-overlay {
   opacity: 1;
   background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;  /* enable clicks only when the overlay is shown */
 }
 
 /* Hover overlay tracks the PiP shape — each variant sets its own border-radius */
@@ -2409,12 +2484,21 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window is draggable: companion body acts as the drag handle.
-   Interactive children (eye-wraps, hover overlay) stay no-drag. */
-body.pip-mode .companion    { -webkit-app-region: drag; }
+/* PiP window: disable native webkit drag on all elements.
+   Dragging is handled exclusively via the long-press IPC mechanism in renderer.js
+   (moveWindowBy IPC), so the user never accidentally drags the pip when
+   clicking / patting the companion. */
+body.pip-mode #world,
+body.pip-mode .companion,
+body.pip-mode .companion-inner,
 body.pip-mode .eye-wrap,
 body.pip-mode #compact-expand-btn,
 body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
+
+/* Drag-locked state: same as above (no native drag), lock toggle prevents IPC drag too */
+body.pip-mode.pip-drag-locked .companion       { -webkit-app-region: no-drag; }
+body.pip-mode.pip-drag-locked .companion-inner { -webkit-app-region: no-drag; }
+body.pip-mode.pip-drag-locked #world           { -webkit-app-region: no-drag; cursor: default; }
 
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
@@ -2685,14 +2769,15 @@ body.full-mode .companion {
 /* ── Nose styles ───────────────────────────────────────────────────── */
 /* Dot nose — small oval button replacing the CSS-triangle */
 body.nose-dot .nose {
-  width: 2.4vmin;
-  height: 1.8vmin;
+  width:  calc(2.4vmin * var(--nose-scale));
+  height: calc(1.8vmin * var(--nose-scale));
   border-left:  none;
   border-right: none;
   border-top:   none;
   background: rgba(150, 155, 230, 0.50);
   border-radius: 50%;
-  transition: background 0.35s ease, opacity 0.35s ease;
+  transition: background 0.35s ease, opacity 0.35s ease,
+              width 0.25s ease, height 0.25s ease;
 }
 /* Emotion tints for dot nose (mirror triangle colours) */
 body.nose-dot .companion.happy .nose,
@@ -2754,79 +2839,346 @@ body.mouth-wide .companion.scared   .mouth,
 body.mouth-wide .companion.startled .mouth { width: 5vmin; height: 5vmin; border-radius: 50%; }
 body.mouth-wide .companion.curious  .mouth { width: 10vmin; height: 10vmin; }
 
-/* Cat — twin-lobe ω shape: two arcs that meet/overlap at center.
-   Lobes (6.5vmin) are wider than half the container (12vmin / 2 = 6vmin) so they
-   cross in the middle, forming the connected ω join. */
+
+/* ═══════════════════════════════════════════════════════════
+   CAT MOUTH — SVG-based ω shape, full rework.
+   Three separate SVG paths inside .cat-mouth-svg:
+     .cat-mouth-left  — left arc of ω
+     .cat-mouth-right — right arc of ω
+     .cat-mouth-open  — open-mouth oval (scared / excited)
+   Transitions use CSS `d:` property (supported in Chromium/Electron).
+   Paths use the SVG coordinate system: viewBox="-20 -8 40 30"
+   ═══════════════════════════════════════════════════════════ */
+
+/* Show the SVG mouth only when cat style is active */
+.cat-mouth-svg { display: none; }
+body.mouth-cat .cat-mouth-svg { display: block; }
+
+/* Hide the CSS border-based mouth when cat style is active */
 body.mouth-cat .mouth {
-  width: 12vmin;
-  height: 5.5vmin;
+  width:  calc(20vmin * var(--mouth-scale));
+  height: calc(16vmin * var(--mouth-scale));
   border: none !important;
-  background: transparent;
+  background: transparent !important;
+  overflow: visible;
+  top: calc(50% + 27vmin);
+  /* Override the scale transform from the generic .mouth rule so the cat
+     mouth container doesn't double-scale — the SVG inside scales naturally
+     with the container size. */
+  transform: translateX(-50%);
+}
+
+.cat-mouth-svg {
+  width: 100%;
+  height: 100%;
   overflow: visible;
 }
-body.mouth-cat .mouth::before,
-body.mouth-cat .mouth::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 6.5vmin;
-  height: 5.5vmin;
-  border: 0.34vmin solid transparent;
-  border-bottom-color: rgba(145, 155, 225, 0.72);
-  border-radius: 0 0 50% 50%;
-}
-/* Overlap at center: push both lobes inward so their inner edges meet */
-body.mouth-cat .mouth::before { left:  -0.5vmin; }
-body.mouth-cat .mouth::after  { right: -0.5vmin; }
 
-/* Happy cat — wider lobes meeting at center, bright color */
-body.mouth-cat .companion.happy    .mouth,
-body.mouth-cat .companion.overjoyed .mouth {
-  width: 16vmin; height: 7vmin;
+/* ── Shared stroke style for both arcs ── */
+.cat-mouth-path {
+  stroke: rgba(145, 155, 225, 0.82);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  fill: none;
+  transition: d 0.28s cubic-bezier(.4,0,.2,1),
+              stroke 0.28s ease,
+              stroke-width 0.28s ease,
+              opacity 0.22s ease;
 }
-body.mouth-cat .companion.happy    .mouth::before,
-body.mouth-cat .companion.happy    .mouth::after,
-body.mouth-cat .companion.overjoyed .mouth::before,
-body.mouth-cat .companion.overjoyed .mouth::after {
-  width: 8.5vmin; height: 7vmin;
-  border-bottom-color: rgba(200, 170, 255, 0.92);
+.cat-mouth-open {
+  stroke: rgba(145, 155, 225, 0.70);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  fill: rgba(100, 80, 160, 0.18);
+  opacity: 0;
+  transition: d 0.28s cubic-bezier(.4,0,.2,1),
+              stroke 0.28s ease,
+              fill 0.28s ease,
+              opacity 0.22s ease;
 }
-/* Sad cat — lobes flip to frown (top arcs) */
-body.mouth-cat .companion.sad      .mouth,
-body.mouth-cat .companion.crying   .mouth {
-  width: 12vmin; height: 5vmin;
+
+/* ═══ NEUTRAL ω — calm resting cat mouth ═══
+   Left arc: from center-top (-1,0) curving down-left then ending at (-17, 6)
+   Right arc: mirror — slightly larger than before for better visibility     */
+body.mouth-cat .companion .cat-mouth-left  { d: path('M -1 0 C -4 6 -11 12 -17 7'); }
+body.mouth-cat .companion .cat-mouth-right { d: path('M  1 0 C  4 6  11 12  17 7'); }
+body.mouth-cat .companion .cat-mouth-open  { d: path(''); opacity: 0; }
+
+/* ═══ HAPPY ω — wider, lifted cheeks, broader arcs ═══ */
+body.mouth-cat .companion.happy .cat-mouth-path {
+  stroke: rgba(200, 170, 255, 0.92);
+  stroke-width: 1.9;
 }
-body.mouth-cat .companion.sad      .mouth::before,
-body.mouth-cat .companion.sad      .mouth::after,
-body.mouth-cat .companion.crying   .mouth::before,
-body.mouth-cat .companion.crying   .mouth::after {
-  top: unset; bottom: 0;
-  width: 6.5vmin; height: 5vmin;
-  border-bottom-color: transparent;
-  border-top-color: rgba(100, 130, 205, 0.72);
-  border-radius: 50% 50% 0 0;
+body.mouth-cat .companion.happy .cat-mouth-left  { d: path('M -1 -1 C -4 6 -11 11 -16 6'); }
+body.mouth-cat .companion.happy .cat-mouth-right { d: path('M  1 -1 C  4 6  11 11  16 6'); }
+
+/* ═══ OVERJOYED ω — maximum width, big cheerful grin ═══ */
+body.mouth-cat .companion.overjoyed .cat-mouth-path {
+  stroke: rgba(255, 230, 120, 0.96);
+  stroke-width: 2.2;
 }
-/* Scared cat — single circle O */
-body.mouth-cat .companion.scared   .mouth,
-body.mouth-cat .companion.startled .mouth {
-  width: 4vmin; height: 4vmin;
-  background: transparent;
+body.mouth-cat .companion.overjoyed .cat-mouth-left  { d: path('M -1 -2 C -5 7 -13 13 -18 7'); }
+body.mouth-cat .companion.overjoyed .cat-mouth-right { d: path('M  1 -2 C  5 7  13 13  18 7'); }
+body.mouth-cat .companion.overjoyed .cat-mouth-open {
+  d: path('M -7 10 C -5 16 5 16 7 10 C 9 4 3 1 0 1 C -3 1 -9 4 -7 10 Z');
+  opacity: 0.55;
+  fill: rgba(255, 200, 100, 0.18);
+  stroke: rgba(255, 230, 120, 0.55);
 }
-body.mouth-cat .companion.scared   .mouth::before,
-body.mouth-cat .companion.startled .mouth::before {
-  width: 4vmin; height: 4vmin; left: 0;
-  border: 0.34vmin solid rgba(195, 210, 255, 0.72);
-  border-radius: 50%; top: 0;
+
+/* ═══ LOVE ω — soft wide warm smile ═══ */
+body.mouth-cat .companion.love .cat-mouth-path {
+  stroke: rgba(255, 138, 180, 0.92);
+  stroke-width: 1.9;
 }
-body.mouth-cat .companion.scared   .mouth::after,
-body.mouth-cat .companion.startled .mouth::after { display: none; }
-/* Grumpy cat — tight flat twin-line */
-body.mouth-cat .companion.grumpy   .mouth { width: 10vmin; height: 1.5vmin; }
-body.mouth-cat .companion.grumpy   .mouth::before,
-body.mouth-cat .companion.grumpy   .mouth::after {
-  width: 5.5vmin; height: 1.5vmin; border-radius: 1vmin;
-  border-bottom-color: rgba(255, 138, 128, 0.70);
+body.mouth-cat .companion.love .cat-mouth-left  { d: path('M -1 -1 C -3 5 -10 10 -15 6'); }
+body.mouth-cat .companion.love .cat-mouth-right { d: path('M  1 -1 C  3 5  10 10  15 6'); }
+
+/* ═══ EXCITED — open ω with a visible opening ═══ */
+body.mouth-cat .companion.excited .cat-mouth-path {
+  stroke: rgba(255, 220, 100, 0.92);
+  stroke-width: 2.0;
 }
+body.mouth-cat .companion.excited .cat-mouth-left  { d: path('M -1 -1 C -4 6 -10 10 -15 5'); }
+body.mouth-cat .companion.excited .cat-mouth-right { d: path('M  1 -1 C  4 6  10 10  15 5'); }
+body.mouth-cat .companion.excited .cat-mouth-open {
+  d: path('M -6 8 C -4 15 4 15 6 8 C 7 3 3 0 0 0 C -3 0 -7 3 -6 8 Z');
+  opacity: 0.60;
+  fill: rgba(255, 210, 80, 0.15);
+  stroke: rgba(255, 220, 100, 0.45);
+}
+
+/* ═══ SAD — inverted ω (frown humps pointing up) ═══ */
+body.mouth-cat .companion.sad .cat-mouth-path,
+body.mouth-cat .companion.crying .cat-mouth-path {
+  stroke: rgba(100, 130, 205, 0.82);
+  stroke-width: 1.7;
+}
+body.mouth-cat .companion.sad .cat-mouth-left,
+body.mouth-cat .companion.crying .cat-mouth-left  { d: path('M -1 6 C -3 1 -9 -2 -14 1'); }
+body.mouth-cat .companion.sad .cat-mouth-right,
+body.mouth-cat .companion.crying .cat-mouth-right { d: path('M  1 6 C  3 1  9 -2  14 1'); }
+
+/* ═══ SCARED — small open oval mouth ═══ */
+body.mouth-cat .companion.scared .cat-mouth-path,
+body.mouth-cat .companion.startled .cat-mouth-path {
+  opacity: 0;  /* hide arcs, show oval instead */
+}
+body.mouth-cat .companion.scared .cat-mouth-open,
+body.mouth-cat .companion.startled .cat-mouth-open {
+  d: path('M 0 -4 C 5 -4 8 0 8 4 C 8 9 5 12 0 12 C -5 12 -8 9 -8 4 C -8 0 -5 -4 0 -4 Z');
+  opacity: 0.80;
+  fill: rgba(195, 218, 255, 0.12);
+  stroke: rgba(195, 218, 255, 0.75);
+  stroke-width: 1.5;
+}
+
+/* ═══ GRUMPY — tight compressed flat line with slight dip ═══ */
+body.mouth-cat .companion.grumpy .cat-mouth-path {
+  stroke: rgba(255, 138, 128, 0.78);
+  stroke-width: 1.5;
+}
+body.mouth-cat .companion.grumpy .cat-mouth-left  { d: path('M -1 2 C -3 2 -8 1 -13 3'); }
+body.mouth-cat .companion.grumpy .cat-mouth-right { d: path('M  1 2 C  3 2  8 1  13 3'); }
+
+/* ═══ POUTY / SULKING — drooping corners ═══ */
+body.mouth-cat .companion.pouty .cat-mouth-path,
+body.mouth-cat .companion.sulking .cat-mouth-path {
+  stroke: rgba(200, 148, 210, 0.80);
+  stroke-width: 1.6;
+}
+body.mouth-cat .companion.pouty .cat-mouth-left,
+body.mouth-cat .companion.sulking .cat-mouth-left  { d: path('M -1 1 C -3 3 -8 5 -13 8'); }
+body.mouth-cat .companion.pouty .cat-mouth-right,
+body.mouth-cat .companion.sulking .cat-mouth-right { d: path('M  1 1 C  3 3  8 5  13 8'); }
+
+/* ═══ SUSPICIOUS — slight asymmetric quirk ═══ */
+body.mouth-cat .companion.suspicious .cat-mouth-path {
+  stroke: rgba(160, 165, 248, 0.78);
+  stroke-width: 1.5;
+}
+body.mouth-cat .companion.suspicious .cat-mouth-left  { d: path('M -1 1 C -3 4 -8 7 -13 4'); }
+body.mouth-cat .companion.suspicious .cat-mouth-right { d: path('M  1 2 C  3 3  8 5  13 3'); }
+
+/* ═══ SHY — tiny barely-visible soft ω ═══ */
+body.mouth-cat .companion.shy .cat-mouth-path {
+  stroke: rgba(255, 155, 200, 0.55);
+  stroke-width: 1.3;
+}
+body.mouth-cat .companion.shy .cat-mouth-left  { d: path('M -1 0 C -2 3 -5 6 -8 4'); }
+body.mouth-cat .companion.shy .cat-mouth-right { d: path('M  1 0 C  2 3  5 6  8 4'); }
+
+/* ═══ CURIOUS — slightly open inquisitive ω ═══ */
+body.mouth-cat .companion.curious .cat-mouth-path {
+  stroke: rgba(155, 170, 255, 0.85);
+  stroke-width: 1.7;
+}
+body.mouth-cat .companion.curious .cat-mouth-left  { d: path('M -1 0 C -3 6 -8 10 -13 6'); }
+body.mouth-cat .companion.curious .cat-mouth-right { d: path('M  1 0 C  3 6  8 10  13 6'); }
+body.mouth-cat .companion.curious .cat-mouth-open {
+  d: path('M -5 11 C -3 16 3 16 5 11 C 6 7 3 4 0 4 C -3 4 -6 7 -5 11 Z');
+  opacity: 0.35;
+  fill: rgba(155, 170, 255, 0.10);
+  stroke: rgba(155, 170, 255, 0.35);
+}
+
+/* ═══ COZY / BEING_PATTED — serene ˘ω˘ fully closed pleased mouth ═══ */
+body.mouth-cat .companion.cozy .cat-mouth-path,
+body.mouth-cat .companion.being_patted .cat-mouth-path {
+  stroke: rgba(255, 200, 225, 0.72);
+  stroke-width: 1.5;
+}
+body.mouth-cat .companion.cozy .cat-mouth-left,
+body.mouth-cat .companion.being_patted .cat-mouth-left  { d: path('M -1 0 C -2 4 -6 7 -10 5'); }
+body.mouth-cat .companion.cozy .cat-mouth-right,
+body.mouth-cat .companion.being_patted .cat-mouth-right { d: path('M  1 0 C  2 4  6 7  10 5'); }
+
+/* ═══ LOVE (PETTING CLICK) — warm ♡ smile ═══ */
+body.mouth-cat .companion.love .cat-mouth-path {
+  stroke: rgba(255, 138, 180, 0.92);
+}
+
+/* ═══ DAZED — dreamy half-open ═══ */
+body.mouth-cat .companion.dazed .cat-mouth-path {
+  stroke: rgba(180, 200, 255, 0.65);
+  stroke-width: 1.4;
+}
+body.mouth-cat .companion.dazed .cat-mouth-left  { d: path('M -1 0 C -2 3 -6 6 -9 4'); }
+body.mouth-cat .companion.dazed .cat-mouth-right { d: path('M  1 0 C  2 3  6 6   9 4'); }
+
+/* ═══ ECSTATIC — huge grinning chaos ═══ */
+body.mouth-cat .companion.ecstatic .cat-mouth-path {
+  stroke: rgba(255, 240, 140, 0.98);
+  stroke-width: 2.4;
+}
+body.mouth-cat .companion.ecstatic .cat-mouth-left  { d: path('M -1 -3 C -6 8 -14 14 -19 8'); }
+body.mouth-cat .companion.ecstatic .cat-mouth-right { d: path('M  1 -3 C  6 8  14 14  19 8'); }
+body.mouth-cat .companion.ecstatic .cat-mouth-open {
+  d: path('M -9 12 C -7 20 7 20 9 12 C 11 5 5 1 0 1 C -5 1 -11 5 -9 12 Z');
+  opacity: 0.70;
+  fill: rgba(255, 230, 80, 0.20);
+  stroke: rgba(255, 240, 140, 0.60);
+  stroke-width: 1.8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WHISKERS — each strand independently positioned.
+   Six divs are direct children of .whiskers (no group wrapper):
+     .wl1/.wl2/.wl3  — left whiskers  (extend leftward)
+     .wr1/.wr2/.wr3  — right whiskers (extend rightward)
+
+   Each element is absolutely placed within the .whiskers overlay:
+     • inner tip is precisely anchored at the left/right cheek pad
+     • transform-origin sits at that inner tip so rotate() fans the strand
+     • no shared group anchor — every strand is fully independent
+   ═══════════════════════════════════════════════════════════ */
+.whiskers {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  overflow: visible;
+}
+body.mouth-cat .whiskers { display: block; }
+
+/* Base style shared by every whisker strand */
+.whisker {
+  position: absolute;
+  height:        0.22vmin;
+  border-radius: 999px;
+  background:    rgba(200, 205, 250, 0.58);
+  transition:    background 0.35s ease, transform 0.35s ease, opacity 0.35s ease;
+}
+
+/* ── LEFT WHISKERS ──────────────────────────────────────────────────────
+   The right edge of each strand is the inner tip, anchored at the left
+   cheek pad (~9 vmin left of face centre, at nose level).
+   transform-origin: right center → rotate() fans the free (left) end. */
+
+/* top-left: inner tip slightly high, fanning upward */
+.wl1 {
+  width:  26vmin;
+  top:    calc(50% + 19vmin);
+  right:  calc(50% + 9vmin);
+  transform-origin: right center;
+  transform: rotate(-22deg);
+}
+/* middle-left: at cheek-pad centre, nearly horizontal */
+.wl2 {
+  width:  28vmin;
+  top:    calc(50% + 21.5vmin);
+  right:  calc(50% + 9vmin);
+  transform-origin: right center;
+  transform: rotate(-4deg);
+}
+/* bottom-left: inner tip slightly low, fanning downward */
+.wl3 {
+  width:  26vmin;
+  top:    calc(50% + 24vmin);
+  right:  calc(50% + 9vmin);
+  transform-origin: right center;
+  transform: rotate(14deg);
+}
+
+/* ── RIGHT WHISKERS ─────────────────────────────────────────────────────
+   The left edge of each strand is the inner tip, anchored at the right
+   cheek pad (~9 vmin right of face centre, at nose level).
+   transform-origin: left center → rotate() fans the free (right) end. */
+
+/* top-right */
+.wr1 {
+  width:  26vmin;
+  top:    calc(50% + 19vmin);
+  left:   calc(50% + 9vmin);
+  transform-origin: left center;
+  transform: rotate(22deg);
+}
+/* middle-right */
+.wr2 {
+  width:  28vmin;
+  top:    calc(50% + 21.5vmin);
+  left:   calc(50% + 9vmin);
+  transform-origin: left center;
+  transform: rotate(4deg);
+}
+/* bottom-right */
+.wr3 {
+  width:  26vmin;
+  top:    calc(50% + 24vmin);
+  left:   calc(50% + 9vmin);
+  transform-origin: left center;
+  transform: rotate(-14deg);
+}
+
+/* ── Emotion colour tints ──────────────────────────────────────────────── */
+body.mouth-cat .companion.happy     .whisker,
+body.mouth-cat .companion.overjoyed .whisker { background: rgba(210, 180, 255, 0.68); }
+body.mouth-cat .companion.love      .whisker { background: rgba(255, 148, 188, 0.62); }
+body.mouth-cat .companion.excited   .whisker { background: rgba(255, 225, 130, 0.68); }
+body.mouth-cat .companion.sad       .whisker,
+body.mouth-cat .companion.crying    .whisker { background: rgba(100, 135, 220, 0.52); }
+body.mouth-cat .companion.scared    .whisker,
+body.mouth-cat .companion.startled  .whisker { background: rgba(200, 222, 255, 0.62); }
+body.mouth-cat .companion.grumpy    .whisker { background: rgba(255, 140, 130, 0.58); }
+
+/* ── Emotion splay: whiskers perk up in happy, droop in sad ─────────── */
+body.mouth-cat .companion.happy     .wl1,
+body.mouth-cat .companion.overjoyed .wl1 { transform: rotate(-30deg); }
+body.mouth-cat .companion.happy     .wl3,
+body.mouth-cat .companion.overjoyed .wl3 { transform: rotate(4deg);   }
+body.mouth-cat .companion.happy     .wr1,
+body.mouth-cat .companion.overjoyed .wr1 { transform: rotate(30deg);  }
+body.mouth-cat .companion.happy     .wr3,
+body.mouth-cat .companion.overjoyed .wr3 { transform: rotate(-4deg);  }
+
+body.mouth-cat .companion.sad    .wl1,
+body.mouth-cat .companion.crying .wl1 { transform: rotate(-8deg);   }
+body.mouth-cat .companion.sad    .wl3,
+body.mouth-cat .companion.crying .wl3 { transform: rotate(26deg);   }
+body.mouth-cat .companion.sad    .wr1,
+body.mouth-cat .companion.crying .wr1 { transform: rotate(8deg);    }
+body.mouth-cat .companion.sad    .wr3,
+body.mouth-cat .companion.crying .wr3 { transform: rotate(-26deg);  }
 
 /* Flat — a geometrically straight horizontal line (height: 0, border-bottom only)
    Emotions use only subtle arcs, never the same depth as Arc style */
@@ -2991,6 +3343,39 @@ body.hide-eyebrows .brow { opacity: 0; pointer-events: none; }
   border-color: rgba(165, 145, 255, 0.55);
   color: rgba(245, 240, 255, 1);
   box-shadow: 0 0 8px rgba(150, 125, 255, 0.28);
+}
+
+/* ── PiP border sub-options (hidden when master toggle is off) ──────── */
+.pip-border-opts { display: none; }
+.pip-border-opts.pip-border-visible { display: flex; }
+
+/* ── PiP border color row ────────────────────────────────────────────── */
+.pip-border-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pip-color-input {
+  width: 36px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+}
+.pip-border-color-hint {
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(200, 190, 240, 0.72);
+  min-width: 54px;
+}
+
+/* ── Settings subsection divider ─────────────────────────────────────── */
+.settings-subsection-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 8px 0;
 }
 
 /* =====================================================================
@@ -3669,6 +4054,16 @@ body.pip-mode #settings-panel { display: none !important; }
 body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
 body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
 body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
+/* PLAN: Chunk 1C — size L: increase eye gap to prevent overlap at 1.22x scale */
+body.companion-size-L { --eyes-gap: 14vmin; }
+
+/* ── Size L: prevent eye collision on wide emotion expressions ── */
+body.companion-size-L .companion.curious    .eye-left  { width: 38vmin; height: 50vmin; }
+body.companion-size-L .companion.curious    .eye-right { width: 32vmin; height: 44vmin; }
+body.companion-size-L .companion.overjoyed  .eye       { width: 40vmin; }
+body.companion-size-L .companion.excited    .eye       { width: 36vmin; }
+body.companion-size-L .companion.love       .eye       { width: 38vmin; }
+body.companion-size-L .eyes                            { gap: 8vmin; }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
@@ -6581,11 +6976,7 @@ body.dnd-active .companion {
   transition: filter 0.9s ease;
 }
 
-body.dnd-active #session-panel,
-body.dnd-active #history-panel {
-  opacity:    0.70;
-  transition: opacity 0.55s ease;
-}
+/* DND controls companion behaviour only — panels are closed by JS, not dimmed by CSS */
 
 /* Hide in pip/compact mode — no room */
 body.pip-mode #dnd-indicator {
@@ -7138,15 +7529,66 @@ body.pip-mode .companion {
 /* Pupil must sit above the ::before iris layer */
 .pupil { position: relative; z-index: 1; }
 
-/* ── Iris colour classes (hue-rotate on ::before ONLY — never on .eye) ── */
-body.eye-emerald  .eye::before { filter: hue-rotate(270deg) saturate(1.15); }
-body.eye-rose     .eye::before { filter: hue-rotate(92deg)  saturate(1.20); }
-body.eye-amber    .eye::before { filter: hue-rotate(42deg)  saturate(1.40) brightness(1.15); }
-body.eye-lavender .eye::before { filter: hue-rotate(40deg)  saturate(0.80) brightness(1.05); }
-body.eye-sky      .eye::before { filter: hue-rotate(195deg) saturate(0.90) brightness(1.10); }
-body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); }
-body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
-/* periwinkle = default, no filter */
+/* ── Iris colour — replace the ::before background gradient per colour.
+   Using explicit radial-gradients (instead of hue-rotate filter) guarantees
+   vivid, clearly distinguishable iris colours in every Electron/Chrome build.
+   Periwinkle = default (already defined in .eye::before above, no override).  */
+body.eye-emerald .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #1c9060 0%, #28aa70 12%, #38b880 28%,
+    #50c890 45%, #6ed6a2 62%, #92e0b8 78%,
+    #b4eccf 92%, #d4f6e4 100%
+  );
+}
+body.eye-rose .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #b81a60 0%, #cc3078 12%, #de4892 28%,
+    #ec60a8 45%, #f47ebc 62%, #f8a0ce 78%,
+    #fcc0de 92%, #fedced 100%
+  );
+}
+body.eye-amber .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #a84010 0%, #c46020 12%, #d87830 28%,
+    #ec9840 45%, #f4b055 62%, #f8c875 78%,
+    #fbdc9e 92%, #feefcc 100%
+  );
+}
+body.eye-lavender .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #6230b8 0%, #7a48cc 12%, #9060de 28%,
+    #a678ec 45%, #bc94f4 62%, #d0b4fa 78%,
+    #e4d4fd 92%, #f0e8fe 100%
+  );
+}
+body.eye-sky .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #1058b8 0%, #1c72cc 12%, #2a8cde 28%,
+    #38a8ec 45%, #52bef5 62%, #78d0fa 78%,
+    #a8e2fc 92%, #d4f0fe 100%
+  );
+}
+body.eye-ruby .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #981010 0%, #b42828 12%, #cc4040 28%,
+    #de5858 45%, #ea7070 62%, #f29090 78%,
+    #f8b4b4 92%, #fdd8d8 100%
+  );
+}
+body.eye-teal .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #087070 0%, #109090 12%, #1ca8a0 28%,
+    #28c0b0 45%, #40d0c0 62%, #60dccc 78%,
+    #90e8e0 92%, #bef4ef 100%
+  );
+}
 
 /* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
 body.eye-glow-default  { --eye-glow-rgb: 120, 135, 235; }
@@ -7188,46 +7630,58 @@ body.mouth-thick .mouth-cat .mouth::after  { border-width: 0.52vmin !important; 
    Specificity: (0,2,1) < emotion rules (0,3,0) so emotions always win.
    ─────────────────────────────────────────────────────────── */
 
+/* Eye-roundness: 3-class specificity (body.full-mode.eye-roundness-X .eye)
+   beats emotion rules (body .companion.X .eye = 2 classes) so the user's
+   chosen shape is never overridden by a transient emotion. */
+body.full-mode.eye-roundness-squish .eye,
+body.full-mode.eye-roundness-almond .eye,
+body.full-mode.eye-roundness-droopy .eye,
+body.full-mode.eye-roundness-tall   .eye {
+  transition: border-radius 0.22s cubic-bezier(.4,0,.2,1),
+              width 0.22s cubic-bezier(.4,0,.2,1),
+              height 0.22s cubic-bezier(.4,0,.2,1);
+}
+
 /* SQUISH — rounded rectangle; clearly not circular */
-body.eye-roundness-squish .eye {
+body.full-mode.eye-roundness-squish .eye {
   border-radius: 24%;
 }
 
 /* ALMOND — flat cat/fox eye; wide horizontal with tight vertical radii */
-body.eye-roundness-almond .eye {
+body.full-mode.eye-roundness-almond .eye {
   border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%;
 }
 
 /* DROOPY — heavy-lidded; flat top edge, fully rounded bottom */
-body.eye-roundness-droopy .eye {
+body.full-mode.eye-roundness-droopy .eye {
   border-radius: 8% 8% 50% 50%;
 }
 
 /* TALL — elongated vertical oval; more upright and wide-eyed */
-body.eye-roundness-tall .eye {
+body.full-mode.eye-roundness-tall .eye {
   border-radius: 50% 50% 50% 50% / 65% 65% 65% 65%;
 }
 
 /* keep old names as aliases so saved settings still resolve */
-body.eye-roundness-soft .eye { border-radius: 24%; }
-body.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
+body.full-mode.eye-roundness-soft .eye { border-radius: 24%; }
+body.full-mode.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%; }
 
 /* ═══════════════════════════════════════════════════════════
-   EYE SIZE (was "Pupil size")
-   Scale the whole .eye element — iris + pupil scale together.
-   Pupil width/height are reset to default so we rely purely on
-   the visual scale transform for size.
+   EYE SIZE — CSS variable driven slider (replaces 3-button chips).
+   --eye-scale defaults to 1.0; slider range 0.60 – 1.20.
+   Max 1.20 keeps two eyes from touching even at minimum gap.
+   The companion flex gap is ~6 vmin; at scale 1.20 each eye is
+   ~44.4 vmin wide → total 88.8 + 6 = 94.8 vmin < 100 vmin.
    ─────────────────────────────────────────────────────────── */
-body.pupil-small .eye  { transform: scale(0.78) !important; }
-body.pupil-large .eye  { transform: scale(1.30) !important; }
+.eye { transform: scale(var(--eye-scale, 1.0)); }
+
+/* Legacy body-class overrides (kept for backward compat with saved settings
+   that stored 'small'/'large' — renderer migrates on load) */
+body.pupil-small .eye  { --eye-scale: 0.78; }
+body.pupil-large .eye  { --eye-scale: 1.20; }
 
 /* reset standalone pupil overrides — whole-eye scale makes them redundant */
-body.pupil-small .pupil {
-  width: 18vmin !important;
-  height: 18vmin !important;
-  margin-top: -9vmin !important;
-  margin-left: -9vmin !important;
-}
+body.pupil-small .pupil,
 body.pupil-large .pupil {
   width: 18vmin !important;
   height: 18vmin !important;
@@ -7286,4 +7740,275 @@ body.pip-mode #theme-canvas { display: none; }
 .glow-swatch.active,
 .glow-swatch[aria-pressed="true"] {
   box-shadow: 0 0 8px 3px rgba(180,160,255,0.60), 0 0 0 2px rgba(220,210,255,0.70);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 3E — COLOR PICKER POPUP
+   ─────────────────────────────────────────────────────────── */
+#color-picker-popup {
+  position: fixed;
+  z-index: 99999;
+  background: rgba(14, 12, 30, 0.92);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid rgba(140, 120, 255, 0.28);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 48px rgba(100, 80, 200, 0.10);
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 188px;
+}
+#color-picker-popup.cp-open { display: flex; }
+#color-picker-popup canvas { border-radius: 6px; cursor: crosshair; display: block; }
+#color-picker-popup .cp-hue-strip { border-radius: 4px; cursor: crosshair; }
+#color-picker-popup .cp-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#color-picker-popup .cp-hex-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(140, 120, 255, 0.22);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+  outline: none;
+}
+#color-picker-popup .cp-hex-input:focus {
+  border-color: rgba(140, 120, 255, 0.55);
+}
+#color-picker-popup .cp-preview {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+#color-picker-popup .cp-swatches {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+#color-picker-popup .cp-swatch {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+#color-picker-popup .cp-swatch:hover {
+  transform: scale(1.2);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+#color-picker-popup .cp-cursor {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 6 — PERSONALITY EDITOR MODAL
+   ─────────────────────────────────────────────────────────── */
+#personality-editor-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#personality-editor-modal.pe-open {
+  opacity: 1;
+  pointer-events: all;
+}
+#personality-editor-panel {
+  width: min(680px, 94vw);
+  max-height: 82vh;
+  overflow-y: auto;
+  background: rgba(14, 12, 30, 0.88);
+  backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid rgba(140, 120, 255, 0.25);
+  border-radius: 18px;
+  padding: 28px 32px;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6), 0 0 64px rgba(100, 80, 200, 0.12);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 120, 255, 0.3) transparent;
+}
+#personality-editor-panel::-webkit-scrollbar { width: 4px; }
+#personality-editor-panel::-webkit-scrollbar-track { background: transparent; }
+#personality-editor-panel::-webkit-scrollbar-thumb { background: rgba(140, 120, 255, 0.3); border-radius: 4px; }
+.pe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(140, 120, 255, 0.18);
+}
+.pe-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(200, 185, 255, 0.95);
+  letter-spacing: 0.03em;
+}
+.pe-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.18s, color 0.18s;
+}
+.pe-close-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
+.pe-group {
+  margin-bottom: 18px;
+}
+.pe-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(140, 120, 255, 0.75);
+  margin-bottom: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(140, 120, 255, 0.10);
+}
+.pe-dim-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+}
+.pe-dim-label {
+  flex: 1;
+  font-size: 11px;
+  color: rgba(220, 210, 255, 0.78);
+  min-width: 160px;
+}
+.pe-dim-slider {
+  flex: 2;
+  -webkit-appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(140, 120, 255, 0.25);
+  outline: none;
+  cursor: pointer;
+}
+.pe-dim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(160, 140, 255, 0.9);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.pe-dim-slider::-webkit-slider-thumb:hover {
+  background: rgba(200, 185, 255, 1);
+  transform: scale(1.2);
+}
+.pe-dim-value {
+  font-size: 10px;
+  font-family: monospace;
+  color: rgba(160, 140, 255, 0.7);
+  min-width: 18px;
+  text-align: right;
+}
+.pe-reset-btn {
+  margin-top: 14px;
+  background: rgba(140, 120, 255, 0.12);
+  border: 1px solid rgba(140, 120, 255, 0.22);
+  border-radius: 8px;
+  color: rgba(180, 160, 255, 0.75);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 6px 14px;
+  transition: background 0.18s;
+  width: 100%;
+}
+.pe-reset-btn:hover { background: rgba(140, 120, 255, 0.22); }
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 7B — ANIME THEME
+   ─────────────────────────────────────────────────────────── */
+body[data-theme="anime"] {
+  --eye-glow-rgb: 240, 120, 200;
+  --ambient-bg: rgba(26, 5, 34, 0.95);
+}
+body.full-mode[data-theme="anime"] {
+  background: #1a0522;
+}
+body.full-mode.theme-anime {
+  background: linear-gradient(160deg, #1a0522 0%, #2d0838 50%, #180520 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 7C — MATRIX THEME
+   ─────────────────────────────────────────────────────────── */
+body[data-theme="matrix"] {
+  --eye-glow-rgb: 0, 200, 80;
+  --ambient-bg: rgba(0, 8, 0, 0.97);
+}
+body.full-mode[data-theme="matrix"] {
+  background: #000800;
+}
+body.full-mode.theme-matrix {
+  background: linear-gradient(160deg, #000800 0%, #001200 60%, #000a00 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 7D — Ambient particle tints per theme
+   ─────────────────────────────────────────────────────────── */
+body[data-theme="forest"]  { --ambient-bg: rgba(4, 15, 8, 0.95); }
+body[data-theme="cherry"]  { --ambient-bg: rgba(12, 5, 20, 0.95); }
+body[data-theme="ocean"]   { --ambient-bg: rgba(2, 8, 22, 0.95); }
+body[data-theme="snow"]    { --ambient-bg: rgba(8, 12, 26, 0.95); }
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 7E — Time-of-day CSS filter
+   ─────────────────────────────────────────────────────────── */
+body[data-theme-period="dawn"]  { filter: sepia(0.08) brightness(0.92) hue-rotate(-5deg); }
+body[data-theme-period="day"]   { filter: none; }
+body[data-theme-period="dusk"]  { filter: sepia(0.12) brightness(0.88) hue-rotate(8deg); }
+body[data-theme-period="night"] { filter: brightness(0.75) saturate(0.85); }
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 8A — Flow state: gold eye glow
+   ─────────────────────────────────────────────────────────── */
+body.flow-state .eye {
+  box-shadow:
+    0 0 8vmin  rgba(220, 180, 30, 0.65),
+    0 0 20vmin rgba(220, 180, 30, 0.28),
+    0 0 36vmin rgba(220, 180, 30, 0.10);
+  transition: box-shadow 1.2s ease;
+}
+body.flow-state #session-panel {
+  border-color: rgba(220, 180, 30, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLAN: Chunk 8E — Session panel glass contrast boost for dark themes
+   ─────────────────────────────────────────────────────────── */
+body[data-theme="galaxy"] #session-panel,
+body[data-theme="matrix"] #session-panel,
+body[data-theme="anime"]  #session-panel {
+  background: rgba(8, 6, 22, 0.88);
+  border-color: rgba(140, 120, 255, 0.30);
+  backdrop-filter: blur(22px) saturate(2.0);
 }

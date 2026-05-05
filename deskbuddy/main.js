@@ -325,6 +325,22 @@ ipcMain.on('set-pip-always-on-top', (_event, flag) => {
   }
 });
 
+// ── PiP drag — move the window by a pixel delta ───────────────────────────
+ipcMain.on('move-window-by', (_event, dx, dy) => {
+  if (!mainWindow || !_isPipMode) return;
+  // Validate: must be numbers and within a sane per-frame delta (max 400 px)
+  if (typeof dx !== 'number' || typeof dy !== 'number' || !isFinite(dx) || !isFinite(dy)) return;
+  dx = Math.max(-400, Math.min(400, dx));
+  dy = Math.max(-400, Math.min(400, dy));
+  const [x, y] = mainWindow.getPosition();
+  const [w, h] = mainWindow.getSize();
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const newX = Math.max(0, Math.min(Math.round(x + dx), sw - w));
+  const newY = Math.max(0, Math.min(Math.round(y + dy), sh - h));
+  mainWindow.setPosition(newX, newY);
+  store.set('windowPos', { x: newX, y: newY });
+});
+
 // ── Settings IPC handlers ──────────────────────────────────────────────────
 
 const SETTINGS_DEFAULTS = {

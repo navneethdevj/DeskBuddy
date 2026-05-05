@@ -59,15 +59,22 @@ const Settings = (() => {
     eyeGlowColor:    'default',     // 'default'|'emerald'|'rose'|'amber'|'sky'|'ruby'|'white'|'gold'
     eyeRoundness:    'round',       // 'round'|'soft'|'oval'
     eyeSpacing:      'normal',      // 'narrow'|'normal'|'wide'
-    pupilSize:       'normal',      // 'small'|'normal'|'large'
+    pupilSize:       'normal',      // 'small'|'normal'|'large' (legacy — slider now sets eyeSize)
+    eyeSize:         100,           // 60–120 integer (%) — slider-driven eye scale
     blinkRate:       'normal',      // 'off'|'slow'|'normal'|'fast'
     showEyebrows:    true,
     noseStyle:       'triangle',    // 'triangle'|'dot'|'none'
     mouthStyle:      'arc',         // 'arc'|'wide'|'cat'|'flat'|'none'
     mouthThickness:  'normal',      // 'thin'|'normal'|'thick'
     glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
-    pipOpacity:      78,            // 20–95 integer % — PiP background opacity
-    pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
+    // ── Compact Overlay (PiP) ─────────────────────────────────────────
+    pipOpacity:          78,        // 20–95 integer % — PiP background opacity
+    pipAlwaysOnTop:      true,      // keep PiP bubble above other windows
+    pipDragLocked:       false,     // when true, PiP window position is locked (no drag)
+    pipBorderEnabled:    false,     // show decorative border around pip bubble
+    pipBorderStyle:      'solid',   // 'solid'|'glow'|'fading'
+    pipBorderColor:      '#8fa4ff', // CSS color string
+    pipBorderWidth:      2,         // 1–8 px
     companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
   };
 

@@ -56,6 +56,16 @@ const Brain = (() => {
   const NOFACE_SAD_MS              = 12000;   // 12s → sad
   const NOFACE_CRYING_MS           = 25000;   // 25s → crying
 
+  // Emotion min-hold guard — prevents rapid oscillation between non-priority emotions.
+  // Applied in _setQuiet(); priority states (love/cozy/scared/etc.) bypass this guard.
+  const QUIET_MIN_HOLD_MS = 280;
+  // States exempt from the guard — always transition immediately.
+  const QUIET_PRIORITY = new Set([
+    'love', 'cozy', 'being_patted', 'startled', 'scared', 'crying', 'sad',
+    'overjoyed', 'sulking', 'ecstatic', 'dazed',
+  ]);
+  let _quietEmotionSetAt = 0;  // epoch ms of last committed quiet-emotion change
+
   // ── NEW PERSONALITY CONSTANTS ──────────────────────────────────────────────
 
   // Excited: rapid typing triggers it
@@ -73,7 +83,8 @@ const Brain = (() => {
   const LOVE_HOLD_MS           = 3000;  // love lasts this long after click
 
   // Startled: sudden large mouse jerk triggers it
-  const STARTLED_DIST_THRESHOLD = 280;  // px jump in a single mousemove event
+  const STARTLED_DIST_THRESHOLD = 380;  // PLAN: Chunk 8F — raised from 280 to reduce hair-trigger
+  const STARTLED_VELOCITY       = 0.8;  // PLAN: Chunk 8F — px/ms minimum velocity
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
@@ -97,6 +108,10 @@ const Brain = (() => {
   // Study encouragement: reward deep focus
   const ENCOURAGEMENT_FOCUS_MIN    = 75;       // focusLevel threshold
   const ENCOURAGEMENT_GAP_MS       = 4 * 60 * 1000; // 4 minutes between encouragements
+
+  // PLAN: Chunk 8A — Flow state: extended deep focus
+  const FLOW_STATE_MIN_MINUTES = 12;
+  const FLOW_STATE_FOCUS_MIN   = 85;
 
   // Milestone: celebrate every 5 continuous focused minutes
   const MILESTONE_INTERVAL_MINUTES = 5;
@@ -180,6 +195,7 @@ const Brain = (() => {
   // Overjoyed/sulking sequence (Tamagotchi return-from-neglect concept)
   let overjoyedTimer    = null;
   let sulkCheckInterval = null;
+  let _sulkSafetyId     = null;  // 90s hard-stop for sulk if session ends mid-sulk
 
   // Focus timer
   let _focusSecs  = 0;
@@ -198,6 +214,8 @@ const Brain = (() => {
   // Whisper queue
   let _whisperQueue = [];
   let _whisperBusy  = false;
+  let _whisperCancelled = false; // PLAN: Chunk 1H — cancel queued whispers on stop()
+  let _inFlowState  = false; // PLAN: Chunk 8A — deep focus flow state
 
   // Emotion-tinted whisper colors — each mood gives the text a unique tint
   const _WHISPER_COLORS = {
@@ -295,6 +313,7 @@ const Brain = (() => {
   let _startledUntil = 0;        // epoch ms when startled state expires
   let _prevMouseX    = -1000;    // previous mousemove X for speed detection
   let _prevMouseY    = -1000;
+  let _lastMouseTime = 0;        // PLAN: Chunk 8F — for velocity calculation
 
   // Idle life timer
   let _idleLifeTimer = null;
@@ -314,6 +333,21 @@ const Brain = (() => {
   let _lastSleepyNudge = 0;
   // Happy flash during observe state — rate-limit so it stays special
   let _lastHappyFlashTime = 0;
+
+  // Sleepy cycling — hold each emotion for a natural duration before switching
+  // Prevents the jarring 1-second slot-based cycling that caused random emotion flashes.
+  let _sleepyCurrentEmotion = 'curious';
+  let _sleepyEmotionSince   = 0;          // epoch ms when current sleepy emotion started
+  const SLEEPY_HOLD_MIN_MS  = 7000;       // hold each emotion at least 7 s
+  const SLEEPY_HOLD_MAX_MS  = 14000;      // up to 14 s before switching
+  let _sleepyHoldMs = SLEEPY_HOLD_MIN_MS; // duration for current slot (randomised on switch)
+
+  // Emotion stability guard — prevent rapid micro-flickers at perception state boundaries.
+  // Low-priority emotions (focused/idle/suspicious/pouty) must hold for at least this long
+  // before a different low-priority emotion is accepted.
+  const EMOTION_STABLE_MS = 1800;
+  let _lastLowPrioEmotion    = null;
+  let _lastLowPrioChangedAt  = 0;
 
   // Milestone celebration
   let _continuousFocusedMs    = 0;
@@ -364,6 +398,7 @@ const Brain = (() => {
     enterState('idle');
     tick();
     _startFocusTimer();
+    _checkMorningRitual(); // PLAN: Chunk 8G
     _startIdleLife();
   }
 
@@ -376,6 +411,17 @@ const Brain = (() => {
       clearTimeout(stateTimer);
       stateTimer = null;
     }
+    // PLAN: Chunk 1H — clear all intervals/timers on stop to prevent leaks
+    if (_timerInt)         { clearInterval(_timerInt);       _timerInt       = null; }
+    if (_ftParticleInt)    { clearInterval(_ftParticleInt);  _ftParticleInt  = null; }
+    if (overjoyedTimer)    { clearTimeout(overjoyedTimer);   overjoyedTimer  = null; }
+    if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+    if (_sulkSafetyId)     { clearTimeout(_sulkSafetyId);    _sulkSafetyId   = null; }
+    // Cancel queued whispers
+    _whisperCancelled = true;
+    _whisperBusy = false;
+    _whisperQueue = [];
+    setTimeout(() => { _whisperCancelled = false; }, 150);
   }
 
   function getState() {
@@ -572,9 +618,19 @@ const Brain = (() => {
    * transition side-effects (overjoyed arc, tears, etc.) don't fire.
    */
   function _setQuiet(emotion) {
+    const now = Date.now();
+    // Min-hold guard: skip non-priority → non-priority transitions that happen too fast.
+    // This prevents perception-signal oscillation from causing visible emotion flashing.
+    if (emotion !== window._lastEmotion &&
+        !QUIET_PRIORITY.has(emotion) &&
+        !QUIET_PRIORITY.has(window._lastEmotion) &&
+        (now - _quietEmotionSetAt) < QUIET_MIN_HOLD_MS) {
+      return;
+    }
     if (window._lastEmotion !== emotion) {
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
       window._lastEmotion    = emotion;
+      _quietEmotionSetAt     = now;
     }
     Emotion.setState(emotion);
     _updateStatus(emotion);
@@ -711,6 +767,11 @@ const Brain = (() => {
     const tms = p.timeInStateMs;
     let emotion;
 
+    // Reset sleepy cycling state when the user is NOT in Sleepy state
+    if (p.userState !== 'Sleepy' && _sleepyEmotionSince !== 0) {
+      _sleepyEmotionSince = 0;
+    }
+
     switch (p.userState) {
       case 'Focused':
         // face-api concept: react to user expressions
@@ -762,12 +823,21 @@ const Brain = (() => {
 
       case 'Sleepy':
         // Companion stays wide-awake and motivates the user — alternate emotions
-        // to feel more alive rather than locked to a single expression.
-        // Cycle: curious 10s → focused 8s → happy 4s → repeat (22s period)
-        { const slot = Math.floor(now / 1000) % 22;
-          if      (slot < 10) emotion = 'curious';
-          else if (slot < 18) emotion = 'focused';
-          else                emotion = 'happy';
+        // naturally rather than snapping on a 1-second global clock.
+        { if (_sleepyEmotionSince === 0) {
+            // First entry — pick a random starting emotion
+            const first = ['curious', 'focused', 'happy'][Math.floor(Math.random() * 3)];
+            _sleepyCurrentEmotion = first;
+            _sleepyEmotionSince   = now;
+            _sleepyHoldMs         = SLEEPY_HOLD_MIN_MS + Math.random() * (SLEEPY_HOLD_MAX_MS - SLEEPY_HOLD_MIN_MS);
+          } else if ((now - _sleepyEmotionSince) >= _sleepyHoldMs) {
+            // Time to switch — pick a different emotion
+            const pool = ['curious', 'focused', 'happy'].filter(e => e !== _sleepyCurrentEmotion);
+            _sleepyCurrentEmotion = pool[Math.floor(Math.random() * pool.length)];
+            _sleepyEmotionSince   = now;
+            _sleepyHoldMs         = SLEEPY_HOLD_MIN_MS + Math.random() * (SLEEPY_HOLD_MAX_MS - SLEEPY_HOLD_MIN_MS);
+          }
+          emotion = _sleepyCurrentEmotion;
         }
         if ((now - _lastSleepyNudge) >= 30000) {
           _lastSleepyNudge = now;
@@ -807,6 +877,25 @@ const Brain = (() => {
       if      (_ts === 'CRITICAL')   emotion = 'grumpy';
       else if (_ts === 'DISTRACTED') emotion = 'pouty';
       else if (_ts === 'DRIFTING')   emotion = 'suspicious';
+    }
+
+    // ── Emotion stability guard ───────────────────────────────────────────────
+    // Prevent rapid micro-flicker at perception-state boundaries.  Low-priority
+    // ambient emotions (focused/idle/suspicious/pouty/curious) must be stable for
+    // EMOTION_STABLE_MS before a *different* low-priority emotion is accepted.
+    // High-priority or distress emotions always go through immediately.
+    const LOW_PRIO = new Set(['focused','idle','suspicious','pouty','curious']);
+    if (LOW_PRIO.has(emotion) && LOW_PRIO.has(_lastLowPrioEmotion)
+        && emotion !== _lastLowPrioEmotion
+        && (now - _lastLowPrioChangedAt) < EMOTION_STABLE_MS) {
+      emotion = _lastLowPrioEmotion; // hold the current one a bit longer
+    } else if (LOW_PRIO.has(emotion) && emotion !== _lastLowPrioEmotion) {
+      _lastLowPrioEmotion   = emotion;
+      _lastLowPrioChangedAt = now;
+    } else if (!LOW_PRIO.has(emotion)) {
+      // Reset for next time
+      _lastLowPrioEmotion   = null;
+      _lastLowPrioChangedAt = 0;
     }
 
     // Track changes for audio + manage tears
@@ -1274,12 +1363,15 @@ const Brain = (() => {
     mouseY = e.clientY;
     lastMouseMoveTime = now;
 
-    // Startled: detect a sudden large jump in cursor position
+    // PLAN: Chunk 8F — Startled: require BOTH large jump AND high velocity
     if (_prevMouseX >= 0) {
       const dx = e.clientX - _prevMouseX;
       const dy = e.clientY - _prevMouseY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist >= STARTLED_DIST_THRESHOLD && now > _startledUntil + 2500) {
+      const dt       = now - (_lastMouseTime || now);
+      const velocity = dt > 0 ? dist / dt : 0;
+      _lastMouseTime = now;
+      if (dist >= STARTLED_DIST_THRESHOLD && velocity >= STARTLED_VELOCITY && now > _startledUntil + 2500) {
         _startledUntil = now + STARTLED_HOLD_MS;
         // Whisper 50% of the time
         if (Math.random() < 0.5) {
@@ -1456,6 +1548,7 @@ const Brain = (() => {
         focusedMs += 500;
         if (focusedMs >= 10000) {
           clearInterval(sulkCheckInterval); sulkCheckInterval = null;
+          if (_sulkSafetyId) { clearTimeout(_sulkSafetyId); _sulkSafetyId = null; }
           window._emotionChanged = { from: 'sulking', to: 'forgiven' };
           window._lastEmotion    = null;
           enterState('observe');
@@ -1464,6 +1557,17 @@ const Brain = (() => {
         focusedMs = Math.max(0, focusedMs - 250);
       }
     }, 500);
+
+    // Safety: if a session ends while companion is mid-sulk, clear after 90s
+    if (_sulkSafetyId) clearTimeout(_sulkSafetyId);
+    _sulkSafetyId = setTimeout(() => {
+      _sulkSafetyId = null;
+      if (sulkCheckInterval) { clearInterval(sulkCheckInterval); sulkCheckInterval = null; }
+      if (['sulking', 'pouty'].includes(window._lastEmotion)) {
+        window._lastEmotion = null;
+        Emotion.setState('idle');
+      }
+    }, 90000);
   }
 
   // ── FOCUS TIMER ───────────────────────────────────────────────────────────
@@ -1488,6 +1592,7 @@ const Brain = (() => {
 
   /** Spawn one tiny particle near the focus timer element. */
   function _spawnFocusParticle() {
+    if (document.querySelectorAll('.focus-particle').length >= 14) return;
     const el = document.getElementById('focus-timer');
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -1544,7 +1649,7 @@ const Brain = (() => {
 
         // Update color to reflect session timer state
         const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
-        if (timerState !== _lastFocusTimerState) {
+        if (timerState !== _lastFocusTimerState || !_ftParticleInt) {
           _lastFocusTimerState = timerState;
           const c = _focusTimerColors[timerState] || _focusTimerColors.FOCUSED;
           timerEl.style.color      = c.color;
@@ -1585,10 +1690,12 @@ const Brain = (() => {
             showWhisper('...📱?', 2500);
             // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
             _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
+            _handlePhoneDetected(); // PLAN: Chunk 5 — session escalation
           }
         } else if (!p || !p.facePresent || p.headPitch < PHONE_PITCH_RESET) {
           // Reset when face absent or head has lifted back up
           _phoneCheckMs = 0;
+          _handlePhoneGone(); // PLAN: Chunk 5
         }
       }
 
@@ -1597,6 +1704,7 @@ const Brain = (() => {
       const timerState   = typeof Timer   !== 'undefined' ? Timer.getState?.()                      : undefined;
       const sessionState = typeof Session !== 'undefined' ? Session.getCurrentStats?.()?.state : undefined;
       if (timerState === 'FOCUSED' && sessionState === 'ACTIVE') {
+        if (_continuousFocusedMs === 0) _checkMemoryWhisper(); // PLAN: Chunk 8C — on new streak start
         _continuousFocusedMs += 1000;
         const minutesMark = Math.floor(_continuousFocusedMs / 60000);
         if (minutesMark >= _nextMilestoneMinutes && _nextMilestoneMinutes <= MILESTONE_MAX_MINUTES) {
@@ -1610,10 +1718,52 @@ const Brain = (() => {
         _nextMilestoneMinutes = MILESTONE_INTERVAL_MINUTES;
       }
 
+      _checkFlowState(); // PLAN: Chunk 8A
+
     }, 1000);
   }
 
   // ── CHUNK 5 — new helper functions ────────────────────────────────────────
+
+  // PLAN: Chunk 5 — phone detection session escalation
+  let _phoneSessionEscalateTimer = null;
+  function _handlePhoneDetected() {
+    if (typeof Session !== 'undefined' && Session.getState?.() === 'ACTIVE') {
+      if (!_phoneSessionEscalateTimer) {
+        _phoneSessionEscalateTimer = setTimeout(() => {
+          if (typeof Session !== 'undefined') Session.pause?.('phone_distraction');
+          showWhisper('📱 Put the phone down — let\'s get back to studying!', 5000);
+          _phoneSessionEscalateTimer = null;
+        }, 30000);
+      }
+    }
+  }
+  function _handlePhoneGone() {
+    if (_phoneSessionEscalateTimer) {
+      clearTimeout(_phoneSessionEscalateTimer);
+      _phoneSessionEscalateTimer = null;
+    }
+  }
+
+  /** Check/enter/exit flow state (deep focus for 12+ min at 85%+ focus). PLAN: Chunk 8A */
+  function _checkFlowState() {
+    const inSession  = typeof Session !== 'undefined' && Session.getState?.() === 'ACTIVE';
+    const focused    = focusLevel >= FLOW_STATE_FOCUS_MIN;
+    const longEnough = _focusSecs >= FLOW_STATE_MIN_MINUTES * 60;
+    const should     = inSession && focused && longEnough;
+    if (should && !_inFlowState) {
+      _inFlowState = true;
+      document.body.classList.add('flow-state');
+      showWhisper('✨ You\'re in the zone! Deep focus achieved!', 4000);
+      if (typeof Particles !== 'undefined') {
+        for (let i = 0; i < 5; i++) setTimeout(() => Particles.spawn('star'), i * 120);
+      }
+      if (typeof Sounds !== 'undefined') Sounds.play?.('overjoyed_chirp');
+    } else if (!should && _inFlowState) {
+      _inFlowState = false;
+      document.body.classList.remove('flow-state');
+    }
+  }
 
   /** Fire the milestone callback and companion celebration. */
   function _fireMilestone(minutesMark) {
@@ -1906,9 +2056,10 @@ const Brain = (() => {
     el.style.transition     = 'opacity 0.2s ease';
     el.style.opacity        = '0.72';
     setTimeout(() => {
+      if (_whisperCancelled) { _whisperBusy = false; return; } // PLAN: Chunk 1H
       el.style.transition   = 'opacity 0.6s ease';
       el.style.opacity      = '0';
-      setTimeout(_nextWhisper, 700);  // 700 > 600 so fade fully completes
+      setTimeout(() => { if (!_whisperCancelled) _nextWhisper(); else _whisperBusy = false; }, 700);
     }, durationMs);
   }
 
@@ -2063,8 +2214,9 @@ const Brain = (() => {
 
   function _spontaneousBehavior() {
     if (_dndActive) return;
-    // Don't interrupt timed or distress states
-    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy', 'dazed', 'ecstatic'];
+    // Don't interrupt timed or distress states, or active petting sessions
+    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled',
+                     'excited', 'shy', 'dazed', 'ecstatic', 'being_patted', 'cozy'];
     if (blocked.includes(window._lastEmotion)) return;
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -2325,7 +2477,8 @@ const Brain = (() => {
   function _doHappyFlash() {
     const now = Date.now();
     if ((now - _lastHappyFlashTime) < 12000) { _doWhisperCoo(); return; }
-    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy'];
+    const _blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled',
+                      'excited', 'shy', 'being_patted', 'cozy'];
     if (_blocked.includes(window._lastEmotion)) return;
     _lastHappyFlashTime = now;
     const prev = window._lastEmotion || 'focused';
@@ -2780,6 +2933,44 @@ const Brain = (() => {
     }, 700);
   }
 
+  /** Show history-aware whispers after 5+ sessions. PLAN: Chunk 8C */
+  function _checkMemoryWhisper() {
+    if (typeof Session === 'undefined') return;
+    const history = Session.getHistory?.();
+    if (!history || history.length < 5) return;
+    const recent  = history.slice(0, 5);
+    const avgFocus = recent.reduce((a, s) => a + (s.focusPercent || 0), 0) / recent.length;
+    const streak   = recent.filter(s => s.outcome === 'COMPLETED').length;
+    if (streak >= 5) {
+      showWhisper('🏆 5-session streak! You\'re on fire!', 5000);
+    } else if (avgFocus > 80) {
+      showWhisper(`📈 Your focus has been amazing lately — ${Math.round(avgFocus)}% average!`, 5000);
+    } else if (avgFocus < 50) {
+      showWhisper('💪 Let\'s have a great session — you\'ve been working hard!', 5000);
+    }
+  }
+
+  /** Show a personalised morning greeting once per day if started 5am-10am. PLAN: Chunk 8G */
+  function _checkMorningRitual() {
+    const now  = new Date();
+    const hour = now.getHours();
+    if (hour < 5 || hour > 10) return;
+    const today        = now.toDateString();
+    const lastGreeting = localStorage.getItem('deskbuddy_morning_greeted');
+    if (lastGreeting === today) return;
+    localStorage.setItem('deskbuddy_morning_greeted', today);
+    const greetings = [
+      '🌅 Good morning! Ready for a productive day?',
+      '🌞 Rise and shine! Let\'s make today amazing!',
+      '☀️ Morning! I\'ve been waiting for you!',
+      '🌄 New day, new focus! Let\'s go! ✦',
+    ];
+    setTimeout(() => {
+      if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 3000);
+      showWhisper(greetings[Math.floor(Math.random() * greetings.length)], 5000);
+    }, 2000);
+  }
+
   // ── TYPING RHYTHM REACTIONS ───────────────────────────────────────────────
 
   function _setTypingRhythm(newState) {
@@ -2938,6 +3129,25 @@ const Brain = (() => {
     _cozyDeepMs = n === 1 ? 2000 : n === 3 ? 1000 : 1500;
   }
 
+  /** Wire the wave gesture reaction. PLAN: Chunk 4B */
+  function _onWaveDetected() {
+    if (_dndActive) return;
+    if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 2500);
+    if (typeof Sounds !== 'undefined') Sounds.play?.('overjoyed_chirp');
+    showWhisper('👋 *wave* Hi there!', 3500);
+    if (typeof Particles !== 'undefined') {
+      for (let i = 0; i < 3; i++) setTimeout(() => Particles.spawn('heart'), i * 100);
+    }
+  }
+
+  /** Wire the multi-face reaction. PLAN: Chunk 4D */
+  function _onMultiFaceDetected() {
+    if (_dndActive) return;
+    window._lastEmotion = 'curious';
+    if (typeof Emotion !== 'undefined') Emotion.setState('curious');
+    showWhisper('👀 Oh! There\'s more than one of you!', 4000);
+  }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            onMilestone,
@@ -2949,5 +3159,7 @@ const Brain = (() => {
            setIdleSpeed, setExpressiveness, setPettingMode,
            startTearEffect, stopTearEffect,
            triggerWelcomeBack: _welcomeBackSequence,
-           triggerLookSequence };
+           triggerLookSequence,
+           onWaveDetected: _onWaveDetected,      // PLAN: Chunk 4B
+           onMultiFaceDetected: _onMultiFaceDetected }; // PLAN: Chunk 4D
 })();

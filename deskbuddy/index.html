@@ -164,12 +164,12 @@
                 </div>
               </div>
               <div class="settings-row">
-                <div class="settings-row-label">Eye size</div>
-                <div class="style-chips" id="pupil-size-btns">
-                  <button class="style-chip" data-pupil="small">Small</button>
-                  <button class="style-chip" data-pupil="normal">Normal</button>
-                  <button class="style-chip" data-pupil="large">Large</button>
+                <div>
+                  <div class="settings-row-label">Eye size</div>
+                  <div class="settings-row-sublabel" id="eye-size-sublabel">100%</div>
                 </div>
+                <input type="range" id="eye-size-slider" class="settings-slider"
+                       min="60" max="120" step="5" value="100">
               </div>
               <div class="settings-row">
                 <div class="settings-row-label">Blink rate</div>
@@ -222,6 +222,22 @@
                   <button class="style-chip" data-thickness="thick">Thick</button>
                 </div>
               </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Nose size</div>
+                  <div class="settings-row-sublabel" id="nose-scale-sublabel">100%</div>
+                </div>
+                <input type="range" id="nose-scale-slider" class="settings-slider"
+                       min="50" max="200" step="5" value="100">
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Mouth size</div>
+                  <div class="settings-row-sublabel" id="mouth-scale-sublabel">100%</div>
+                </div>
+                <input type="range" id="mouth-scale-slider" class="settings-slider"
+                       min="50" max="200" step="5" value="100">
+              </div>
             </div>
           </div>
 
@@ -243,23 +259,17 @@
                   <button class="style-chip" data-glow-int="vivid">Vivid</button>
                 </div>
               </div>
-              <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">PiP overlay opacity</div>
-                  <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
-                </div>
-                <input type="range" id="pip-opacity-slider" class="settings-slider" min="20" max="95" step="3" value="78">
-              </div>
-              <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">Always on top (PiP)</div>
-                  <div class="settings-row-sublabel">Keep overlay above all windows</div>
-                </div>
-                <label class="settings-toggle">
-                  <input type="checkbox" id="pip-always-on-top-toggle" checked>
-                  <span class="settings-toggle-track"></span>
-                </label>
-              </div>
+            </div>
+          </div>
+
+          <!-- sub: Compact Overlay (PiP) — dedicated section -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">🪟</span>Compact Overlay (PiP)<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+
+              <!-- Shape -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Overlay shape</div>
@@ -276,6 +286,30 @@
                   </button>
                 </div>
               </div>
+
+              <!-- Background opacity -->
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Background opacity</div>
+                  <div class="settings-row-sublabel" id="pip-opacity-sublabel">78%</div>
+                  <div class="settings-row-sublabel" style="font-size:9px;opacity:0.6">Eyes and face are always fully visible</div>
+                </div>
+                <input type="range" id="pip-opacity-slider" class="settings-slider" min="20" max="95" step="3" value="78">
+              </div>
+
+              <!-- Always on top -->
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Always on top</div>
+                  <div class="settings-row-sublabel">Keep overlay above all windows</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-always-on-top-toggle" checked>
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+
+              <!-- Snap to corner -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Snap to corner</div>
@@ -286,6 +320,64 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+
+              <!-- Lock position -->
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Lock position</div>
+                  <div class="settings-row-sublabel">Prevent dragging in compact mode</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-lock-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+
+              <!-- Border divider -->
+              <div class="settings-subsection-divider"></div>
+              <div class="settings-row-label" style="font-size:10px;opacity:0.55;padding:4px 0 6px;text-transform:uppercase;letter-spacing:0.08em">Border</div>
+
+              <!-- Border enable -->
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Show border</div>
+                  <div class="settings-row-sublabel">Decorative frame around the overlay</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="pip-border-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+
+              <!-- Border style -->
+              <div class="settings-row pip-border-opts" id="pip-border-opts">
+                <div class="settings-row-label">Border style</div>
+                <div class="style-chips" id="pip-border-style-btns">
+                  <button class="style-chip" data-pip-border-style="solid">Solid</button>
+                  <button class="style-chip" data-pip-border-style="glow">Glow</button>
+                  <button class="style-chip" data-pip-border-style="fading">Fading</button>
+                </div>
+              </div>
+
+              <!-- Border thickness -->
+              <div class="settings-row pip-border-opts">
+                <div>
+                  <div class="settings-row-label">Thickness</div>
+                  <div class="settings-row-sublabel" id="pip-border-width-sublabel">2px</div>
+                </div>
+                <input type="range" id="pip-border-width-slider" class="settings-slider"
+                       min="1" max="8" step="1" value="2">
+              </div>
+
+              <!-- Border color -->
+              <div class="settings-row pip-border-opts">
+                <div class="settings-row-label">Border color</div>
+                <div class="pip-border-color-wrap">
+                  <input type="color" id="pip-border-color-picker" value="#8fa4ff" class="pip-color-input">
+                  <span class="pip-border-color-hint" id="pip-border-color-hint">#8fa4ff</span>
+                </div>
+              </div>
+
             </div>
           </div>
 

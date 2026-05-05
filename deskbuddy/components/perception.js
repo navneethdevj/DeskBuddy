@@ -160,18 +160,34 @@ const Perception = (() => {
     attentionScore: 50, userState: 'NoFace', timeInStateMs: 0
   };
 
+  let _evalIntervalId = null; // PLAN: Chunk 1H — store interval for cleanup
+
   function init() {
-    setInterval(_evaluate, EVAL_MS);
+    _evalIntervalId = setInterval(_evaluate, EVAL_MS);
+    _initHandDetection(); // PLAN: Chunk 4A — optional wave detection (async, non-blocking)
+  }
+
+  /** Stop the perception evaluation loop. PLAN: Chunk 1H */
+  function stop() {
+    if (_evalIntervalId) {
+      clearInterval(_evalIntervalId);
+      _evalIntervalId = null;
+    }
   }
 
   function _evaluate() {
     const now = Date.now();
+    // Throttle to ~2Hz when no face has been present for more than 30s —
+    // saves CPU (MediaPipe inference with zero useful output).
+    if (nofaceMs > 30000 && now - lastEvalTime < 500) return;
     const dt  = now - lastEvalTime;
     lastEvalTime = now;
 
-    const r   = window.faceResults;
-    const has = r?.faceLandmarks?.length > 0;
+    const r    = window.faceResults;
+    const cnt  = r?.faceLandmarks?.length || 0;
+    const has  = cnt > 0;
 
+    _updateFaceCount(cnt); // PLAN: Chunk 4C
     if (!has) { _handleNoFace(dt, now); return; }
     nofaceMs = 0;
     _processLandmarks(r, dt, now);
@@ -463,5 +479,98 @@ const Perception = (() => {
     return cats.find(c => c.categoryName === name)?.score ?? 0;
   }
 
-  return { init };
+  // ── PLAN: Chunk 4A — Wave gesture detection callbacks ─────────────────────
+  const _callbacks = { onWave: null, onMultiFace: null };
+  let _prevFaceCount = 0;
+
+  /**
+   * Register a callback for wave gesture detection.
+   * @param {function} fn - Called when a wave is detected.
+   */
+  function onWave(fn) { _callbacks.onWave = fn; }
+
+  /**
+   * Register a callback for multi-face detection.
+   * @param {function} fn - Called when face count transitions from 1 to >1.
+   */
+  function onMultiFace(fn) { _callbacks.onMultiFace = fn; }
+
+  // Hand wave detection state
+  let _handLandmarker   = null;
+  let _waveFrames       = [];
+  const WAVE_MIN_SWING  = 0.12;   // min normalized screen-width swing
+  const WAVE_MIN_CHANGES = 3;     // direction changes needed
+  const WAVE_WINDOW_MS  = 1200;   // detection window in ms
+
+  /**
+   * Initialise MediaPipe HandLandmarker for wave detection (optional — fails silently).
+   * PLAN: Chunk 4A
+   */
+  async function _initHandDetection() {
+    try {
+      const tasksVision = await import('@mediapipe/tasks-vision');
+      const { HandLandmarker, FilesetResolver } = tasksVision;
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+      );
+      _handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        },
+        runningMode: 'VIDEO',
+        numHands: 1,
+        minHandDetectionConfidence: 0.55,
+      });
+    } catch (_e) {
+      // Hand detection is optional — gracefully degrade if unavailable
+    }
+  }
+
+  /**
+   * Detect wave gesture from current video frame. PLAN: Chunk 4A
+   * @param {HTMLVideoElement} videoEl
+   */
+  function _detectWave(videoEl) {
+    if (!_handLandmarker || !videoEl) return;
+    try {
+      const result = _handLandmarker.detectForVideo(videoEl, performance.now());
+      if (!result?.landmarks?.length) { _waveFrames = []; return; }
+      const wrist = result.landmarks[0][0]; // landmark 0 = wrist
+      const now   = Date.now();
+      _waveFrames.push({ x: wrist.x, t: now });
+      _waveFrames = _waveFrames.filter(f => now - f.t < WAVE_WINDOW_MS);
+      if (_waveFrames.length < 6) return;
+      let changes = 0, lastDir = 0;
+      for (let i = 1; i < _waveFrames.length; i++) {
+        const dir = Math.sign(_waveFrames[i].x - _waveFrames[i - 1].x);
+        if (dir !== 0 && dir !== lastDir) { changes++; lastDir = dir; }
+      }
+      const span = Math.max(..._waveFrames.map(f => f.x)) - Math.min(..._waveFrames.map(f => f.x));
+      if (changes >= WAVE_MIN_CHANGES && span >= WAVE_MIN_SWING) {
+        _waveFrames = []; // reset to prevent double-fire
+        if (_callbacks.onWave) _callbacks.onWave();
+      }
+    } catch (_e) { /* wave detection errors are non-fatal */ }
+  }
+
+  // ── PLAN: Chunk 4C — Multi-face detection tracking ─────────────────────
+  let _faceCount = 0;
+
+  /**
+   * Update face count and fire onMultiFace callback when transitioning 1→>1.
+   * PLAN: Chunk 4C
+   * @param {number} count
+   */
+  function _updateFaceCount(count) {
+    const prev = _faceCount;
+    _faceCount = count;
+    window.perception.faceCount           = count;
+    window.perception.multiFaceDetected   = count > 1;
+    if (prev <= 1 && count > 1 && _callbacks.onMultiFace) {
+      _callbacks.onMultiFace();
+    }
+    _prevFaceCount = count;
+  }
+
+  return { init, stop, onWave, onMultiFace };
 })();
