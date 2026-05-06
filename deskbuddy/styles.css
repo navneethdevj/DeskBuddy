@@ -7148,6 +7148,68 @@ body.eye-ruby     .eye::before { filter: hue-rotate(140deg) saturate(1.30); }
 body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
 /* periwinkle = default, no filter */
 
+/* ── Emotion iris tints — override user colour during interaction states ─── */
+/* These have higher specificity than body.eye-* rules so they always win.   */
+/* love (tap): iris shifts rose-pink */
+.companion.love .eye::before {
+  filter: hue-rotate(92deg) saturate(1.25) brightness(1.06);
+  transition: filter 0.25s ease;
+}
+/* cozy (short hold): iris shifts warm peachy */
+.companion.cozy .eye::before {
+  filter: hue-rotate(28deg) saturate(1.18) brightness(1.05);
+  transition: filter 0.35s ease;
+}
+/* shy: iris shifts soft rose */
+.companion.shy .eye::before {
+  filter: hue-rotate(70deg) saturate(1.10) brightness(1.03);
+  transition: filter 0.35s ease;
+}
+/* being_patted: iris hidden (eye squeezed shut — .companion.being_patted .eye::before { content:none } already above) */
+
+/* ── Emotion eye-wrap glow overrides — colour follows interaction state ──── */
+/* eye-wrap filter = outer glow ring. Override --eye-glow-rgb per emotion    */
+/* so the halo turns pink on tap, warm-orange on pat, etc.                   */
+.companion.love .eye-wrap {
+  filter: drop-shadow(0 0 4vmin rgba(255,138,180,0.72))
+          drop-shadow(0 0 12vmin rgba(255,115,162,0.38))
+          drop-shadow(0 0 24vmin rgba(255, 90,145,0.14));
+  transition: filter 0.28s ease;
+}
+.companion.being_patted .eye-wrap {
+  filter: drop-shadow(0 0 5vmin rgba(255,120,165,0.82))
+          drop-shadow(0 0 15vmin rgba(255, 92,148,0.44))
+          drop-shadow(0 0 28vmin rgba(255, 68,130,0.18));
+  transition: filter 0.20s ease;
+}
+.companion.cozy .eye-wrap {
+  filter: drop-shadow(0 0 4vmin rgba(255,155,125,0.62))
+          drop-shadow(0 0 12vmin rgba(255,130,100,0.28))
+          drop-shadow(0 0 22vmin rgba(255,108, 80,0.10));
+  transition: filter 0.35s ease;
+}
+.companion.shy .eye-wrap {
+  filter: drop-shadow(0 0 4vmin rgba(255,142,195,0.60))
+          drop-shadow(0 0 12vmin rgba(255,118,172,0.25));
+  transition: filter 0.35s ease;
+}
+.companion.happy .eye-wrap {
+  filter: drop-shadow(0 0 4vmin rgba(160,140,245,0.55))
+          drop-shadow(0 0 12vmin rgba(150,130,240,0.22));
+}
+.companion.overjoyed .eye-wrap {
+  filter: drop-shadow(0 0 5vmin rgba(255,230,120,0.68))
+          drop-shadow(0 0 16vmin rgba(255,215,90,0.30));
+}
+.companion.excited .eye-wrap {
+  filter: drop-shadow(0 0 5vmin rgba(255,220,100,0.62))
+          drop-shadow(0 0 14vmin rgba(255,200,70,0.26));
+}
+.companion.ecstatic .eye-wrap {
+  filter: drop-shadow(0 0 7vmin rgba(255,228,50,0.85))
+          drop-shadow(0 0 20vmin rgba(255,210,30,0.42));
+}
+
 /* ── Eye glow colour classes (box-shadow only, via CSS var) ── */
 body.eye-glow-default  { --eye-glow-rgb: 120, 135, 235; }
 body.eye-glow-emerald  { --eye-glow-rgb:  55, 180, 105; }
