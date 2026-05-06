@@ -1705,12 +1705,13 @@ body[data-time-period="NIGHT"] .companion {
 .companion.being_patted .eye {
   width: 32vmin;
   height: 9vmin;
+  /* Warm blush-pink sclera — the underlying eye shape during deep patting */
   background: radial-gradient(
     ellipse at 50% 55%,
-    #7b8bd8 0%,
-    #8f97de 32%,
-    #9aa4de 62%,
-    #bfc3e6 100%
+    #f5b8d0 0%,
+    #f7c8dc 32%,
+    #f9d5e6 62%,
+    #fde8f2 100%
   );
   border-radius: 50% 50% 50% 50% / 2% 2% 88% 88%;
   overflow: hidden;
@@ -1721,8 +1722,36 @@ body[data-time-period="NIGHT"] .companion {
   animation: pattedEyeSqueeze 2.2s ease-in-out infinite;
 }
 
-/* No scary eyelash arch — keep the closed eye clean */
-.companion.being_patted .eye::before { content: none; }
+/* Adorable pink iris visible on the squeezed eye — warm bliss look ♡ */
+.companion.being_patted .eye::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  bottom: auto;
+  right: auto;
+  border-radius: inherit;
+  /* Soft rosy-pink gradient replacing the cold periwinkle during patting */
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    #e87faa 0%,
+    #ec90b8 22%,
+    #f0a4c4 48%,
+    #f5bcda 72%,
+    #f9d5eb 90%,
+    #fce8f4 100%
+  );
+  opacity: 0.90;
+  animation: pattedIrisPulse 2.2s ease-in-out infinite;
+  transition: none;
+}
+
+@keyframes pattedIrisPulse {
+  0%, 100% { opacity: 0.85; }
+  15%       { opacity: 1.00; } /* pat impact — vivid flush */
+  50%       { opacity: 0.88; }
+}
 
 /* Soft warm shimmer on the closed crescent */
 .companion.being_patted .eye::after {
@@ -7165,47 +7194,64 @@ body.eye-teal     .eye::before { filter: hue-rotate(230deg) saturate(1.10); }
   filter: hue-rotate(70deg) saturate(1.10) brightness(1.03);
   transition: filter 0.35s ease;
 }
-/* being_patted: iris hidden (eye squeezed shut — .companion.being_patted .eye::before { content:none } already above) */
+/* being_patted: pink iris shown via pattedIrisPulse keyframe (above) */
+
+/* ── Custom iris gradient (body.eye-custom, driven by IrisColor.applyIris) ─ */
+/* Wins over ALL preset hue-rotate classes when active.                        */
+body.eye-custom .eye::before {
+  background: radial-gradient(
+    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    var(--iris-color-center, #7b8bd8)  0%,
+    var(--iris-color-center, #8190d9) 10%,
+    var(--iris-color-mid,    #9aa4de) 48%,
+    var(--iris-color-edge,   #cccfe9) 90%,
+    var(--iris-color-edge,   #dcdde8) 100%
+  ) !important;
+  filter: none !important;
+  transition: background 0.4s ease;
+}
 
 /* ── Emotion eye-wrap glow overrides — colour follows interaction state ──── */
-/* eye-wrap filter = outer glow ring. Override --eye-glow-rgb per emotion    */
-/* so the halo turns pink on tap, warm-orange on pat, etc.                   */
-.companion.love .eye-wrap {
+/* Wrapped in body.glow-emotion-lock so the user can toggle them off.         */
+/* Default: body has glow-emotion-lock → emotions change glow. When the       */
+/* user turns sync OFF, class is removed → all emotion glows below are        */
+/* silently bypassed and the eye-wrap keeps its user-defined colour.          */
+body.glow-emotion-lock .companion.love .eye-wrap {
   filter: drop-shadow(0 0 4vmin rgba(255,138,180,0.72))
           drop-shadow(0 0 12vmin rgba(255,115,162,0.38))
           drop-shadow(0 0 24vmin rgba(255, 90,145,0.14));
   transition: filter 0.28s ease;
 }
-.companion.being_patted .eye-wrap {
+body.glow-emotion-lock .companion.being_patted .eye-wrap {
   filter: drop-shadow(0 0 5vmin rgba(255,120,165,0.82))
           drop-shadow(0 0 15vmin rgba(255, 92,148,0.44))
           drop-shadow(0 0 28vmin rgba(255, 68,130,0.18));
   transition: filter 0.20s ease;
 }
-.companion.cozy .eye-wrap {
+body.glow-emotion-lock .companion.cozy .eye-wrap {
   filter: drop-shadow(0 0 4vmin rgba(255,155,125,0.62))
           drop-shadow(0 0 12vmin rgba(255,130,100,0.28))
           drop-shadow(0 0 22vmin rgba(255,108, 80,0.10));
   transition: filter 0.35s ease;
 }
-.companion.shy .eye-wrap {
+body.glow-emotion-lock .companion.shy .eye-wrap {
   filter: drop-shadow(0 0 4vmin rgba(255,142,195,0.60))
           drop-shadow(0 0 12vmin rgba(255,118,172,0.25));
   transition: filter 0.35s ease;
 }
-.companion.happy .eye-wrap {
+body.glow-emotion-lock .companion.happy .eye-wrap {
   filter: drop-shadow(0 0 4vmin rgba(160,140,245,0.55))
           drop-shadow(0 0 12vmin rgba(150,130,240,0.22));
 }
-.companion.overjoyed .eye-wrap {
+body.glow-emotion-lock .companion.overjoyed .eye-wrap {
   filter: drop-shadow(0 0 5vmin rgba(255,230,120,0.68))
           drop-shadow(0 0 16vmin rgba(255,215,90,0.30));
 }
-.companion.excited .eye-wrap {
+body.glow-emotion-lock .companion.excited .eye-wrap {
   filter: drop-shadow(0 0 5vmin rgba(255,220,100,0.62))
           drop-shadow(0 0 14vmin rgba(255,200,70,0.26));
 }
-.companion.ecstatic .eye-wrap {
+body.glow-emotion-lock .companion.ecstatic .eye-wrap {
   filter: drop-shadow(0 0 7vmin rgba(255,228,50,0.85))
           drop-shadow(0 0 20vmin rgba(255,210,30,0.42));
 }
@@ -7348,4 +7394,96 @@ body.pip-mode #theme-canvas { display: none; }
 .glow-swatch.active,
 .glow-swatch[aria-pressed="true"] {
   box-shadow: 0 0 8px 3px rgba(180,160,255,0.60), 0 0 0 2px rgba(220,210,255,0.70);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM COLOUR PICKER ROW  (hex input + clear button)
+   Attached beneath each preset swatch row in the settings panel.
+   ─────────────────────────────────────────────────────────── */
+
+/* Row wrapper — sits flush under the swatch grid */
+.custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Native OS color-picker swatch */
+.custom-color-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(180, 170, 255, 0.25);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.custom-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.custom-color-input::-webkit-color-swatch         { border: none; border-radius: 50%; }
+.custom-color-input:hover,
+.custom-color-input:focus {
+  border-color: rgba(200, 185, 255, 0.70);
+  box-shadow: 0 0 6px rgba(180, 155, 255, 0.40);
+  outline: none;
+}
+
+/* Label beside the picker */
+.custom-color-label {
+  font-size: 11px;
+  color: rgba(200, 190, 255, 0.60);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Clear button — revert to preset */
+.custom-color-clear-btn {
+  font-size: 10px;
+  color: rgba(200, 185, 255, 0.50);
+  background: none;
+  border: 1px solid rgba(180, 165, 255, 0.18);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+.custom-color-clear-btn:hover {
+  color: rgba(220, 210, 255, 0.85);
+  border-color: rgba(200, 185, 255, 0.45);
+  background: rgba(160, 145, 255, 0.10);
+}
+
+/* Active indicator — when custom colour is applied, tint the row */
+.custom-color-row.custom-active .custom-color-label {
+  color: rgba(220, 200, 255, 0.90);
+}
+.custom-color-row.custom-active .custom-color-input {
+  border-color: rgba(200, 180, 255, 0.65);
+  box-shadow: 0 0 8px rgba(180, 155, 255, 0.45);
+}
+
+/* ── Glow sync toggle row ──────────────────────────────────── */
+.glow-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(180, 170, 255, 0.08);
+}
+.glow-sync-label {
+  font-size: 11px;
+  color: rgba(200, 190, 255, 0.65);
+}
+.glow-sync-sublabel {
+  font-size: 10px;
+  color: rgba(180, 170, 255, 0.42);
+  margin-top: 1px;
 }
