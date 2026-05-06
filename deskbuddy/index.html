@@ -133,6 +133,16 @@
                   <button class="color-swatch" data-color="ruby"       title="Ruby"       style="background:radial-gradient(circle at 35% 35%,#f48888,#c02020)"></button>
                   <button class="color-swatch" data-color="teal"       title="Teal"       style="background:radial-gradient(circle at 35% 35%,#70e0d8,#159090)"></button>
                 </div>
+                <!-- Custom hex colour input for iris ──────────────────── -->
+                <div class="custom-color-row" id="iris-custom-row">
+                  <input type="color" id="iris-custom-input" class="custom-color-input"
+                         value="#8795db" title="Pick a custom iris colour">
+                  <div>
+                    <div class="custom-color-label" id="iris-custom-label">Custom colour</div>
+                    <div class="glow-sync-sublabel">Click swatch to apply</div>
+                  </div>
+                  <button class="custom-color-clear-btn" id="iris-custom-clear" title="Revert to preset">reset</button>
+                </div>
               </div>
               <div class="settings-row settings-row-col">
                 <div>
@@ -148,6 +158,24 @@
                   <button class="color-swatch glow-swatch" data-glow="ruby"    title="Ruby"     style="background:radial-gradient(circle at 35% 35%,#f86060,#b81818)"></button>
                   <button class="color-swatch glow-swatch" data-glow="white"   title="White"    style="background:radial-gradient(circle at 35% 35%,#fff,#c0c8d8)"></button>
                   <button class="color-swatch glow-swatch" data-glow="gold"    title="Gold"     style="background:radial-gradient(circle at 35% 35%,#ffe080,#d4a010)"></button>
+                </div>
+                <!-- Custom hex colour input for glow ───────────────────── -->
+                <div class="custom-color-row" id="glow-custom-row">
+                  <input type="color" id="glow-custom-input" class="custom-color-input"
+                         value="#7887eb" title="Pick a custom glow colour">
+                  <div>
+                    <div class="custom-color-label" id="glow-custom-label">Custom glow</div>
+                    <div class="glow-sync-sublabel">Click swatch to apply</div>
+                  </div>
+                  <button class="custom-color-clear-btn" id="glow-custom-clear" title="Revert to preset">reset</button>
+                </div>
+                <!-- Glow emotion sync ──────────────────────────────────── -->
+                <div class="glow-sync-row">
+                  <div>
+                    <div class="glow-sync-label">Emotion glow sync</div>
+                    <div class="glow-sync-sublabel">Emotions dynamically change the glow colour</div>
+                  </div>
+                  <input type="checkbox" id="glow-sync-toggle" class="settings-toggle" checked>
                 </div>
               </div>
               <div class="settings-row settings-row-col">
@@ -1416,6 +1444,7 @@
   <script src="ui/share-card.js"></script>
   <script src="ui/history-stats.js"></script>
   <script src="ui/history-panel.js"></script>
+  <script src="components/iris-color.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
