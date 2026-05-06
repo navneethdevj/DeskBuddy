@@ -923,6 +923,16 @@ const ThemeCanvas = (() => {
 
     if (!Settings.get('showEyebrows')) document.body.classList.add('hide-eyebrows');
 
+    // Apply saved custom iris/glow colours and emotion sync state at boot
+    if (typeof IrisColor !== 'undefined') {
+      const savedIrisHex = Settings.get('customIrisHex') || '';
+      if (savedIrisHex) IrisColor.applyIris(savedIrisHex);
+      const savedGlowHex = Settings.get('customGlowHex') || '';
+      if (savedGlowHex) IrisColor.applyGlow(savedGlowHex);
+      // glow-emotion-lock = sync ON (default true) → body gets the class
+      IrisColor.setEmotionSync(Settings.get('glowEmotionSync') !== false);
+    }
+
     const pipOpacity = Settings.get('pipOpacity') != null ? Settings.get('pipOpacity') : 78;
     const worldEl = document.getElementById('world');
     if (worldEl) worldEl.style.setProperty('--pip-bg-opacity', (pipOpacity / 100).toFixed(2));
@@ -3230,6 +3240,119 @@ const ThemeCanvas = (() => {
       });
     }
     Settings.onChange('eyeGlowColor', (v) => _applyEyeGlow(v));
+
+    // ── Custom iris hex picker ────────────────────────────────────────────
+    const irisCustomInput  = document.getElementById('iris-custom-input');
+    const irisCustomClear  = document.getElementById('iris-custom-clear');
+    const irisCustomRow    = document.getElementById('iris-custom-row');
+    const irisCustomLabel  = document.getElementById('iris-custom-label');
+
+    /** Reflect whether a custom iris is active in the UI row. */
+    function _syncIrisCustomRow(hex) {
+      if (!irisCustomRow) return;
+      const active = !!(hex && hex.startsWith('#'));
+      irisCustomRow.classList.toggle('custom-active', active);
+      if (irisCustomLabel) irisCustomLabel.textContent = active ? `Custom: ${hex}` : 'Custom colour';
+      if (irisCustomInput && active) irisCustomInput.value = hex;
+    }
+
+    // Boot state
+    {
+      const saved = Settings.get('customIrisHex') || '';
+      _syncIrisCustomRow(saved);
+    }
+
+    if (irisCustomInput) {
+      // Apply colour immediately when user picks (color input fires 'input' continuously)
+      irisCustomInput.addEventListener('input', () => {
+        const hex = irisCustomInput.value;
+        Settings.set('customIrisHex', hex);
+        // Clear preset swatch selection when custom active
+        document.getElementById('eye-color-picker')
+          ?.querySelectorAll('.color-swatch')
+          .forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    if (irisCustomClear) {
+      irisCustomClear.addEventListener('click', () => {
+        Settings.set('customIrisHex', '');
+        // Re-activate preset
+        _applyEyeColor(Settings.get('eyeColor') || 'periwinkle');
+      });
+    }
+
+    Settings.onChange('customIrisHex', (v) => {
+      if (typeof IrisColor !== 'undefined') {
+        v ? IrisColor.applyIris(v) : IrisColor.clearIris();
+      }
+      _syncIrisCustomRow(v || '');
+    });
+
+    // ── Custom glow hex picker ────────────────────────────────────────────
+    const glowCustomInput  = document.getElementById('glow-custom-input');
+    const glowCustomClear  = document.getElementById('glow-custom-clear');
+    const glowCustomRow    = document.getElementById('glow-custom-row');
+    const glowCustomLabel  = document.getElementById('glow-custom-label');
+
+    /** Reflect whether a custom glow is active in the UI row. */
+    function _syncGlowCustomRow(hex) {
+      if (!glowCustomRow) return;
+      const active = !!(hex && hex.startsWith('#'));
+      glowCustomRow.classList.toggle('custom-active', active);
+      if (glowCustomLabel) glowCustomLabel.textContent = active ? `Custom: ${hex}` : 'Custom glow';
+      if (glowCustomInput && active) glowCustomInput.value = hex;
+    }
+
+    // Boot state
+    {
+      const saved = Settings.get('customGlowHex') || '';
+      _syncGlowCustomRow(saved);
+    }
+
+    if (glowCustomInput) {
+      glowCustomInput.addEventListener('input', () => {
+        const hex = glowCustomInput.value;
+        Settings.set('customGlowHex', hex);
+        // Visually deselect preset swatches
+        document.getElementById('eye-glow-picker')
+          ?.querySelectorAll('.glow-swatch')
+          .forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    if (glowCustomClear) {
+      glowCustomClear.addEventListener('click', () => {
+        Settings.set('customGlowHex', '');
+        // Re-activate preset glow
+        _applyEyeGlow(Settings.get('eyeGlowColor') || 'default');
+      });
+    }
+
+    Settings.onChange('customGlowHex', (v) => {
+      if (typeof IrisColor !== 'undefined') {
+        v ? IrisColor.applyGlow(v) : IrisColor.clearGlow();
+      }
+      _syncGlowCustomRow(v || '');
+    });
+
+    // ── Glow emotion sync toggle ──────────────────────────────────────────
+    const glowSyncToggle = document.getElementById('glow-sync-toggle');
+
+    function _applyGlowSync(enabled) {
+      if (typeof IrisColor !== 'undefined') IrisColor.setEmotionSync(enabled);
+      if (glowSyncToggle) glowSyncToggle.checked = !!enabled;
+    }
+
+    _applyGlowSync(Settings.get('glowEmotionSync') !== false);
+
+    if (glowSyncToggle) {
+      glowSyncToggle.addEventListener('change', () => {
+        Settings.set('glowEmotionSync', glowSyncToggle.checked);
+      });
+    }
+
+    Settings.onChange('glowEmotionSync', (v) => _applyGlowSync(v !== false));
 
     // ── Eye shape ────────────────────────────────────────────────────────
     const EYE_ROUND_CLASSES = ['eye-roundness-squish','eye-roundness-almond',
