@@ -69,6 +69,11 @@ const Settings = (() => {
     pipOpacity:      78,            // 20–95 integer % — PiP background opacity
     pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
     companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
+    // ── Custom colour overrides ───────────────────────────────────────
+    // '' = use preset swatch; hex string (#rrggbb) = custom picker colour
+    customIrisHex:   '',            // custom iris gradient midpoint colour
+    customGlowHex:   '',            // custom eye-glow RGB colour
+    glowEmotionSync: true,          // true = emotions override glow; false = user colour locked
   };
 
   let _current = { ...DEFAULTS };
