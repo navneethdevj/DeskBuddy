@@ -24,7 +24,9 @@ const Settings = (() => {
     breakInterval:   25,         // minutes, 0 = disabled
     sensitivity:     'NORMAL',   // 'GENTLE' | 'NORMAL' | 'STRICT'
     phoneDetection:  true,       // brain.js phone posture detection
-    companionSize:   'M',        // 'S' | 'M' | 'L'
+    // ── Companion size (numeric %) ────────────────────────────────────────
+    // 100 = original M scale, 78 = old S, 122 = old L. Slider range 50–200.
+    companionSize:   100,
     nightAutoVolume: true,       // soundscape reduces volume at NIGHT
     sessionLength:   25,         // default session duration in minutes
     timerStep:       5,          // +/− step size in minutes for duration stepper
@@ -34,46 +36,52 @@ const Settings = (() => {
     keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
     // ── Window behaviour ──────────────────────────────────────────────
     autoPipOnBlur:          true,  // collapse to PiP when the user switches to another app
-    autoPipDelay:           0,     // seconds to wait before collapsing (0 = instant, like WhatsApp)
+    autoPipDelay:           0,     // seconds to wait before collapsing (0 = instant)
     autoPipRestore:         true,  // restore full mode when the user returns
     autoPipSkipSession:     false, // skip auto-collapse when a focus session is running
-    pipShape:               'square', // 'square' | 'rounded' | 'circle' — overlay window shape in PiP mode
+    pipShape:               'square', // 'square' | 'rounded' | 'circle'
     // ── Buddy personality ──────────────────────────────────────────────
-    idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper (controls idle-life timer)
-    expressiveness:         2,   // 1 = subtle, 3 = maximum (controls behavior probability boost)
-    pettingMode:            2,   // 1 = gentle (2 s deep), 2 = default (1.5 s), 3 = eager (1 s)
+    idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper
+    expressiveness:         2,   // 1 = subtle, 3 = maximum
+    pettingMode:            2,   // 1 = gentle, 2 = default, 3 = eager
     emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
-    // ── DND (Do Not Disturb) ──────────────────────────────────────────────
-    dndDuration:            25,  // default duration in minutes (0 = infinite / until cancelled)
-    // ── Screen Time-inspired features ────────────────────────────────────
-    dailyFocusGoalMins:     0,   // 0 = disabled; else daily focus target in minutes
-    distractionBudget:      0,   // 0 = unlimited; max distractions allowed per session
-    sessionCategory:        'study', // last-used category pre-selects the pill
-    weeklyReportLastShown:  '',  // toDateString() of Monday when report was last shown
+    // ── DND ────────────────────────────────────────────────────────────
+    dndDuration:            25,  // default duration in minutes (0 = infinite)
+    // ── Screen Time features ────────────────────────────────────────────
+    dailyFocusGoalMins:     0,   // 0 = disabled
+    distractionBudget:      0,   // 0 = unlimited
+    sessionCategory:        'study',
+    weeklyReportLastShown:  '',
     // ── Anti-cheat ────────────────────────────────────────────────────
-    antiCheatEnabled: true,  // when true, sessions cannot be deleted (stats stay accurate)
+    antiCheatEnabled: true,
     // ── Buddy appearance ──────────────────────────────────────────────
-    fullTheme:       'galaxy',      // 'galaxy'|'classic'|'forest'|'cherry'|'ocean'
-    themeParticles:  true,          // canvas particle effects on animated themes
-    eyeColor:        'periwinkle',  // 'periwinkle'|'emerald'|'rose'|'amber'|'lavender'|'sky'|'ruby'|'teal'
-    eyeGlowColor:    'default',     // 'default'|'emerald'|'rose'|'amber'|'sky'|'ruby'|'white'|'gold'
-    eyeRoundness:    'round',       // 'round'|'soft'|'oval'
-    eyeSpacing:      'normal',      // 'narrow'|'normal'|'wide'
-    pupilSize:       'normal',      // 'small'|'normal'|'large'
-    blinkRate:       'normal',      // 'off'|'slow'|'normal'|'fast'
+    fullTheme:       'galaxy',
+    themeParticles:  true,
+    eyeColor:        'periwinkle',
+    eyeGlowColor:    'default',
+    eyeRoundness:    'round',
+    // ── Eye / Face sizing (all numeric %, 100 = default) ──────────────
+    eyeSize:         100,  // eye-wrap scale 50–200; 100 = default
+    eyeGap:          6,    // gap between eyes in vmin (2–20); 6 = default
+    irisSize:        100,  // iris scale within eye 50–130; 100 = default
+    mouthSize:       100,  // mouth scale 50–150; 100 = default
+    noseSize:        100,  // nose scale 50–150; 100 = default
+    blinkRate:       'normal',
     showEyebrows:    true,
-    noseStyle:       'triangle',    // 'triangle'|'dot'|'none'
-    mouthStyle:      'arc',         // 'arc'|'wide'|'cat'|'flat'|'none'
-    mouthThickness:  'normal',      // 'thin'|'normal'|'thick'
-    glowIntensity:   'normal',      // 'off'|'subtle'|'normal'|'vivid'
-    pipOpacity:      78,            // 20–95 integer % — PiP background opacity
-    pipAlwaysOnTop:  true,          // keep PiP bubble above other windows
-    companionPos:    'center',      // 'left'|'center'|'right' — full-mode eye position
-    // ── Custom colour overrides ───────────────────────────────────────
-    // '' = use preset swatch; hex string (#rrggbb) = custom picker colour
-    customIrisHex:   '',            // custom iris gradient midpoint colour
-    customGlowHex:   '',            // custom eye-glow RGB colour
-    glowEmotionSync: true,          // true = emotions override glow; false = user colour locked
+    noseStyle:       'triangle',
+    mouthStyle:      'arc',
+    mouthThickness:  'normal',
+    // ── Glow ──────────────────────────────────────────────────────────
+    // 'off' | 'subtle' | 'normal' | 'vivid'  (maps to slider 0-3)
+    glowIntensity:   'normal',
+    // ── PiP / Overlay ─────────────────────────────────────────────────
+    pipOpacity:      78,         // 20–95 integer %
+    pipAlwaysOnTop:  true,
+    companionPos:    'center',   // 'left'|'center'|'right' (kept for legacy)
+    // ── Custom colour overrides ────────────────────────────────────────
+    customIrisHex:   '',         // hex string or '' for preset
+    customGlowHex:   '',
+    glowEmotionSync: true,
   };
 
   let _current = { ...DEFAULTS };
@@ -100,6 +108,24 @@ const Settings = (() => {
     const MOUTH_MIGRATE = { wave: 'arc', perky: 'wide', minimal: 'flat' };
     if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
 
+    // ── Numeric migrations (old string → new numeric) ──────────────────────
+    // companionSize: 'S'/'M'/'L' → number
+    if (typeof _current.companionSize === 'string') {
+      _current.companionSize = ({ S: 78, M: 100, L: 122 })[_current.companionSize] ?? 100;
+    }
+    // pupilSize: 'small'/'normal'/'large' → eyeSize number (remove old key)
+    if (typeof _current.pupilSize === 'string') {
+      if (_current.eyeSize == null)
+        _current.eyeSize = ({ small: 78, normal: 100, large: 130 })[_current.pupilSize] ?? 100;
+      delete _current.pupilSize;
+    }
+    // eyeSpacing: 'narrow'/'normal'/'wide' → eyeGap vmin
+    if (typeof _current.eyeSpacing === 'string') {
+      if (_current.eyeGap == null)
+        _current.eyeGap = ({ narrow: 3, normal: 6, wide: 11 })[_current.eyeSpacing] ?? 6;
+      delete _current.eyeSpacing;
+    }
+
     // Reconcile with main-process Store (survives localStorage clear)
     if (window.electronAPI?.getSettings) {
       window.electronAPI.getSettings().then(saved => {
@@ -107,6 +133,19 @@ const Settings = (() => {
         _current = { ...DEFAULTS, ...saved };
         if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
         if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
+        // Apply same numeric migrations after Electron Store reconcile
+        if (typeof _current.companionSize === 'string')
+          _current.companionSize = ({ S: 78, M: 100, L: 122 })[_current.companionSize] ?? 100;
+        if (typeof _current.pupilSize === 'string') {
+          if (_current.eyeSize == null)
+            _current.eyeSize = ({ small: 78, normal: 100, large: 130 })[_current.pupilSize] ?? 100;
+          delete _current.pupilSize;
+        }
+        if (typeof _current.eyeSpacing === 'string') {
+          if (_current.eyeGap == null)
+            _current.eyeGap = ({ narrow: 3, normal: 6, wide: 11 })[_current.eyeSpacing] ?? 6;
+          delete _current.eyeSpacing;
+        }
         _persist();
         Object.keys(_current).forEach(key => _fire(key, _current[key]));
       }).catch(() => {});
