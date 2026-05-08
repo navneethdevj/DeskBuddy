@@ -104,21 +104,51 @@ const IrisColor = (() => {
     return { center, mid, edge };
   }
 
+  // ── Injected <style> tag for custom iris (avoids CSS specificity battles) ──
+  let _irisStyleEl = null;
+
+  function _getIrisStyleEl() {
+    if (!_irisStyleEl) {
+      _irisStyleEl = document.createElement('style');
+      _irisStyleEl.id = 'iris-color-dynamic';
+      document.head.appendChild(_irisStyleEl);
+    }
+    return _irisStyleEl;
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
    * applyIris(hex)
-   * Set a custom iris colour via CSS variables.
-   * Adds body.eye-custom which enables the var-driven gradient in CSS.
+   * Injects a <style> tag with the highest-cascade iris gradient rule.
+   * This reliably overrides all preset classes and emotion tint rules.
    */
   function applyIris(hex) {
     if (!hex) { clearIris(); return; }
     const { center, mid, edge } = deriveIrisGradient(hex);
-    const root = document.body;
-    root.style.setProperty('--iris-color-center', center);
-    root.style.setProperty('--iris-color-mid',    mid);
-    root.style.setProperty('--iris-color-edge',   edge);
-    root.classList.add('eye-custom');
+
+    // Inject dynamic CSS — runs after the external stylesheet so it wins cascade.
+    // High-specificity selector + !important covers all emotion-tint overrides.
+    _getIrisStyleEl().textContent = `
+      body .companion .eye::before {
+        background: radial-gradient(
+          circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+          ${center}  0%,
+          ${center} 10%,
+          ${mid}    48%,
+          ${edge}   90%,
+          ${edge}  100%
+        ) !important;
+        filter: none !important;
+        transition: none !important;
+      }
+    `;
+
+    // Also set CSS vars (used by being_patted override which re-sets a pink gradient)
+    document.body.style.setProperty('--iris-color-center', center);
+    document.body.style.setProperty('--iris-color-mid',    mid);
+    document.body.style.setProperty('--iris-color-edge',   edge);
+    document.body.classList.add('eye-custom');
   }
 
   /**
@@ -126,6 +156,7 @@ const IrisColor = (() => {
    * Remove custom iris — preset swatch CSS class takes over again.
    */
   function clearIris() {
+    if (_irisStyleEl) _irisStyleEl.textContent = '';
     document.body.classList.remove('eye-custom');
     document.body.style.removeProperty('--iris-color-center');
     document.body.style.removeProperty('--iris-color-mid');
