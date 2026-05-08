@@ -185,7 +185,7 @@ html, body {
   gap: 1.5vmin;
   /* Eye size slider drives --eye-wrap-scale (default 1.0 = 100%) */
   transform: scale(var(--eye-wrap-scale, 1.0));
-  transform-origin: bottom center;
+  transform-origin: center center;
   /* User-selected eye glow — applied here so emotion box-shadow overrides on .eye never kill it */
   filter: drop-shadow(0 0 3.5vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.50))
           drop-shadow(0 0 10vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.22))
@@ -642,8 +642,7 @@ body[data-time-period="NIGHT"] .companion {
 }
 
 
-/* Eye highlight shimmer — top-left white glint that subtly breathes.
-   A second smaller glint on the opposite side doubles the luminosity. */
+/* Eye highlight shimmer — top-left white glint that subtly breathes. */
 .eye::after {
   content: '';
   position: absolute;
@@ -653,17 +652,7 @@ body[data-time-period="NIGHT"] .companion {
   border-radius: 50%;
   animation: eyeShimmer 3s ease-in-out infinite;
   pointer-events: none;
-}
-/* Second tiny glint — lower-right, gives the eye life and depth */
-.eye::before {
-  content: '';
-  position: absolute;
-  bottom: 18%; right: 16%;
-  width: 14%; height: 11%;
-  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: eyeShimmer 3s ease-in-out infinite 1.5s;
-  pointer-events: none;
+  z-index: 2;
 }
 @keyframes eyeShimmer {
   0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
@@ -3700,11 +3689,11 @@ body.pip-mode #settings-panel { display: none !important; }
 /* ── Companion size scale (applied via body class) ─────────── */
 /* Companion size — driven by --companion-scale CSS var set from slider.
    Legacy body classes are kept for graceful fallback on old saved settings. */
-#world { transform: scale(var(--companion-scale, 1.0)); transform-origin: bottom center; }
+#world { transform: scale(var(--companion-scale, 1.0)); transform-origin: center center; }
 /* Legacy: only apply scale if --companion-scale not explicitly overridden */
-body.companion-size-S #world { transform: scale(var(--companion-scale, 0.78)); transform-origin: bottom center; }
-body.companion-size-M #world { transform: scale(var(--companion-scale, 1.00)); transform-origin: bottom center; }
-body.companion-size-L #world { transform: scale(var(--companion-scale, 1.22)); transform-origin: bottom center; }
+body.companion-size-S #world { transform: scale(var(--companion-scale, 0.78)); transform-origin: center center; }
+body.companion-size-M #world { transform: scale(var(--companion-scale, 1.00)); transform-origin: center center; }
+body.companion-size-L #world { transform: scale(var(--companion-scale, 1.22)); transform-origin: center center; }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
