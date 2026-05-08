@@ -909,19 +909,37 @@ const ThemeCanvas = (() => {
     const mouthThickness = Settings.get('mouthThickness') || 'normal';
     if (mouthThickness !== 'normal') document.body.classList.add(`mouth-${mouthThickness}`);
 
-    const companionPos = Settings.get('companionPos') || 'center';
-    if (companionPos !== 'center') document.body.classList.add(`companion-pos-${companionPos}`);
+    // companionPos removed — horizontal eye placement feature removed
 
     const eyeRoundness = Settings.get('eyeRoundness') || 'round';
     if (eyeRoundness !== 'round') document.body.classList.add(`eye-roundness-${eyeRoundness}`);
 
-    const pupilSize = Settings.get('pupilSize') || 'normal';
-    if (pupilSize !== 'normal') document.body.classList.add(`pupil-${pupilSize}`);
+    // Legacy pupilSize class (migration keeps working until settings panel re-saves)
+    const legacyPupilSize = Settings.get('pupilSize');
+    if (legacyPupilSize && legacyPupilSize !== 'normal')
+      document.body.classList.add(`pupil-${legacyPupilSize}`);
 
     const glowIntensity = Settings.get('glowIntensity') || 'normal';
     if (glowIntensity !== 'normal') document.body.classList.add(`glow-${glowIntensity}`);
 
     if (!Settings.get('showEyebrows')) document.body.classList.add('hide-eyebrows');
+
+    // ── Apply numeric CSS vars at boot ───────────────────────────────────
+    const _worldEl = document.getElementById('world');
+    if (_worldEl) {
+      const csz = Settings.get('companionSize') ?? 100;
+      _worldEl.style.setProperty('--companion-scale', String(csz / 100));
+    }
+    const _esz = Settings.get('eyeSize') ?? 100;
+    document.body.style.setProperty('--eye-wrap-scale', String(_esz / 100));
+    const _eyesEl = document.querySelector('.eyes');
+    if (_eyesEl) {
+      const _gap = Settings.get('eyeGap') ?? 6;
+      _eyesEl.style.setProperty('--eyes-gap', `${_gap}vmin`);
+    }
+    document.body.style.setProperty('--iris-scale',  String((Settings.get('irisSize')  ?? 100) / 100));
+    document.body.style.setProperty('--mouth-scale', String((Settings.get('mouthSize') ?? 100) / 100));
+    document.body.style.setProperty('--nose-scale',  String((Settings.get('noseSize')  ?? 100) / 100));
 
     // Apply saved custom iris/glow colours and emotion sync state at boot
     if (typeof IrisColor !== 'undefined') {
@@ -929,7 +947,6 @@ const ThemeCanvas = (() => {
       if (savedIrisHex) IrisColor.applyIris(savedIrisHex);
       const savedGlowHex = Settings.get('customGlowHex') || '';
       if (savedGlowHex) IrisColor.applyGlow(savedGlowHex);
-      // glow-emotion-lock = sync ON (default true) → body gets the class
       IrisColor.setEmotionSync(Settings.get('glowEmotionSync') !== false);
     }
 
@@ -2511,24 +2528,25 @@ const ThemeCanvas = (() => {
 
     Settings.onChange('brightness', (v) => _applyBrightness(v));
 
-    // ── Companion size ───────────────────────────────────────────────────
-    const sizeBtnsContainer = document.getElementById('companion-size-btns');
+    // ── Companion size (slider 50–200, 100 = default M) ──────────────────
+    const companionSizeSlider  = document.getElementById('companion-size-slider');
+    const companionSizeSublabel = document.getElementById('companion-size-sublabel');
 
-    function _applyCompanionSize(size) {
+    function _applyCompanionSize(pct) {
+      const scale = (Number(pct) || 100) / 100;
+      const world = document.getElementById('world');
+      if (world) world.style.setProperty('--companion-scale', String(scale));
+      // Also set on body for legacy rules still referencing body classes
       document.body.classList.remove('companion-size-S', 'companion-size-M', 'companion-size-L');
-      document.body.classList.add(`companion-size-${size}`);
-      if (sizeBtnsContainer) {
-        sizeBtnsContainer.querySelectorAll('.settings-size-btn').forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.size === size);
-        });
-      }
+      if (companionSizeSlider) companionSizeSlider.value = String(pct);
+      if (companionSizeSublabel) companionSizeSublabel.textContent = `${pct}%`;
     }
 
-    _applyCompanionSize(Settings.get('companionSize'));
+    _applyCompanionSize(Settings.get('companionSize') ?? 100);
 
-    if (sizeBtnsContainer) {
-      sizeBtnsContainer.querySelectorAll('.settings-size-btn').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('companionSize', btn.dataset.size));
+    if (companionSizeSlider) {
+      companionSizeSlider.addEventListener('input', () => {
+        Settings.set('companionSize', Number(companionSizeSlider.value));
       });
     }
 
@@ -3066,7 +3084,14 @@ const ThemeCanvas = (() => {
     const eyeColorPicker = document.getElementById('eye-color-picker');
     if (eyeColorPicker) {
       eyeColorPicker.querySelectorAll('.color-swatch').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('eyeColor', btn.dataset.color));
+        btn.addEventListener('click', () => {
+          // BUG FIX: clear custom iris override so preset takes effect immediately
+          if (Settings.get('customIrisHex')) {
+            Settings.set('customIrisHex', '');
+            // IrisColor.clearIris() fires via Settings.onChange listener
+          }
+          Settings.set('eyeColor', btn.dataset.color);
+        });
       });
     }
     Settings.onChange('eyeColor', (v) => _applyEyeColor(v));
@@ -3092,28 +3117,7 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('pipOpacity', (v) => _applyPipOpacity(v));
 
-    // ── Companion position (full-mode) ───────────────────────────────────
-    const POS_CLASSES = ['companion-pos-left','companion-pos-center','companion-pos-right'];
-
-    function _applyCompanionPos(pos) {
-      document.body.classList.remove(...POS_CLASSES);
-      if (pos && pos !== 'center') document.body.classList.add(`companion-pos-${pos}`);
-      const btns = document.getElementById('companion-pos-btns');
-      if (btns) {
-        btns.querySelectorAll('.style-chip').forEach(btn =>
-          btn.classList.toggle('active', btn.dataset.pos === pos));
-      }
-    }
-
-    _applyCompanionPos(Settings.get('companionPos') || 'center');
-
-    const companionPosBtns = document.getElementById('companion-pos-btns');
-    if (companionPosBtns) {
-      companionPosBtns.querySelectorAll('.style-chip').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('companionPos', btn.dataset.pos));
-      });
-    }
-    Settings.onChange('companionPos', (v) => _applyCompanionPos(v));
+    // companion-pos removed — horizontal eye placement feature removed
 
     // ── Blink rate ───────────────────────────────────────────────────────
     function _applyBlinkRate(rate) {
@@ -3236,7 +3240,13 @@ const ThemeCanvas = (() => {
     const eyeGlowPicker = document.getElementById('eye-glow-picker');
     if (eyeGlowPicker) {
       eyeGlowPicker.querySelectorAll('.glow-swatch').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('eyeGlowColor', btn.dataset.glow));
+        btn.addEventListener('click', () => {
+          // BUG FIX: clear custom glow override so preset takes effect immediately
+          if (Settings.get('customGlowHex')) {
+            Settings.set('customGlowHex', '');
+          }
+          Settings.set('eyeGlowColor', btn.dataset.glow);
+        });
       });
     }
     Settings.onChange('eyeGlowColor', (v) => _applyEyeGlow(v));
@@ -3377,44 +3387,144 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('eyeRoundness', (v) => _applyEyeRoundness(v));
 
-    // ── Pupil size ───────────────────────────────────────────────────────
-    const PUPIL_CLASSES = ['pupil-small','pupil-large'];
+    // ── Eye size slider (50–200%, 100 = default) ─────────────────────────
+    const eyeSizeSlider   = document.getElementById('eye-size-slider');
+    const eyeSizeSublabel = document.getElementById('eye-size-sublabel');
 
-    function _applyPupilSize(s) {
-      document.body.classList.remove(...PUPIL_CLASSES);
-      if (s && s !== 'normal') document.body.classList.add(`pupil-${s}`);
-      const btns = document.getElementById('pupil-size-btns');
-      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
-        btn.classList.toggle('active', btn.dataset.pupil === s));
+    /** MAX scale before eyes start to visually collide given current eyeGap */
+    function _eyeMaxScale() {
+      const gap  = Number(Settings.get('eyeGap') ?? 6);  // vmin
+      // Each eye-wrap is ~38vmin wide at scale 1. At scale S, width = 38*S vmin.
+      // Two eyes collide when 2*(38*S) > (2*38*S + gap) — conservative limit:
+      // ensure gap stays >= 1 vmin at given scale.
+      const maxPct = Math.min(200, Math.floor(((2 * 38 + gap - 1) / (2 * 38)) * 100));
+      return maxPct;
     }
 
-    _applyPupilSize(Settings.get('pupilSize') || 'normal');
+    function _applyEyeSize(pct) {
+      const clampedPct = Math.min(Number(pct) || 100, _eyeMaxScale());
+      const scale = clampedPct / 100;
+      document.body.style.setProperty('--eye-wrap-scale', String(scale));
+      if (eyeSizeSlider)   eyeSizeSlider.value = String(clampedPct);
+      if (eyeSizeSublabel) eyeSizeSublabel.textContent = `${clampedPct}%`;
+    }
 
-    const pupilSizeBtns = document.getElementById('pupil-size-btns');
-    if (pupilSizeBtns) {
-      pupilSizeBtns.querySelectorAll('.style-chip').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('pupilSize', btn.dataset.pupil));
+    _applyEyeSize(Settings.get('eyeSize') ?? 100);
+
+    if (eyeSizeSlider) {
+      eyeSizeSlider.addEventListener('input', () => {
+        const clamped = Math.min(Number(eyeSizeSlider.value), _eyeMaxScale());
+        eyeSizeSlider.value = String(clamped);
+        Settings.set('eyeSize', clamped);
       });
     }
-    Settings.onChange('pupilSize', (v) => _applyPupilSize(v));
+    Settings.onChange('eyeSize', (v) => _applyEyeSize(v));
 
-    // ── Glow intensity ───────────────────────────────────────────────────
-    const GLOW_INT_CLASSES = ['glow-off','glow-subtle','glow-vivid'];
+    // ── Eye gap slider (2–20 vmin, default 6) ────────────────────────────
+    const eyeGapSlider   = document.getElementById('eye-gap-slider');
+    const eyeGapSublabel = document.getElementById('eye-gap-sublabel');
+
+    function _applyEyeGap(vmin) {
+      const v = Number(vmin) || 6;
+      const eyesEl = document.querySelector('.eyes');
+      if (eyesEl) eyesEl.style.setProperty('--eyes-gap', `${v}vmin`);
+      if (eyeGapSlider)   eyeGapSlider.value = String(v);
+      if (eyeGapSublabel) eyeGapSublabel.textContent = `${v} vmin`;
+      // Re-clamp eye size after gap changes (collision prevention)
+      _applyEyeSize(Settings.get('eyeSize') ?? 100);
+    }
+
+    _applyEyeGap(Settings.get('eyeGap') ?? 6);
+
+    if (eyeGapSlider) {
+      eyeGapSlider.addEventListener('input', () => {
+        Settings.set('eyeGap', Number(eyeGapSlider.value));
+      });
+    }
+    Settings.onChange('eyeGap', (v) => _applyEyeGap(v));
+
+    // ── Iris size slider (50–130%, default 100) ───────────────────────────
+    const irisSizeSlider   = document.getElementById('iris-size-slider');
+    const irisSizeSublabel = document.getElementById('iris-size-sublabel');
+
+    function _applyIrisSize(pct) {
+      const scale = (Number(pct) || 100) / 100;
+      document.body.style.setProperty('--iris-scale', String(scale));
+      if (irisSizeSlider)   irisSizeSlider.value = String(pct);
+      if (irisSizeSublabel) irisSizeSublabel.textContent = `${pct}%`;
+    }
+
+    _applyIrisSize(Settings.get('irisSize') ?? 100);
+
+    if (irisSizeSlider) {
+      irisSizeSlider.addEventListener('input', () => {
+        Settings.set('irisSize', Number(irisSizeSlider.value));
+      });
+    }
+    Settings.onChange('irisSize', (v) => _applyIrisSize(v));
+
+    // ── Mouth size slider (50–150%, default 100) ─────────────────────────
+    const mouthSizeSlider   = document.getElementById('mouth-size-slider');
+    const mouthSizeSublabel = document.getElementById('mouth-size-sublabel');
+
+    function _applyMouthSize(pct) {
+      const scale = (Number(pct) || 100) / 100;
+      document.body.style.setProperty('--mouth-scale', String(scale));
+      if (mouthSizeSlider)   mouthSizeSlider.value = String(pct);
+      if (mouthSizeSublabel) mouthSizeSublabel.textContent = `${pct}%`;
+    }
+
+    _applyMouthSize(Settings.get('mouthSize') ?? 100);
+
+    if (mouthSizeSlider) {
+      mouthSizeSlider.addEventListener('input', () => {
+        Settings.set('mouthSize', Number(mouthSizeSlider.value));
+      });
+    }
+    Settings.onChange('mouthSize', (v) => _applyMouthSize(v));
+
+    // ── Nose size slider (50–150%, default 100) ───────────────────────────
+    const noseSizeSlider   = document.getElementById('nose-size-slider');
+    const noseSizeSublabel = document.getElementById('nose-size-sublabel');
+
+    function _applyNoseSize(pct) {
+      const scale = (Number(pct) || 100) / 100;
+      document.body.style.setProperty('--nose-scale', String(scale));
+      if (noseSizeSlider)   noseSizeSlider.value = String(pct);
+      if (noseSizeSublabel) noseSizeSublabel.textContent = `${pct}%`;
+    }
+
+    _applyNoseSize(Settings.get('noseSize') ?? 100);
+
+    if (noseSizeSlider) {
+      noseSizeSlider.addEventListener('input', () => {
+        Settings.set('noseSize', Number(noseSizeSlider.value));
+      });
+    }
+    Settings.onChange('noseSize', (v) => _applyNoseSize(v));
+
+    // ── Glow intensity slider (0=off 1=subtle 2=normal 3=vivid) ─────────
+    const GI_VALUES = ['off', 'subtle', 'normal', 'vivid'];
+    const GLOW_INT_CLASSES = ['glow-off', 'glow-subtle', 'glow-vivid'];
+    const glowIntSlider = document.getElementById('glow-intensity-slider');
 
     function _applyGlowIntensity(g) {
       document.body.classList.remove(...GLOW_INT_CLASSES);
       if (g && g !== 'normal') document.body.classList.add(`glow-${g}`);
-      const btns = document.getElementById('glow-intensity-btns');
-      if (btns) btns.querySelectorAll('.style-chip').forEach(btn =>
-        btn.classList.toggle('active', btn.dataset.glowInt === g));
+      // Sync slider position
+      const idx = GI_VALUES.indexOf(g);
+      if (glowIntSlider) glowIntSlider.value = String(idx >= 0 ? idx : 2);
+      // Update mark labels
+      document.querySelectorAll('.slider-mark[data-gi]').forEach(el => {
+        el.classList.toggle('active', el.dataset.gi === String(idx >= 0 ? idx : 2));
+      });
     }
 
     _applyGlowIntensity(Settings.get('glowIntensity') || 'normal');
 
-    const glowIntBtns = document.getElementById('glow-intensity-btns');
-    if (glowIntBtns) {
-      glowIntBtns.querySelectorAll('.style-chip').forEach(btn => {
-        btn.addEventListener('click', () => Settings.set('glowIntensity', btn.dataset.glowInt));
+    if (glowIntSlider) {
+      glowIntSlider.addEventListener('input', () => {
+        Settings.set('glowIntensity', GI_VALUES[Number(glowIntSlider.value)] || 'normal');
       });
     }
     Settings.onChange('glowIntensity', (v) => _applyGlowIntensity(v));
