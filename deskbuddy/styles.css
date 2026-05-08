@@ -309,33 +309,39 @@ body.glow-off .eye-wrap { filter: none; }
 }
 
 /* ===== Pupil (moves inside eye to track cursor) ===== */
-/* Size is driven by --pupil-scale (settings slider), keeping centred geometry. */
+/* Slightly larger pupil (16→18vmin) to stay proportional with the bigger eyes.
+   margin-top/-left = -(18/2) = -9vmin to keep it centred. */
 .pupil {
   position: absolute;
-  width: calc(15vmin * var(--pupil-scale, 1.0));
-  height: calc(15vmin * var(--pupil-scale, 1.0));
+  width: 18vmin;
+  height: 18vmin;
   background: radial-gradient(
     circle,
-    rgba(18, 24, 46, 0.95) 0%,
-    rgba(26, 34, 60, 0.92) 48%,
-    rgba(42, 56, 92, 0.66) 76%,
-    rgba(78, 98, 150, 0) 100%
+    #5a9ac8  0%,
+    #5686b8 10%,
+    #4f6faa 22%,
+    #51629e 34%,
+    #5c6ba6 46%,
+    #6b79b4 58%,
+    #7584c4 68%,
+    #7b8bd8 80%,
+    rgba(123, 139, 216, 0) 100%
   );
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: calc(-7.5vmin * var(--pupil-scale, 1.0));
-  margin-left: calc(-7.5vmin * var(--pupil-scale, 1.0));
+  margin-top: -9vmin;
+  margin-left: -9vmin;
   pointer-events: none;
   will-change: transform;
 }
 
 /* Dilated pupils while curious — widens slightly for that "taking it all in" look */
 .companion.curious .pupil {
-  width: calc(18vmin * var(--pupil-scale, 1.0));
-  height: calc(18vmin * var(--pupil-scale, 1.0));
-  margin-top: calc(-9vmin * var(--pupil-scale, 1.0));
-  margin-left: calc(-9vmin * var(--pupil-scale, 1.0));
+  width: 21vmin;
+  height: 21vmin;
+  margin-top: -10.5vmin;
+  margin-left: -10.5vmin;
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
@@ -646,7 +652,7 @@ body[data-time-period="NIGHT"] .companion {
   border-radius: 50%;
   animation: eyeShimmer 3s ease-in-out infinite;
   pointer-events: none;
-  z-index: 3;
+  z-index: 2;
 }
 @keyframes eyeShimmer {
   0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
@@ -7140,24 +7146,24 @@ body.pip-mode .companion {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(62% * var(--iris-scale, 1.0));
-  height: calc(62% * var(--iris-scale, 1.0));
+  width: calc(84% * var(--iris-scale, 1.0));
+  height: calc(80% * var(--iris-scale, 1.0));
   transform: translate(-50%, -50%);
-  border-radius: 50%;
+  border-radius: inherit;
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #6274ce 0%, #7383d5 18%, #8390d8 40%, #93a0db 62%, #9eaae0 78%, #acb5e4 100%
+    #7b8bd8  0%,  #8190d9  8%,  #8795db 18%,
+    #8d9adc 28%,  #949fdd 38%,  #9aa4de 50%,
+    #a0aae0 62%,  #a8b0e2 74%,  #b2b9e3 84%,
+    #bec3e6 92%,  #cccfe9 97%,  #dcdde8 100%
   );
-  box-shadow:
-    0 0 0 0.35vmin rgba(36, 44, 86, 0.26),
-    inset 0 0 2.1vmin rgba(24, 30, 66, 0.28);
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
   transition: filter 0.4s ease;
   animation: none; /* cancel the shimmer animation from the earlier rule */
 }
 /* Pupil must sit above the ::before iris layer */
-.pupil { position: relative; z-index: 2; }
+.pupil { position: relative; z-index: 1; }
 
 /* ── Iris colour classes (explicit multi-shade gradients) ── */
 body.eye-emerald .eye::before {

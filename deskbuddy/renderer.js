@@ -938,7 +938,6 @@ const ThemeCanvas = (() => {
       _eyesEl.style.setProperty('--eyes-gap', `${_gap}vmin`);
     }
     document.body.style.setProperty('--iris-scale',  String((Settings.get('irisSize')  ?? 100) / 100));
-    document.body.style.setProperty('--pupil-scale', String((Settings.get('pupilScale') ?? 100) / 100));
     document.body.style.setProperty('--mouth-scale', String((Settings.get('mouthSize') ?? 100) / 100));
     document.body.style.setProperty('--nose-scale',  String((Settings.get('noseSize')  ?? 100) / 100));
 
@@ -3472,29 +3471,6 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('irisSize', (v) => _applyIrisSize(v));
 
-    // ── Pupil size slider (50–170%, default 100) ──────────────────────────
-    const pupilSizeSlider   = document.getElementById('pupil-size-slider');
-    const pupilSizeSublabel = document.getElementById('pupil-size-sublabel');
-
-    function _applyPupilScale(pct) {
-      const min = Number(pupilSizeSlider?.min ?? 50);
-      const max = Number(pupilSizeSlider?.max ?? 170);
-      const clamped = Math.max(min, Math.min(max, Number(pct) || 100));
-      const scale = clamped / 100;
-      document.body.style.setProperty('--pupil-scale', String(scale));
-      if (pupilSizeSlider)   pupilSizeSlider.value = String(clamped);
-      if (pupilSizeSublabel) pupilSizeSublabel.textContent = `${clamped}%`;
-    }
-
-    _applyPupilScale(Settings.get('pupilScale') ?? 100);
-
-    if (pupilSizeSlider) {
-      pupilSizeSlider.addEventListener('input', () => {
-        Settings.set('pupilScale', Number(pupilSizeSlider.value));
-      });
-    }
-    Settings.onChange('pupilScale', (v) => _applyPupilScale(v));
-
     // ── Mouth size slider (50–150%, default 100) ─────────────────────────
     const mouthSizeSlider   = document.getElementById('mouth-size-slider');
     const mouthSizeSublabel = document.getElementById('mouth-size-sublabel');
@@ -3593,7 +3569,7 @@ const ThemeCanvas = (() => {
 
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
-      'pupilSize','pupilScale','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');
