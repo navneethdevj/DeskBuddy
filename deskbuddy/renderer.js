@@ -3254,6 +3254,7 @@ const ThemeCanvas = (() => {
     // ── Custom iris hex picker ────────────────────────────────────────────
     const irisCustomInput  = document.getElementById('iris-custom-input');
     const irisCustomClear  = document.getElementById('iris-custom-clear');
+    const irisDefaultBtn   = document.getElementById('iris-default-btn');
     const irisCustomRow    = document.getElementById('iris-custom-row');
     const irisCustomLabel  = document.getElementById('iris-custom-label');
 
@@ -3289,6 +3290,13 @@ const ThemeCanvas = (() => {
         Settings.set('customIrisHex', '');
         // Re-activate preset
         _applyEyeColor(Settings.get('eyeColor') || 'periwinkle');
+      });
+    }
+
+    if (irisDefaultBtn) {
+      irisDefaultBtn.addEventListener('click', () => {
+        Settings.set('customIrisHex', '');
+        Settings.set('eyeColor', 'periwinkle');
       });
     }
 
@@ -3391,18 +3399,11 @@ const ThemeCanvas = (() => {
     const eyeSizeSlider   = document.getElementById('eye-size-slider');
     const eyeSizeSublabel = document.getElementById('eye-size-sublabel');
 
-    /** MAX scale before eyes start to visually collide given current eyeGap */
-    function _eyeMaxScale() {
-      const gap  = Number(Settings.get('eyeGap') ?? 6);  // vmin
-      // Each eye-wrap is ~38vmin wide at scale 1. At scale S, width = 38*S vmin.
-      // Two eyes collide when 2*(38*S) > (2*38*S + gap) — conservative limit:
-      // ensure gap stays >= 1 vmin at given scale.
-      const maxPct = Math.min(200, Math.floor(((2 * 38 + gap - 1) / (2 * 38)) * 100));
-      return maxPct;
-    }
+    const EYE_SIZE_MIN = 50;
+    const EYE_SIZE_MAX = 200;
 
     function _applyEyeSize(pct) {
-      const clampedPct = Math.min(Number(pct) || 100, _eyeMaxScale());
+      const clampedPct = Math.max(EYE_SIZE_MIN, Math.min(EYE_SIZE_MAX, Number(pct) || 100));
       const scale = clampedPct / 100;
       document.body.style.setProperty('--eye-wrap-scale', String(scale));
       if (eyeSizeSlider)   eyeSizeSlider.value = String(clampedPct);
@@ -3413,7 +3414,7 @@ const ThemeCanvas = (() => {
 
     if (eyeSizeSlider) {
       eyeSizeSlider.addEventListener('input', () => {
-        const clamped = Math.min(Number(eyeSizeSlider.value), _eyeMaxScale());
+        const clamped = Math.max(EYE_SIZE_MIN, Math.min(EYE_SIZE_MAX, Number(eyeSizeSlider.value)));
         eyeSizeSlider.value = String(clamped);
         Settings.set('eyeSize', clamped);
       });
@@ -3448,10 +3449,13 @@ const ThemeCanvas = (() => {
     const irisSizeSublabel = document.getElementById('iris-size-sublabel');
 
     function _applyIrisSize(pct) {
-      const scale = (Number(pct) || 100) / 100;
+      const min = Number(irisSizeSlider?.min ?? 50);
+      const max = Number(irisSizeSlider?.max ?? 130);
+      const clamped = Math.max(min, Math.min(max, Number(pct) || 100));
+      const scale = clamped / 100;
       document.body.style.setProperty('--iris-scale', String(scale));
-      if (irisSizeSlider)   irisSizeSlider.value = String(pct);
-      if (irisSizeSublabel) irisSizeSublabel.textContent = `${pct}%`;
+      if (irisSizeSlider)   irisSizeSlider.value = String(clamped);
+      if (irisSizeSublabel) irisSizeSublabel.textContent = `${clamped}%`;
     }
 
     _applyIrisSize(Settings.get('irisSize') ?? 100);
