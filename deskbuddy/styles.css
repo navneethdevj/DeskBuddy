@@ -170,7 +170,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6vmin;
+  gap: var(--eyes-gap, 6vmin);
   width: 100%;
   height: 100%;
   top: 0;
@@ -183,11 +183,14 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 1.5vmin;
+  /* Eye size slider drives --eye-wrap-scale (default 1.0 = 100%) */
+  transform: scale(var(--eye-wrap-scale, 1.0));
+  transform-origin: bottom center;
   /* User-selected eye glow — applied here so emotion box-shadow overrides on .eye never kill it */
   filter: drop-shadow(0 0 3.5vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.50))
           drop-shadow(0 0 10vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.22))
           drop-shadow(0 0 20vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.08));
-  transition: filter 0.35s ease;
+  transition: filter 0.35s ease, transform 0.25s cubic-bezier(.4, 0, .2, 1);
 }
 body.glow-off .eye-wrap { filter: none; }
 
@@ -2909,8 +2912,7 @@ body.mouth-flat .companion.startled  .mouth {
 body.mouth-none .mouth { opacity: 0; pointer-events: none; }
 
 /* ── Companion position in full-mode ──────────────────────────────── */
-body.full-mode.companion-pos-left  .eyes { justify-content: flex-start; padding-left: 10vw; }
-body.full-mode.companion-pos-right .eyes { justify-content: flex-end;   padding-right: 10vw; }
+/* companion-pos-left/right removed — horizontal eye placement feature removed */
 /* center is the default — no override needed */
 
 /* ── Eyebrow visibility ────────────────────────────────────────────── */
@@ -3695,9 +3697,13 @@ body.pip-mode #settings-panel { display: none !important; }
 }
 
 /* ── Companion size scale (applied via body class) ─────────── */
-body.companion-size-S #world { transform: scale(0.78); transform-origin: bottom center; }
-body.companion-size-M #world { transform: scale(1.00); transform-origin: bottom center; }
-body.companion-size-L #world { transform: scale(1.22); transform-origin: bottom center; }
+/* Companion size — driven by --companion-scale CSS var set from slider.
+   Legacy body classes are kept for graceful fallback on old saved settings. */
+#world { transform: scale(var(--companion-scale, 1.0)); transform-origin: bottom center; }
+/* Legacy: only apply scale if --companion-scale not explicitly overridden */
+body.companion-size-S #world { transform: scale(var(--companion-scale, 0.78)); transform-origin: bottom center; }
+body.companion-size-M #world { transform: scale(var(--companion-scale, 1.00)); transform-origin: bottom center; }
+body.companion-size-L #world { transform: scale(var(--companion-scale, 1.22)); transform-origin: bottom center; }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
@@ -6610,8 +6616,9 @@ body.dnd-active .companion {
   transition: filter 0.9s ease;
 }
 
-body.dnd-active #session-panel,
-body.dnd-active #history-panel {
+/* Only dim panels that are OPEN during DND — prevents closed panels ghosting visible */
+body.dnd-active #session-panel.sidebar-open,
+body.dnd-active #history-panel.hp-panel-open {
   opacity:    0.70;
   transition: opacity 0.55s ease;
 }
@@ -7326,21 +7333,20 @@ body.eye-roundness-oval .eye { border-radius: 50% 50% 50% 50% / 20% 20% 20% 20%;
    Pupil width/height are reset to default so we rely purely on
    the visual scale transform for size.
    ─────────────────────────────────────────────────────────── */
-body.pupil-small .eye  { transform: scale(0.78) !important; }
-body.pupil-large .eye  { transform: scale(1.30) !important; }
+/* ── Eye size — driven by --eye-wrap-scale CSS var set by slider ────────── */
+/* Legacy class aliases kept so very old saved settings still work           */
+body.pupil-small .eye-wrap { transform: scale(0.78) !important; }
+body.pupil-large .eye-wrap { transform: scale(1.30) !important; }
 
-/* reset standalone pupil overrides — whole-eye scale makes them redundant */
-body.pupil-small .pupil {
-  width: 18vmin !important;
-  height: 18vmin !important;
-  margin-top: -9vmin !important;
-  margin-left: -9vmin !important;
-}
-body.pupil-large .pupil {
-  width: 18vmin !important;
-  height: 18vmin !important;
-  margin-top: -9vmin !important;
-  margin-left: -9vmin !important;
+/* Remove old per-pupil overrides — whole-eye-wrap scale makes them redundant */
+body.pupil-small .pupil,
+body.pupil-large .pupil { width: auto; height: auto; margin: auto; }
+
+/* ── Iris size — driven by --iris-scale CSS var set by slider ─────────────
+   Scales the ::before iris layer ONLY, not the whole eye or pupil.        */
+.eye::before {
+  transform: scale(var(--iris-scale, 1.0));
+  transform-origin: center center;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -7486,4 +7492,62 @@ body.pip-mode #theme-canvas { display: none; }
   font-size: 10px;
   color: rgba(180, 170, 255, 0.42);
   margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOUTH SIZE — driven by --mouth-scale CSS var (slider 50–150, 100=default)
+   ─────────────────────────────────────────────────────────── */
+.mouth {
+  transform: translateX(-50%) scale(var(--mouth-scale, 1.0));
+  transform-origin: top center;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NOSE SIZE — driven by --nose-scale CSS var (slider 50–150, 100=default)
+   ─────────────────────────────────────────────────────────── */
+.nose {
+  transform: translateX(-50%) scale(var(--nose-scale, 1.0));
+  transform-origin: center center;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LABELED SLIDER  (used for glow intensity, companion size, eye size)
+   ─────────────────────────────────────────────────────────── */
+.slider-labeled-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.slider-labeled-wrap .settings-slider {
+  width: 130px;
+}
+/* Row of tick labels underneath the slider */
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  width: 130px;
+  padding: 0 2px;
+}
+.slider-mark {
+  font-size: 9px;
+  color: rgba(190, 178, 255, 0.38);
+  line-height: 1;
+  text-align: center;
+  flex: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.slider-mark.active {
+  color: rgba(210, 198, 255, 0.80);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PiP SETTINGS GROUP HEADER  (dedicated section)
+   ─────────────────────────────────────────────────────────── */
+.pip-settings-group-note {
+  font-size: 10px;
+  color: rgba(180, 170, 255, 0.38);
+  padding: 0 0 6px 2px;
 }
