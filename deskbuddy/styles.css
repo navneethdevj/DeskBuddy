@@ -7148,9 +7148,6 @@ body.pip-mode .companion {
   left: 50%;
   width: calc(84% * var(--iris-scale, 1.0));
   height: calc(80% * var(--iris-scale, 1.0));
-  inset: auto;
-  bottom: auto;
-  right: auto;
   transform: translate(-50%, -50%);
   border-radius: inherit;
   background: radial-gradient(

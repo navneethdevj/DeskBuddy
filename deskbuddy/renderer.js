@@ -3295,8 +3295,12 @@ const ThemeCanvas = (() => {
 
     if (irisDefaultBtn) {
       irisDefaultBtn.addEventListener('click', () => {
-        Settings.set('customIrisHex', '');
-        Settings.set('eyeColor', 'periwinkle');
+        if ((Settings.get('eyeColor') || 'periwinkle') !== 'periwinkle') {
+          Settings.set('eyeColor', 'periwinkle');
+        }
+        if (Settings.get('customIrisHex')) {
+          Settings.set('customIrisHex', '');
+        }
       });
     }
 
