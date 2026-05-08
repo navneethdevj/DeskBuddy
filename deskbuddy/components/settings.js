@@ -64,6 +64,7 @@ const Settings = (() => {
     eyeSize:         100,  // eye-wrap scale 50–200; 100 = default
     eyeGap:          6,    // gap between eyes in vmin (2–20); 6 = default
     irisSize:        100,  // iris scale within eye 50–130; 100 = default
+    pupilScale:      100,  // pupil scale within iris 50–170; 100 = default
     mouthSize:       100,  // mouth scale 50–150; 100 = default
     noseSize:        100,  // nose scale 50–150; 100 = default
     blinkRate:       'normal',
