@@ -10,6 +10,11 @@ const IrisColor = (() => {
   const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
   const IRIS_LIGHTNESS_DELTA = [-26, -20, -14, -9, -5, -1, 3, 7, 11, 15, 18, 20];
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.93, 0.89, 0.84, 0.80, 0.76];
+  const DEFAULT_IRIS_BASE_HEX = '#8795db';
+  const MIN_IRIS_BASE_SATURATION = 26;
+  const MAX_IRIS_BASE_SATURATION = 82;
+  const MIN_IRIS_BASE_LIGHTNESS = 32;
+  const MAX_IRIS_BASE_LIGHTNESS = 58;
 
   let irisStyleEl = null;
 
@@ -80,14 +85,27 @@ const IrisColor = (() => {
     ).join('');
   }
 
+  function buildStopsFromHsl(h, satBase, lightBase) {
+    return IRIS_STOP_PCTS.map((_, i) => {
+      const sat = clamp(satBase * IRIS_SAT_MULT[i], 20, 98);
+      const light = clamp(lightBase + IRIS_LIGHTNESS_DELTA[i], 16, 78);
+      return hslToHex(h, sat, light);
+    });
+  }
+
   function deriveIrisGradient(hex) {
     const normalized = normalizeHex(hex);
     if (!normalized) {
+      const [r, g, b] = hexToRgb(DEFAULT_IRIS_BASE_HEX);
+      const [h, s, l] = rgbToHsl(r, g, b);
+      const satBase = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
+      const lightBase = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
+      const stops = buildStopsFromHsl(h, satBase, lightBase);
       return {
-        center: '#7b8bd8',
-        mid: '#9aa4de',
-        edge: '#cccfe9',
-        stops: ['#7b8bd8', '#8190d9', '#8795db', '#8d9adc', '#949fdd', '#9aa4de', '#a0aae0', '#a8b0e2', '#b2b9e3', '#bec3e6', '#cccfe9', '#dcdde8'],
+        center: stops[0],
+        mid: DEFAULT_IRIS_BASE_HEX,
+        edge: stops[10],
+        stops,
       };
     }
 
@@ -95,14 +113,9 @@ const IrisColor = (() => {
     const [h, s, l] = rgbToHsl(r, g, b);
     // Clamp source colour into a "safe iris palette" band so edge stops stay coloured
     // and do not bleach into a fake middle layer between iris and sclera.
-    const baseSat = clamp(s, 26, 82);
-    const baseLight = clamp(l, 32, 58);
-
-    const stops = IRIS_STOP_PCTS.map((_, i) => {
-      const sat = clamp(baseSat * IRIS_SAT_MULT[i], 20, 98);
-      const light = clamp(baseLight + IRIS_LIGHTNESS_DELTA[i], 16, 78);
-      return hslToHex(h, sat, light);
-    });
+    const baseSat = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
+    const baseLight = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
+    const stops = buildStopsFromHsl(h, baseSat, baseLight);
 
     return {
       center: stops[0],
