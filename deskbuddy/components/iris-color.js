@@ -3,6 +3,7 @@
  * Keeps iris recolouring on the existing `.eye::before` layer (no extra DOM layer).
  */
 const IrisColor = (() => {
+  // 12-stop curve mirrors the default iris layering: darker/saturated center → soft edge ring.
   const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
   const IRIS_LIGHTNESS_DELTA = [-28, -22, -16, -10, -6, -1, 4, 10, 16, 24, 30, 34];
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.94, 0.88, 0.80, 0.70, 0.58, 0.48];
