@@ -1,39 +1,29 @@
 /**
- * IrisColor — custom hex colour support for iris + glow, and emotion-glow sync.
- *
- * Architecture
- * ─────────────
- * Iris  → CSS vars --iris-color-center / --iris-color-mid / --iris-color-edge
- *         activated by body.eye-custom   (overrides hue-rotate presets)
- *
- * Glow  → CSS var  --eye-glow-rgb (RGB triplet, e.g. "200, 120, 255")
- *         also stores --user-glow-rgb so emotion overrides can restore it
- *
- * Sync  → body.glow-emotion-lock = emotion CSS rules allowed to change glow
- *         (class present = sync ON; absent = sync OFF, glow stays user colour)
- *
- * Usage
- * ─────
- *   IrisColor.applyIris('#ff80aa')   // custom hex → iris gradient
- *   IrisColor.clearIris()            // revert to preset swatch class
- *   IrisColor.applyGlow('#7b8bd8')   // custom hex → glow RGB var
- *   IrisColor.clearGlow()            // revert to preset swatch class
- *   IrisColor.setEmotionSync(true)   // enable / disable emotion glow overrides
+ * IrisColor — custom iris + glow colour support.
+ * Keeps iris recolouring on the existing `.eye::before` layer (no extra DOM layer).
  */
 const IrisColor = (() => {
+  const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
+  const IRIS_LIGHTNESS_DELTA = [-28, -22, -16, -10, -6, -1, 4, 10, 16, 24, 30, 34];
+  const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.94, 0.88, 0.80, 0.70, 0.58, 0.48];
 
-  // ── Colour math helpers ───────────────────────────────────────────────────
+  let _irisStyleEl = null;
 
-  /** Parse hex "#rrggbb" → [r, g, b] (0–255). */
-  function hexToRgb(hex) {
-    const clean = hex.replace('#', '').trim();
-    if (clean.length === 3) {
-      return [
-        parseInt(clean[0] + clean[0], 16),
-        parseInt(clean[1] + clean[1], 16),
-        parseInt(clean[2] + clean[2], 16),
-      ];
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function normalizeHex(hex) {
+    if (typeof hex !== 'string') return '';
+    const raw = hex.trim().replace(/^#/, '');
+    if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(raw)) return '';
+    if (raw.length === 3) {
+      return '#' + raw.split('').map(ch => ch + ch).join('').toLowerCase();
     }
+    return `#${raw.toLowerCase()}`;
+  }
+
+  function hexToRgb(hex) {
+    const clean = normalizeHex(hex).replace('#', '');
+    if (!clean) return [0, 0, 0];
     return [
       parseInt(clean.slice(0, 2), 16),
       parseInt(clean.slice(2, 4), 16),
@@ -41,7 +31,6 @@ const IrisColor = (() => {
     ];
   }
 
-  /** [r, g, b] (0–255) → [h, s, l] (degrees, %, %). */
   function rgbToHsl(r, g, b) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -59,10 +48,10 @@ const IrisColor = (() => {
     return [h * 360, s * 100, l * 100];
   }
 
-  /** [h (°), s (%), l (%)] → "#rrggbb". */
   function hslToHex(h, s, l) {
-    h = ((h % 360) + 360) % 360;   // normalise
+    h = ((h % 360) + 360) % 360;
     h /= 360; s /= 100; l /= 100;
+
     let r, g, b;
     if (s === 0) {
       r = g = b = l;
@@ -81,33 +70,51 @@ const IrisColor = (() => {
       g = hue2rgb(p, q, h);
       b = hue2rgb(p, q, h - 1 / 3);
     }
+
     return '#' + [r, g, b].map(x =>
-      Math.round(Math.min(255, Math.max(0, x * 255))).toString(16).padStart(2, '0')
+      Math.round(clamp(x * 255, 0, 255)).toString(16).padStart(2, '0')
     ).join('');
   }
 
-  /**
-   * deriveIrisGradient(hex)
-   * Given a midpoint colour, returns { center, mid, edge } for the iris gradient:
-   *   center — darker, more saturated (deep focal point)
-   *   mid    — the chosen colour itself
-   *   edge   — lighter, desaturated limbal ring
-   */
   function deriveIrisGradient(hex) {
-    const [r, g, b] = hexToRgb(hex);
+    const normalized = normalizeHex(hex);
+    if (!normalized) {
+      return {
+        center: '#7b8bd8',
+        mid: '#9aa4de',
+        edge: '#cccfe9',
+        stops: ['#7b8bd8', '#8190d9', '#8795db', '#8d9adc', '#949fdd', '#9aa4de', '#a0aae0', '#a8b0e2', '#b2b9e3', '#bec3e6', '#cccfe9', '#dcdde8'],
+      };
+    }
+
+    const [r, g, b] = hexToRgb(normalized);
     const [h, s, l] = rgbToHsl(r, g, b);
+    const baseSat = clamp(s, 20, 82);
+    const baseLight = clamp(l, 34, 66);
 
-    const center = hslToHex(h, Math.min(100, s * 1.25),  Math.max(22, l * 0.72));
-    const mid    = hex;
-    const edge   = hslToHex(h, Math.max(8,  s * 0.42),  Math.min(94, l * 1.42));
+    const stops = IRIS_STOP_PCTS.map((_, i) => {
+      const sat = clamp(baseSat * IRIS_SAT_MULT[i], 10, 98);
+      const light = clamp(baseLight + IRIS_LIGHTNESS_DELTA[i], 14, 92);
+      return hslToHex(h, sat, light);
+    });
 
-    return { center, mid, edge };
+    return {
+      center: stops[0],
+      mid: normalized,
+      edge: stops[10],
+      stops,
+    };
   }
 
-  // ── Injected <style> tag for custom iris (avoids CSS specificity battles) ──
-  let _irisStyleEl = null;
+  function buildIrisGradient(stops) {
+    const lines = stops.map((color, i) => `          ${color} ${IRIS_STOP_PCTS[i]}%`);
+    return `radial-gradient(
+          circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+${lines.join(',\n')}
+        )`;
+  }
 
-  function _getIrisStyleEl() {
+  function getIrisStyleEl() {
     if (!_irisStyleEl) {
       _irisStyleEl = document.createElement('style');
       _irisStyleEl.id = 'iris-color-dynamic';
@@ -116,45 +123,25 @@ const IrisColor = (() => {
     return _irisStyleEl;
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  /**
-   * applyIris(hex)
-   * Injects a <style> tag with the highest-cascade iris gradient rule.
-   * This reliably overrides all preset classes and emotion tint rules.
-   */
   function applyIris(hex) {
-    if (!hex) { clearIris(); return; }
-    const { center, mid, edge } = deriveIrisGradient(hex);
+    const normalized = normalizeHex(hex);
+    if (!normalized) { clearIris(); return; }
 
-    // Inject dynamic CSS — runs after the external stylesheet so it wins cascade.
-    // High-specificity selector + !important covers all emotion-tint overrides.
-    _getIrisStyleEl().textContent = `
-      body .companion .eye::before {
-        background: radial-gradient(
-          circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-          ${center}  0%,
-          ${center} 10%,
-          ${mid}    48%,
-          ${edge}   90%,
-          ${edge}  100%
-        ) !important;
+    const { center, mid, edge, stops } = deriveIrisGradient(normalized);
+    getIrisStyleEl().textContent = `
+      body.eye-custom .eye::before {
+        background: ${buildIrisGradient(stops)} !important;
         filter: none !important;
-        transition: none !important;
+        transition: background 0.25s ease !important;
       }
     `;
 
-    // Also set CSS vars (used by being_patted override which re-sets a pink gradient)
     document.body.style.setProperty('--iris-color-center', center);
-    document.body.style.setProperty('--iris-color-mid',    mid);
-    document.body.style.setProperty('--iris-color-edge',   edge);
+    document.body.style.setProperty('--iris-color-mid', mid);
+    document.body.style.setProperty('--iris-color-edge', edge);
     document.body.classList.add('eye-custom');
   }
 
-  /**
-   * clearIris()
-   * Remove custom iris — preset swatch CSS class takes over again.
-   */
   function clearIris() {
     if (_irisStyleEl) _irisStyleEl.textContent = '';
     document.body.classList.remove('eye-custom');
@@ -163,58 +150,36 @@ const IrisColor = (() => {
     document.body.style.removeProperty('--iris-color-edge');
   }
 
-  /**
-   * applyGlow(hex)
-   * Set custom glow colour by converting hex → RGB triplet for --eye-glow-rgb.
-   * Also stores --user-glow-rgb so emotion animations can reference the base.
-   */
   function applyGlow(hex) {
-    if (!hex) { clearGlow(); return; }
-    const [r, g, b] = hexToRgb(hex);
+    const normalized = normalizeHex(hex);
+    if (!normalized) { clearGlow(); return; }
+    const [r, g, b] = hexToRgb(normalized);
     const triplet = `${r}, ${g}, ${b}`;
-    document.body.style.setProperty('--eye-glow-rgb',  triplet);
-    document.body.style.setProperty('--user-glow-rgb', triplet);  // preserve base
+    document.body.style.setProperty('--eye-glow-rgb', triplet);
+    document.body.style.setProperty('--user-glow-rgb', triplet);
     document.body.classList.add('glow-custom');
   }
 
-  /**
-   * clearGlow()
-   * Remove custom glow — body.eye-glow-* preset class takes over.
-   */
   function clearGlow() {
     document.body.classList.remove('glow-custom');
     document.body.style.removeProperty('--eye-glow-rgb');
     document.body.style.removeProperty('--user-glow-rgb');
   }
 
-  /**
-   * setEmotionSync(enabled)
-   * Toggle whether emotion states are allowed to override eye-wrap glow.
-   * true  = body.glow-emotion-lock present  → emotion CSS rules fire
-   * false = class absent                    → user colour stays on all emotions
-   */
   function setEmotionSync(enabled) {
     document.body.classList.toggle('glow-emotion-lock', !!enabled);
   }
 
-  /**
-   * getCurrentIrisHex()
-   * Returns the stored iris CSS var midpoint colour, or '' if none set.
-   */
   function getCurrentIrisHex() {
     return document.body.style.getPropertyValue('--iris-color-mid').trim() || '';
   }
 
-  /**
-   * hexFromGlowRgb()
-   * Attempts to reconstruct a hex from --eye-glow-rgb if set by custom picker.
-   */
   function getCustomGlowHex() {
     const triplet = document.body.style.getPropertyValue('--eye-glow-rgb').trim();
     if (!triplet) return '';
     const parts = triplet.split(',').map(s => parseInt(s.trim(), 10));
     if (parts.length !== 3 || parts.some(isNaN)) return '';
-    return '#' + parts.map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('');
+    return '#' + parts.map(x => clamp(x, 0, 255).toString(16).padStart(2, '0')).join('');
   }
 
   return {
