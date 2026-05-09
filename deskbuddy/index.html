@@ -253,6 +253,24 @@
                        min="50" max="130" step="5" value="100">
               </div>
               <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Iris border</div>
+                  <div class="settings-row-sublabel">Visible outline around the iris</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="iris-border-toggle" checked>
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Iris border thickness</div>
+                  <div class="settings-row-sublabel" id="iris-border-size-sublabel">100%</div>
+                </div>
+                <input type="range" id="iris-border-size-slider" class="settings-slider"
+                       min="50" max="200" step="5" value="100">
+              </div>
+              <div class="settings-row">
                 <div class="settings-row-label">Blink rate</div>
                 <div class="style-chips" id="blink-rate-btns">
                   <button class="style-chip" data-blink="off">Off</button>

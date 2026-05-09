@@ -938,6 +938,8 @@ const ThemeCanvas = (() => {
       _eyesEl.style.setProperty('--eyes-gap', `${_gap}vmin`);
     }
     document.body.style.setProperty('--iris-scale',  String((Settings.get('irisSize')  ?? 100) / 100));
+    document.body.style.setProperty('--iris-border-enabled', Settings.get('irisBorderEnabled') === false ? '0' : '1');
+    document.body.style.setProperty('--iris-border-thickness-scale', String((Settings.get('irisBorderThickness') ?? 100) / 100));
     document.body.style.setProperty('--mouth-scale', String((Settings.get('mouthSize') ?? 100) / 100));
     document.body.style.setProperty('--nose-scale',  String((Settings.get('noseSize')  ?? 100) / 100));
 
@@ -3306,11 +3308,10 @@ const ThemeCanvas = (() => {
     /** Reflect whether a custom iris is active in the UI row. */
     function _syncIrisCustomRow(profile) {
       if (!irisCustomRow) return;
-      const active = !!(profile.baseHex || _irisLayersActive(profile));
+      const active = !!profile.baseHex;
       irisCustomRow.classList.toggle('custom-active', active);
       if (irisCustomLabel) {
         if (profile.baseHex) irisCustomLabel.textContent = `Custom base: ${profile.baseHex}`;
-        else if (active) irisCustomLabel.textContent = 'Custom layers active';
         else irisCustomLabel.textContent = 'Custom base colour';
       }
       if (irisCustomInput && profile.baseHex) irisCustomInput.value = profile.baseHex;
@@ -3561,6 +3562,44 @@ const ThemeCanvas = (() => {
       });
     }
     Settings.onChange('irisSize', (v) => _applyIrisSize(v));
+
+    // ── Iris border toggle + thickness (default ON) ────────────────────────
+    const irisBorderToggle = document.getElementById('iris-border-toggle');
+    const irisBorderSizeSlider = document.getElementById('iris-border-size-slider');
+    const irisBorderSizeSublabel = document.getElementById('iris-border-size-sublabel');
+
+    function _applyIrisBorderEnabled(enabled) {
+      const isEnabled = enabled !== false;
+      document.body.style.setProperty('--iris-border-enabled', isEnabled ? '1' : '0');
+      if (irisBorderToggle) irisBorderToggle.checked = isEnabled;
+    }
+
+    function _applyIrisBorderThickness(pct) {
+      const min = Number(irisBorderSizeSlider?.min ?? 50);
+      const max = Number(irisBorderSizeSlider?.max ?? 200);
+      const clamped = Math.max(min, Math.min(max, Number(pct) || 100));
+      document.body.style.setProperty('--iris-border-thickness-scale', String(clamped / 100));
+      if (irisBorderSizeSlider) irisBorderSizeSlider.value = String(clamped);
+      if (irisBorderSizeSublabel) irisBorderSizeSublabel.textContent = `${clamped}%`;
+    }
+
+    _applyIrisBorderEnabled(Settings.get('irisBorderEnabled') !== false);
+    _applyIrisBorderThickness(Settings.get('irisBorderThickness') ?? 100);
+
+    if (irisBorderToggle) {
+      irisBorderToggle.addEventListener('change', () => {
+        Settings.set('irisBorderEnabled', irisBorderToggle.checked);
+      });
+    }
+
+    if (irisBorderSizeSlider) {
+      irisBorderSizeSlider.addEventListener('input', () => {
+        Settings.set('irisBorderThickness', Number(irisBorderSizeSlider.value));
+      });
+    }
+
+    Settings.onChange('irisBorderEnabled', (v) => _applyIrisBorderEnabled(v !== false));
+    Settings.onChange('irisBorderThickness', (v) => _applyIrisBorderThickness(v));
 
     // ── Mouth size slider (50–150%, default 100) ─────────────────────────
     const mouthSizeSlider   = document.getElementById('mouth-size-slider');

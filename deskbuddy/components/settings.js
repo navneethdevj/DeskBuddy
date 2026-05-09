@@ -86,6 +86,8 @@ const Settings = (() => {
     customIrisRingHex:   '',
     customIrisHighlightHex: '',
     customIrisPupilCoreHex: '',
+    irisBorderEnabled: true,
+    irisBorderThickness: 100, // % (50–200), 100 = default
     customGlowHex:   '',
     glowEmotionSync: true,
   };
