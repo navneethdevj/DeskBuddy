@@ -7110,10 +7110,19 @@ body.pip-mode .companion {
 .pupil {
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,  #8190d9  8%,  #8795db 18%,
-    #8d9adc 28%,  #949fdd 38%,  #9aa4de 50%,
-    #a0aae0 62%,  #a8b0e2 74%,  #b2b9e3 84%,
-    #bec3e6 92%,  #cccfe9 97%,  #dcdde8 100%
+    #5f70c5 0%,
+    #6778cb 7%,
+    #7080d0 14%,
+    #7888d5 22%,
+    #8190d9 31%,
+    #8795db 40%,
+    #8f9ddd 50%,
+    #98a5df 60%,
+    #a1aee2 70%,
+    #acb8e5 79%,
+    #b9c3e9 87%,
+    #c8cfed 94%,
+    #d9dcf2 100%
   );
   transition: filter 0.4s ease;
 }
@@ -7121,31 +7130,38 @@ body.pip-mode .companion {
 /* ── Iris colour classes (explicit multi-shade gradients) ── */
 body.eye-emerald .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #1f633f 0%, #2b8252 16%, #37a565 38%, #6cc78e 70%, #b9e8cb 100%);
+    #174f36 0%, #1d5f40 8%, #23704a 16%, #298155 25%, #2f9360 34%, #36a36b 44%,
+    #4ab07b 55%, #63be90 66%, #7fcca7 76%, #9ad8bb 85%, #b7e4ce 93%, #d4f1e3 100%);
 }
 body.eye-rose .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7e2f58 0%, #a74375 16%, #c95b90 38%, #e28ab4 70%, #f2c9dd 100%);
+    #682444 0%, #762a4f 8%, #84305a 16%, #933766 25%, #a23f72 34%, #b1487e 44%,
+    #bf588d 55%, #cd709f 66%, #db8cb3 76%, #e6a6c6 85%, #efc0d8 93%, #f7dceb 100%);
 }
 body.eye-amber .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7f4c15 0%, #a9681d 16%, #ce8226 38%, #e8b15d 70%, #f6ddb0 100%);
+    #6d3e0f 0%, #7b4712 8%, #895015 16%, #985a18 25%, #a7641c 34%, #b76f20 44%,
+    #c77d2a 55%, #d58f43 66%, #e0a461 76%, #e9bc82 85%, #f1d2a4 93%, #f8e7c8 100%);
 }
 body.eye-lavender .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #5f3b98 0%, #7650b2 16%, #8f6ac8 38%, #b39adf 70%, #ddd1f2 100%);
+    #4f2f84 0%, #5a3891 8%, #66419d 16%, #724aaa 25%, #7f54b7 34%, #8c60c3 44%,
+    #9a72cd 55%, #a989d7 66%, #ba9ee0 76%, #cbb5e8 85%, #ddccf0 93%, #efe4f8 100%);
 }
 body.eye-sky .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #235a93 0%, #2f74b2 16%, #3f91ce 38%, #7ab8e8 70%, #c5e2f7 100%);
+    #1c4b7b 0%, #20568b 8%, #25619b 16%, #2a6dab 25%, #3079bb 34%, #3786cb 44%,
+    #4a96d8 55%, #63a8e1 66%, #80bae9 76%, #9dccef 85%, #bdddf5 93%, #dceefb 100%);
 }
 body.eye-ruby .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7d1d1d 0%, #a42828 16%, #cb3535 38%, #e27373 70%, #f2c2c2 100%);
+    #681414 0%, #761818 8%, #851d1d 16%, #942323 25%, #a42a2a 34%, #b53333 44%,
+    #c64a4a 55%, #d46464 66%, #df8181 76%, #e89d9d 85%, #efb8b8 93%, #f6d6d6 100%);
 }
 body.eye-teal .pupil {
   background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #16665f 0%, #1d8279 16%, #27a79c 38%, #69cdc5 70%, #bcece8 100%);
+    #11534d 0%, #14615a 8%, #176f67 16%, #1a7e74 25%, #1e8d82 34%, #229c90 44%,
+    #34aaa0 55%, #4ab8af 66%, #67c7bf 76%, #86d6cf 85%, #a8e4e0 93%, #cbf2ef 100%);
 }
 /* periwinkle remains the base gradient from `.pupil` */
 
@@ -7173,11 +7189,13 @@ body.eye-teal .pupil {
 body.eye-custom .pupil {
   background: radial-gradient(
     circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    var(--iris-color-center, #7b8bd8)  0%,
-    var(--iris-color-center, #8190d9) 10%,
-    var(--iris-color-mid,    #9aa4de) 48%,
-    var(--iris-color-edge,   #cccfe9) 90%,
-    var(--iris-color-edge,   #dcdde8) 100%
+    var(--iris-color-center, #7b8bd8) 0%,
+    var(--iris-color-center, #8190d9) 8%,
+    var(--iris-color-mid, #8795db) 20%,
+    var(--iris-color-mid, #9aa4de) 40%,
+    var(--iris-color-mid, #a8b0e2) 62%,
+    var(--iris-color-edge, #cccfe9) 84%,
+    var(--iris-color-edge, #dcdde8) 100%
   ) !important;
   filter: none !important;
   transition: background 0.4s ease;

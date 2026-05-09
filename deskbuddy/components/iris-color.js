@@ -3,23 +3,23 @@
  * Recolours the real central iris element (`.pupil`) with no extra DOM layers.
  */
 const IrisColor = (() => {
-  // 12 paired stops keep parity with the default iris depth map:
+  // 14 paired stops create softer layered depth for a cuter iris look:
   // - stop positions: where each shade band lands from center to rim
   // - lightness deltas: controlled brightening toward edge (avoids a white ring)
   // - saturation multipliers: gentle desaturation toward edge (prevents muddy banding)
   // Stop positions from iris center (0) to edge (100).
-  const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
-  // Brightness ramp: avoids a near-white rim that reads as a fake middle layer.
-  const IRIS_LIGHTNESS_DELTA = [-26, -20, -14, -9, -5, -1, 3, 7, 11, 15, 18, 20];
-  // Saturation falloff: keeps edge coloured instead of washing out toward sclera.
-  const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.93, 0.89, 0.84, 0.80, 0.76];
+  const IRIS_STOP_PCTS = [0, 6, 12, 19, 27, 36, 46, 57, 68, 78, 86, 92, 97, 100];
+  // Brightness ramp: gentle fade from rich core to soft edge.
+  const IRIS_LIGHTNESS_DELTA = [-24, -20, -16, -12, -8, -4, 0, 4, 8, 12, 16, 19, 22, 24];
+  // Saturation falloff: keeps hue identity while fading outward.
+  const IRIS_SAT_MULT = [1.20, 1.16, 1.12, 1.08, 1.05, 1.02, 1.00, 0.97, 0.94, 0.90, 0.86, 0.82, 0.79, 0.76];
   const IRIS_CENTER_STOP_INDEX = 0;
   const IRIS_EDGE_STOP_INDEX = IRIS_STOP_PCTS.length - 2;
   const DEFAULT_IRIS_BASE_HEX = '#8795db';
-  const MIN_IRIS_BASE_SATURATION = 26;
-  const MAX_IRIS_BASE_SATURATION = 82;
+  const MIN_IRIS_BASE_SATURATION = 30;
+  const MAX_IRIS_BASE_SATURATION = 86;
   const MIN_IRIS_BASE_LIGHTNESS = 32;
-  const MAX_IRIS_BASE_LIGHTNESS = 58;
+  const MAX_IRIS_BASE_LIGHTNESS = 56;
 
   let irisStyleEl = null;
 
