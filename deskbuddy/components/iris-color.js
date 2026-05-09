@@ -13,6 +13,8 @@ const IrisColor = (() => {
   const IRIS_LIGHTNESS_DELTA = [-26, -20, -14, -9, -5, -1, 3, 7, 11, 15, 18, 20];
   // Saturation falloff: keeps edge coloured instead of washing out toward sclera.
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.93, 0.89, 0.84, 0.80, 0.76];
+  const IRIS_CENTER_STOP_INDEX = 0;
+  const IRIS_EDGE_STOP_INDEX = IRIS_STOP_PCTS.length - 2;
   const DEFAULT_IRIS_BASE_HEX = '#8795db';
   const MIN_IRIS_BASE_SATURATION = 26;
   const MAX_IRIS_BASE_SATURATION = 82;
@@ -105,9 +107,9 @@ const IrisColor = (() => {
       const lightBase = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
       const stops = buildStopsFromHsl(h, satBase, lightBase);
       return {
-        center: stops[0],
+        center: stops[IRIS_CENTER_STOP_INDEX],
         mid: DEFAULT_IRIS_BASE_HEX,
-        edge: stops[10],
+        edge: stops[IRIS_EDGE_STOP_INDEX],
         stops,
       };
     }
@@ -121,9 +123,9 @@ const IrisColor = (() => {
     const stops = buildStopsFromHsl(h, baseSat, baseLight);
 
     return {
-      center: stops[0],
+      center: stops[IRIS_CENTER_STOP_INDEX],
       mid: normalized,
-      edge: stops[10],
+      edge: stops[IRIS_EDGE_STOP_INDEX],
       stops,
     };
   }
