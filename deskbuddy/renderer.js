@@ -3283,15 +3283,13 @@ const ThemeCanvas = (() => {
     ];
 
     function _readIrisProfileFromSettings() {
-      return {
+      const profile = {
         baseHex: Settings.get('customIrisHex') || '',
-        centerHex: Settings.get('customIrisCenterHex') || '',
-        midHex: Settings.get('customIrisMidHex') || '',
-        edgeHex: Settings.get('customIrisEdgeHex') || '',
-        ringHex: Settings.get('customIrisRingHex') || '',
-        highlightHex: Settings.get('customIrisHighlightHex') || '',
-        pupilCoreHex: Settings.get('customIrisPupilCoreHex') || '',
       };
+      IRIS_LAYER_FIELDS.forEach(({ key, profileKey }) => {
+        profile[profileKey] = Settings.get(key) || '';
+      });
+      return profile;
     }
 
     function _irisLayersActive(profile) {
@@ -3567,6 +3565,8 @@ const ThemeCanvas = (() => {
     const irisBorderToggle = document.getElementById('iris-border-toggle');
     const irisBorderSizeSlider = document.getElementById('iris-border-size-slider');
     const irisBorderSizeSublabel = document.getElementById('iris-border-size-sublabel');
+    const IRIS_BORDER_SIZE_MIN = Number(irisBorderSizeSlider?.min ?? 50);
+    const IRIS_BORDER_SIZE_MAX = Number(irisBorderSizeSlider?.max ?? 200);
 
     function _applyIrisBorderEnabled(enabled) {
       const isEnabled = enabled !== false;
@@ -3575,9 +3575,7 @@ const ThemeCanvas = (() => {
     }
 
     function _applyIrisBorderThickness(pct) {
-      const min = Number(irisBorderSizeSlider?.min ?? 50);
-      const max = Number(irisBorderSizeSlider?.max ?? 200);
-      const clamped = Math.max(min, Math.min(max, Number(pct) || 100));
+      const clamped = Math.max(IRIS_BORDER_SIZE_MIN, Math.min(IRIS_BORDER_SIZE_MAX, Number(pct) || 100));
       document.body.style.setProperty('--iris-border-thickness-scale', String(clamped / 100));
       if (irisBorderSizeSlider) irisBorderSizeSlider.value = String(clamped);
       if (irisBorderSizeSublabel) irisBorderSizeSublabel.textContent = `${clamped}%`;
