@@ -30,7 +30,7 @@ const IrisColor = (() => {
     const raw = hex.trim().replace(/^#/, '');
     // We intentionally support only 3/6-digit RGB hex here (input type=color output);
     // alpha-bearing 4/8-digit forms are treated as invalid for iris rendering.
-    if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(raw)) return '';
+    if (!/^(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) return '';
     if (raw.length === 3) {
       return '#' + raw.split('').map(ch => ch + ch).join('').toLowerCase();
     }
