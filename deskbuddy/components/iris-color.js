@@ -1,6 +1,6 @@
 /**
  * IrisColor — custom iris + glow colour support.
- * Keeps iris recolouring on the existing `.eye::before` layer (no extra DOM layer).
+ * Recolours the real central iris element (`.pupil`) with no extra DOM layers.
  */
 const IrisColor = (() => {
   // 12 paired stops keep parity with the default iris depth map:
@@ -153,7 +153,7 @@ ${lines.join(',\n')}
 
     const { center, mid, edge, stops } = deriveIrisGradient(normalized);
     getIrisStyleEl().textContent = `
-      body.eye-custom .eye::before {
+      body.eye-custom .pupil {
         background: ${buildIrisGradient(stops)} !important;
         filter: none !important;
         transition: background 0.25s ease !important;
