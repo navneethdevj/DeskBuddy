@@ -7,8 +7,11 @@ const IrisColor = (() => {
   // - stop positions: where each shade band lands from center to rim
   // - lightness deltas: controlled brightening toward edge (avoids a white ring)
   // - saturation multipliers: gentle desaturation toward edge (prevents muddy banding)
+  // Stop positions from iris center (0) to edge (100).
   const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
+  // Brightness ramp: avoids a near-white rim that reads as a fake middle layer.
   const IRIS_LIGHTNESS_DELTA = [-26, -20, -14, -9, -5, -1, 3, 7, 11, 15, 18, 20];
+  // Saturation falloff: keeps edge coloured instead of washing out toward sclera.
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.93, 0.89, 0.84, 0.80, 0.76];
   const DEFAULT_IRIS_BASE_HEX = '#8795db';
   const MIN_IRIS_BASE_SATURATION = 26;
