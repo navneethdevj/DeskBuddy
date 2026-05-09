@@ -938,13 +938,25 @@ const ThemeCanvas = (() => {
       _eyesEl.style.setProperty('--eyes-gap', `${_gap}vmin`);
     }
     document.body.style.setProperty('--iris-scale',  String((Settings.get('irisSize')  ?? 100) / 100));
+    document.body.style.setProperty('--iris-border-enabled', Settings.get('irisBorderEnabled') === false ? '0' : '1');
+    document.body.style.setProperty('--iris-border-thickness-scale', String((Settings.get('irisBorderThickness') ?? 100) / 100));
     document.body.style.setProperty('--mouth-scale', String((Settings.get('mouthSize') ?? 100) / 100));
     document.body.style.setProperty('--nose-scale',  String((Settings.get('noseSize')  ?? 100) / 100));
 
     // Apply saved custom iris/glow colours and emotion sync state at boot
     if (typeof IrisColor !== 'undefined') {
-      const savedIrisHex = Settings.get('customIrisHex') || '';
-      if (savedIrisHex) IrisColor.applyIris(savedIrisHex);
+      const savedIrisProfile = {
+        baseHex: Settings.get('customIrisHex') || '',
+        centerHex: Settings.get('customIrisCenterHex') || '',
+        midHex: Settings.get('customIrisMidHex') || '',
+        edgeHex: Settings.get('customIrisEdgeHex') || '',
+        ringHex: Settings.get('customIrisRingHex') || '',
+        highlightHex: Settings.get('customIrisHighlightHex') || '',
+        pupilCoreHex: Settings.get('customIrisPupilCoreHex') || '',
+      };
+      if (Object.values(savedIrisProfile).some(Boolean)) {
+        IrisColor.applyIrisProfile(savedIrisProfile);
+      }
       const savedGlowHex = Settings.get('customGlowHex') || '';
       if (savedGlowHex) IrisColor.applyGlow(savedGlowHex);
       IrisColor.setEmotionSync(Settings.get('glowEmotionSync') !== false);
@@ -3090,6 +3102,9 @@ const ThemeCanvas = (() => {
             Settings.set('customIrisHex', '');
             // IrisColor.clearIris() fires via Settings.onChange listener
           }
+          ['customIrisCenterHex','customIrisMidHex','customIrisEdgeHex',
+           'customIrisRingHex','customIrisHighlightHex','customIrisPupilCoreHex']
+            .forEach(k => { if (Settings.get(k)) Settings.set(k, ''); });
           Settings.set('eyeColor', btn.dataset.color);
         });
       });
@@ -3255,23 +3270,79 @@ const ThemeCanvas = (() => {
     const irisCustomInput  = document.getElementById('iris-custom-input');
     const irisCustomClear  = document.getElementById('iris-custom-clear');
     const irisDefaultBtn   = document.getElementById('iris-default-btn');
+    const irisLayersReset  = document.getElementById('iris-layers-reset');
     const irisCustomRow    = document.getElementById('iris-custom-row');
     const irisCustomLabel  = document.getElementById('iris-custom-label');
+    const IRIS_LAYER_FIELDS = [
+      { key: 'customIrisCenterHex', profileKey: 'centerHex', id: 'iris-layer-center-input', rowId: 'iris-layer-center-row', labelId: 'iris-layer-center-label', label: 'Center layer' },
+      { key: 'customIrisMidHex', profileKey: 'midHex', id: 'iris-layer-mid-input', rowId: 'iris-layer-mid-row', labelId: 'iris-layer-mid-label', label: 'Middle layer' },
+      { key: 'customIrisEdgeHex', profileKey: 'edgeHex', id: 'iris-layer-edge-input', rowId: 'iris-layer-edge-row', labelId: 'iris-layer-edge-label', label: 'Edge layer' },
+      { key: 'customIrisRingHex', profileKey: 'ringHex', id: 'iris-layer-ring-input', rowId: 'iris-layer-ring-row', labelId: 'iris-layer-ring-label', label: 'Ring accent' },
+      { key: 'customIrisHighlightHex', profileKey: 'highlightHex', id: 'iris-layer-highlight-input', rowId: 'iris-layer-highlight-row', labelId: 'iris-layer-highlight-label', label: 'Highlight sparkle' },
+      { key: 'customIrisPupilCoreHex', profileKey: 'pupilCoreHex', id: 'iris-layer-pupil-input', rowId: 'iris-layer-pupil-row', labelId: 'iris-layer-pupil-label', label: 'Pupil core' },
+    ];
+
+    function _readIrisProfileFromSettings() {
+      const profile = {
+        baseHex: Settings.get('customIrisHex') || '',
+      };
+      IRIS_LAYER_FIELDS.forEach(({ key, profileKey }) => {
+        profile[profileKey] = Settings.get(key) || '';
+      });
+      return profile;
+    }
+
+    function _irisLayersActive(profile) {
+      return !!(profile.centerHex || profile.midHex || profile.edgeHex
+        || profile.ringHex || profile.highlightHex || profile.pupilCoreHex);
+    }
+
+    function _clearIrisLayerOverrides() {
+      IRIS_LAYER_FIELDS.forEach(({ key }) => {
+        if (Settings.get(key)) Settings.set(key, '');
+      });
+    }
 
     /** Reflect whether a custom iris is active in the UI row. */
-    function _syncIrisCustomRow(hex) {
+    function _syncIrisCustomRow(profile) {
       if (!irisCustomRow) return;
-      const active = !!(hex && hex.startsWith('#'));
+      const active = !!profile.baseHex;
       irisCustomRow.classList.toggle('custom-active', active);
-      if (irisCustomLabel) irisCustomLabel.textContent = active ? `Custom: ${hex}` : 'Custom colour';
-      if (irisCustomInput && active) irisCustomInput.value = hex;
+      if (irisCustomLabel) {
+        if (profile.baseHex) irisCustomLabel.textContent = `Custom base: ${profile.baseHex}`;
+        else irisCustomLabel.textContent = 'Custom base colour';
+      }
+      if (irisCustomInput && profile.baseHex) irisCustomInput.value = profile.baseHex;
+    }
+
+    function _syncIrisLayerRows(profile) {
+      IRIS_LAYER_FIELDS.forEach(({ id, rowId, labelId, label, profileKey }) => {
+        const value = profile[profileKey] || '';
+        const input = document.getElementById(id);
+        const row = document.getElementById(rowId);
+        const labelEl = document.getElementById(labelId);
+        const active = !!value;
+        if (row) row.classList.toggle('custom-active', active);
+        if (labelEl) labelEl.textContent = active ? `${label}: ${value}` : label;
+        if (input && active) input.value = value;
+      });
+    }
+
+    function _applyIrisProfileFromSettings() {
+      const profile = _readIrisProfileFromSettings();
+      if (typeof IrisColor !== 'undefined') {
+        if (profile.baseHex || _irisLayersActive(profile)) {
+          IrisColor.applyIrisProfile(profile);
+        } else {
+          IrisColor.clearIris();
+        }
+      }
+      _syncIrisCustomRow(profile);
+      _syncIrisLayerRows(profile);
     }
 
     // Boot state
-    {
-      const saved = Settings.get('customIrisHex') || '';
-      _syncIrisCustomRow(saved);
-    }
+    _applyIrisProfileFromSettings();
 
     if (irisCustomInput) {
       // Apply colour immediately when user picks (color input fires 'input' continuously)
@@ -3288,9 +3359,26 @@ const ThemeCanvas = (() => {
     if (irisCustomClear) {
       irisCustomClear.addEventListener('click', () => {
         Settings.set('customIrisHex', '');
+        _clearIrisLayerOverrides();
         // Re-activate preset
         _applyEyeColor(Settings.get('eyeColor') || 'periwinkle');
       });
+    }
+
+    IRIS_LAYER_FIELDS.forEach(({ key, id }) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener('input', () => {
+        const hex = input.value;
+        Settings.set(key, hex);
+        document.getElementById('eye-color-picker')
+          ?.querySelectorAll('.color-swatch')
+          .forEach(b => b.classList.remove('active'));
+      });
+    });
+
+    if (irisLayersReset) {
+      irisLayersReset.addEventListener('click', () => _clearIrisLayerOverrides());
     }
 
     if (irisDefaultBtn) {
@@ -3301,15 +3389,17 @@ const ThemeCanvas = (() => {
         if (Settings.get('customIrisHex')) {
           Settings.set('customIrisHex', '');
         }
+        _clearIrisLayerOverrides();
       });
     }
 
-    Settings.onChange('customIrisHex', (v) => {
-      if (typeof IrisColor !== 'undefined') {
-        v ? IrisColor.applyIris(v) : IrisColor.clearIris();
-      }
-      _syncIrisCustomRow(v || '');
-    });
+    Settings.onChange('customIrisHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisCenterHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisMidHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisEdgeHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisRingHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisHighlightHex', () => _applyIrisProfileFromSettings());
+    Settings.onChange('customIrisPupilCoreHex', () => _applyIrisProfileFromSettings());
 
     // ── Custom glow hex picker ────────────────────────────────────────────
     const glowCustomInput  = document.getElementById('glow-custom-input');
@@ -3470,6 +3560,44 @@ const ThemeCanvas = (() => {
       });
     }
     Settings.onChange('irisSize', (v) => _applyIrisSize(v));
+
+    // ── Iris border toggle + thickness (default ON) ────────────────────────
+    const irisBorderToggle = document.getElementById('iris-border-toggle');
+    const irisBorderSizeSlider = document.getElementById('iris-border-size-slider');
+    const irisBorderSizeSublabel = document.getElementById('iris-border-size-sublabel');
+    const IRIS_BORDER_SIZE_MIN = Number(irisBorderSizeSlider?.min ?? 50);
+    const IRIS_BORDER_SIZE_MAX = Number(irisBorderSizeSlider?.max ?? 200);
+
+    function _applyIrisBorderEnabled(enabled) {
+      const isEnabled = enabled !== false;
+      document.body.style.setProperty('--iris-border-enabled', isEnabled ? '1' : '0');
+      if (irisBorderToggle) irisBorderToggle.checked = isEnabled;
+    }
+
+    function _applyIrisBorderThickness(pct) {
+      const clamped = Math.max(IRIS_BORDER_SIZE_MIN, Math.min(IRIS_BORDER_SIZE_MAX, Number(pct) || 100));
+      document.body.style.setProperty('--iris-border-thickness-scale', String(clamped / 100));
+      if (irisBorderSizeSlider) irisBorderSizeSlider.value = String(clamped);
+      if (irisBorderSizeSublabel) irisBorderSizeSublabel.textContent = `${clamped}%`;
+    }
+
+    _applyIrisBorderEnabled(Settings.get('irisBorderEnabled') !== false);
+    _applyIrisBorderThickness(Settings.get('irisBorderThickness') ?? 100);
+
+    if (irisBorderToggle) {
+      irisBorderToggle.addEventListener('change', () => {
+        Settings.set('irisBorderEnabled', irisBorderToggle.checked);
+      });
+    }
+
+    if (irisBorderSizeSlider) {
+      irisBorderSizeSlider.addEventListener('input', () => {
+        Settings.set('irisBorderThickness', Number(irisBorderSizeSlider.value));
+      });
+    }
+
+    Settings.onChange('irisBorderEnabled', (v) => _applyIrisBorderEnabled(v !== false));
+    Settings.onChange('irisBorderThickness', (v) => _applyIrisBorderThickness(v));
 
     // ── Mouth size slider (50–150%, default 100) ─────────────────────────
     const mouthSizeSlider   = document.getElementById('mouth-size-slider');

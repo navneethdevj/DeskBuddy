@@ -80,6 +80,14 @@ const Settings = (() => {
     companionPos:    'center',   // 'left'|'center'|'right' (kept for legacy)
     // ── Custom colour overrides ────────────────────────────────────────
     customIrisHex:   '',         // hex string or '' for preset
+    customIrisCenterHex: '',
+    customIrisMidHex:    '',
+    customIrisEdgeHex:   '',
+    customIrisRingHex:   '',
+    customIrisHighlightHex: '',
+    customIrisPupilCoreHex: '',
+    irisBorderEnabled: true,
+    irisBorderThickness: 100, // % (50–200), 100 = default
     customGlowHex:   '',
     glowEmotionSync: true,
   };

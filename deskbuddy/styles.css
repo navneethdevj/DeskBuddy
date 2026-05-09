@@ -313,8 +313,9 @@ body.glow-off .eye-wrap { filter: none; }
    margin-top/-left = -(18/2) = -9vmin to keep it centred. */
 .pupil {
   position: absolute;
-  width: 18vmin;
-  height: 18vmin;
+  --iris-border-width: calc(0.24vmin * var(--iris-border-thickness-scale, 1) * var(--iris-scale, 1));
+  width: calc(18vmin * var(--iris-scale, 1.0));
+  height: calc(18vmin * var(--iris-scale, 1.0));
   background: radial-gradient(
     circle,
     #5a9ac8  0%,
@@ -330,18 +331,19 @@ body.glow-off .eye-wrap { filter: none; }
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -9vmin;
-  margin-left: -9vmin;
+  margin-top: calc(-9vmin * var(--iris-scale, 1.0));
+  margin-left: calc(-9vmin * var(--iris-scale, 1.0));
   pointer-events: none;
+  overflow: hidden;
   will-change: transform;
 }
 
 /* Dilated pupils while curious — widens slightly for that "taking it all in" look */
 .companion.curious .pupil {
-  width: 21vmin;
-  height: 21vmin;
-  margin-top: -10.5vmin;
-  margin-left: -10.5vmin;
+  width: calc(21vmin * var(--iris-scale, 1.0));
+  height: calc(21vmin * var(--iris-scale, 1.0));
+  margin-top: calc(-10.5vmin * var(--iris-scale, 1.0));
+  margin-left: calc(-10.5vmin * var(--iris-scale, 1.0));
 }
 
 /* ===== Blink (cute squish — overrides all expressions) ===== */
@@ -1714,38 +1716,6 @@ body[data-time-period="NIGHT"] .companion {
   animation: pattedEyeSqueeze 2.2s ease-in-out infinite;
 }
 
-/* Adorable pink iris visible on the squeezed eye — warm bliss look ♡ */
-.companion.being_patted .eye::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  bottom: auto;
-  right: auto;
-  transform: none;
-  border-radius: inherit;
-  /* Soft rosy-pink gradient replacing the cold periwinkle during patting */
-  background: radial-gradient(
-    ellipse at 50% 45%,
-    #e87faa 0%,
-    #ec90b8 22%,
-    #f0a4c4 48%,
-    #f5bcda 72%,
-    #f9d5eb 90%,
-    #fce8f4 100%
-  );
-  opacity: 0.90;
-  animation: pattedIrisPulse 2.2s ease-in-out infinite;
-  transition: none;
-}
-
-@keyframes pattedIrisPulse {
-  0%, 100% { opacity: 0.85; }
-  15%       { opacity: 1.00; } /* pat impact — vivid flush */
-  50%       { opacity: 0.88; }
-}
-
 /* Soft warm shimmer on the closed crescent */
 .companion.being_patted .eye::after {
   background: radial-gradient(
@@ -2700,8 +2670,8 @@ body.full-mode .companion {
    panel without requiring a reload.
    ===================================================================== */
 
-/* ── Eye colour — iris/pupil only (filter lives on ::before, NOT .eye)
-   Separate rules at the bottom of the file handle .eye::before filters.
+/* ── Eye colour — iris/pupil only (filter lives on .pupil, NOT .eye)
+   Separate rules at the bottom of the file handle .pupil filters.
    periwinkle (default) — no filter */
 
 /* ── Nose styles ───────────────────────────────────────────────────── */
@@ -7121,13 +7091,13 @@ body.pip-mode .companion {
 /* ═══════════════════════════════════════════════════════════
    EYE IRIS vs GLOW SEPARATION
    - .eye background = white sclera ring (always visible)
-   - .eye::before = coloured iris (slightly inset so sclera shows)
+   - .pupil = coloured iris (the real central circular eye element)
    - .eye box-shadow = exterior glow, colour from --eye-glow-rgb
-   - Iris filter lives only on ::before — never on .eye itself,
+   - Iris filter lives only on .pupil — never on .eye itself,
      so the glow ring colour is never affected by the iris hue.
    ─────────────────────────────────────────────────────────── */
 
-/* Sclera ring — pure white backing; the ::before iris sits on top */
+/* Sclera ring — pure white backing behind the central iris (.pupil) */
 .eye {
   background: #f8f8ff;
   /* Eye glow ring — colour controlled via --eye-glow-rgb */
@@ -7138,96 +7108,201 @@ body.pip-mode .companion {
     inset 0 -1px 2px rgba(255, 255, 255, 0.12);
 }
 
-/* Iris layer — centered oval inside the sclera ring.
-   Uses --iris-scale directly in width/height so the iris-size slider
-   is visually reliable across presets and custom colours. */
-.eye::before {
+/* Iris layer now lives on the real circular eye element (.pupil). */
+.pupil {
+  background:
+    radial-gradient(
+      circle at 33% 30%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.74) 0%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.36) 14%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.10) 24%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 46%
+    ),
+    radial-gradient(
+      circle at 68% 74%,
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.30) 0%,
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.16) 20%,
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.00) 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.00) 28%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.20) 48%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.30) 58%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.00) 75%
+    ),
+    var(
+      --iris-gradient-core,
+      radial-gradient(
+        circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+        #4f61b8 0%,
+        #5568be 6%,
+        #5d70c4 12%,
+        #6478c9 18%,
+        #6c81cf 26%,
+        #7489d4 34%,
+        #7d92d8 43%,
+        #879bdb 52%,
+        #92a6de 62%,
+        #9fb2e2 72%,
+        #aebfe6 82%,
+        #becce9 90%,
+        #cdd9ee 96%,
+        #dee6f4 100%
+      )
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(14, 18, 34, 0.00) 60%,
+      rgba(18, 24, 46, 0.14) 80%,
+      rgba(11, 14, 30, 0.32) 100%
+    );
+  box-shadow:
+    inset 0 0 0 calc(var(--iris-border-width, 0.24vmin) * var(--iris-border-enabled, 1))
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.92),
+    inset 0 0 0.45vmin rgba(255, 255, 255, 0.16),
+    inset 0 -0.72vmin 1.1vmin rgba(8, 12, 25, 0.12);
+  transition: background 0.35s ease, filter 0.4s ease, box-shadow 0.35s ease;
+}
+
+/* Pupil core + catchlights for a more adorable, lively eye focus. */
+.pupil::before,
+.pupil::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: calc(84% * var(--iris-scale, 1.0));
-  height: calc(80% * var(--iris-scale, 1.0));
-  transform: translate(-50%, -50%);
-  border-radius: inherit;
-  background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7b8bd8  0%,  #8190d9  8%,  #8795db 18%,
-    #8d9adc 28%,  #949fdd 38%,  #9aa4de 50%,
-    #a0aae0 62%,  #a8b0e2 74%,  #b2b9e3 84%,
-    #bec3e6 92%,  #cccfe9 97%,  #dcdde8 100%
-  );
-  z-index: 0;
+  border-radius: 50%;
   pointer-events: none;
-  transition: filter 0.4s ease;
-  animation: none; /* cancel the shimmer animation from the earlier rule */
 }
-/* Pupil must sit above the ::before iris layer */
-.pupil { position: relative; z-index: 1; }
+
+.pupil::before {
+  width: 44%;
+  height: 44%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle at 34% 28%,
+    rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.46) 0%,
+    rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.20) 16%,
+    var(--iris-custom-pupil-core, #111a34) 58%,
+    #080d1c 100%
+  );
+  box-shadow:
+    0 0 0.38vmin rgba(8, 12, 24, 0.48),
+    0 0 1.2vmin rgba(10, 12, 22, 0.20),
+    inset 0 0 0.9vmin rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.16);
+  z-index: 2;
+}
+
+.pupil::after {
+  width: 70%;
+  height: 70%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 30% 24%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.98) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.64) 12%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 26%),
+    radial-gradient(circle at 41% 44%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.68) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 16%),
+    radial-gradient(circle at 74% 70%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.34) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 20%);
+  filter: drop-shadow(0 0 0.42vmin rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.26));
+  z-index: 3;
+}
 
 /* ── Iris colour classes (explicit multi-shade gradients) ── */
-body.eye-emerald .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #1f633f 0%, #2b8252 16%, #37a565 38%, #6cc78e 70%, #b9e8cb 100%);
+body.eye-emerald .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #0f3f2a 0%, #124731 6%, #175139 12%, #1b5b41 18%, #20664a 26%, #257154 34%,
+    #2a7d5e 43%, #308968 52%, #3a9673 62%, #4da580 72%, #66b591 82%, #83c5a6 90%,
+    #a4d8c0 96%, #c7ecd9 100%);
 }
-body.eye-rose .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7e2f58 0%, #a74375 16%, #c95b90 38%, #e28ab4 70%, #f2c9dd 100%);
+body.eye-rose .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #541736 0%, #611c40 6%, #6e224a 12%, #7c2854 18%, #8b2f5f 26%, #9a376a 34%,
+    #aa4075 43%, #ba4b82 52%, #c85f91 62%, #d577a4 72%, #e08fb7 82%, #eaa8ca 90%,
+    #f1c3dc 96%, #f8dff0 100%);
 }
-body.eye-amber .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7f4c15 0%, #a9681d 16%, #ce8226 38%, #e8b15d 70%, #f6ddb0 100%);
+body.eye-amber .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #5b310a 0%, #67390d 6%, #744110 12%, #814a14 18%, #8f5418 26%, #9e5e1c 34%,
+    #ad6921 43%, #bc7628 52%, #ca8738 62%, #d89a4e 72%, #e3ae6c 82%, #ecc38d 90%,
+    #f2d8af 96%, #f8edd3 100%);
 }
-body.eye-lavender .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #5f3b98 0%, #7650b2 16%, #8f6ac8 38%, #b39adf 70%, #ddd1f2 100%);
+body.eye-lavender .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #3f226f 0%, #49297d 6%, #54308a 12%, #603798 18%, #6c40a6 26%, #794ab3 34%,
+    #8758bf 43%, #9669ca 52%, #a57ed3 62%, #b495dc 72%, #c3ace5 82%, #d2c3ed 90%,
+    #e2daf3 96%, #f1f0f9 100%);
 }
-body.eye-sky .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #235a93 0%, #2f74b2 16%, #3f91ce 38%, #7ab8e8 70%, #c5e2f7 100%);
+body.eye-sky .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #143f6b 0%, #184875 6%, #1c527f 12%, #205c8a 18%, #246896 26%, #2974a3 34%,
+    #2f81b0 43%, #3a8fbd 52%, #4ea0cb 62%, #68b1d7 72%, #86c3e2 82%, #a6d5ec 90%,
+    #c7e5f3 96%, #e8f4fb 100%);
 }
-body.eye-ruby .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #7d1d1d 0%, #a42828 16%, #cb3535 38%, #e27373 70%, #f2c2c2 100%);
+body.eye-ruby .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #4f0f0f 0%, #5c1212 6%, #691616 12%, #771a1a 18%, #862020 26%, #952626 34%,
+    #a52e2e 43%, #b73b3b 52%, #c94f4f 62%, #d66767 72%, #e18181 82%, #eaa0a0 90%,
+    #f0c0c0 96%, #f7dfdf 100%);
 }
-body.eye-teal .eye::before {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #16665f 0%, #1d8279 16%, #27a79c 38%, #69cdc5 70%, #bcece8 100%);
+body.eye-teal .pupil {
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #0a443f 0%, #0d4d48 6%, #115852 12%, #14625c 18%, #186e67 26%, #1c7a72 34%,
+    #21867e 43%, #27938a 52%, #34a096 62%, #4caea5 72%, #6bbcb4 82%, #8ccbc4 90%,
+    #afdcd7 96%, #d3eeea 100%);
 }
-/* periwinkle remains the base gradient from `.eye::before` */
+/* periwinkle remains the base gradient from `.pupil` */
 
-/* ── Emotion iris tints — override user colour during interaction states ─── */
-/* These have higher specificity than body.eye-* rules so they always win.   */
-/* love (tap): iris shifts rose-pink */
-.companion.love .eye::before {
-  filter: hue-rotate(92deg) saturate(1.25) brightness(1.06);
-  transition: filter 0.25s ease;
-}
-/* cozy (short hold): iris shifts warm peachy */
-.companion.cozy .eye::before {
-  filter: hue-rotate(28deg) saturate(1.18) brightness(1.05);
-  transition: filter 0.35s ease;
-}
-/* shy: iris shifts soft rose */
-.companion.shy .eye::before {
-  filter: hue-rotate(70deg) saturate(1.10) brightness(1.03);
-  transition: filter 0.35s ease;
-}
-/* being_patted: pink iris shown via pattedIrisPulse keyframe (above) */
+/* Iris hue stays stable across glow/emotion changes; being_patted still
+   hides the pupil while the eye arc animates closed. */
 
 /* ── Custom iris gradient (body.eye-custom, driven by IrisColor.applyIris) ─ */
-/* Wins over ALL preset hue-rotate classes when active.                        */
-body.eye-custom .eye::before {
-  background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    var(--iris-color-center, #7b8bd8)  0%,
-    var(--iris-color-center, #8190d9) 10%,
-    var(--iris-color-mid,    #9aa4de) 48%,
-    var(--iris-color-edge,   #cccfe9) 90%,
-    var(--iris-color-edge,   #dcdde8) 100%
-  ) !important;
+/* Wins over preset iris gradients when active.                                */
+body.eye-custom .pupil {
+  background:
+    radial-gradient(
+      circle at 33% 30%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.76) 0%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.36) 14%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.12) 24%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 46%
+    ),
+    radial-gradient(
+      circle at 68% 74%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.30) 0%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.16) 20%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 28%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.20) 48%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.30) 58%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 75%
+    ),
+    radial-gradient(
+      circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+      var(--iris-color-center, #6a79d0) 0%,
+      var(--iris-color-center, #6a79d0) 8%,
+      var(--iris-color-mid, #8795db) 22%,
+      var(--iris-color-mid, #8795db) 44%,
+      var(--iris-color-mid, #8795db) 66%,
+      var(--iris-color-edge, #d9dcf2) 84%,
+      var(--iris-color-edge, #d9dcf2) 100%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(14, 18, 34, 0.00) 60%,
+      rgba(38, 47, 86, 0.16) 82%,
+      rgba(10, 12, 26, 0.34) 100%
+    ) !important;
+  box-shadow:
+    inset 0 0 0 calc(var(--iris-border-width, 0.24vmin) * var(--iris-border-enabled, 1))
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.92),
+    inset 0 0 0.45vmin rgba(255, 255, 255, 0.16),
+    inset 0 -0.72vmin 1.1vmin rgba(8, 12, 25, 0.12);
   filter: none !important;
-  transition: background 0.4s ease;
+  transition: background 0.4s ease, box-shadow 0.35s ease;
 }
 
 /* ── Emotion eye-wrap glow overrides — colour follows interaction state ──── */
@@ -7354,7 +7429,7 @@ body.pupil-large .eye-wrap { transform: scale(1.30) !important; }
 body.pupil-small .pupil,
 body.pupil-large .pupil { width: auto; height: auto; margin: auto; }
 
-/* ── Iris size — --iris-scale is applied in the core `.eye::before` width/height. */
+/* ── Iris size — --iris-scale is applied in the core `.pupil` width/height. */
 
 .iris-default-row {
   display: flex;
@@ -7426,6 +7501,20 @@ body.pip-mode #theme-canvas { display: none; }
   align-items: center;
   gap: 8px;
   margin-top: 8px;
+}
+
+.iris-layers-panel {
+  margin-top: 10px;
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 165, 255, 0.18);
+  background: rgba(86, 72, 138, 0.10);
+}
+.iris-layers-panel .settings-row-sublabel {
+  margin-bottom: 6px;
+}
+.iris-layers-panel .custom-color-row {
+  margin-top: 6px;
 }
 
 /* Native OS color-picker swatch */
