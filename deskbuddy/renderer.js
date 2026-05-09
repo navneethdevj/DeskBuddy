@@ -3311,7 +3311,7 @@ const ThemeCanvas = (() => {
       if (irisCustomLabel) {
         if (profile.baseHex) irisCustomLabel.textContent = `Custom base: ${profile.baseHex}`;
         else if (active) irisCustomLabel.textContent = 'Custom layers active';
-        else irisCustomLabel.textContent = 'Custom colour';
+        else irisCustomLabel.textContent = 'Custom base colour';
       }
       if (irisCustomInput && profile.baseHex) irisCustomInput.value = profile.baseHex;
     }
@@ -3372,9 +3372,6 @@ const ThemeCanvas = (() => {
       input.addEventListener('input', () => {
         const hex = input.value;
         Settings.set(key, hex);
-        if (!Settings.get('customIrisHex')) {
-          Settings.set('customIrisHex', irisCustomInput?.value || '#8795db');
-        }
         document.getElementById('eye-color-picker')
           ?.querySelectorAll('.color-swatch')
           .forEach(b => b.classList.remove('active'));
