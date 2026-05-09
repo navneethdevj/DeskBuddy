@@ -3,7 +3,10 @@
  * Keeps iris recolouring on the existing `.eye::before` layer (no extra DOM layer).
  */
 const IrisColor = (() => {
-  // 12-stop curve mirrors the default iris layering: darker/saturated center → soft edge ring.
+  // 12 paired stops keep parity with the default iris depth map:
+  // - stop positions: where each shade band lands from center to rim
+  // - lightness deltas: controlled brightening toward edge (avoids a white ring)
+  // - saturation multipliers: gentle desaturation toward edge (prevents muddy banding)
   const IRIS_STOP_PCTS = [0, 8, 18, 28, 38, 50, 62, 74, 84, 92, 97, 100];
   const IRIS_LIGHTNESS_DELTA = [-26, -20, -14, -9, -5, -1, 3, 7, 11, 15, 18, 20];
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.93, 0.89, 0.84, 0.80, 0.76];
@@ -90,6 +93,8 @@ const IrisColor = (() => {
 
     const [r, g, b] = hexToRgb(normalized);
     const [h, s, l] = rgbToHsl(r, g, b);
+    // Clamp source colour into a "safe iris palette" band so edge stops stay coloured
+    // and do not bleach into a fake middle layer between iris and sclera.
     const baseSat = clamp(s, 26, 82);
     const baseLight = clamp(l, 32, 58);
 
