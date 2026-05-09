@@ -952,7 +952,7 @@ const ThemeCanvas = (() => {
         highlightHex: Settings.get('customIrisHighlightHex') || '',
         pupilCoreHex: Settings.get('customIrisPupilCoreHex') || '',
       };
-      if (Object.values(savedIrisProfile).some(Boolean) && IrisColor.applyIrisProfile) {
+      if (Object.values(savedIrisProfile).some(Boolean)) {
         IrisColor.applyIrisProfile(savedIrisProfile);
       }
       const savedGlowHex = Settings.get('customGlowHex') || '';
@@ -3332,7 +3332,7 @@ const ThemeCanvas = (() => {
     function _applyIrisProfileFromSettings() {
       const profile = _readIrisProfileFromSettings();
       if (typeof IrisColor !== 'undefined') {
-        if ((profile.baseHex || _irisLayersActive(profile)) && IrisColor.applyIrisProfile) {
+        if (profile.baseHex || _irisLayersActive(profile)) {
           IrisColor.applyIrisProfile(profile);
         } else {
           IrisColor.clearIris();
