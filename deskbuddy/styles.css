@@ -7112,23 +7112,23 @@ body.pip-mode .companion {
   background:
     radial-gradient(
       circle at 33% 30%,
-      rgba(255, 255, 255, 0.56) 0%,
-      rgba(255, 255, 255, 0.34) 10%,
-      rgba(255, 255, 255, 0.16) 20%,
-      rgba(255, 255, 255, 0.00) 40%
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.74) 0%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.36) 14%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.10) 24%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 46%
     ),
     radial-gradient(
       circle at 68% 74%,
-      rgba(184, 198, 255, 0.24) 0%,
-      rgba(184, 198, 255, 0.12) 18%,
-      rgba(184, 198, 255, 0.00) 44%
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.30) 0%,
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.16) 20%,
+      rgba(var(--iris-custom-ring-rgb, 184, 198, 255), 0.00) 50%
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(175, 191, 255, 0.00) 30%,
-      rgba(175, 191, 255, 0.14) 48%,
-      rgba(175, 191, 255, 0.20) 58%,
-      rgba(175, 191, 255, 0.00) 74%
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.00) 28%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.20) 48%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.30) 58%,
+      rgba(var(--iris-custom-ring-rgb, 175, 191, 255), 0.00) 75%
     ),
     var(
       --iris-gradient-core,
@@ -7152,13 +7152,13 @@ body.pip-mode .companion {
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(14, 18, 34, 0.00) 58%,
-      rgba(18, 24, 46, 0.18) 78%,
-      rgba(11, 14, 30, 0.42) 100%
+      rgba(14, 18, 34, 0.00) 60%,
+      rgba(18, 24, 46, 0.14) 80%,
+      rgba(11, 14, 30, 0.32) 100%
     );
   box-shadow:
-    inset 0 0 0.38vmin rgba(255, 255, 255, 0.12),
-    inset 0 -0.9vmin 1.3vmin rgba(8, 12, 25, 0.18);
+    inset 0 0 0.45vmin rgba(255, 255, 255, 0.16),
+    inset 0 -0.72vmin 1.1vmin rgba(8, 12, 25, 0.12);
   transition: background 0.35s ease, filter 0.4s ease, box-shadow 0.35s ease;
 }
 
@@ -7172,36 +7172,36 @@ body.pip-mode .companion {
 }
 
 .pupil::before {
-  width: 36%;
-  height: 36%;
+  width: 44%;
+  height: 44%;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   background: radial-gradient(
-    circle at 34% 30%,
-    rgba(101, 122, 192, 0.40) 0%,
-    rgba(54, 70, 130, 0.22) 20%,
-    #141a31 62%,
-    #090c17 100%
+    circle at 34% 28%,
+    rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.46) 0%,
+    rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.20) 16%,
+    var(--iris-custom-pupil-core, #111a34) 58%,
+    #080d1c 100%
   );
   box-shadow:
-    0 0 0.45vmin rgba(10, 12, 22, 0.56),
-    0 0 1.5vmin rgba(10, 12, 22, 0.24),
-    inset 0 0 0.7vmin rgba(145, 165, 238, 0.14);
+    0 0 0.38vmin rgba(8, 12, 24, 0.48),
+    0 0 1.2vmin rgba(10, 12, 22, 0.20),
+    inset 0 0 0.9vmin rgba(var(--iris-custom-pupil-sheen-rgb, 165, 188, 255), 0.16);
   z-index: 2;
 }
 
 .pupil::after {
-  width: 58%;
-  height: 58%;
+  width: 70%;
+  height: 70%;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   background:
-    radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.72) 10%, rgba(255, 255, 255, 0.00) 24%),
-    radial-gradient(circle at 40% 42%, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.00) 15%),
-    radial-gradient(circle at 72% 70%, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.00) 18%);
-  filter: drop-shadow(0 0 0.45vmin rgba(255, 255, 255, 0.26));
+    radial-gradient(circle at 30% 24%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.98) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.64) 12%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 26%),
+    radial-gradient(circle at 41% 44%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.68) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 16%),
+    radial-gradient(circle at 74% 70%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.34) 0%, rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 20%);
+  filter: drop-shadow(0 0 0.42vmin rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.26));
   z-index: 3;
 }
 
@@ -7259,23 +7259,23 @@ body.eye-custom .pupil {
   background:
     radial-gradient(
       circle at 33% 30%,
-      rgba(255, 255, 255, 0.58) 0%,
-      rgba(255, 255, 255, 0.36) 10%,
-      rgba(255, 255, 255, 0.14) 20%,
-      rgba(255, 255, 255, 0.00) 40%
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.76) 0%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.36) 14%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.12) 24%,
+      rgba(var(--iris-custom-highlight-rgb, 255, 255, 255), 0.00) 46%
     ),
     radial-gradient(
       circle at 68% 74%,
-      rgba(195, 206, 255, 0.26) 0%,
-      rgba(195, 206, 255, 0.14) 18%,
-      rgba(195, 206, 255, 0.00) 44%
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.30) 0%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.16) 20%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 50%
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(195, 206, 255, 0.00) 30%,
-      rgba(195, 206, 255, 0.12) 48%,
-      rgba(195, 206, 255, 0.18) 58%,
-      rgba(195, 206, 255, 0.00) 74%
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 28%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.20) 48%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.30) 58%,
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.00) 75%
     ),
     radial-gradient(
       circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
@@ -7289,13 +7289,13 @@ body.eye-custom .pupil {
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(14, 18, 34, 0.00) 58%,
-      rgba(38, 47, 86, 0.22) 82%,
-      rgba(10, 12, 26, 0.46) 100%
+      rgba(14, 18, 34, 0.00) 60%,
+      rgba(38, 47, 86, 0.16) 82%,
+      rgba(10, 12, 26, 0.34) 100%
     ) !important;
   box-shadow:
-    inset 0 0 0.38vmin rgba(255, 255, 255, 0.12),
-    inset 0 -0.9vmin 1.3vmin rgba(8, 12, 25, 0.18);
+    inset 0 0 0.45vmin rgba(255, 255, 255, 0.16),
+    inset 0 -0.72vmin 1.1vmin rgba(8, 12, 25, 0.12);
   filter: none !important;
   transition: background 0.4s ease, box-shadow 0.35s ease;
 }
@@ -7496,6 +7496,20 @@ body.pip-mode #theme-canvas { display: none; }
   align-items: center;
   gap: 8px;
   margin-top: 8px;
+}
+
+.iris-layers-panel {
+  margin-top: 10px;
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 165, 255, 0.18);
+  background: rgba(86, 72, 138, 0.10);
+}
+.iris-layers-panel .settings-row-sublabel {
+  margin-bottom: 6px;
+}
+.iris-layers-panel .custom-color-row {
+  margin-top: 6px;
 }
 
 /* Native OS color-picker swatch */

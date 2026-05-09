@@ -92,6 +92,28 @@ const IrisColor = (() => {
     ).join('');
   }
 
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(v =>
+      Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')
+    ).join('');
+  }
+
+  function mixHex(a, b, t) {
+    const aa = hexToRgb(a);
+    const bb = hexToRgb(b);
+    return rgbToHex(
+      aa[0] + (bb[0] - aa[0]) * t,
+      aa[1] + (bb[1] - aa[1]) * t,
+      aa[2] + (bb[2] - aa[2]) * t,
+    );
+  }
+
+  function toRgbTriplet(hex, fallback) {
+    const normalized = normalizeHex(hex);
+    const rgb = normalized ? hexToRgb(normalized) : fallback;
+    return `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+  }
+
   function buildStopsFromHsl(h, satBase, lightBase) {
     return IRIS_STOP_PCTS.map((_stopPct, i) => {
       const sat = clamp(satBase * IRIS_SAT_MULT[i], 20, 98);
@@ -100,20 +122,54 @@ const IrisColor = (() => {
     });
   }
 
-  function deriveIrisGradient(hex) {
+  function buildStopsFromThreeColors(centerHex, midHex, edgeHex) {
+    return IRIS_STOP_PCTS.map((pct) => {
+      if (pct <= 55) return mixHex(centerHex, midHex, pct / 55);
+      return mixHex(midHex, edgeHex, (pct - 55) / 45);
+    });
+  }
+
+  function deriveIrisGradient(hex, overrides = {}) {
     const normalized = normalizeHex(hex);
+    const centerOverride = normalizeHex(overrides.centerHex || '');
+    const midOverride = normalizeHex(overrides.midHex || '');
+    const edgeOverride = normalizeHex(overrides.edgeHex || '');
+    const ringOverride = normalizeHex(overrides.ringHex || '');
+    const highlightOverride = normalizeHex(overrides.highlightHex || '');
+    const pupilCoreOverride = normalizeHex(overrides.pupilCoreHex || '');
+
+    const buildResult = (sourceMid, stops, h) => {
+      const center = centerOverride || stops[IRIS_CENTER_STOP_INDEX];
+      const mid = midOverride || sourceMid;
+      const edge = edgeOverride || stops[IRIS_EDGE_STOP_INDEX];
+      const finalStops = (centerOverride || midOverride || edgeOverride)
+        ? buildStopsFromThreeColors(center, mid, edge)
+        : stops;
+      const rim = finalStops[Math.max(0, finalStops.length - 2)];
+      const ring = ringOverride || finalStops[Math.min(8, finalStops.length - 1)];
+      const highlight = highlightOverride || finalStops[Math.min(12, finalStops.length - 1)];
+      const pupilCore = pupilCoreOverride || hslToHex(h, 42, 14);
+      const pupilSheen = mixHex(highlight, '#ffffff', 0.28);
+      return {
+        center,
+        mid,
+        edge,
+        stops: finalStops,
+        rim,
+        ring,
+        highlight,
+        pupilCore,
+        pupilSheen,
+      };
+    };
+
     if (!normalized) {
       const [r, g, b] = hexToRgb(DEFAULT_IRIS_BASE_HEX);
       const [h, s, l] = rgbToHsl(r, g, b);
       const satBase = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
       const lightBase = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
       const stops = buildStopsFromHsl(h, satBase, lightBase);
-      return {
-        center: stops[IRIS_CENTER_STOP_INDEX],
-        mid: DEFAULT_IRIS_BASE_HEX,
-        edge: stops[IRIS_EDGE_STOP_INDEX],
-        stops,
-      };
+      return buildResult(DEFAULT_IRIS_BASE_HEX, stops, h);
     }
 
     const [r, g, b] = hexToRgb(normalized);
@@ -123,13 +179,7 @@ const IrisColor = (() => {
     const baseSat = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
     const baseLight = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
     const stops = buildStopsFromHsl(h, baseSat, baseLight);
-
-    return {
-      center: stops[IRIS_CENTER_STOP_INDEX],
-      mid: normalized,
-      edge: stops[IRIS_EDGE_STOP_INDEX],
-      stops,
-    };
+    return buildResult(normalized, stops, h);
   }
 
   function buildIrisGradient(stops) {
@@ -140,37 +190,38 @@ ${lines.join(',\n')}
         )`;
   }
 
-  function buildIrisBackground(stops) {
-    const spark = hexToRgb(stops[Math.min(5, stops.length - 1)]);
-    const ring = hexToRgb(stops[Math.min(8, stops.length - 1)]);
-    const rim = hexToRgb(stops[Math.max(0, stops.length - 2)]);
+  function buildIrisBackground(palette) {
+    const spark = hexToRgb(palette.ring);
+    const ring = hexToRgb(palette.ring);
+    const rim = hexToRgb(palette.rim);
+    const highlight = hexToRgb(palette.highlight);
     return `
         radial-gradient(
           circle at 33% 30%,
-          rgba(255, 255, 255, 0.58) 0%,
-          rgba(255, 255, 255, 0.34) 10%,
-          rgba(255, 255, 255, 0.14) 20%,
-          rgba(255, 255, 255, 0) 40%
+          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.76) 0%,
+          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.36) 14%,
+          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.12) 24%,
+          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0) 46%
         ),
         radial-gradient(
           circle at 68% 74%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.26) 0%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.14) 18%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0) 44%
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.30) 0%,
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.16) 20%,
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0) 50%
         ),
         radial-gradient(
           circle at 50% 50%,
           rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 30%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.12) 48%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.20) 58%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 74%
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.20) 48%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.30) 58%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 75%
         ),
-        ${buildIrisGradient(stops)},
+        ${buildIrisGradient(palette.stops)},
         radial-gradient(
           circle at 50% 50%,
-          rgba(14, 18, 34, 0) 58%,
-          rgba(${rim[0]}, ${rim[1]}, ${rim[2]}, 0.22) 82%,
-          rgba(10, 12, 26, 0.46) 100%
+          rgba(14, 18, 34, 0) 60%,
+          rgba(${rim[0]}, ${rim[1]}, ${rim[2]}, 0.16) 82%,
+          rgba(10, 12, 26, 0.34) 100%
         )
     `;
   }
@@ -185,21 +236,35 @@ ${lines.join(',\n')}
   }
 
   function applyIris(hex) {
-    const normalized = normalizeHex(hex);
-    if (!normalized) { clearIris(); return; }
+    applyIrisProfile({ baseHex: hex });
+  }
 
-    const { center, mid, edge, stops } = deriveIrisGradient(normalized);
+  function applyIrisProfile(profile = {}) {
+    const baseHex = normalizeHex(profile.baseHex || '');
+    const hasLayerOverride = !!normalizeHex(profile.centerHex || '')
+      || !!normalizeHex(profile.midHex || '')
+      || !!normalizeHex(profile.edgeHex || '')
+      || !!normalizeHex(profile.ringHex || '')
+      || !!normalizeHex(profile.highlightHex || '')
+      || !!normalizeHex(profile.pupilCoreHex || '');
+    if (!baseHex && !hasLayerOverride) { clearIris(); return; }
+
+    const palette = deriveIrisGradient(baseHex || DEFAULT_IRIS_BASE_HEX, profile);
     getIrisStyleEl().textContent = `
       body.eye-custom .pupil {
-        background: ${buildIrisBackground(stops)} !important;
+        background: ${buildIrisBackground(palette)} !important;
         filter: none !important;
         transition: background 0.25s ease !important;
       }
     `;
 
-    document.body.style.setProperty('--iris-color-center', center);
-    document.body.style.setProperty('--iris-color-mid', mid);
-    document.body.style.setProperty('--iris-color-edge', edge);
+    document.body.style.setProperty('--iris-color-center', palette.center);
+    document.body.style.setProperty('--iris-color-mid', palette.mid);
+    document.body.style.setProperty('--iris-color-edge', palette.edge);
+    document.body.style.setProperty('--iris-custom-ring-rgb', toRgbTriplet(palette.ring, [195, 206, 255]));
+    document.body.style.setProperty('--iris-custom-highlight-rgb', toRgbTriplet(palette.highlight, [255, 255, 255]));
+    document.body.style.setProperty('--iris-custom-pupil-core', normalizeHex(palette.pupilCore) || '#111a34');
+    document.body.style.setProperty('--iris-custom-pupil-sheen-rgb', toRgbTriplet(palette.pupilSheen, [165, 188, 255]));
     document.body.classList.add('eye-custom');
   }
 
@@ -209,6 +274,10 @@ ${lines.join(',\n')}
     document.body.style.removeProperty('--iris-color-center');
     document.body.style.removeProperty('--iris-color-mid');
     document.body.style.removeProperty('--iris-color-edge');
+    document.body.style.removeProperty('--iris-custom-ring-rgb');
+    document.body.style.removeProperty('--iris-custom-highlight-rgb');
+    document.body.style.removeProperty('--iris-custom-pupil-core');
+    document.body.style.removeProperty('--iris-custom-pupil-sheen-rgb');
   }
 
   function applyGlow(hex) {
@@ -245,6 +314,7 @@ ${lines.join(',\n')}
 
   return {
     applyIris,
+    applyIrisProfile,
     clearIris,
     applyGlow,
     clearGlow,
