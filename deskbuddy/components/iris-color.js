@@ -7,7 +7,7 @@ const IrisColor = (() => {
   const IRIS_LIGHTNESS_DELTA = [-28, -22, -16, -10, -6, -1, 4, 10, 16, 24, 30, 34];
   const IRIS_SAT_MULT = [1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.94, 0.88, 0.80, 0.70, 0.58, 0.48];
 
-  let _irisStyleEl = null;
+  let irisStyleEl = null;
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -115,12 +115,12 @@ ${lines.join(',\n')}
   }
 
   function getIrisStyleEl() {
-    if (!_irisStyleEl) {
-      _irisStyleEl = document.createElement('style');
-      _irisStyleEl.id = 'iris-color-dynamic';
-      document.head.appendChild(_irisStyleEl);
+    if (!irisStyleEl) {
+      irisStyleEl = document.createElement('style');
+      irisStyleEl.id = 'iris-color-dynamic';
+      document.head.appendChild(irisStyleEl);
     }
-    return _irisStyleEl;
+    return irisStyleEl;
   }
 
   function applyIris(hex) {
@@ -143,7 +143,7 @@ ${lines.join(',\n')}
   }
 
   function clearIris() {
-    if (_irisStyleEl) _irisStyleEl.textContent = '';
+    if (irisStyleEl) irisStyleEl.textContent = '';
     document.body.classList.remove('eye-custom');
     document.body.style.removeProperty('--iris-color-center');
     document.body.style.removeProperty('--iris-color-mid');
