@@ -3,16 +3,16 @@
  * Recolours the real central iris element (`.pupil`) with no extra DOM layers.
  */
 const IrisColor = (() => {
-  // 14 paired stops create softer layered depth for a cuter iris look:
+  // 16 paired stops create softer layered depth for a cuter iris look:
   // - stop positions: where each shade band lands from center to rim
   // - lightness deltas: controlled brightening toward edge (avoids a white ring)
   // - saturation multipliers: gentle desaturation toward edge (prevents muddy banding)
   // Stop positions from iris center (0) to edge (100).
-  const IRIS_STOP_PCTS = [0, 6, 12, 19, 27, 36, 46, 57, 68, 78, 86, 92, 97, 100];
+  const IRIS_STOP_PCTS = [0, 4, 8, 13, 19, 26, 34, 43, 53, 63, 73, 82, 89, 94, 98, 100];
   // Brightness ramp: gentle fade from rich core to soft edge.
-  const IRIS_LIGHTNESS_DELTA = [-24, -20, -16, -12, -8, -4, 0, 4, 8, 12, 16, 19, 22, 24];
+  const IRIS_LIGHTNESS_DELTA = [-28, -24, -20, -16, -12, -8, -4, 0, 4, 8, 12, 16, 20, 23, 25, 27];
   // Saturation falloff: keeps hue identity while fading outward.
-  const IRIS_SAT_MULT = [1.20, 1.16, 1.12, 1.08, 1.05, 1.02, 1.00, 0.97, 0.94, 0.90, 0.86, 0.82, 0.79, 0.76];
+  const IRIS_SAT_MULT = [1.26, 1.22, 1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.94, 0.90, 0.86, 0.83, 0.80, 0.77, 0.74];
   const IRIS_CENTER_STOP_INDEX = 0;
   const IRIS_EDGE_STOP_INDEX = IRIS_STOP_PCTS.length - 2;
   const DEFAULT_IRIS_BASE_HEX = '#8795db';
@@ -93,7 +93,7 @@ const IrisColor = (() => {
   }
 
   function buildStopsFromHsl(h, satBase, lightBase) {
-    return IRIS_STOP_PCTS.map((_, i) => {
+    return IRIS_STOP_PCTS.map((_stopPct, i) => {
       const sat = clamp(satBase * IRIS_SAT_MULT[i], 20, 98);
       const light = clamp(lightBase + IRIS_LIGHTNESS_DELTA[i], 16, 78);
       return hslToHex(h, sat, light);
@@ -142,6 +142,7 @@ ${lines.join(',\n')}
 
   function buildIrisBackground(stops) {
     const spark = hexToRgb(stops[Math.min(5, stops.length - 1)]);
+    const ring = hexToRgb(stops[Math.min(8, stops.length - 1)]);
     const rim = hexToRgb(stops[Math.max(0, stops.length - 2)]);
     return `
         radial-gradient(
@@ -156,6 +157,13 @@ ${lines.join(',\n')}
           rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.26) 0%,
           rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.14) 18%,
           rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0) 44%
+        ),
+        radial-gradient(
+          circle at 50% 50%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 30%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.12) 48%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.20) 58%,
+          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 74%
         ),
         ${buildIrisGradient(stops)},
         radial-gradient(
