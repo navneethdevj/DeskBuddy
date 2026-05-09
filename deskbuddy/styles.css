@@ -7108,95 +7108,130 @@ body.pip-mode .companion {
 
 /* Iris layer now lives on the real circular eye element (.pupil). */
 .pupil {
-  background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #5f70c5 0%,
-    #6778cb 7%,
-    #7080d0 14%,
-    #7888d5 22%,
-    #8190d9 31%,
-    #8795db 40%,
-    #8f9ddd 50%,
-    #98a5df 60%,
-    #a1aee2 70%,
-    #acb8e5 79%,
-    #b9c3e9 87%,
-    #c8cfed 94%,
-    #d9dcf2 100%
-  );
-  transition: filter 0.4s ease;
+  background:
+    radial-gradient(
+      circle at 33% 30%,
+      rgba(255, 255, 255, 0.56) 0%,
+      rgba(255, 255, 255, 0.34) 10%,
+      rgba(255, 255, 255, 0.16) 20%,
+      rgba(255, 255, 255, 0.00) 40%
+    ),
+    radial-gradient(
+      circle at 68% 74%,
+      rgba(184, 198, 255, 0.24) 0%,
+      rgba(184, 198, 255, 0.12) 18%,
+      rgba(184, 198, 255, 0.00) 44%
+    ),
+    var(
+      --iris-gradient-core,
+      radial-gradient(
+        circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+        #4f61b8 0%,
+        #5568be 6%,
+        #5d70c4 12%,
+        #6478c9 18%,
+        #6c81cf 26%,
+        #7489d4 34%,
+        #7d92d8 43%,
+        #879bdb 52%,
+        #92a6de 62%,
+        #9fb2e2 72%,
+        #aebfe6 82%,
+        #becce9 90%,
+        #cdd9ee 96%,
+        #dee6f4 100%
+      )
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(14, 18, 34, 0.00) 58%,
+      rgba(18, 24, 46, 0.18) 78%,
+      rgba(11, 14, 30, 0.42) 100%
+    );
+  transition: background 0.35s ease, filter 0.4s ease;
 }
 
 /* ── Iris colour classes (explicit multi-shade gradients) ── */
 body.eye-emerald .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #174f36 0%, #1d5f40 8%, #23704a 16%, #298155 25%, #2f9360 34%, #36a36b 44%,
-    #4ab07b 55%, #63be90 66%, #7fcca7 76%, #9ad8bb 85%, #b7e4ce 93%, #d4f1e3 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #0f3f2a 0%, #124731 6%, #175139 12%, #1b5b41 18%, #20664a 26%, #257154 34%,
+    #2a7d5e 43%, #308968 52%, #3a9673 62%, #4da580 72%, #66b591 82%, #83c5a6 90%,
+    #a4d8c0 96%, #c7ecd9 100%);
 }
 body.eye-rose .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #682444 0%, #762a4f 8%, #84305a 16%, #933766 25%, #a23f72 34%, #b1487e 44%,
-    #bf588d 55%, #cd709f 66%, #db8cb3 76%, #e6a6c6 85%, #efc0d8 93%, #f7dceb 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #541736 0%, #611c40 6%, #6e224a 12%, #7c2854 18%, #8b2f5f 26%, #9a376a 34%,
+    #aa4075 43%, #ba4b82 52%, #c85f91 62%, #d577a4 72%, #e08fb7 82%, #eaa8ca 90%,
+    #f1c3dc 96%, #f8dff0 100%);
 }
 body.eye-amber .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #6d3e0f 0%, #7b4712 8%, #895015 16%, #985a18 25%, #a7641c 34%, #b76f20 44%,
-    #c77d2a 55%, #d58f43 66%, #e0a461 76%, #e9bc82 85%, #f1d2a4 93%, #f8e7c8 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #5b310a 0%, #67390d 6%, #744110 12%, #814a14 18%, #8f5418 26%, #9e5e1c 34%,
+    #ad6921 43%, #bc7628 52%, #ca8738 62%, #d89a4e 72%, #e3ae6c 82%, #ecc38d 90%,
+    #f2d8af 96%, #f8edd3 100%);
 }
 body.eye-lavender .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #4f2f84 0%, #5a3891 8%, #66419d 16%, #724aaa 25%, #7f54b7 34%, #8c60c3 44%,
-    #9a72cd 55%, #a989d7 66%, #ba9ee0 76%, #cbb5e8 85%, #ddccf0 93%, #efe4f8 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #3f226f 0%, #49297d 6%, #54308a 12%, #603798 18%, #6c40a6 26%, #794ab3 34%,
+    #8758bf 43%, #9669ca 52%, #a57ed3 62%, #b495dc 72%, #c3ace5 82%, #d2c3ed 90%,
+    #e2daf3 96%, #f1f0f9 100%);
 }
 body.eye-sky .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #1c4b7b 0%, #20568b 8%, #25619b 16%, #2a6dab 25%, #3079bb 34%, #3786cb 44%,
-    #4a96d8 55%, #63a8e1 66%, #80bae9 76%, #9dccef 85%, #bdddf5 93%, #dceefb 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #143f6b 0%, #184875 6%, #1c527f 12%, #205c8a 18%, #246896 26%, #2974a3 34%,
+    #2f81b0 43%, #3a8fbd 52%, #4ea0cb 62%, #68b1d7 72%, #86c3e2 82%, #a6d5ec 90%,
+    #c7e5f3 96%, #e8f4fb 100%);
 }
 body.eye-ruby .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #681414 0%, #761818 8%, #851d1d 16%, #942323 25%, #a42a2a 34%, #b53333 44%,
-    #c64a4a 55%, #d46464 66%, #df8181 76%, #e89d9d 85%, #efb8b8 93%, #f6d6d6 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #4f0f0f 0%, #5c1212 6%, #691616 12%, #771a1a 18%, #862020 26%, #952626 34%,
+    #a52e2e 43%, #b73b3b 52%, #c94f4f 62%, #d66767 72%, #e18181 82%, #eaa0a0 90%,
+    #f0c0c0 96%, #f7dfdf 100%);
 }
 body.eye-teal .pupil {
-  background: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    #11534d 0%, #14615a 8%, #176f67 16%, #1a7e74 25%, #1e8d82 34%, #229c90 44%,
-    #34aaa0 55%, #4ab8af 66%, #67c7bf 76%, #86d6cf 85%, #a8e4e0 93%, #cbf2ef 100%);
+  --iris-gradient-core: radial-gradient(circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+    #0a443f 0%, #0d4d48 6%, #115852 12%, #14625c 18%, #186e67 26%, #1c7a72 34%,
+    #21867e 43%, #27938a 52%, #34a096 62%, #4caea5 72%, #6bbcb4 82%, #8ccbc4 90%,
+    #afdcd7 96%, #d3eeea 100%);
 }
 /* periwinkle remains the base gradient from `.pupil` */
 
-/* ── Emotion iris tints — override user colour during interaction states ─── */
-/* These have higher specificity than body.eye-* rules so they always win.   */
-/* love (tap): iris shifts rose-pink */
-.companion.love .pupil {
-  filter: hue-rotate(92deg) saturate(1.25) brightness(1.06);
-  transition: filter 0.25s ease;
-}
-/* cozy (short hold): iris shifts warm peachy */
-.companion.cozy .pupil {
-  filter: hue-rotate(28deg) saturate(1.18) brightness(1.05);
-  transition: filter 0.35s ease;
-}
-/* shy: iris shifts soft rose */
-.companion.shy .pupil {
-  filter: hue-rotate(70deg) saturate(1.10) brightness(1.03);
-  transition: filter 0.35s ease;
-}
-/* being_patted hides the pupil while the eye arc animates closed */
+/* Iris hue stays stable across glow/emotion changes; being_patted still
+   hides the pupil while the eye arc animates closed. */
 
 /* ── Custom iris gradient (body.eye-custom, driven by IrisColor.applyIris) ─ */
-/* Wins over ALL preset hue-rotate classes when active.                        */
+/* Wins over preset iris gradients when active.                                */
 body.eye-custom .pupil {
-  background: radial-gradient(
-    circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-    var(--iris-color-center, #7b8bd8) 0%,
-    var(--iris-color-center, #8190d9) 8%,
-    var(--iris-color-mid, #8795db) 20%,
-    var(--iris-color-mid, #9aa4de) 40%,
-    var(--iris-color-mid, #a8b0e2) 62%,
-    var(--iris-color-edge, #cccfe9) 84%,
-    var(--iris-color-edge, #dcdde8) 100%
-  ) !important;
+  background:
+    radial-gradient(
+      circle at 33% 30%,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(255, 255, 255, 0.36) 10%,
+      rgba(255, 255, 255, 0.14) 20%,
+      rgba(255, 255, 255, 0.00) 40%
+    ),
+    radial-gradient(
+      circle at 68% 74%,
+      rgba(195, 206, 255, 0.26) 0%,
+      rgba(195, 206, 255, 0.14) 18%,
+      rgba(195, 206, 255, 0.00) 44%
+    ),
+    radial-gradient(
+      circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
+      var(--iris-color-center, #6a79d0) 0%,
+      var(--iris-color-center, #6a79d0) 8%,
+      var(--iris-color-mid, #8795db) 22%,
+      var(--iris-color-mid, #8795db) 44%,
+      var(--iris-color-mid, #8795db) 66%,
+      var(--iris-color-edge, #d9dcf2) 84%,
+      var(--iris-color-edge, #d9dcf2) 100%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(14, 18, 34, 0.00) 58%,
+      rgba(38, 47, 86, 0.22) 82%,
+      rgba(10, 12, 26, 0.46) 100%
+    ) !important;
   filter: none !important;
   transition: background 0.4s ease;
 }

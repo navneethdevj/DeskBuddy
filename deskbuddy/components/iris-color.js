@@ -140,6 +140,33 @@ ${lines.join(',\n')}
         )`;
   }
 
+  function buildIrisBackground(stops) {
+    const spark = hexToRgb(stops[Math.min(5, stops.length - 1)]);
+    const rim = hexToRgb(stops[Math.max(0, stops.length - 2)]);
+    return `
+        radial-gradient(
+          circle at 33% 30%,
+          rgba(255, 255, 255, 0.58) 0%,
+          rgba(255, 255, 255, 0.34) 10%,
+          rgba(255, 255, 255, 0.14) 20%,
+          rgba(255, 255, 255, 0) 40%
+        ),
+        radial-gradient(
+          circle at 68% 74%,
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.26) 0%,
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.14) 18%,
+          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0) 44%
+        ),
+        ${buildIrisGradient(stops)},
+        radial-gradient(
+          circle at 50% 50%,
+          rgba(14, 18, 34, 0) 58%,
+          rgba(${rim[0]}, ${rim[1]}, ${rim[2]}, 0.22) 82%,
+          rgba(10, 12, 26, 0.46) 100%
+        )
+    `;
+  }
+
   function getIrisStyleEl() {
     if (!irisStyleEl) {
       irisStyleEl = document.createElement('style');
@@ -156,7 +183,7 @@ ${lines.join(',\n')}
     const { center, mid, edge, stops } = deriveIrisGradient(normalized);
     getIrisStyleEl().textContent = `
       body.eye-custom .pupil {
-        background: ${buildIrisGradient(stops)} !important;
+        background: ${buildIrisBackground(stops)} !important;
         filter: none !important;
         transition: background 0.25s ease !important;
       }
