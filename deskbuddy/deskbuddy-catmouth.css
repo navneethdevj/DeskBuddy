@@ -490,13 +490,25 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* COZY / BEING_PATTED — whiskers gently ripple in slow contentment */
 .companion.cozy .whisker,
 .companion.being_patted .whisker {
+  animation-duration: 5.5s !important;
+}
+.companion.cozy .whisker-group-left .whisker,
+.companion.being_patted .whisker-group-left .whisker {
   background: linear-gradient(
     to left,
     rgba(255, 160, 190, 0.75) 0%,
     rgba(255, 140, 175, 0.30) 55%,
     transparent 100%
   );
-  animation-duration: 5.5s !important;
+}
+.companion.cozy .whisker-group-right .whisker,
+.companion.being_patted .whisker-group-right .whisker {
+  background: linear-gradient(
+    to right,
+    rgba(255, 160, 190, 0.75) 0%,
+    rgba(255, 140, 175, 0.30) 55%,
+    transparent 100%
+  );
 }
 .companion.being_patted .whisker {
   animation-duration: 2.2s !important;  /* sync loosely with pattedBodyLean */
@@ -561,9 +573,17 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 }
 
 /* LOVE — warm tint, slow wave */
-.companion.love .whisker {
+.companion.love .whisker-group-left .whisker {
   background: linear-gradient(
     to left,
+    rgba(255, 170, 200, 0.80) 0%,
+    rgba(255, 155, 185, 0.32) 55%,
+    transparent 100%
+  );
+}
+.companion.love .whisker-group-right .whisker {
+  background: linear-gradient(
+    to right,
     rgba(255, 170, 200, 0.80) 0%,
     rgba(255, 155, 185, 0.32) 55%,
     transparent 100%
