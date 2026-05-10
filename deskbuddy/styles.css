@@ -313,7 +313,7 @@ body.glow-off .eye-wrap { filter: none; }
    margin-top/-left = -(18/2) = -9vmin to keep it centred. */
 .pupil {
   position: absolute;
-  --iris-border-width: calc(0.24vmin * var(--iris-border-thickness-scale, 1) * var(--iris-scale, 1));
+  --iris-border-width: calc(0.28vmin * var(--iris-border-thickness-scale, 1));
   width: calc(18vmin * var(--iris-scale, 1.0));
   height: calc(18vmin * var(--iris-scale, 1.0));
   background: radial-gradient(
@@ -336,6 +336,13 @@ body.glow-off .eye-wrap { filter: none; }
   pointer-events: none;
   overflow: hidden;
   will-change: transform;
+  /* Iris border — always present, controlled by --iris-border-enabled (0|1) and thickness */
+  box-shadow:
+    inset 0 0 0 calc(var(--iris-border-width) * var(--iris-border-enabled, 1))
+      rgba(120, 135, 235, 0.55),
+    inset 0 0 0.35vmin rgba(255, 255, 255, 0.12),
+    inset 0 -0.5vmin 0.8vmin rgba(8, 12, 25, 0.08);
+  transition: box-shadow 0.3s ease;
 }
 
 /* Dilated pupils while curious — widens slightly for that "taking it all in" look */
@@ -7282,27 +7289,25 @@ body.eye-custom .pupil {
     ),
     radial-gradient(
       circle at calc(50% + var(--gaze-x, 0%)) calc(50% + var(--gaze-y, 0%)),
-      var(--iris-color-center, #6a79d0) 0%,
-      var(--iris-color-center, #6a79d0) 8%,
-      var(--iris-color-mid, #8795db) 22%,
-      var(--iris-color-mid, #8795db) 44%,
-      var(--iris-color-mid, #8795db) 66%,
-      var(--iris-color-edge, #d9dcf2) 84%,
-      var(--iris-color-edge, #d9dcf2) 100%
+      var(--iris-color-center, #4f6faa) 0%,
+      var(--iris-color-center, #4f6faa) 6%,
+      var(--iris-color-mid, #8795db) 36%,
+      var(--iris-color-edge, #c4cbee) 80%,
+      var(--iris-color-edge, #c4cbee) 90%
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(14, 18, 34, 0.00) 60%,
-      rgba(38, 47, 86, 0.16) 82%,
-      rgba(10, 12, 26, 0.34) 100%
+      rgba(14, 18, 34, 0.00) 65%,
+      rgba(38, 47, 86, 0.07) 84%,
+      rgba(10, 12, 26, 0.14) 100%
     ) !important;
   box-shadow:
-    inset 0 0 0 calc(var(--iris-border-width, 0.24vmin) * var(--iris-border-enabled, 1))
-      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.92),
-    inset 0 0 0.45vmin rgba(255, 255, 255, 0.16),
-    inset 0 -0.72vmin 1.1vmin rgba(8, 12, 25, 0.12);
+    inset 0 0 0 calc(var(--iris-border-width) * var(--iris-border-enabled, 1))
+      rgba(var(--iris-custom-ring-rgb, 195, 206, 255), 0.88),
+    inset 0 0 0.45vmin rgba(255, 255, 255, 0.18),
+    inset 0 -0.6vmin 1.0vmin rgba(8, 12, 25, 0.10);
   filter: none !important;
-  transition: background 0.4s ease, box-shadow 0.35s ease;
+  transition: background 0.4s ease, box-shadow 0.3s ease;
 }
 
 /* ── Emotion eye-wrap glow overrides — colour follows interaction state ──── */
@@ -7444,7 +7449,7 @@ body.glow-off .companion {
   filter: none !important;
   animation-name: none !important;
   /* keep idleSway only */
-  animation: pipFloat 14s ease-in-out infinite !important;
+  animation: idleSway 14s ease-in-out infinite !important;
 }
 body.glow-subtle .companion {
   --glow-scale: 0.45;
@@ -7457,10 +7462,24 @@ body.glow-vivid .companion {
    Since keyframe values can't use CSS vars directly in older code-paths,
    we duplicate the filter here for the key emotions: */
 body.glow-subtle .companion           { filter: drop-shadow(0 0 3vmin rgba(120,135,235,0.12)) drop-shadow(0 0 8vmin rgba(120,135,235,0.04)) !important; }
-body.glow-subtle .companion.happy     { filter: drop-shadow(0 0 4vmin rgba(160,140,245,0.16)) drop-shadow(0 0 10vmin rgba(160,140,245,0.05)) !important; }
+body.glow-subtle .companion.happy       { filter: drop-shadow(0 0 4vmin rgba(160,140,245,0.16)) drop-shadow(0 0 10vmin rgba(160,140,245,0.05)) !important; }
+body.glow-subtle .companion.love        { filter: drop-shadow(0 0 3vmin rgba(255,138,180,0.22)) drop-shadow(0 0 8vmin rgba(255,115,162,0.09)) !important; }
+body.glow-subtle .companion.being_patted { filter: drop-shadow(0 0 4vmin rgba(255,120,165,0.28)) drop-shadow(0 0 10vmin rgba(255,92,148,0.11)) !important; }
+body.glow-subtle .companion.overjoyed   { filter: drop-shadow(0 0 4vmin rgba(255,230,120,0.20)) drop-shadow(0 0 10vmin rgba(255,215,90,0.08)) !important; }
+body.glow-subtle .companion.ecstatic    { filter: drop-shadow(0 0 5vmin rgba(255,228,50,0.26)) drop-shadow(0 0 12vmin rgba(255,210,30,0.10)) !important; }
 body.glow-vivid  .companion           { filter: drop-shadow(0 0 12vmin rgba(120,135,235,0.70)) drop-shadow(0 0 28vmin rgba(120,135,235,0.28)) drop-shadow(0 0 50vmin rgba(120,135,235,0.10)) !important; }
 body.glow-vivid  .companion.happy     { filter: drop-shadow(0 0 16vmin rgba(160,140,245,0.90)) drop-shadow(0 0 36vmin rgba(160,140,245,0.36)) !important; }
 body.glow-vivid  .companion.curious   { filter: drop-shadow(0 0 14vmin rgba(115,125,245,0.80)) drop-shadow(0 0 32vmin rgba(115,125,245,0.30)) !important; }
+body.glow-vivid  .companion.love        { filter: drop-shadow(0 0 14vmin rgba(255,138,180,0.90)) drop-shadow(0 0 34vmin rgba(255,115,162,0.44)) drop-shadow(0 0 54vmin rgba(255,90,145,0.16)) !important; }
+body.glow-vivid  .companion.being_patted { filter: drop-shadow(0 0 18vmin rgba(255,120,165,1.00)) drop-shadow(0 0 42vmin rgba(255,92,148,0.56)) drop-shadow(0 0 66vmin rgba(255,68,130,0.22)) !important; }
+body.glow-vivid  .companion.cozy        { filter: drop-shadow(0 0 12vmin rgba(255,155,125,0.85)) drop-shadow(0 0 28vmin rgba(255,130,100,0.40)) drop-shadow(0 0 48vmin rgba(255,108,80,0.16)) !important; }
+body.glow-vivid  .companion.overjoyed   { filter: drop-shadow(0 0 16vmin rgba(255,230,120,0.95)) drop-shadow(0 0 38vmin rgba(255,215,90,0.48)) drop-shadow(0 0 60vmin rgba(255,195,60,0.20)) !important; }
+body.glow-vivid  .companion.ecstatic    { filter: drop-shadow(0 0 20vmin rgba(255,228,50,1.00))  drop-shadow(0 0 48vmin rgba(255,210,30,0.58)) drop-shadow(0 0 80vmin rgba(255,195,10,0.24)) !important; }
+body.glow-vivid  .companion.excited     { filter: drop-shadow(0 0 14vmin rgba(255,220,100,0.88)) drop-shadow(0 0 32vmin rgba(255,200,70,0.42)) drop-shadow(0 0 52vmin rgba(255,180,40,0.18)) !important; }
+body.glow-vivid  .companion.sad         { filter: drop-shadow(0 0 8vmin  rgba(100,120,210,0.52)) drop-shadow(0 0 20vmin rgba(90,110,200,0.22)) !important; }
+body.glow-vivid  .companion.crying      { filter: drop-shadow(0 0 10vmin rgba(90,110,205,0.60))  drop-shadow(0 0 26vmin rgba(80,100,195,0.28)) !important; }
+body.glow-vivid  .companion.grumpy      { filter: drop-shadow(0 0 12vmin rgba(220,80,70,0.72))   drop-shadow(0 0 30vmin rgba(200,60,55,0.34)) !important; }
+body.glow-vivid  .companion.startled    { filter: drop-shadow(0 0 16vmin rgba(200,220,255,0.95)) drop-shadow(0 0 38vmin rgba(185,210,255,0.48)) !important; }
 
 /* ═══════════════════════════════════════════════════════════
    CANVAS THEME PARTICLES
