@@ -338,16 +338,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   pointer-events: none;
   will-change: transform;
 }
-.whisker::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 1.15vmin;
-  height: 0.34vmin;
-  border-radius: 999vmin;
-  background: rgba(200, 205, 255, 0.34);
-  transform-origin: center;
-}
 
 /* ── LEFT whiskers (extend LEFT, transform-origin at RIGHT/inner end) ── */
 .whisker-group-left .whisker {
@@ -361,10 +351,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
     transparent 100%
   );
 }
-.whisker-group-left .whisker::after {
-  left: -0.28vmin;
-  transform: translateY(-50%) rotate(var(--wk-tip-curl, -14deg));
-}
 /* ── RIGHT whiskers (extend RIGHT, transform-origin at LEFT/inner end) ── */
 .whisker-group-right .whisker {
   left: var(--wk-root-inset, 0);
@@ -375,10 +361,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
     rgba(200, 205, 255, 0.30) 55%,
     transparent 100%
   );
-}
-.whisker-group-right .whisker::after {
-  right: -0.28vmin;
-  transform: translateY(-50%) rotate(var(--wk-tip-curl, 14deg));
 }
 
 /* ──────────────────────────────────────────────────────
@@ -395,7 +377,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   --wk-root-inset: 0.72vmin;
   --wk-base: -24deg;
   --wk-bend: 7deg;
-  --wk-tip-curl: -16deg;
   transform: rotate(-24deg);
   animation: whiskerIdleLeft 3.8s ease-in-out infinite;
   animation-delay: 0s;
@@ -407,7 +388,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   --wk-root-inset: 1.65vmin;
   --wk-base: -1deg;
   --wk-bend: 3deg;
-  --wk-tip-curl: -10deg;
   transform: rotate(-1deg);
   animation: whiskerIdleLeft 4.4s ease-in-out infinite;
   animation-delay: 0.55s;
@@ -419,7 +399,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   --wk-root-inset: 0.72vmin;
   --wk-base: 18deg;
   --wk-bend: 8deg;
-  --wk-tip-curl: -17deg;
   transform: rotate(18deg);
   animation: whiskerIdleLeft 3.6s ease-in-out infinite;
   animation-delay: 1.1s;
@@ -430,10 +409,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   top: 0.45vmin;
   width: 17.1vmin;
   --wk-root-inset: 0.72vmin;
-  --wk-base: 24deg;
+  --wk-base: -24deg;
   --wk-bend: -7deg;
-  --wk-tip-curl: 16deg;
-  transform: rotate(24deg);
+  transform: rotate(-24deg);
   animation: whiskerIdleRight 3.8s ease-in-out infinite;
   animation-delay: 0.28s;
 }
@@ -444,7 +422,6 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   --wk-root-inset: 1.65vmin;
   --wk-base: 1deg;
   --wk-bend: -3deg;
-  --wk-tip-curl: 10deg;
   transform: rotate(1deg);
   animation: whiskerIdleRight 4.4s ease-in-out infinite;
   animation-delay: 0.82s;
@@ -454,10 +431,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   top: 5.15vmin;
   width: 17.1vmin;
   --wk-root-inset: 0.72vmin;
-  --wk-base: -18deg;
+  --wk-base: 18deg;
   --wk-bend: -8deg;
-  --wk-tip-curl: 17deg;
-  transform: rotate(-18deg);
+  transform: rotate(18deg);
   animation: whiskerIdleRight 3.6s ease-in-out infinite;
   animation-delay: 1.4s;
 }
@@ -503,12 +479,12 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   50%       { transform: rotate(6deg); }
 }
 @keyframes whiskerHappyRightTop {
-  0%, 100% { transform: rotate(18deg); }
-  50%       { transform: rotate(22deg); }
+  0%, 100% { transform: rotate(-18deg); }
+  50%       { transform: rotate(-22deg); }
 }
 @keyframes whiskerHappyRightBot {
-  0%, 100% { transform: rotate(-4deg); }
-  50%       { transform: rotate(-6deg); }
+  0%, 100% { transform: rotate(4deg); }
+  50%       { transform: rotate(6deg); }
 }
 
 /* COZY / BEING_PATTED — whiskers gently ripple in slow contentment */
@@ -534,11 +510,11 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .companion.scared .wl3,
 .companion.startled .wl3 { transform: rotate(2deg) !important;  animation: none !important; }
 .companion.scared .wr1,
-.companion.startled .wr1 { transform: rotate(2deg) !important;  animation: none !important; }
+.companion.startled .wr1 { transform: rotate(-2deg) !important;  animation: none !important; }
 .companion.scared .wr2,
 .companion.startled .wr2 { transform: rotate(0deg) !important;  animation: none !important; }
 .companion.scared .wr3,
-.companion.startled .wr3 { transform: rotate(-2deg) !important; animation: none !important; }
+.companion.startled .wr3 { transform: rotate(2deg) !important; animation: none !important; }
 
 /* SAD / CRYING — whiskers droop downward (sad cat look) */
 .companion.sad .wl1,
@@ -559,12 +535,12 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   50%       { transform: rotate(20deg); }
 }
 @keyframes whiskerSadRightTop {
-  0%, 100% { transform: rotate(4deg); }
-  50%       { transform: rotate(6deg); }
+  0%, 100% { transform: rotate(-4deg); }
+  50%       { transform: rotate(-6deg); }
 }
 @keyframes whiskerSadRightBot {
-  0%, 100% { transform: rotate(-18deg); }
-  50%       { transform: rotate(-20deg); }
+  0%, 100% { transform: rotate(18deg); }
+  50%       { transform: rotate(20deg); }
 }
 
 /* SLEEPY — whiskers droop very low, barely visible */
@@ -574,14 +550,14 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 }
 .companion.sleepy .wl1 { transform: rotate(-2deg) !important; }
 .companion.sleepy .wl3 { transform: rotate(18deg) !important; }
-.companion.sleepy .wr1 { transform: rotate(2deg) !important; }
-.companion.sleepy .wr3 { transform: rotate(-18deg) !important; }
+.companion.sleepy .wr1 { transform: rotate(-2deg) !important; }
+.companion.sleepy .wr3 { transform: rotate(18deg) !important; }
 
 /* CURIOUS — one side perks forward */
 .companion.curious .wr1 { animation: whiskerCuriousPerky 2.8s ease-in-out infinite; }
 @keyframes whiskerCuriousPerky {
-  0%, 100% { transform: rotate(14deg); }
-  45%       { transform: rotate(20deg); }
+  0%, 100% { transform: rotate(-14deg); }
+  45%       { transform: rotate(-20deg); }
 }
 
 /* LOVE — warm tint, slow wave */
