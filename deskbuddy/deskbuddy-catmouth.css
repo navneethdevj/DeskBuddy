@@ -374,10 +374,10 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wl1 {
   top: 0.45vmin;
   width: 17.1vmin;
-  --wk-root-inset: 0.72vmin;
-  --wk-base: -24deg;
+  --wk-root-inset: 1.65vmin;
+  --wk-base: 24deg;
   --wk-bend: 7deg;
-  transform: rotate(-24deg);
+  transform: rotate(24deg);
   animation: whiskerIdleLeft 3.8s ease-in-out infinite;
   animation-delay: 0s;
 }
@@ -385,7 +385,7 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wl2 {
   top: 2.8vmin;
   width: 18.2vmin;
-  --wk-root-inset: 1.65vmin;
+  --wk-root-inset: 0.72vmin;
   --wk-base: -1deg;
   --wk-bend: 3deg;
   transform: rotate(-1deg);
@@ -396,10 +396,10 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wl3 {
   top: 5.15vmin;
   width: 17.1vmin;
-  --wk-root-inset: 0.72vmin;
-  --wk-base: 18deg;
+  --wk-root-inset: 1.65vmin;
+  --wk-base: -18deg;
   --wk-bend: 8deg;
-  transform: rotate(18deg);
+  transform: rotate(-18deg);
   animation: whiskerIdleLeft 3.6s ease-in-out infinite;
   animation-delay: 1.1s;
 }
@@ -408,7 +408,7 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wr1 {
   top: 0.45vmin;
   width: 17.1vmin;
-  --wk-root-inset: 0.72vmin;
+  --wk-root-inset: 1.65vmin;
   --wk-base: -24deg;
   --wk-bend: -7deg;
   transform: rotate(-24deg);
@@ -419,7 +419,7 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wr2 {
   top: 2.8vmin;
   width: 18.2vmin;
-  --wk-root-inset: 1.65vmin;
+  --wk-root-inset: 0.72vmin;
   --wk-base: 1deg;
   --wk-bend: -3deg;
   transform: rotate(1deg);
@@ -430,7 +430,7 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .wr3 {
   top: 5.15vmin;
   width: 17.1vmin;
-  --wk-root-inset: 0.72vmin;
+  --wk-root-inset: 1.65vmin;
   --wk-base: 18deg;
   --wk-bend: -8deg;
   transform: rotate(18deg);
@@ -471,12 +471,12 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .companion.ecstatic .whisker-group-right .wr3 { animation: whiskerHappyRightBot 1.6s ease-in-out infinite; }
 
 @keyframes whiskerHappyLeftTop {
-  0%, 100% { transform: rotate(-18deg); }
-  50%       { transform: rotate(-22deg); }
+  0%, 100% { transform: rotate(18deg); }
+  50%       { transform: rotate(22deg); }
 }
 @keyframes whiskerHappyLeftBot {
-  0%, 100% { transform: rotate(4deg); }
-  50%       { transform: rotate(6deg); }
+  0%, 100% { transform: rotate(-4deg); }
+  50%       { transform: rotate(-6deg); }
 }
 @keyframes whiskerHappyRightTop {
   0%, 100% { transform: rotate(-18deg); }
@@ -504,11 +504,11 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 
 /* SCARED / STARTLED — whiskers pull sharply back (flatten toward face) */
 .companion.scared .wl1,
-.companion.startled .wl1 { transform: rotate(-2deg) !important; animation: none !important; }
+.companion.startled .wl1 { transform: rotate(2deg) !important; animation: none !important; }
 .companion.scared .wl2,
 .companion.startled .wl2 { transform: rotate(0deg) !important;  animation: none !important; }
 .companion.scared .wl3,
-.companion.startled .wl3 { transform: rotate(2deg) !important;  animation: none !important; }
+.companion.startled .wl3 { transform: rotate(-2deg) !important;  animation: none !important; }
 .companion.scared .wr1,
 .companion.startled .wr1 { transform: rotate(-2deg) !important;  animation: none !important; }
 .companion.scared .wr2,
@@ -527,12 +527,12 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .companion.crying .wr3 { animation: whiskerSadRightBot 4s ease-in-out infinite; }
 
 @keyframes whiskerSadLeftTop {
-  0%, 100% { transform: rotate(-4deg); }
-  50%       { transform: rotate(-6deg); }
+  0%, 100% { transform: rotate(4deg); }
+  50%       { transform: rotate(6deg); }
 }
 @keyframes whiskerSadLeftBot {
-  0%, 100% { transform: rotate(18deg); }
-  50%       { transform: rotate(20deg); }
+  0%, 100% { transform: rotate(-18deg); }
+  50%       { transform: rotate(-20deg); }
 }
 @keyframes whiskerSadRightTop {
   0%, 100% { transform: rotate(-4deg); }
@@ -548,8 +548,8 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   opacity: 0.35;
   animation-duration: 8s !important;
 }
-.companion.sleepy .wl1 { transform: rotate(-2deg) !important; }
-.companion.sleepy .wl3 { transform: rotate(18deg) !important; }
+.companion.sleepy .wl1 { transform: rotate(2deg) !important; }
+.companion.sleepy .wl3 { transform: rotate(-18deg) !important; }
 .companion.sleepy .wr1 { transform: rotate(-2deg) !important; }
 .companion.sleepy .wr3 { transform: rotate(18deg) !important; }
 
