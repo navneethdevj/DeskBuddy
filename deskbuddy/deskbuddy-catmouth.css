@@ -334,7 +334,7 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 .whisker {
   position: absolute;
   height: 0.22vmin;
-  border-radius: 999vmin; /* soft, hair-like rounded whisker profile */
+  border-radius: 50vmin; /* soft, hair-like rounded whisker profile */
   pointer-events: none;
   will-change: transform;
 }
