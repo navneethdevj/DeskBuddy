@@ -1447,8 +1447,8 @@ const ThemeCanvas = (() => {
           // Context-aware break card overlay + companion emotion
           _fireBreakCard(stats);
         }
-        // Auto-open panel so user sees the break countdown
-        _panelOpen();
+        // Auto-open panel so user sees the break countdown (skip if DND active)
+        if (typeof DND === 'undefined' || !DND.isActive()) _panelOpen();
       } else if (newState === 'ACTIVE' && oldState === 'PAUSED') {
         _stopBreakCountdown();
         _fireBreakEndAnim();
