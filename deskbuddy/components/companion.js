@@ -44,6 +44,11 @@ const Companion = (() => {
 
   /**
    * Build the companion DOM tree and insert it into the world container.
+   *
+   * Whisker DOM: 6 individual whisker divs (3 per side) for proper CSS animation.
+   * Cat mouth SVG: proper ω-shaped cat mouth path, hidden by default,
+   *   shown and styled when body.mouth-cat is active.
+   * Both systems are fully controlled via CSS classes — zero JS style manipulation.
    */
   function create(container) {
     el = document.createElement('div');
@@ -51,6 +56,21 @@ const Companion = (() => {
 
     el.innerHTML = `
       <div class="companion-inner">
+
+        <!-- Whisker system: 3 per side, individually animated via CSS -->
+        <div class="whiskers" aria-hidden="true">
+          <div class="whisker-group whisker-group-left">
+            <div class="whisker wl1"></div>
+            <div class="whisker wl2"></div>
+            <div class="whisker wl3"></div>
+          </div>
+          <div class="whisker-group whisker-group-right">
+            <div class="whisker wr1"></div>
+            <div class="whisker wr2"></div>
+            <div class="whisker wr3"></div>
+          </div>
+        </div>
+
         <div class="eyes">
           <div class="eye-wrap">
             <div class="brow brow-left"></div>
@@ -63,8 +83,51 @@ const Companion = (() => {
             <div class="blush blush-right"></div>
           </div>
         </div>
+
         <div class="nose"></div>
-        <div class="mouth"></div>
+
+        <!--
+          Mouth container.
+          Default (arc/wide/flat styles): CSS border-based shape — unchanged.
+          Cat style (body.mouth-cat): SVG paths below are revealed via CSS.
+            - cm-center : philtrum vertical line (nose to junction)
+            - cm-left   : left arc of the ω (center→dips→up to outer corner)
+            - cm-right  : right arc (mirror)
+            - cm-scared : small open circle for scared/startled O shape
+          Stroke color, width, and transform are all driven by CSS per emotion.
+          The SVG uses overflow:visible so arcs extend beyond the container.
+        -->
+        <div class="mouth">
+          <svg class="cat-mouth-svg"
+               viewBox="0 0 60 22"
+               xmlns="http://www.w3.org/2000/svg"
+               aria-hidden="true"
+               focusable="false">
+            <!-- Philtrum: short vertical line from nose-bridge to center junction -->
+            <line class="cm-center"
+                  x1="30" y1="2" x2="30" y2="10"
+                  stroke-linecap="round"/>
+            <!-- Left arc: M center-junction Q control endpoint Q control endpoint -->
+            <!-- Path curves: (30,10) → dips to ~y14 midpoint → rises to corner (3,6) -->
+            <path class="cm-left"
+                  d="M30,10 Q20,16 11,13 Q5,10 2,6"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
+            <!-- Right arc: mirror -->
+            <path class="cm-right"
+                  d="M30,10 Q40,16 49,13 Q55,10 58,6"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
+            <!-- Scared/startled: small open O mouth (hidden unless .companion.scared/.startled) -->
+            <circle class="cm-scared"
+                    cx="30" cy="13" r="4.5"
+                    fill="none"
+                    stroke-linecap="round"/>
+          </svg>
+        </div>
+
       </div>
     `;
 
