@@ -8,8 +8,9 @@
    Architecture:
    ─ .cat-mouth-svg hidden by default; revealed only under body.mouth-cat
    ─ body.mouth-cat suppresses the border-based .mouth visual entirely
-   ─ SVG paths: cm-center (philtrum), cm-left/cm-right (ω arcs),
-     cm-scared (O for scared/startled)
+   ─ SVG paths: cm-center (philtrum), cm-left/cm-right (upper ω arcs),
+     cm-lower (lower smile curve),
+      cm-scared (O for scared/startled)
    ─ Emotion overrides are pure CSS: stroke color, stroke-width,
      container size, and SVG transform per emotion class
    ─ mouth-thin / mouth-thick map to SVG stroke-width
@@ -44,6 +45,12 @@ body.mouth-cat .mouth {
   transition: width  0.35s cubic-bezier(.4,0,.2,1),
               height 0.35s cubic-bezier(.4,0,.2,1);
 }
+/* Remove legacy border-based cat arcs from styles.css (SVG is the only cat mouth). */
+body.mouth-cat .mouth::before,
+body.mouth-cat .mouth::after {
+  content: none !important;
+  display: none !important;
+}
 
 body.mouth-cat .cat-mouth-svg {
   display: block;
@@ -69,6 +76,12 @@ body.mouth-cat .cm-right {
   fill: none;
   transition: stroke 0.35s ease, stroke-width 0.30s ease, opacity 0.35s ease;
 }
+body.mouth-cat .cm-lower {
+  stroke: rgba(145, 155, 225, 0.56);
+  stroke-width: 1.45;
+  fill: none;
+  transition: stroke 0.35s ease, stroke-width 0.30s ease, opacity 0.35s ease;
+}
 body.mouth-cat .cm-scared {
   display: none;
   stroke: rgba(195, 210, 255, 0.78);
@@ -87,6 +100,7 @@ body.mouth-cat .cm-scared {
 body.mouth-cat .companion.happy .mouth { width: 22vmin; height: 11vmin; }
 body.mouth-cat .companion.happy .cm-left,
 body.mouth-cat .companion.happy .cm-right { stroke: rgba(200, 170, 255, 0.92); stroke-width: 1.8; }
+body.mouth-cat .companion.happy .cm-lower { stroke: rgba(200, 170, 255, 0.74); stroke-width: 1.6; }
 body.mouth-cat .companion.happy .cm-center { stroke: rgba(200, 155, 255, 0.55); stroke-width: 1.2; }
 
 /* ── OVERJOYED ── */
@@ -96,6 +110,7 @@ body.mouth-cat .companion.overjoyed .cat-mouth-svg {
 }
 body.mouth-cat .companion.overjoyed .cm-left,
 body.mouth-cat .companion.overjoyed .cm-right { stroke: rgba(220, 180, 255, 0.96); stroke-width: 2.1; }
+body.mouth-cat .companion.overjoyed .cm-lower { stroke: rgba(220, 180, 255, 0.80); stroke-width: 1.85; }
 body.mouth-cat .companion.overjoyed .cm-center { stroke: rgba(215, 170, 255, 0.60); stroke-width: 1.4; }
 
 /* ── ECSTATIC ── */
@@ -105,18 +120,21 @@ body.mouth-cat .companion.ecstatic .cat-mouth-svg {
 }
 body.mouth-cat .companion.ecstatic .cm-left,
 body.mouth-cat .companion.ecstatic .cm-right { stroke: rgba(255, 225, 80, 0.98); stroke-width: 2.3; }
+body.mouth-cat .companion.ecstatic .cm-lower { stroke: rgba(255, 225, 80, 0.84); stroke-width: 2.0; }
 body.mouth-cat .companion.ecstatic .cm-center { stroke: rgba(255, 215, 60, 0.65); stroke-width: 1.5; }
 
 /* ── EXCITED ── */
 body.mouth-cat .companion.excited .mouth { width: 22vmin; height: 11vmin; }
 body.mouth-cat .companion.excited .cm-left,
 body.mouth-cat .companion.excited .cm-right { stroke: rgba(255, 210, 100, 0.90); stroke-width: 1.9; }
+body.mouth-cat .companion.excited .cm-lower { stroke: rgba(255, 210, 100, 0.72); stroke-width: 1.65; }
 body.mouth-cat .companion.excited .cm-center { stroke: rgba(255, 200, 80, 0.55); stroke-width: 1.2; }
 
 /* ── LOVE ── */
 body.mouth-cat .companion.love .mouth { width: 20vmin; height: 10vmin; }
 body.mouth-cat .companion.love .cm-left,
 body.mouth-cat .companion.love .cm-right { stroke: rgba(255, 140, 185, 0.88); stroke-width: 1.7; }
+body.mouth-cat .companion.love .cm-lower { stroke: rgba(255, 140, 185, 0.74); stroke-width: 1.5; }
 body.mouth-cat .companion.love .cm-center { stroke: rgba(255, 130, 175, 0.55); stroke-width: 1.1; }
 
 /* ── COZY ── smaller, warm, soft content smile */
@@ -124,6 +142,7 @@ body.mouth-cat .companion.cozy .mouth { width: 16vmin; height: 8.5vmin; }
 body.mouth-cat .companion.cozy .cat-mouth-svg { transform: scale(0.92); }
 body.mouth-cat .companion.cozy .cm-left,
 body.mouth-cat .companion.cozy .cm-right { stroke: rgba(255, 130, 168, 0.82); stroke-width: 1.5; }
+body.mouth-cat .companion.cozy .cm-lower { stroke: rgba(255, 130, 168, 0.68); stroke-width: 1.35; }
 body.mouth-cat .companion.cozy .cm-center { stroke: rgba(255, 118, 155, 0.48); stroke-width: 1.0; }
 
 /* ── BEING PATTED ── wide melted happy ω, animated */
@@ -133,6 +152,7 @@ body.mouth-cat .companion.being_patted .mouth {
 }
 body.mouth-cat .companion.being_patted .cm-left,
 body.mouth-cat .companion.being_patted .cm-right { stroke: rgba(255, 108, 162, 0.96); stroke-width: 1.9; }
+body.mouth-cat .companion.being_patted .cm-lower { stroke: rgba(255, 108, 162, 0.78); stroke-width: 1.7; }
 body.mouth-cat .companion.being_patted .cm-center { stroke: rgba(255, 92, 148, 0.60); stroke-width: 1.2; }
 
 @keyframes catMouthPatGrow {
@@ -146,18 +166,21 @@ body.mouth-cat .companion.dazed .mouth { width: 18vmin; height: 9vmin; }
 body.mouth-cat .companion.dazed .cat-mouth-svg { transform: rotate(4deg); }
 body.mouth-cat .companion.dazed .cm-left,
 body.mouth-cat .companion.dazed .cm-right { stroke: rgba(180, 160, 255, 0.60); stroke-width: 1.3; }
+body.mouth-cat .companion.dazed .cm-lower { stroke: rgba(180, 160, 255, 0.46); stroke-width: 1.2; }
 body.mouth-cat .companion.dazed .cm-center { stroke: rgba(170, 150, 255, 0.38); stroke-width: 0.9; }
 
 /* ── CURIOUS ── slightly open, alert */
 body.mouth-cat .companion.curious .mouth { width: 17vmin; height: 9vmin; }
 body.mouth-cat .companion.curious .cm-left,
 body.mouth-cat .companion.curious .cm-right { stroke: rgba(140, 160, 245, 0.78); stroke-width: 1.5; }
+body.mouth-cat .companion.curious .cm-lower { stroke: rgba(140, 160, 245, 0.62); stroke-width: 1.35; }
 body.mouth-cat .companion.curious .cm-center { stroke: rgba(130, 150, 245, 0.50); stroke-width: 1.1; }
 
 /* ── FORGIVEN ── soft gentle relief smile */
 body.mouth-cat .companion.forgiven .mouth { width: 19vmin; height: 10vmin; }
 body.mouth-cat .companion.forgiven .cm-left,
 body.mouth-cat .companion.forgiven .cm-right { stroke: rgba(200, 220, 255, 0.68); stroke-width: 1.5; }
+body.mouth-cat .companion.forgiven .cm-lower { stroke: rgba(200, 220, 255, 0.54); stroke-width: 1.35; }
 body.mouth-cat .companion.forgiven .cm-center { stroke: rgba(190, 210, 255, 0.42); stroke-width: 1.0; }
 
 /* ── EMBARRASSED ── small, shy little ω */
@@ -165,6 +188,7 @@ body.mouth-cat .companion.embarrassed .mouth { width: 14vmin; height: 7.5vmin; }
 body.mouth-cat .companion.embarrassed .cat-mouth-svg { transform: scale(0.82); }
 body.mouth-cat .companion.embarrassed .cm-left,
 body.mouth-cat .companion.embarrassed .cm-right { stroke: rgba(255, 140, 175, 0.72); stroke-width: 1.4; }
+body.mouth-cat .companion.embarrassed .cm-lower { stroke: rgba(255, 140, 175, 0.56); stroke-width: 1.25; }
 body.mouth-cat .companion.embarrassed .cm-center { stroke: rgba(255, 130, 165, 0.44); stroke-width: 0.9; }
 
 /* ── SHY ── tiny, pulled back */
@@ -172,6 +196,7 @@ body.mouth-cat .companion.shy .mouth { width: 13vmin; height: 7vmin; }
 body.mouth-cat .companion.shy .cat-mouth-svg { transform: scale(0.78); }
 body.mouth-cat .companion.shy .cm-left,
 body.mouth-cat .companion.shy .cm-right { stroke: rgba(255, 155, 195, 0.68); stroke-width: 1.3; }
+body.mouth-cat .companion.shy .cm-lower { stroke: rgba(255, 155, 195, 0.52); stroke-width: 1.15; }
 body.mouth-cat .companion.shy .cm-center { stroke: rgba(255, 145, 185, 0.40); stroke-width: 0.9; }
 
 /* ── SLEEPY ── very narrow, barely visible */
@@ -179,6 +204,7 @@ body.mouth-cat .companion.sleepy .mouth { width: 13vmin; height: 6vmin; }
 body.mouth-cat .companion.sleepy .cat-mouth-svg { transform: scale(0.72); }
 body.mouth-cat .companion.sleepy .cm-left,
 body.mouth-cat .companion.sleepy .cm-right { stroke: rgba(145, 155, 225, 0.35); stroke-width: 1.0; }
+body.mouth-cat .companion.sleepy .cm-lower { stroke: rgba(145, 155, 225, 0.28); stroke-width: 0.9; }
 body.mouth-cat .companion.sleepy .cm-center { stroke: rgba(145, 155, 225, 0.22); stroke-width: 0.7; }
 
 /* ── SAD ── flip arcs upward = cat frown
@@ -192,9 +218,11 @@ body.mouth-cat .companion.crying .cat-mouth-svg {
 }
 body.mouth-cat .companion.sad .cm-left,
 body.mouth-cat .companion.sad .cm-right { stroke: rgba(100, 130, 205, 0.75); stroke-width: 1.5; }
+body.mouth-cat .companion.sad .cm-lower { stroke: rgba(100, 130, 205, 0.60); stroke-width: 1.35; }
 body.mouth-cat .companion.sad .cm-center { stroke: rgba(90, 120, 200, 0.45); stroke-width: 1.0; }
 body.mouth-cat .companion.crying .cm-left,
 body.mouth-cat .companion.crying .cm-right { stroke: rgba(80, 110, 195, 0.85); stroke-width: 1.6; }
+body.mouth-cat .companion.crying .cm-lower { stroke: rgba(80, 110, 195, 0.66); stroke-width: 1.4; }
 body.mouth-cat .companion.crying .cm-center { stroke: rgba(70, 105, 190, 0.50); stroke-width: 1.0; }
 
 /* ── GRUMPY ── slight frown (scaleY flipped, compressed) */
@@ -204,6 +232,7 @@ body.mouth-cat .companion.grumpy .cat-mouth-svg {
 }
 body.mouth-cat .companion.grumpy .cm-left,
 body.mouth-cat .companion.grumpy .cm-right { stroke: rgba(255, 138, 128, 0.72); stroke-width: 1.5; }
+body.mouth-cat .companion.grumpy .cm-lower { stroke: rgba(255, 138, 128, 0.58); stroke-width: 1.3; }
 body.mouth-cat .companion.grumpy .cm-center { stroke: rgba(255, 128, 118, 0.42); stroke-width: 1.0; }
 
 /* ── POUTY / SULKING ── */
@@ -215,6 +244,8 @@ body.mouth-cat .companion.pouty .cm-left,
 body.mouth-cat .companion.pouty .cm-right,
 body.mouth-cat .companion.sulking .cm-left,
 body.mouth-cat .companion.sulking .cm-right { stroke: rgba(110, 120, 210, 0.68); stroke-width: 1.4; }
+body.mouth-cat .companion.pouty .cm-lower,
+body.mouth-cat .companion.sulking .cm-lower { stroke: rgba(110, 120, 210, 0.54); stroke-width: 1.25; }
 body.mouth-cat .companion.pouty .cm-center,
 body.mouth-cat .companion.sulking .cm-center { stroke: rgba(100, 115, 205, 0.40); stroke-width: 0.9; }
 
@@ -223,6 +254,7 @@ body.mouth-cat .companion.suspicious .mouth { width: 14vmin; height: 6vmin; }
 body.mouth-cat .companion.suspicious .cat-mouth-svg { transform: scaleY(0.55); }
 body.mouth-cat .companion.suspicious .cm-left,
 body.mouth-cat .companion.suspicious .cm-right { stroke: rgba(145, 155, 225, 0.55); stroke-width: 1.2; }
+body.mouth-cat .companion.suspicious .cm-lower { stroke: rgba(145, 155, 225, 0.44); stroke-width: 1.1; }
 body.mouth-cat .companion.suspicious .cm-center { stroke: rgba(145, 155, 225, 0.32); stroke-width: 0.8; }
 
 /* ── SCARED / STARTLED ── O mouth: hide ω, show circle */
@@ -231,9 +263,11 @@ body.mouth-cat .companion.startled .mouth { width: 10vmin; height: 10vmin; }
 
 body.mouth-cat .companion.scared .cm-left,
 body.mouth-cat .companion.scared .cm-right,
+body.mouth-cat .companion.scared .cm-lower,
 body.mouth-cat .companion.scared .cm-center,
 body.mouth-cat .companion.startled .cm-left,
 body.mouth-cat .companion.startled .cm-right,
+body.mouth-cat .companion.startled .cm-lower,
 body.mouth-cat .companion.startled .cm-center { display: none; }
 
 body.mouth-cat .companion.scared .cm-scared,
@@ -247,6 +281,7 @@ body.mouth-cat .companion.startled .cm-scared {
 body.mouth-cat .companion.focused .mouth { width: 16vmin; height: 8vmin; }
 body.mouth-cat .companion.focused .cm-left,
 body.mouth-cat .companion.focused .cm-right { stroke: rgba(145, 155, 225, 0.55); stroke-width: 1.3; }
+body.mouth-cat .companion.focused .cm-lower { stroke: rgba(145, 155, 225, 0.44); stroke-width: 1.15; }
 body.mouth-cat .companion.focused .cm-center { stroke: rgba(145, 155, 225, 0.32); stroke-width: 0.9; }
 
 
@@ -256,11 +291,13 @@ body.mouth-cat .companion.focused .cm-center { stroke: rgba(145, 155, 225, 0.32)
 
 body.mouth-cat.mouth-thin .cm-left,
 body.mouth-cat.mouth-thin .cm-right  { stroke-width: 0.85 !important; }
+body.mouth-cat.mouth-thin .cm-lower  { stroke-width: 0.75 !important; }
 body.mouth-cat.mouth-thin .cm-center { stroke-width: 0.65 !important; }
 body.mouth-cat.mouth-thin .cm-scared { stroke-width: 0.85 !important; }
 
 body.mouth-cat.mouth-thick .cm-left,
 body.mouth-cat.mouth-thick .cm-right  { stroke-width: 2.5 !important; }
+body.mouth-cat.mouth-thick .cm-lower  { stroke-width: 2.15 !important; }
 body.mouth-cat.mouth-thick .cm-center { stroke-width: 1.7 !important; }
 body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 
@@ -274,13 +311,14 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 
 .whiskers {
   position: absolute;
-  /* Vertically centred between nose (50%+25vmin) and mouth (50%+31vmin) */
-  top: calc(50% + 27vmin);
+  /* Slightly above mouth center so whiskers root near the muzzle area */
+  top: calc(50% + 25.9vmin);
   left: 50%;
   width: 0;          /* groups extend from center via absolute positioning */
-  height: 10vmin;
+  height: 8.4vmin;
   pointer-events: none;
   z-index: 2;
+  display: none;
 }
 
 /* ── Whisker groups ── */
@@ -289,8 +327,8 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   top: 0;
   height: 100%;
 }
-.whisker-group-left  { right: 1vmin; }   /* 1vmin from center = muzzle gap */
-.whisker-group-right { left: 1vmin; }
+.whisker-group-left  { right: 2.2vmin; }
+.whisker-group-right { left: 2.2vmin; }
 
 /* ── Base whisker element ── */
 .whisker {
@@ -334,56 +372,56 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 
 /* LEFT TOP */
 .wl1 {
-  top: 0.5vmin;
-  width: 18vmin;
-  --wk-base: -12deg;
-  transform: rotate(-12deg);
+  top: 0.2vmin;
+  width: 14vmin;
+  --wk-base: -16deg;
+  transform: rotate(-16deg);
   animation: whiskerIdleLeft 3.8s ease-in-out infinite;
   animation-delay: 0s;
 }
 /* LEFT MIDDLE */
 .wl2 {
-  top: 4.2vmin;
-  width: 22vmin;
-  --wk-base: -2deg;
-  transform: rotate(-2deg);
+  top: 2.8vmin;
+  width: 15.5vmin;
+  --wk-base: -3deg;
+  transform: rotate(-3deg);
   animation: whiskerIdleLeft 4.4s ease-in-out infinite;
   animation-delay: 0.55s;
 }
 /* LEFT BOTTOM */
 .wl3 {
-  top: 7.5vmin;
-  width: 17vmin;
-  --wk-base: 10deg;
-  transform: rotate(10deg);
+  top: 5.5vmin;
+  width: 13.5vmin;
+  --wk-base: 11deg;
+  transform: rotate(11deg);
   animation: whiskerIdleLeft 3.6s ease-in-out infinite;
   animation-delay: 1.1s;
 }
 
 /* RIGHT TOP */
 .wr1 {
-  top: 0.5vmin;
-  width: 18vmin;
-  --wk-base: 12deg;
-  transform: rotate(12deg);
+  top: 0.2vmin;
+  width: 14vmin;
+  --wk-base: 16deg;
+  transform: rotate(16deg);
   animation: whiskerIdleRight 3.8s ease-in-out infinite;
   animation-delay: 0.28s;
 }
 /* RIGHT MIDDLE */
 .wr2 {
-  top: 4.2vmin;
-  width: 22vmin;
-  --wk-base: 2deg;
-  transform: rotate(2deg);
+  top: 2.8vmin;
+  width: 15.5vmin;
+  --wk-base: 3deg;
+  transform: rotate(3deg);
   animation: whiskerIdleRight 4.4s ease-in-out infinite;
   animation-delay: 0.82s;
 }
 /* RIGHT BOTTOM */
 .wr3 {
-  top: 7.5vmin;
-  width: 17vmin;
-  --wk-base: -10deg;
-  transform: rotate(-10deg);
+  top: 5.5vmin;
+  width: 13.5vmin;
+  --wk-base: -11deg;
+  transform: rotate(-11deg);
   animation: whiskerIdleRight 3.6s ease-in-out infinite;
   animation-delay: 1.4s;
 }
@@ -520,8 +558,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   );
 }
 
-/* Hide all whiskers */
-body.hide-whiskers .whiskers { display: none; }
+/* Whiskers are cat-mouth-only, and still respect the user toggle. */
+body.mouth-cat:not(.hide-whiskers) .whiskers { display: block; }
+body.hide-whiskers .whiskers { display: none !important; }
 
 /* Whiskers scale naturally with companion size — no extra work needed
    because .whiskers is inside .companion-inner which inherits scaling */
