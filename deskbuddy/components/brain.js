@@ -2064,7 +2064,10 @@ const Brain = (() => {
   function _spontaneousBehavior() {
     if (_dndActive) return;
     // Don't interrupt timed or distress states
-    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled', 'excited', 'shy', 'dazed', 'ecstatic'];
+    // Cozy/being_patted added: prevents spontaneous behaviors from flickering
+    // out the emotional state mid-pat, which caused the brief visual dropout.
+    const blocked = ['overjoyed', 'sulking', 'scared', 'crying', 'sad', 'love', 'startled',
+                     'excited', 'shy', 'dazed', 'ecstatic', 'cozy', 'being_patted'];
     if (blocked.includes(window._lastEmotion)) return;
     if (overjoyedTimer || sulkCheckInterval) return;
 
@@ -2189,7 +2192,7 @@ const Brain = (() => {
     const el = Companion.getElement();
 
     if (heldDeepMs < COZY_PHASE1_MS) {
-      // ── Phase 0: basic bliss ──────────────────────────────────────────
+      // ── Phase 0: basic bliss — quiet warmth, no dramatic spins ───────
       const msgs = [
         '...mmm~♡', '♡ ♡ ♡', '*purring softly*', '...don\'t let go~',
         'so warm here...', '*happy sigh*', '...i\'m melting~',
@@ -2206,6 +2209,11 @@ const Brain = (() => {
         el.classList.add('saccade');
         setTimeout(() => el.classList.remove('saccade'), 280);
       }
+      // Soft cozy float — gentle adorable wriggle (30% chance), not a full spin
+      if (el && Math.random() < 0.30) {
+        el.classList.add('spinning-pat-soft');
+        setTimeout(() => el.classList.remove('spinning-pat-soft'), 800);
+      }
       // Subtle happy peek — briefly opens eyes with delight then relaxes
       if (Math.random() < 0.30) _doJoyFlash('happy', 380);
 
@@ -2220,9 +2228,19 @@ const Brain = (() => {
       ];
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4000);
       if (el) {
-        const anim = Math.random() < 0.5 ? 'shiver' : 'nuzzling';
-        el.classList.add(anim);
-        setTimeout(() => el.classList.remove(anim), anim === 'shiver' ? 450 : 900);
+        // Use soft cozy pat-wobble (50%), nuzzle (30%), or shiver (20%)
+        // spinning-pat feels like an adorable happy wriggle — not a full spin
+        const r = Math.random();
+        if (r < 0.50) {
+          el.classList.add('spinning-pat');
+          setTimeout(() => el.classList.remove('spinning-pat'), 950);
+        } else if (r < 0.80) {
+          el.classList.add('nuzzling');
+          setTimeout(() => el.classList.remove('nuzzling'), 900);
+        } else {
+          el.classList.add('shiver');
+          setTimeout(() => el.classList.remove('shiver'), 450);
+        }
       }
       if (typeof Particles !== 'undefined' && Math.random() < 0.6) Particles.burst('cozy', 6);
       if (typeof Sounds !== 'undefined' && Math.random() < 0.45) Sounds.play('love_purr');
@@ -2242,10 +2260,16 @@ const Brain = (() => {
       ];
       showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4500);
       if (el) {
-        if (Math.random() < 0.42) {
-          // Wild spin — more dramatic than regular spinning
-          el.classList.add('spinning-wild');
-          setTimeout(() => el.classList.remove('spinning-wild'), 1600);
+        // Phase 2: soft pat-wobble (45%), then escalate to spinning (30%), nuzzle (25%)
+        // spinning-pat provides more energy than Phase 1 but no full 360° rotation
+        const r = Math.random();
+        if (r < 0.30) {
+          // First time real spin appears, but only regular spin (not wild)
+          el.classList.add('spinning');
+          setTimeout(() => el.classList.remove('spinning'), 1300);
+        } else if (r < 0.75) {
+          el.classList.add('spinning-pat');
+          setTimeout(() => el.classList.remove('spinning-pat'), 950);
         } else {
           el.classList.add('nuzzling');
           setTimeout(() => el.classList.remove('nuzzling'), 900);
