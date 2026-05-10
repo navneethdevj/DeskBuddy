@@ -923,6 +923,7 @@ const ThemeCanvas = (() => {
     if (glowIntensity !== 'normal') document.body.classList.add(`glow-${glowIntensity}`);
 
     if (!Settings.get('showEyebrows')) document.body.classList.add('hide-eyebrows');
+    if (Settings.get('showWhiskers') === false) document.body.classList.add('hide-whiskers');
 
     // ── Apply numeric CSS vars at boot ───────────────────────────────────
     const _worldEl = document.getElementById('world');
@@ -3170,6 +3171,22 @@ const ThemeCanvas = (() => {
     }
     Settings.onChange('showEyebrows', (v) => _applyShowEyebrows(v));
 
+    // ── Whiskers toggle ──────────────────────────────────────────────────
+    const whiskersToggle = document.getElementById('whiskers-toggle');
+
+    function _applyShowWhiskers(show) {
+      document.body.classList.toggle('hide-whiskers', !show);
+      if (whiskersToggle) whiskersToggle.checked = !!show;
+    }
+
+    _applyShowWhiskers(Settings.get('showWhiskers') !== false);
+
+    if (whiskersToggle) {
+      whiskersToggle.addEventListener('change', () =>
+        Settings.set('showWhiskers', whiskersToggle.checked));
+    }
+    Settings.onChange('showWhiskers', (v) => _applyShowWhiskers(v));
+
     // ── Nose style ───────────────────────────────────────────────────────
     const NOSE_CLASSES = ['nose-dot','nose-none'];
 
@@ -3697,7 +3714,7 @@ const ThemeCanvas = (() => {
 
     // ── Appearance preset copy / paste ───────────────────────────────────
     const PRESET_KEYS = ['fullTheme','eyeColor','eyeGlowColor','eyeRoundness',
-      'pupilSize','blinkRate','showEyebrows','noseStyle','mouthStyle','mouthThickness',
+      'pupilSize','blinkRate','showEyebrows','showWhiskers','noseStyle','mouthStyle','mouthThickness',
       'glowIntensity','themeParticles','pipOpacity','pipShape','companionPos'];
 
     const copyPresetBtn  = document.getElementById('copy-preset-btn');
