@@ -327,14 +327,14 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
   top: 0;
   height: 100%;
 }
-.whisker-group-left  { right: 2.2vmin; }
-.whisker-group-right { left: 2.2vmin; }
+.whisker-group-left  { right: 3.1vmin; }
+.whisker-group-right { left: 3.1vmin; }
 
 /* ── Base whisker element ── */
 .whisker {
   position: absolute;
-  height: 0.20vmin;
-  border-radius: 0 50% 50% 0;   /* tapered at outer end */
+  height: 0.22vmin;
+  border-radius: 999vmin; /* soft, hair-like rounded whisker profile */
   pointer-events: none;
   will-change: transform;
 }
@@ -373,8 +373,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* LEFT TOP */
 .wl1 {
   top: 0.2vmin;
-  width: 14vmin;
+  width: 15.6vmin;
   --wk-base: -16deg;
+  --wk-bend: -5deg;
   transform: rotate(-16deg);
   animation: whiskerIdleLeft 3.8s ease-in-out infinite;
   animation-delay: 0s;
@@ -382,8 +383,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* LEFT MIDDLE */
 .wl2 {
   top: 2.8vmin;
-  width: 15.5vmin;
+  width: 16.8vmin;
   --wk-base: -3deg;
+  --wk-bend: -4deg;
   transform: rotate(-3deg);
   animation: whiskerIdleLeft 4.4s ease-in-out infinite;
   animation-delay: 0.55s;
@@ -391,8 +393,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* LEFT BOTTOM */
 .wl3 {
   top: 5.5vmin;
-  width: 13.5vmin;
+  width: 15.2vmin;
   --wk-base: 11deg;
+  --wk-bend: -5deg;
   transform: rotate(11deg);
   animation: whiskerIdleLeft 3.6s ease-in-out infinite;
   animation-delay: 1.1s;
@@ -401,8 +404,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* RIGHT TOP */
 .wr1 {
   top: 0.2vmin;
-  width: 14vmin;
+  width: 15.6vmin;
   --wk-base: 16deg;
+  --wk-bend: 5deg;
   transform: rotate(16deg);
   animation: whiskerIdleRight 3.8s ease-in-out infinite;
   animation-delay: 0.28s;
@@ -410,8 +414,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* RIGHT MIDDLE */
 .wr2 {
   top: 2.8vmin;
-  width: 15.5vmin;
+  width: 16.8vmin;
   --wk-base: 3deg;
+  --wk-bend: 4deg;
   transform: rotate(3deg);
   animation: whiskerIdleRight 4.4s ease-in-out infinite;
   animation-delay: 0.82s;
@@ -419,8 +424,9 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 /* RIGHT BOTTOM */
 .wr3 {
   top: 5.5vmin;
-  width: 13.5vmin;
+  width: 15.2vmin;
   --wk-base: -11deg;
+  --wk-bend: 5deg;
   transform: rotate(-11deg);
   animation: whiskerIdleRight 3.6s ease-in-out infinite;
   animation-delay: 1.4s;
@@ -428,18 +434,18 @@ body.mouth-cat.mouth-thick .cm-scared { stroke-width: 2.5 !important; }
 
 /* ── Idle animations ── subtle gentle oscillation */
 @keyframes whiskerIdleLeft {
-  0%   { transform: rotate(var(--wk-base, -2deg))  scaleX(1.00); }
-  28%  { transform: rotate(calc(var(--wk-base, -2deg) + 2.5deg)) scaleX(1.01); }
-  58%  { transform: rotate(calc(var(--wk-base, -2deg) - 1.8deg)) scaleX(0.99); }
-  82%  { transform: rotate(calc(var(--wk-base, -2deg) + 1.2deg)) scaleX(1.00); }
-  100% { transform: rotate(var(--wk-base, -2deg))  scaleX(1.00); }
+  0%   { transform: rotate(var(--wk-base, -2deg)) skewY(var(--wk-bend, -4deg)) scaleX(1.00); }
+  28%  { transform: rotate(calc(var(--wk-base, -2deg) + 2.5deg)) skewY(var(--wk-bend, -4deg)) scaleX(1.01); }
+  58%  { transform: rotate(calc(var(--wk-base, -2deg) - 1.8deg)) skewY(var(--wk-bend, -4deg)) scaleX(0.99); }
+  82%  { transform: rotate(calc(var(--wk-base, -2deg) + 1.2deg)) skewY(var(--wk-bend, -4deg)) scaleX(1.00); }
+  100% { transform: rotate(var(--wk-base, -2deg)) skewY(var(--wk-bend, -4deg)) scaleX(1.00); }
 }
 @keyframes whiskerIdleRight {
-  0%   { transform: rotate(var(--wk-base, 2deg))  scaleX(1.00); }
-  28%  { transform: rotate(calc(var(--wk-base, 2deg) - 2.5deg)) scaleX(1.01); }
-  58%  { transform: rotate(calc(var(--wk-base, 2deg) + 1.8deg)) scaleX(0.99); }
-  82%  { transform: rotate(calc(var(--wk-base, 2deg) - 1.2deg)) scaleX(1.00); }
-  100% { transform: rotate(var(--wk-base, 2deg))  scaleX(1.00); }
+  0%   { transform: rotate(var(--wk-base, 2deg)) skewY(var(--wk-bend, 4deg)) scaleX(1.00); }
+  28%  { transform: rotate(calc(var(--wk-base, 2deg) - 2.5deg)) skewY(var(--wk-bend, 4deg)) scaleX(1.01); }
+  58%  { transform: rotate(calc(var(--wk-base, 2deg) + 1.8deg)) skewY(var(--wk-bend, 4deg)) scaleX(0.99); }
+  82%  { transform: rotate(calc(var(--wk-base, 2deg) - 1.2deg)) skewY(var(--wk-bend, 4deg)) scaleX(1.00); }
+  100% { transform: rotate(var(--wk-base, 2deg)) skewY(var(--wk-bend, 4deg)) scaleX(1.00); }
 }
 
 /* ── Emotion-reactive whisker states ── */
