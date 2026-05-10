@@ -2,9 +2,9 @@
 
 # 🐾 DeskBuddy
 
-**A living desktop companion that watches over you while you study — and actually cares.**
+**The desktop companion that turns focus sessions into a game you actually want to win.**
 
-DeskBuddy is an Electron app featuring an expressive animated creature that lives on your screen. It watches you through your webcam, reacts to your emotions, cheers you on during focus sessions, and gets genuinely sad when you disappear for too long.
+DeskBuddy is an Electron-powered animated buddy that lives on your screen, reads your focus signals from your webcam, reacts with personality, tracks your progress, and celebrates your wins like they matter.
 
 [![Electron](https://img.shields.io/badge/Electron-34-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -14,239 +14,240 @@ DeskBuddy is an Electron app featuring an expressive animated creature that live
 
 ---
 
-## ✨ What Makes It Special
+## 🚀 Why DeskBuddy is different
 
-DeskBuddy isn't just a cute widget — it's a **focus-aware study companion** powered by real-time webcam perception. It can tell when you're looking away, when you're on your phone, when you smile, and when you've been gone too long. The more you work, the more it celebrates with you.
+Most timers just count down. DeskBuddy **pays attention**.
 
----
-
-## 🎭 Emotion System
-
-The companion has **19 distinct expressions** that respond dynamically to what you do:
-
-| Expression | Triggered by |
-|-----------|-------------|
-| 😊 **Happy** | Smiling at the camera |
-| 👀 **Curious** | Sustained focused attention or a surprise expression |
-| 😴 **Sleepy** | Low activity, idle state |
-| 😶 **Focused** | Active focus session in progress |
-| 😨 **Scared** | You suddenly disappeared |
-| 😢 **Sad** | You've been gone a while |
-| 😭 **Crying** | You've been away too long |
-| 😤 **Grumpy** | You keep looking away |
-| 😒 **Pouty** | You looked away for a bit |
-| 🙄 **Sulking** | Silently protesting your inattention |
-| 🤨 **Suspicious** | Phone detected, or something seems off |
-| 🥰 **Overjoyed** | You came back! Milestone reached! |
-| 🤩 **Excited** | Big moment energy |
-| 😳 **Shy** | You've been making sustained eye contact |
-| 💕 **Love** | You pet it |
-| 😱 **Startled** | Sudden fast mouse movement |
-| 😊 **Embarrassed** | Caught slacking |
-| 🤗 **Forgiven** | Back on track after being away |
-| 😴 **Idle** | Relaxed, between sessions |
+It notices when you lock in, when you drift, when you disappear, when you smile, and when you come back. It responds with expressive animations, adaptive audio, live focus feedback, milestone hype, and deep stats that make consistency feel rewarding.
 
 ---
 
-## 📸 Webcam-Powered Perception
+## ✨ Feature Atlas (everything cool, in one place)
 
-- Real-time **face detection** and **gaze tracking** via [MediaPipe FaceLandmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker)
-- **Smile recognition** — the companion reacts when you smile at it
-- **Surprise detection** — raised eyebrows trigger a curious reaction
-- **Phone detection** — downward head tilt + dropped gaze marks you as suspicious
-- **Eye contact detection** — stare long enough and it goes shy
-- **Sleepy detection** — prolonged drooped-eyelid state triggers a sleepy reaction
-- **Attention score** — continuous 0–100 score drives the focus timer state machine
+### 🎭 1) Emotion engine with 23 expressive states
+DeskBuddy can switch across:
 
----
+- `idle`, `curious`, `focused`, `sleepy`, `suspicious`, `happy`
+- `scared`, `sad`, `crying`, `pouty`, `grumpy`, `overjoyed`, `sulking`, `embarrassed`, `forgiven`
+- `excited`, `shy`, `love`, `startled`, `cozy`, `being_patted`, `ecstatic`, `dazed`
 
-## ⏱️ Focus Timer & Sessions
+That list is the full set of **23** emotion states currently implemented.
 
-DeskBuddy tracks your work sessions from start to finish.
-
-### Timer States
-```
-FOCUSED → DRIFTING → DISTRACTED → CRITICAL → FAILED
-```
-Each step increases urgency — the companion reacts visually and with sound. Staying in `CRITICAL` for 45 seconds without recovering ends the session as a distraction failure.
-
-### Session Lifecycle
-```
-IDLE → ACTIVE → PAUSED → COMPLETED
-                       ↘ FAILED
-                       ↘ ABANDONED
-```
-
-| State | Description |
-|-------|-------------|
-| `ACTIVE` | Session running; timer ticking down |
-| `PAUSED` | On a break — timer frozen, no time limit on breaks |
-| `COMPLETED` | Timer ran to zero |
-| `FAILED` | Distraction held for too long in `CRITICAL` state |
-| `ABANDONED` | User manually quit the session |
-
-> **Breaks are unlimited.** Take a 5-minute breather or a 1-hour walk — it's your session. Resume whenever you're ready.
-
-### Settings
-- **Three sensitivity modes** — Gentle / Normal / Strict (affects attention score thresholds)
-- **Custom session duration** — hours, minutes, seconds via the HH:MM:SS picker
-- **Break reminder** — configurable advisory nudge after N minutes of continuous work (independent of session state)
-- **Session history** — last 50 sessions saved to `localStorage`
+Includes interaction-driven reactions (petting, long-hold affection states), focus-state reactions, and preview mode in settings.
 
 ---
 
-## 🌗 Time-of-Day Awareness
+### 📸 2) Real-time webcam perception
+Powered by MediaPipe FaceLandmarker with live behavior signals:
 
-The companion adapts to the time of day — personality, speed, volume, and sensitivity all shift automatically.
-
-| Period | Hours | Effect |
-|--------|-------|--------|
-| 🌅 **Morning** | 06:00–11:59 | Lively movement, morning-themed whispers, greeting on session start |
-| ☀️ **Afternoon** | 12:00–17:59 | Neutral baseline |
-| 🌆 **Evening** | 18:00–21:59 | Slower movement, warmer glow |
-| 🌙 **Night** | 22:00–05:59 | Slowest movement, dimmed glow, auto-gentle sensitivity, reduced volume, night-specific messages |
-
----
-
-## 🎉 Milestones & Encouragement
-
-- Every **5 minutes of sustained focus** triggers a celebration
-- Milestone messages escalate through 5 → 10 → 15 → ... → **60 minutes** (`1 HOUR!! 🎉🎉🎉`)
-- **Whisper messages** — rare, soft text overlays appear when you're deep in focus
-- Spontaneous **encouragement** and study tips pop up to keep you going
-- The companion reacts warmly when you come back after being absent (_"welcome back"_ sequence)
+- Face detection + gaze estimation
+- Smile detection
+- Surprise detection
+- Eye-contact detection
+- Sleepy/low-alertness cues
+- Phone suspicion detection (head/gaze posture)
+- Continuous attention score (0–100) feeding focus logic
 
 ---
 
-## 🐾 Idle Life
+### ⏱️ 3) Focus session system with real consequences
 
-The companion is never static between sessions:
-- It **stretches**, **winks**, **yawns**, and drifts around the screen
-- Spontaneous behaviors fire regularly to keep things alive
-- **Pet it** with your cursor for a love reaction ♡
-
----
-
-## 🪟 Two Window Modes
-
-| Mode | Description |
-|------|-------------|
-| **PiP overlay** | Small frameless transparent window floats over your work — always draggable, always interactive |
-| **Full-screen** | Expands to fill the display for a more immersive session |
-
-Toggle with **Ctrl+Shift+P** (⌘+Shift+P on macOS) or the on-screen button. Window position and size persist across restarts.
+- Full session lifecycle: **IDLE → ACTIVE → PAUSED → COMPLETED / FAILED / ABANDONED**
+- Focus-state escalation: **FOCUSED → DRIFTING → DISTRACTED → CRITICAL → FAILED**
+- Unlimited break flexibility with explicit pause/resume flow
+- Session duration controls, step controls, and category tagging (`study`, `work`, `creative`, `reading`, `other`)
+- Goal text per session + post-session goal check
+- Distraction budget warnings per session
+- Daily focus goal progress arc (Screen Time style)
+- Live focus % stat bar + 90-second focus heatmap strip
+- Celebration overlay, banners, confetti, and comeback sequences
 
 ---
 
-## 🔊 Procedural Audio
+### 📊 4) Rich analytics + history experience
 
-- All sound effects generated in real-time via the **Web Audio API** — zero audio files
-- Every emotion and interaction has a matching synthesised sound cue
-- Separate **soundscape drone** module for ambient background texture
-- Master volume control, per-category mute, and mute presets
-- Night mode reduces master volume to 80% automatically
+- Focus stats views: **Daily / Weekly / Monthly / Lifetime**
+- Sessions today, focused minutes, longest session, best day/week/month, streaks
+- GitHub-style streak calendar (16-week mode) + month calendar mode
+- Recent sessions panel with context actions:
+  - View details
+  - Copy summary
+  - Star session
+  - Export single session
+  - Multi-select + bulk delete
+- Weekly report modal support
+- Anti-cheat/stats-protection option to prevent session deletion
+- Local storage history retention up to **365 sessions** (oldest entries roll off)
 
 ---
 
-## 🚀 Getting Started
+### 🎨 5) Deep visual customization
+
+#### Appearance
+- Companion size
+- Full-screen themes: `galaxy`, `classic`, `forest`, `sakura/cherry`, `ocean`, `midnight`, `snow`, `aurora`
+- Theme particle effects toggle (theme-specific ambient visuals)
+- Screen brightness
+
+#### Eyes
+- Iris preset colors + custom base color
+- Independent layer overrides: center, mid, edge, ring, highlight sparkle, pupil core
+- Iris reset and layer reset controls
+- Eye glow preset colors + custom glow
+- Emotion glow sync toggle
+- Eye shape variants (`round`, `squish`, `almond`, `droopy`, `tall`)
+- Eye size, eye distance, iris size
+- Iris border toggle + border thickness slider
+- Blink rate control (`off`, `slow`, `normal`, `fast`)
+
+#### Face
+- Eyebrow toggle
+- Whisker toggle (including cat-mouth whisker styling support)
+- Nose style (`triangle`, `dot`, `hidden`) + nose size
+- Mouth shape (`arc`, `wide`, `cat`, `flat`, `hidden`) + mouth thickness + mouth size
+
+#### Glow
+- Buddy glow intensity (`off`, `subtle`, `normal`, `vivid`)
+
+---
+
+### 🔊 6) Procedural audio (no audio files required)
+
+- Real-time Web Audio generated cues for emotions and interactions
+- Ambient drone/soundscape module
+- Master volume control
+- Mute presets: `ALL_ON`, `ESSENTIAL`, `REMINDERS_ONLY`, `ALL_OFF`
+- Timer tick toggle
+- Night auto-volume reduction
+
+---
+
+### 🧠 7) Adaptive behavior & personality controls
+
+- Focus sensitivity presets: `GENTLE`, `NORMAL`, `STRICT`
+- Phone detection toggle
+- Idle speed profile (`calm`, `default`, `hyper`)
+- Expressiveness profile (`subtle`, `default`, `drama`)
+- Petting response profile (`gentle`, `default`, `eager`)
+- Expression preview duration control
+
+---
+
+### 🪟 8) Overlay/PiP window intelligence
+
+- Full mode + compact PiP overlay mode
+- Toggle mode via shortcut or on-screen controls
+- Adjustable PiP opacity
+- Overlay shape options: `square`, `rounded`, `circle`
+- Snap-to-corner behavior
+- Always-on-top toggle
+- Auto-collapse on app switch + configurable delay
+- Auto-restore on return
+- Optional “stay full during active sessions”
+
+---
+
+### 🔕 9) Do Not Disturb (Focus lock)
+
+- One-click DND mode to silence and calm the companion
+- Configurable duration (including “until I turn it off”)
+- Live visual indicator with progress ring
+- Instant cancel via indicator or shortcut
+
+---
+
+### 💾 10) Backups, presets, and recovery tools
+
+- Copy/paste appearance presets via clipboard
+- Export/import session history
+- Export/import all settings
+- Clear session history
+- Clear full cache/data
+- Reset to factory defaults
+
+---
+
+### ⌨️ 11) Shortcut system (customizable)
+
+Built-in defaults include:
+
+- `Ctrl+Shift+P` → toggle compact/full mode
+- `Ctrl+Shift+,` → open/close settings
+- `Ctrl+Shift+M` → cycle mute presets
+- `Ctrl+Shift+B` → dismiss break reminder
+- `Ctrl+Shift+H` → open history/session panel
+- `Ctrl+Shift+D` → toggle Do Not Disturb
+
+(Keyboard mappings are user-configurable in Settings.)
+
+---
+
+### 🌗 12) Time-of-day mood adaptation
+
+DeskBuddy adapts movement, feel, and messaging by time period (morning/afternoon/evening/night), including calmer nighttime behavior and lower volume defaults.
+
+---
+
+## 🧪 How to run
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v18 or newer
-- A webcam (required for face tracking and focus detection)
+- Node.js 18+
+- Webcam access (required for perception/focus features)
+- pnpm (recommended for workspace commands)
 
-### Install & Run
+### Install dependencies
 
 ```bash
-# Install dependencies
-npm install
-
-# Launch the companion
-npm start
+pnpm install
 ```
 
-DeskBuddy opens as a frameless transparent window. Grant camera permission when prompted and your companion will come to life.
+### Start DeskBuddy (Electron app)
+
+```bash
+pnpm start
+```
+
+### Useful workspace commands
+
+```bash
+pnpm lint
+pnpm build
+pnpm test
+pnpm type-check
+```
 
 ---
 
-## 🏗️ Architecture
+## 🗂️ Monorepo layout
 
-```
-deskbuddy/
-├── main.js                  # Electron main process — window creation, IPC, size/position persistence
-├── preload.js               # Secure contextBridge IPC surface
-├── renderer.js              # Boot orchestrator — initialises and wires all modules together
-├── index.html               # App shell
-├── styles.css               # All styles, emotion expressions, and animation keyframes
-├── components/
-│   ├── brain.js             # 🧠 Core behaviour engine — state machine, time-of-day, milestones, phone detection
-│   ├── companion.js         # 🐾 DOM, position, gaze tracking, idle micro-behaviours
-│   ├── emotion.js           # 🎭 Expression state — swaps CSS classes on the companion
-│   ├── perception.js        # 📸 MediaPipe face/gaze/smile/surprise/sleepy detection
-│   ├── timer.js             # ⏱️  Focus timer with distraction state machine
-│   ├── session.js           # 📊 Session lifecycle — history, breaks (no limit), outcome logging
-│   ├── sounds.js            # 🔊 Web Audio procedural sound engine (19 voices + session + tick sounds)
-│   ├── soundscape.js        # 🎵 Ambient drone module
-│   ├── particles.js         # ✨ Particle effects for celebrations
-│   ├── camera.js            # 📷 Camera stream management
-│   ├── movement.js          # 🎯 Smooth drift physics at 60 FPS
-│   ├── spriteAnimator.js    # 🎬 CSS frame-based sprite animation
-│   ├── settings.js          # ⚙️  Persistent settings (localStorage)
-│   ├── keybinds.js          # ⌨️  Centralised keyboard shortcut registry
-│   └── break-reminder.js    # 🔔 Advisory break nudge (independent of session state)
-└── ui/
-    └── status.js            # Status bar display
-```
+| Package | Path | Purpose |
+|---|---|---|
+| Electron companion app | `deskbuddy/` | Animated desktop buddy + focus/timer/perception system |
+| API | `apps/api/` | Express + Prisma backend services |
+| Web | `apps/web/` | React + Vite frontend |
+| Shared | `packages/shared/` | Shared schemas, types, constants |
 
-### Boot Order
-
-```
-Settings → Sounds → Soundscape → Session → Timer → Companion → SpriteAnimator
-        → Particles → Status → Camera → Perception → Brain → wire
-```
-
-Each module is independent. `renderer.js` wires them together through dedicated wiring functions — no module calls another directly.
+Workspace config is managed via `pnpm-workspace.yaml`.
 
 ---
 
-## 🧠 Behaviour States
+## 🏗️ Core app architecture (`deskbuddy/`)
 
-| State | Emotion | What the Companion Does |
-|-------|---------|-------------------------|
-| `observe` | focused | Drifts gently, eyes scan the environment |
-| `curious` | curious | Eyes widen, gaze sweeps left → right → up |
-| `idle` | idle | Relaxed, occasional happy flash |
-| `followCursor` | focused / suspicious | Tracks your cursor, retreats if you get too close |
-| `sleepy` | sleepy | Eyes droop, all movement slows |
-
----
-
-## ⚡ Performance
-
-| Concern | Approach |
-|---------|----------|
-| Main loop | `requestAnimationFrame` at 60 FPS |
-| Face tracking | MediaPipe FaceLandmarker at ~15 FPS via camera polling |
-| DOM updates | Minimal — only `transform`, `classList`, and CSS custom properties |
-| Rendering | GPU-accelerated via `will-change: transform, filter` |
-| Audio | Zero-cost when muted; Web Audio graph tears down cleanly |
-
----
-
-## 🗂️ Monorepo
-
-The repository is a **pnpm workspace** with three additional packages alongside the Electron app:
-
-| Package | Path | Stack |
-|---------|------|-------|
-| **Electron app** | `deskbuddy/` | Electron 34, vanilla JS, MediaPipe |
-| **API** | `apps/api/` | Express 5, Prisma, Node 20, Redis |
-| **Web** | `apps/web/` | React 18, Vite, Tailwind, Zustand |
-| **Shared** | `packages/shared/` | Zod schemas, types, and constants |
+- `main.js` — Electron main process (windows, IPC, persistence)
+- `preload.js` — secure bridge between renderer and main
+- `renderer.js` — orchestration/wiring for UI + modules
+- `components/brain.js` — high-level behavior logic
+- `components/perception.js` — camera-derived signal processing
+- `components/timer.js` — focus/distraction state machine
+- `components/session.js` — session lifecycle + history store
+- `components/sounds.js` + `components/soundscape.js` — procedural audio
+- `components/dnd.js` — do-not-disturb flow
+- `components/keybinds.js` — shortcut registry and overrides
+- `components/settings.js` — settings persistence/export/import
 
 ---
 
 ## 📄 License
 
 MIT
-
