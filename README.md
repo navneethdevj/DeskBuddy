@@ -31,6 +31,8 @@ DeskBuddy can switch across:
 - `scared`, `sad`, `crying`, `pouty`, `grumpy`, `overjoyed`, `sulking`, `embarrassed`, `forgiven`
 - `excited`, `shy`, `love`, `startled`, `cozy`, `being_patted`, `ecstatic`, `dazed`
 
+That list is the full set of **23** emotion states currently implemented.
+
 Includes interaction-driven reactions (petting, long-hold affection states), focus-state reactions, and preview mode in settings.
 
 ---
@@ -75,6 +77,7 @@ Powered by MediaPipe FaceLandmarker with live behavior signals:
   - Multi-select + bulk delete
 - Weekly report modal support
 - Anti-cheat/stats-protection option to prevent session deletion
+- Local storage history retention up to **365 sessions** (oldest entries roll off)
 
 ---
 
