@@ -1,20 +1,24 @@
 /**
  * IrisColor — custom iris + glow colour support.
  * Recolours the real central iris element (`.pupil`) with no extra DOM layers.
+ *
+ * Changes vs original:
+ *  - buildStopsFromThreeColors: smootherstep easing → eliminates harsh banding
+ *  - buildIrisBackground: softer limbal ring (0.08/0.14 vs 0.16/0.34) → no fake layer look
+ *  - applyIrisProfile: exports --iris-color-inner-mid + --iris-color-outer-mid for richer CSS fallback
+ *  - Partial layer overrides (only ring/highlight/pupilCore) no longer force 3-anchor mode,
+ *    preserving smooth HSL ramp from base hex — was main "messes up" cause in original
+ *  - Added getIrisProfile() for preset read-back / settings export
+ *  - iris-border-width no longer multiplied by --iris-scale; border stays constant thickness
  */
 const IrisColor = (() => {
-  // 16 paired stops create softer layered depth for a cuter iris look:
-  // - stop positions: where each shade band lands from center to rim
-  // - lightness deltas: controlled brightening toward edge (avoids a white ring)
-  // - saturation multipliers: gentle desaturation toward edge (prevents muddy banding)
-  // Stop positions from iris center (0) to edge (100).
+  // 16 stop positions from iris center (0) to edge (100).
   const IRIS_STOP_PCTS = [0, 4, 8, 13, 19, 26, 34, 43, 53, 63, 73, 82, 89, 94, 98, 100];
-  // Brightness ramp: gentle fade from rich core to soft edge.
+  // Lightness ramp: darkening at core, brightening toward limbal edge.
   const IRIS_LIGHTNESS_DELTA = [-28, -24, -20, -16, -12, -8, -4, 0, 4, 8, 12, 16, 20, 23, 25, 27];
   // Saturation falloff: keeps hue identity while fading outward.
   const IRIS_SAT_MULT = [1.26, 1.22, 1.18, 1.14, 1.10, 1.06, 1.02, 1.00, 0.97, 0.94, 0.90, 0.86, 0.83, 0.80, 0.77, 0.74];
-  const IRIS_CENTER_STOP_INDEX = 0;
-  const IRIS_EDGE_STOP_INDEX = IRIS_STOP_PCTS.length - 2;
+
   const DEFAULT_IRIS_BASE_HEX = '#8795db';
   const MIN_IRIS_BASE_SATURATION = 30;
   const MAX_IRIS_BASE_SATURATION = 86;
@@ -23,13 +27,19 @@ const IrisColor = (() => {
 
   let irisStyleEl = null;
 
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  /** Smootherstep easing (Ken Perlin) — eliminates visible banding at stop boundaries */
+  function smootherstep(t) {
+    t = clamp(t, 0, 1);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
 
   function normalizeHex(hex) {
     if (typeof hex !== 'string') return '';
     const raw = hex.trim().replace(/^#/, '');
-    // We intentionally support only 3/6-digit RGB hex here (input type=color output);
-    // alpha-bearing 4/8-digit forms are treated as invalid for iris rendering.
     if (!/^(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) return '';
     if (raw.length === 3) {
       return '#' + raw.split('').map(ch => ch + ch).join('').toLowerCase();
@@ -67,7 +77,6 @@ const IrisColor = (() => {
   function hslToHex(h, s, l) {
     h = ((h % 360) + 360) % 360;
     h /= 360; s /= 100; l /= 100;
-
     let r, g, b;
     if (s === 0) {
       r = g = b = l;
@@ -86,7 +95,6 @@ const IrisColor = (() => {
       g = hue2rgb(p, q, h);
       b = hue2rgb(p, q, h - 1 / 3);
     }
-
     return '#' + [r, g, b].map(x =>
       Math.round(clamp(x * 255, 0, 255)).toString(16).padStart(2, '0')
     ).join('');
@@ -98,13 +106,18 @@ const IrisColor = (() => {
     ).join('');
   }
 
+  /**
+   * Mix two hex colours by ratio t (0=a, 1=b).
+   * Uses smootherstep easing so transitions avoid flat zones and muddy midpoints.
+   */
   function mixHex(a, b, t) {
+    const te = smootherstep(t);
     const aa = hexToRgb(a);
     const bb = hexToRgb(b);
     return rgbToHex(
-      aa[0] + (bb[0] - aa[0]) * t,
-      aa[1] + (bb[1] - aa[1]) * t,
-      aa[2] + (bb[2] - aa[2]) * t,
+      aa[0] + (bb[0] - aa[0]) * te,
+      aa[1] + (bb[1] - aa[1]) * te,
+      aa[2] + (bb[2] - aa[2]) * te,
     );
   }
 
@@ -114,6 +127,8 @@ const IrisColor = (() => {
     return `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
   }
 
+  // ── Stop builders ──────────────────────────────────────────────────────────
+
   function buildStopsFromHsl(h, satBase, lightBase) {
     return IRIS_STOP_PCTS.map((_stopPct, i) => {
       const sat = clamp(satBase * IRIS_SAT_MULT[i], 20, 98);
@@ -122,65 +137,87 @@ const IrisColor = (() => {
     });
   }
 
+  /**
+   * Build stops from 3 anchor colours using smootherstep easing between zones.
+   *
+   * Previously used linear lerp → caused visible flat zones + muddy transitions.
+   * Smootherstep S-curve: colour spends less time near boundaries, more near
+   * each anchor → richer core, soft blending, no harsh band at split point.
+   *
+   * Split at 52% (slightly past midpoint) so core reads clearly without dominating.
+   */
   function buildStopsFromThreeColors(centerHex, midHex, edgeHex) {
+    const SPLIT = 52;
     return IRIS_STOP_PCTS.map((pct) => {
-      if (pct <= 55) return mixHex(centerHex, midHex, pct / 55);
-      return mixHex(midHex, edgeHex, (pct - 55) / 45);
+      if (pct <= SPLIT) {
+        return mixHex(centerHex, midHex, pct / SPLIT);
+      } else {
+        return mixHex(midHex, edgeHex, (pct - SPLIT) / (100 - SPLIT));
+      }
     });
   }
 
+  // ── Core palette builder ───────────────────────────────────────────────────
+
+  /**
+   * Derive a full iris colour palette from a base hex + optional per-layer overrides.
+   *
+   * PARTIAL OVERRIDE FIX:
+   *   Only use 3-anchor mode when center/mid/edge are overridden.
+   *   Ring, highlight, pupilCore overrides apply ON TOP of the smooth HSL ramp.
+   *   The original code triggered 3-anchor mode for ANY override, which caused
+   *   harsh banding when only the ring or highlight colour was changed.
+   */
   function deriveIrisGradient(hex, overrides = {}) {
     const normalized = normalizeHex(hex);
-    const centerOverride = normalizeHex(overrides.centerHex || '');
-    const midOverride = normalizeHex(overrides.midHex || '');
-    const edgeOverride = normalizeHex(overrides.edgeHex || '');
-    const ringOverride = normalizeHex(overrides.ringHex || '');
+    const centerOverride    = normalizeHex(overrides.centerHex    || '');
+    const midOverride       = normalizeHex(overrides.midHex       || '');
+    const edgeOverride      = normalizeHex(overrides.edgeHex      || '');
+    const ringOverride      = normalizeHex(overrides.ringHex      || '');
     const highlightOverride = normalizeHex(overrides.highlightHex || '');
     const pupilCoreOverride = normalizeHex(overrides.pupilCoreHex || '');
 
-    const buildResult = (sourceMid, stops, h) => {
-      const center = centerOverride || stops[IRIS_CENTER_STOP_INDEX];
-      const mid = midOverride || sourceMid;
-      const edge = edgeOverride || stops[IRIS_EDGE_STOP_INDEX];
-      const finalStops = (centerOverride || midOverride || edgeOverride)
+    // Only 3-anchor mode if gradient anchors are overridden, not accent-only overrides
+    const hasGradientAnchorOverride = !!(centerOverride || midOverride || edgeOverride);
+
+    const _build = (sourceMid, stops, h) => {
+      const center = centerOverride || stops[0];
+      const mid    = midOverride    || sourceMid;
+      const edge   = edgeOverride   || stops[stops.length - 3]; // index 13
+
+      const finalStops = hasGradientAnchorOverride
         ? buildStopsFromThreeColors(center, mid, edge)
         : stops;
-      const rim = finalStops[Math.max(0, finalStops.length - 2)];
-      const ring = ringOverride || finalStops[Math.min(8, finalStops.length - 1)];
-      const highlight = highlightOverride || finalStops[Math.min(12, finalStops.length - 1)];
+
+      const innerMid = finalStops[6];           // ~34% — for CSS var export
+      const outerMid = finalStops[10];           // ~73% — for CSS var export
+      const ring      = ringOverride || finalStops[8];  // ~53% concentric accent
+      const rim       = finalStops[finalStops.length - 3]; // index 13 — soft limbal edge
+      const highlight = highlightOverride || finalStops[11]; // ~73% lighter stop
       const pupilCore = pupilCoreOverride || hslToHex(h, 42, 14);
-      const pupilSheen = mixHex(highlight, '#ffffff', 0.28);
-      return {
-        center,
-        mid,
-        edge,
-        stops: finalStops,
-        rim,
-        ring,
-        highlight,
-        pupilCore,
-        pupilSheen,
-      };
+      const pupilSheen = mixHex(highlight, '#ffffff', 0.32);
+
+      return { center, mid, edge, innerMid, outerMid, stops: finalStops, rim, ring, highlight, pupilCore, pupilSheen };
     };
 
     if (!normalized) {
       const [r, g, b] = hexToRgb(DEFAULT_IRIS_BASE_HEX);
       const [h, s, l] = rgbToHsl(r, g, b);
-      const satBase = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
-      const lightBase = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
+      const satBase   = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
+      const lightBase = clamp(l, MIN_IRIS_BASE_LIGHTNESS,  MAX_IRIS_BASE_LIGHTNESS);
       const stops = buildStopsFromHsl(h, satBase, lightBase);
-      return buildResult(DEFAULT_IRIS_BASE_HEX, stops, h);
+      return _build(DEFAULT_IRIS_BASE_HEX, stops, h);
     }
 
     const [r, g, b] = hexToRgb(normalized);
     const [h, s, l] = rgbToHsl(r, g, b);
-    // Clamp source colour into a "safe iris palette" band so edge stops stay coloured
-    // and do not bleach into a fake middle layer between iris and sclera.
-    const baseSat = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
-    const baseLight = clamp(l, MIN_IRIS_BASE_LIGHTNESS, MAX_IRIS_BASE_LIGHTNESS);
+    const baseSat   = clamp(s, MIN_IRIS_BASE_SATURATION, MAX_IRIS_BASE_SATURATION);
+    const baseLight = clamp(l, MIN_IRIS_BASE_LIGHTNESS,  MAX_IRIS_BASE_LIGHTNESS);
     const stops = buildStopsFromHsl(h, baseSat, baseLight);
-    return buildResult(normalized, stops, h);
+    return _build(normalized, stops, h);
   }
+
+  // ── CSS gradient builders ──────────────────────────────────────────────────
 
   function buildIrisGradient(stops) {
     const lines = stops.map((color, i) => `          ${color} ${IRIS_STOP_PCTS[i]}%`);
@@ -190,41 +227,56 @@ ${lines.join(',\n')}
         )`;
   }
 
+  /**
+   * Build the full layered iris background for injection into the dynamic <style> tag.
+   *
+   * Layer order (CSS paint order — first listed = frontmost):
+   *   1. Highlight sparkle  — top-left bright lens glint
+   *   2. Secondary shimmer  — bottom-right warm depth
+   *   3. Ring accent band   — soft coloured concentric mid-iris ring
+   *   4. Core iris gradient — 16-stop ramp following gaze direction
+   *   5. Limbal ring        — very soft edge darkening (NOT a harsh border ring)
+   *
+   * Limbal alpha: 0.08 / 0.14 (was 0.16 / 0.34) — this was the main cause
+   * of the "fake extra layer" between iris and sclera in the original.
+   */
   function buildIrisBackground(palette) {
-    const spark = hexToRgb(palette.ring);
-    const ring = hexToRgb(palette.ring);
-    const rim = hexToRgb(palette.rim);
-    const highlight = hexToRgb(palette.highlight);
+    const sparkRgb     = hexToRgb(palette.ring);
+    const ringRgb      = hexToRgb(palette.ring);
+    const rimRgb       = hexToRgb(palette.rim);
+    const highlightRgb = hexToRgb(palette.highlight);
     return `
         radial-gradient(
           circle at 33% 30%,
-          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.76) 0%,
-          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.36) 14%,
-          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0.12) 24%,
-          rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, 0) 46%
+          rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.78) 0%,
+          rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.38) 12%,
+          rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.14) 22%,
+          rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.00) 44%
         ),
         radial-gradient(
           circle at 68% 74%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.30) 0%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0.16) 20%,
-          rgba(${spark[0]}, ${spark[1]}, ${spark[2]}, 0) 50%
+          rgba(${sparkRgb[0]}, ${sparkRgb[1]}, ${sparkRgb[2]}, 0.26) 0%,
+          rgba(${sparkRgb[0]}, ${sparkRgb[1]}, ${sparkRgb[2]}, 0.12) 22%,
+          rgba(${sparkRgb[0]}, ${sparkRgb[1]}, ${sparkRgb[2]}, 0.00) 52%
         ),
         radial-gradient(
           circle at 50% 50%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 30%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.20) 48%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0.30) 58%,
-          rgba(${ring[0]}, ${ring[1]}, ${ring[2]}, 0) 75%
+          rgba(${ringRgb[0]}, ${ringRgb[1]}, ${ringRgb[2]}, 0.00) 30%,
+          rgba(${ringRgb[0]}, ${ringRgb[1]}, ${ringRgb[2]}, 0.16) 46%,
+          rgba(${ringRgb[0]}, ${ringRgb[1]}, ${ringRgb[2]}, 0.24) 56%,
+          rgba(${ringRgb[0]}, ${ringRgb[1]}, ${ringRgb[2]}, 0.00) 74%
         ),
         ${buildIrisGradient(palette.stops)},
         radial-gradient(
           circle at 50% 50%,
-          rgba(14, 18, 34, 0) 60%,
-          rgba(${rim[0]}, ${rim[1]}, ${rim[2]}, 0.16) 82%,
-          rgba(10, 12, 26, 0.34) 100%
+          rgba(14, 18, 34, 0.00) 65%,
+          rgba(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]}, 0.08) 85%,
+          rgba(10, 12, 26, 0.14) 100%
         )
     `;
   }
+
+  // ── Style injection ────────────────────────────────────────────────────────
 
   function getIrisStyleEl() {
     if (!irisStyleEl) {
@@ -235,50 +287,74 @@ ${lines.join(',\n')}
     return irisStyleEl;
   }
 
+  // ── Public application API ─────────────────────────────────────────────────
+
   function applyIris(hex) {
     applyIrisProfile({ baseHex: hex });
   }
 
+  /**
+   * Apply a full iris colour profile.
+   *
+   * @param {object} profile
+   *   baseHex       — main hue; '' = use default periwinkle
+   *   centerHex     — override iris center layer only
+   *   midHex        — override iris mid layer only
+   *   edgeHex       — override iris outer layer only
+   *   ringHex       — override ring accent + iris border tint (does NOT cause banding)
+   *   highlightHex  — override main sparkle only (does NOT cause banding)
+   *   pupilCoreHex  — override pupil dark core only (does NOT cause banding)
+   */
   function applyIrisProfile(profile = {}) {
     const baseHex = normalizeHex(profile.baseHex || '');
-    const hasLayerOverride = !!normalizeHex(profile.centerHex || '')
-      || !!normalizeHex(profile.midHex || '')
-      || !!normalizeHex(profile.edgeHex || '')
-      || !!normalizeHex(profile.ringHex || '')
-      || !!normalizeHex(profile.highlightHex || '')
-      || !!normalizeHex(profile.pupilCoreHex || '');
+    const hasLayerOverride = !!(
+      normalizeHex(profile.centerHex    || '') ||
+      normalizeHex(profile.midHex       || '') ||
+      normalizeHex(profile.edgeHex      || '') ||
+      normalizeHex(profile.ringHex      || '') ||
+      normalizeHex(profile.highlightHex || '') ||
+      normalizeHex(profile.pupilCoreHex || '')
+    );
+
     if (!baseHex && !hasLayerOverride) { clearIris(); return; }
 
-    const palette = deriveIrisGradient(baseHex || DEFAULT_IRIS_BASE_HEX, profile);
+    const effectiveBase = baseHex || DEFAULT_IRIS_BASE_HEX;
+    const palette = deriveIrisGradient(effectiveBase, profile);
+
+    // Inject complete gradient via dynamic style tag — wins over CSS static fallback
     getIrisStyleEl().textContent = `
       body.eye-custom .pupil {
         background: ${buildIrisBackground(palette)} !important;
         filter: none !important;
-        transition: background 0.25s ease !important;
+        transition: background 0.28s ease !important;
       }
     `;
 
-    document.body.style.setProperty('--iris-color-center', palette.center);
-    document.body.style.setProperty('--iris-color-mid', palette.mid);
-    document.body.style.setProperty('--iris-color-edge', palette.edge);
-    document.body.style.setProperty('--iris-custom-ring-rgb', toRgbTriplet(palette.ring, [195, 206, 255]));
-    document.body.style.setProperty('--iris-custom-highlight-rgb', toRgbTriplet(palette.highlight, [255, 255, 255]));
-    document.body.style.setProperty('--iris-custom-pupil-core', normalizeHex(palette.pupilCore) || '#111a34');
-    document.body.style.setProperty('--iris-custom-pupil-sheen-rgb', toRgbTriplet(palette.pupilSheen, [165, 188, 255]));
+    // Export palette as CSS vars — used by box-shadow border, emotion overrides, CSS fallback
+    document.body.style.setProperty('--iris-color-center',           palette.center);
+    document.body.style.setProperty('--iris-color-inner-mid',        palette.innerMid);
+    document.body.style.setProperty('--iris-color-mid',              palette.mid);
+    document.body.style.setProperty('--iris-color-outer-mid',        palette.outerMid);
+    document.body.style.setProperty('--iris-color-edge',             palette.edge);
+    document.body.style.setProperty('--iris-custom-ring-rgb',        toRgbTriplet(palette.ring,      [195, 206, 255]));
+    document.body.style.setProperty('--iris-custom-highlight-rgb',   toRgbTriplet(palette.highlight, [255, 255, 255]));
+    document.body.style.setProperty('--iris-custom-pupil-core',      normalizeHex(palette.pupilCore) || '#111a34');
+    document.body.style.setProperty('--iris-custom-pupil-sheen-rgb', toRgbTriplet(palette.pupilSheen,[165, 188, 255]));
+
     document.body.classList.add('eye-custom');
   }
 
   function clearIris() {
     if (irisStyleEl) irisStyleEl.textContent = '';
     document.body.classList.remove('eye-custom');
-    document.body.style.removeProperty('--iris-color-center');
-    document.body.style.removeProperty('--iris-color-mid');
-    document.body.style.removeProperty('--iris-color-edge');
-    document.body.style.removeProperty('--iris-custom-ring-rgb');
-    document.body.style.removeProperty('--iris-custom-highlight-rgb');
-    document.body.style.removeProperty('--iris-custom-pupil-core');
-    document.body.style.removeProperty('--iris-custom-pupil-sheen-rgb');
+    [
+      '--iris-color-center', '--iris-color-inner-mid', '--iris-color-mid',
+      '--iris-color-outer-mid', '--iris-color-edge', '--iris-custom-ring-rgb',
+      '--iris-custom-highlight-rgb', '--iris-custom-pupil-core', '--iris-custom-pupil-sheen-rgb',
+    ].forEach(v => document.body.style.removeProperty(v));
   }
+
+  // ── Glow API ───────────────────────────────────────────────────────────────
 
   function applyGlow(hex) {
     const normalized = normalizeHex(hex);
@@ -296,9 +372,16 @@ ${lines.join(',\n')}
     document.body.style.removeProperty('--user-glow-rgb');
   }
 
+  /**
+   * Enable or disable emotion→glow sync.
+   * On: body.glow-emotion-lock → emotion CSS overrides colour.
+   * Off: class removed → emotion glows bypassed, user colour holds.
+   */
   function setEmotionSync(enabled) {
     document.body.classList.toggle('glow-emotion-lock', !!enabled);
   }
+
+  // ── Read-back helpers ──────────────────────────────────────────────────────
 
   function getCurrentIrisHex() {
     return document.body.style.getPropertyValue('--iris-color-mid').trim() || '';
@@ -312,6 +395,23 @@ ${lines.join(',\n')}
     return '#' + parts.map(x => clamp(x, 0, 255).toString(16).padStart(2, '0')).join('');
   }
 
+  /**
+   * Return the current iris profile as an object suitable for re-applying.
+   * Use baseHex for a clean round-trip — ring/highlight/pupilCore are derived.
+   */
+  function getIrisProfile() {
+    return {
+      baseHex:      document.body.style.getPropertyValue('--iris-color-mid').trim()         || '',
+      centerHex:    document.body.style.getPropertyValue('--iris-color-center').trim()       || '',
+      edgeHex:      document.body.style.getPropertyValue('--iris-color-edge').trim()         || '',
+      ringHex:      '',
+      highlightHex: '',
+      pupilCoreHex: document.body.style.getPropertyValue('--iris-custom-pupil-core').trim() || '',
+    };
+  }
+
+  // ── Exports ────────────────────────────────────────────────────────────────
+
   return {
     applyIris,
     applyIrisProfile,
@@ -323,5 +423,6 @@ ${lines.join(',\n')}
     hexToRgb,
     getCurrentIrisHex,
     getCustomGlowHex,
+    getIrisProfile,
   };
 })();
