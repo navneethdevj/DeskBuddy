@@ -68,8 +68,9 @@ const Settings = (() => {
     noseSize:        100,  // nose scale 50–150; 100 = default
     blinkRate:       'normal',
     showEyebrows:    true,
+    showWhiskers:    true,   // whisker visibility toggle (true = visible)
     noseStyle:       'triangle',
-    mouthStyle:      'arc',
+    mouthStyle:      'arc',  // 'arc' | 'wide' | 'cat' | 'flat' | 'none'
     mouthThickness:  'normal',
     // ── Glow ──────────────────────────────────────────────────────────
     // 'off' | 'subtle' | 'normal' | 'vivid'  (maps to slider 0-3)
