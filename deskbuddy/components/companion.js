@@ -91,8 +91,9 @@ const Companion = (() => {
           Default (arc/wide/flat styles): CSS border-based shape — unchanged.
           Cat style (body.mouth-cat): SVG paths below are revealed via CSS.
             - cm-center : philtrum vertical line (nose to junction)
-            - cm-left   : left arc of the ω (center→dips→up to outer corner)
-            - cm-right  : right arc (mirror)
+            - cm-left   : left upper arc of the ω (center→dips→up to outer corner)
+            - cm-right  : right upper arc (mirror)
+            - cm-lower  : lower smile curve to complete the mouth shape
             - cm-scared : small open circle for scared/startled O shape
           Stroke color, width, and transform are all driven by CSS per emotion.
           The SVG uses overflow:visible so arcs extend beyond the container.
@@ -115,8 +116,14 @@ const Companion = (() => {
                   stroke-linecap="round"
                   stroke-linejoin="round"/>
             <!-- Right arc: mirror -->
-            <path class="cm-right"
-                  d="M30,10 Q40,16 49,13 Q55,10 58,6"
+             <path class="cm-right"
+                   d="M30,10 Q40,16 49,13 Q55,10 58,6"
+                   fill="none"
+                   stroke-linecap="round"
+                   stroke-linejoin="round"/>
+            <!-- Lower curve: subtle lower lip under the upper ω arcs -->
+            <path class="cm-lower"
+                  d="M20,14 Q30,20 40,14"
                   fill="none"
                   stroke-linecap="round"
                   stroke-linejoin="round"/>
