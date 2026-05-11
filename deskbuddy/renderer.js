@@ -2418,6 +2418,364 @@ const ThemeCanvas = (() => {
       });
     }
 
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PiP BORDER + LOCK SYSTEM WIRING
+    // ══════════════════════════════════════════════════════════════════════
+    (function _wirePipBorderSystem() {
+      const ring = document.getElementById('pip-border-ring');
+
+      // ── Helper: parse hex to R,G,B triplet string ─────────────────────
+      function _hexToRgbTriplet(hex) {
+        if (!hex || !hex.startsWith('#')) return null;
+        const clean = hex.replace('#', '');
+        if (clean.length !== 6 && clean.length !== 3) return null;
+        const full = clean.length === 3
+          ? clean.split('').map(c => c + c).join('')
+          : clean;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+        return `${r},${g},${b}`;
+      }
+
+      // ── Apply all border CSS vars at once ────────────────────────────
+      function _applyBorderVars(overrides = {}) {
+        const style = document.documentElement.style;
+        const col1 = overrides.color1 ?? Settings.get('pipBorderColor')  ?? '#8a93ff';
+        const col2 = overrides.color2 ?? Settings.get('pipBorderColor2') ?? '#ff79b0';
+        const thick = overrides.thickness ?? Settings.get('pipBorderThickness') ?? 2;
+        const opa   = overrides.opacity   ?? Settings.get('pipBorderOpacity')   ?? 85;
+        const glow  = overrides.glowSize  ?? Settings.get('pipGlowSize')        ?? 60;
+        const soft  = overrides.softness  ?? Settings.get('pipGlowSoftness')    ?? 50;
+        const animSpd = overrides.animSpeed ?? Settings.get('pipAnimSpeed')     ?? 50;
+
+        const rgb1 = _hexToRgbTriplet(col1);
+        const rgb2 = _hexToRgbTriplet(col2);
+        if (rgb1) style.setProperty('--pip-border-rgb',  rgb1);
+        if (rgb2) style.setProperty('--pip-border-rgb2', rgb2);
+
+        style.setProperty('--pip-border-thickness', `${thick}px`);
+        style.setProperty('--pip-border-opacity',   (opa / 100).toFixed(2));
+        // Map 0-100% glow to 0-60px
+        style.setProperty('--pip-glow-px',   `${Math.round(glow * 0.6)}px`);
+        // Map 0-100% softness to 0-40px blur
+        style.setProperty('--pip-glow-blur', `${Math.round(soft * 0.4)}px`);
+        // Map speed 10-200 to duration 8s-0.5s (inverse: slower = higher value)
+        const dur = (8 - ((animSpd - 10) / 190 * 7.5)).toFixed(2);
+        style.setProperty('--pip-anim-dur', `${dur}s`);
+        // Hover glow on/off
+        const hoverGlow = Settings.get('pipHoverGlow') !== false ? 1 : 0;
+        style.setProperty('--pip-hover-glow', hoverGlow);
+      }
+
+      // ── Apply border style class ──────────────────────────────────────
+      const VALID_STYLES = ['none','glow','neon','soft','pulse','cyber','pastel','rgb',
+        'glass','retro','dreamy','aura','vaporwave','cozy','minimal','pixel','dotted',
+        'bubble','holographic','faded','cat','solid','blending'];
+
+      function _applyBorderStyle(style) {
+        VALID_STYLES.forEach(s =>
+          document.body.classList.toggle(`pip-border-style-${s}`, s === style));
+      }
+
+      function _syncBorderStyleChips(style) {
+        document.querySelectorAll('#pip-border-style-grid .pip-border-style-chip').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.style === style);
+        });
+      }
+
+      // ── Toggle animation pause ────────────────────────────────────────
+      function _applyAnimEnabled(enabled) {
+        if (ring) ring.style.animationPlayState = enabled ? 'running' : 'paused';
+      }
+
+      // ── Apply full visual preset ──────────────────────────────────────
+      const PIP_PRESETS = {
+        default:   { style: 'glow',        color1: '#8a93ff', color2: '#b0b8ff', thickness: 2, opacity: 85, glowSize: 60, softness: 50, animSpeed: 50 },
+        cozy:      { style: 'cozy',        color1: '#ffb347', color2: '#ff7f7f', thickness: 2, opacity: 80, glowSize: 55, softness: 65, animSpeed: 30 },
+        neon:      { style: 'neon',        color1: '#00f5ff', color2: '#ff00aa', thickness: 2, opacity: 95, glowSize: 85, softness: 30, animSpeed: 55 },
+        cyber:     { style: 'cyber',       color1: '#00ffaa', color2: '#00aaff', thickness: 2, opacity: 90, glowSize: 70, softness: 25, animSpeed: 80 },
+        dreamy:    { style: 'dreamy',      color1: '#c084fc', color2: '#f0abfc', thickness: 1, opacity: 75, glowSize: 90, softness: 85, animSpeed: 25 },
+        retro:     { style: 'retro',       color1: '#ff6b35', color2: '#ffdd57', thickness: 3, opacity: 95, glowSize: 45, softness: 20, animSpeed: 60 },
+        rgb:       { style: 'rgb',         color1: '#ff0080', color2: '#00ffcc', thickness: 2, opacity: 92, glowSize: 65, softness: 30, animSpeed: 70 },
+        glass:     { style: 'glass',       color1: '#ffffff', color2: '#dde8ff', thickness: 1, opacity: 55, glowSize: 40, softness: 80, animSpeed: 35 },
+        vaporwave: { style: 'vaporwave',   color1: '#ff71ce', color2: '#01cdfe', thickness: 2, opacity: 88, glowSize: 70, softness: 50, animSpeed: 45 },
+        pastel:    { style: 'pastel',      color1: '#ffd6e7', color2: '#c7e9fb', thickness: 2, opacity: 70, glowSize: 50, softness: 75, animSpeed: 28 },
+        sleepy:    { style: 'soft',        color1: '#9eb5ff', color2: '#c4b5fd', thickness: 1, opacity: 55, glowSize: 45, softness: 90, animSpeed: 18 },
+        minimal:   { style: 'minimal',     color1: '#8a93ff', color2: '#8a93ff', thickness: 1, opacity: 50, glowSize: 20, softness: 60, animSpeed: 40 },
+      };
+
+      function _applyPreset(name) {
+        const preset = PIP_PRESETS[name];
+        if (!preset) return;
+        Settings.set('pipVisualPreset',    name);
+        Settings.set('pipBorderStyle',    preset.style);
+        Settings.set('pipBorderColor',    preset.color1);
+        Settings.set('pipBorderColor2',   preset.color2);
+        Settings.set('pipBorderThickness',preset.thickness);
+        Settings.set('pipBorderOpacity',  preset.opacity);
+        Settings.set('pipGlowSize',       preset.glowSize);
+        Settings.set('pipGlowSoftness',   preset.softness);
+        Settings.set('pipAnimSpeed',      preset.animSpeed);
+        // Sync all UI controls
+        _syncAllPipUI();
+      }
+
+      function _syncPresetChips(name) {
+        document.querySelectorAll('#pip-preset-grid .pip-preset-chip').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.preset === name);
+        });
+      }
+
+      function _syncAllPipUI() {
+        const s = Settings.get.bind(Settings);
+        _applyBorderStyle(s('pipBorderStyle') || 'glow');
+        _syncBorderStyleChips(s('pipBorderStyle') || 'glow');
+        _applyBorderVars();
+        _applyAnimEnabled(s('pipAnimEnabled') !== false);
+        _syncPresetChips(s('pipVisualPreset') || 'default');
+
+        // Sync slider/input values
+        _syncSlider('pip-border-thickness-slider', 'pip-border-thickness-sublabel', s('pipBorderThickness') ?? 2, v => `${v} px`);
+        _syncSlider('pip-border-opacity-slider',   'pip-border-opacity-sublabel',   s('pipBorderOpacity')   ?? 85, v => `${v}%`);
+        _syncSlider('pip-glow-size-slider',        'pip-glow-size-sublabel',        s('pipGlowSize')        ?? 60, v => `${v}%`);
+        _syncSlider('pip-glow-softness-slider',    'pip-glow-softness-sublabel',    s('pipGlowSoftness')    ?? 50, v => `${v}%`);
+        _syncSlider('pip-anim-speed-slider',       'pip-anim-speed-sublabel',       s('pipAnimSpeed')       ?? 50, _speedLabel);
+        _syncSlider('pip-anim-strength-slider',    'pip-anim-strength-sublabel',    s('pipAnimStrength')    ?? 50, v => `${v}%`);
+
+        const c1 = document.getElementById('pip-border-color1-input');
+        const c2 = document.getElementById('pip-border-color2-input');
+        if (c1) c1.value = s('pipBorderColor')  || '#8a93ff';
+        if (c2) c2.value = s('pipBorderColor2') || '#ff79b0';
+
+        const animToggle = document.getElementById('pip-anim-enabled-toggle');
+        if (animToggle) animToggle.checked = s('pipAnimEnabled') !== false;
+
+        const hoverToggle = document.getElementById('pip-hover-glow-toggle');
+        if (hoverToggle) hoverToggle.checked = s('pipHoverGlow') !== false;
+
+        const emotionToggle = document.getElementById('pip-emotion-border-sync-toggle');
+        if (emotionToggle) emotionToggle.checked = s('pipEmotionBorderSync') !== false;
+
+        const lockedToggle = document.getElementById('pip-locked-toggle');
+        if (lockedToggle) lockedToggle.checked = s('pipLocked') === true;
+
+        _applyLock(s('pipLocked') === true);
+      }
+
+      function _syncSlider(sliderId, labelId, value, formatter) {
+        const slider = document.getElementById(sliderId);
+        const label  = document.getElementById(labelId);
+        if (slider) slider.value = value;
+        if (label)  label.textContent = formatter(value);
+      }
+
+      function _speedLabel(v) {
+        if (v <= 25) return 'Very slow';
+        if (v <= 45) return 'Slow';
+        if (v <= 65) return 'Normal';
+        if (v <= 95) return 'Fast';
+        return 'Very fast';
+      }
+
+      // ── PiP LOCK ──────────────────────────────────────────────────────
+      function _applyLock(locked) {
+        document.body.classList.toggle('pip-locked', locked);
+        // Tell Electron main process to disable/enable window dragging
+        if (window.electronAPI && window.electronAPI.setPipLocked) {
+          window.electronAPI.setPipLocked(locked);
+        }
+      }
+
+      // ── PiP CURSOR HOVER ANIMATION ────────────────────────────────────
+      // Add 'pip-hover-active' to world when mouse enters in pip-mode.
+      // CSS handles the spring/bounce. We also add a subtle ring pulse.
+      (function _wirePipHoverAnim() {
+        const world = document.getElementById('world');
+        if (!world) return;
+        world.addEventListener('mouseenter', () => {
+          if (!document.body.classList.contains('pip-mode')) return;
+          world.classList.add('pip-cursor-hover');
+          if (ring) ring.classList.add('pip-ring-hover');
+        });
+        world.addEventListener('mouseleave', () => {
+          world.classList.remove('pip-cursor-hover');
+          if (ring) ring.classList.remove('pip-ring-hover');
+        });
+      })();
+
+      // ── CORNER SNAP BUTTONS ───────────────────────────────────────────
+      document.querySelectorAll('#pip-corner-grid .pip-corner-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const corner = btn.dataset.corner;
+          if (window.electronAPI && window.electronAPI.snapPipToCorner) {
+            window.electronAPI.snapPipToCorner(corner);
+          }
+          document.querySelectorAll('#pip-corner-grid .pip-corner-btn')
+            .forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
+
+      // ── BORDER STYLE CHIPS ────────────────────────────────────────────
+      document.querySelectorAll('#pip-border-style-grid .pip-border-style-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          Settings.set('pipBorderStyle', btn.dataset.style);
+          Settings.set('pipVisualPreset', 'custom');
+          _syncPresetChips('custom');
+        });
+      });
+      Settings.onChange('pipBorderStyle', (v) => {
+        _applyBorderStyle(v);
+        _syncBorderStyleChips(v);
+      });
+
+      // ── VISUAL PRESET CHIPS ───────────────────────────────────────────
+      document.querySelectorAll('#pip-preset-grid .pip-preset-chip').forEach(btn => {
+        btn.addEventListener('click', () => _applyPreset(btn.dataset.preset));
+      });
+      Settings.onChange('pipVisualPreset', (v) => _syncPresetChips(v));
+
+      // ── COLOR INPUTS ──────────────────────────────────────────────────
+      const color1Input = document.getElementById('pip-border-color1-input');
+      const color2Input = document.getElementById('pip-border-color2-input');
+      if (color1Input) {
+        color1Input.addEventListener('input', () => {
+          Settings.set('pipBorderColor', color1Input.value);
+          Settings.set('pipVisualPreset', 'custom');
+        });
+      }
+      if (color2Input) {
+        color2Input.addEventListener('input', () => {
+          Settings.set('pipBorderColor2', color2Input.value);
+          Settings.set('pipVisualPreset', 'custom');
+        });
+      }
+      Settings.onChange('pipBorderColor',  () => _applyBorderVars());
+      Settings.onChange('pipBorderColor2', () => _applyBorderVars());
+
+      // Swatch buttons
+      document.querySelectorAll('#pip-border-color-swatches .pip-color-swatch-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.color1 && color1Input) {
+            color1Input.value = btn.dataset.color1;
+            Settings.set('pipBorderColor', btn.dataset.color1);
+          }
+          if (btn.dataset.color2 && color2Input) {
+            color2Input.value = btn.dataset.color2;
+            Settings.set('pipBorderColor2', btn.dataset.color2);
+          }
+          Settings.set('pipVisualPreset', 'custom');
+          document.querySelectorAll('#pip-border-color-swatches .pip-color-swatch-btn')
+            .forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
+
+      // ── SLIDERS ───────────────────────────────────────────────────────
+      function _wireSlider(sliderId, labelId, settingKey, formatter, onChangeFn) {
+        const slider = document.getElementById(sliderId);
+        const label  = document.getElementById(labelId);
+        if (!slider) return;
+        slider.value = Settings.get(settingKey) ?? slider.defaultValue;
+        if (label) label.textContent = formatter(parseInt(slider.value, 10));
+        slider.addEventListener('input', () => {
+          const v = parseInt(slider.value, 10);
+          if (label) label.textContent = formatter(v);
+          Settings.set(settingKey, v);
+          Settings.set('pipVisualPreset', 'custom');
+          if (onChangeFn) onChangeFn(v);
+        });
+        Settings.onChange(settingKey, (v) => {
+          if (slider) slider.value = v;
+          if (label)  label.textContent = formatter(v);
+        });
+      }
+
+      _wireSlider('pip-border-thickness-slider','pip-border-thickness-sublabel','pipBorderThickness', v => `${v} px`, () => _applyBorderVars());
+      _wireSlider('pip-border-opacity-slider',  'pip-border-opacity-sublabel',  'pipBorderOpacity',   v => `${v}%`,   () => _applyBorderVars());
+      _wireSlider('pip-glow-size-slider',       'pip-glow-size-sublabel',       'pipGlowSize',        v => `${v}%`,   () => _applyBorderVars());
+      _wireSlider('pip-glow-softness-slider',   'pip-glow-softness-sublabel',   'pipGlowSoftness',    v => `${v}%`,   () => _applyBorderVars());
+      _wireSlider('pip-anim-speed-slider',      'pip-anim-speed-sublabel',      'pipAnimSpeed',       _speedLabel,    () => _applyBorderVars());
+      _wireSlider('pip-anim-strength-slider',   'pip-anim-strength-sublabel',   'pipAnimStrength',    v => `${v}%`,   null);
+
+      // ── TOGGLES ───────────────────────────────────────────────────────
+      function _wireToggle(id, key, onChangeFn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.checked = Settings.get(key) !== false;
+        el.addEventListener('change', () => {
+          Settings.set(key, el.checked);
+          if (onChangeFn) onChangeFn(el.checked);
+        });
+        Settings.onChange(key, (v) => {
+          if (el) el.checked = !!v;
+          if (onChangeFn) onChangeFn(!!v);
+        });
+      }
+
+      _wireToggle('pip-anim-enabled-toggle',      'pipAnimEnabled',        _applyAnimEnabled);
+      _wireToggle('pip-hover-glow-toggle',         'pipHoverGlow',          (v) => {
+        document.documentElement.style.setProperty('--pip-hover-glow', v ? 1 : 0);
+      });
+      _wireToggle('pip-emotion-border-sync-toggle','pipEmotionBorderSync',  null);
+
+      // Lock toggle — also disables Electron window dragging
+      const lockedToggle = document.getElementById('pip-locked-toggle');
+      if (lockedToggle) {
+        lockedToggle.checked = Settings.get('pipLocked') === true;
+        lockedToggle.addEventListener('change', () => {
+          Settings.set('pipLocked', lockedToggle.checked);
+          _applyLock(lockedToggle.checked);
+        });
+        Settings.onChange('pipLocked', (v) => {
+          if (lockedToggle) lockedToggle.checked = !!v;
+          _applyLock(!!v);
+        });
+      }
+
+      // ── EMOTION BORDER SYNC ───────────────────────────────────────────
+      // Poll emotion and tint the border ring when emotion sync is on
+      const EMOTION_COLORS = {
+        love:         { c1: '#ff6eb4', c2: '#ffb3d9' },
+        happy:        { c1: '#ffdd57', c2: '#ffa500' },
+        excited:      { c1: '#ff8c00', c2: '#ffd700' },
+        ecstatic:     { c1: '#ff4500', c2: '#ff8c00' },
+        overjoyed:    { c1: '#00e5ff', c2: '#69d2e7' },
+        cozy:         { c1: '#ffb347', c2: '#ff7f7f' },
+        sleepy:       { c1: '#7b68ee', c2: '#b0a4e3' },
+        curious:      { c1: '#00e676', c2: '#69f0ae' },
+        shy:          { c1: '#f48fb1', c2: '#fce4ec' },
+        embarrassed:  { c1: '#ff6b6b', c2: '#ffb3b3' },
+        dazed:        { c1: '#b39ddb', c2: '#d1c4e9' },
+        being_patted: { c1: '#ff80ab', c2: '#ffcdd2' },
+        idle:         null,
+      };
+      let _lastEmotionColors = null;
+      setInterval(() => {
+        if (!document.body.classList.contains('pip-mode')) return;
+        if (!Settings.get('pipEmotionBorderSync')) return;
+        const em = (window._lastEmotion || 'idle').toLowerCase();
+        const colors = EMOTION_COLORS[em];
+        if (!colors && _lastEmotionColors === null) return;
+        if (colors && _lastEmotionColors &&
+            _lastEmotionColors.c1 === colors.c1) return; // no change
+        _lastEmotionColors = colors;
+        if (colors) {
+          const r1 = IrisColor ? IrisColor.hexToRgb(colors.c1) : null;
+          const r2 = IrisColor ? IrisColor.hexToRgb(colors.c2) : null;
+          if (r1) document.documentElement.style.setProperty('--pip-border-rgb',  `${r1[0]},${r1[1]},${r1[2]}`);
+          if (r2) document.documentElement.style.setProperty('--pip-border-rgb2', `${r2[0]},${r2[1]},${r2[2]}`);
+        } else {
+          // Reset to user's configured colors
+          _applyBorderVars();
+        }
+      }, 600);
+
+      // ── BOOT ──────────────────────────────────────────────────────────
+      _syncAllPipUI();
+    })(); // end _wirePipBorderSystem
+
     // Sensitivity select
     const sensitivitySel = document.getElementById('settings-sensitivity-select');
     if (sensitivitySel) {
