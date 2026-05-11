@@ -78,6 +78,27 @@ const Settings = (() => {
     // ── PiP / Overlay ─────────────────────────────────────────────────
     pipOpacity:      78,         // 20–95 integer %
     pipAlwaysOnTop:  true,
+
+    // ── PiP Border System ──────────────────────────────────────────────────
+    // Border style: none|glow|neon|soft|pulse|cyber|pastel|rgb|glass|retro|
+    //               dreamy|aura|vaporwave|cozy|minimal|pixel|dotted|bubble|
+    //               holographic|faded|cat
+    pipBorderStyle:    'glow',
+    pipBorderColor:    '#8a93ff',   // primary border colour hex
+    pipBorderColor2:   '#ff79b0',   // secondary/gradient colour hex
+    pipBorderThickness: 2,          // px 0–12
+    pipBorderOpacity:   85,         // % 0–100
+    pipGlowSize:        60,         // % 0–100 (maps to px)
+    pipGlowSoftness:    50,         // % 0–100
+    pipAnimEnabled:     true,       // border animation on/off
+    pipAnimSpeed:       50,         // % 10–200 (50=default 3.2s cycle)
+    pipAnimStrength:    50,         // % 0–100
+    pipHoverGlow:       true,       // brighten ring on mouse-enter
+    pipEmotionBorderSync: true,     // emotion colours override border glow
+    // ── PiP Window Lock ───────────────────────────────────────────────
+    pipLocked:          false,      // when true window cannot be dragged
+    // ── PiP Visual Presets ────────────────────────────────────────────
+    pipVisualPreset:    'default',  // preset name or 'custom'
     companionPos:    'center',   // 'left'|'center'|'right' (kept for legacy)
     // ── Custom colour overrides ────────────────────────────────────────
     customIrisHex:   '',         // hex string or '' for preset
