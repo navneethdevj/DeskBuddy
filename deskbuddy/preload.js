@@ -83,4 +83,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings backup
   exportSettings: (jsonString) => ipcRenderer.invoke('settings:export', jsonString),
   importSettings: ()           => ipcRenderer.invoke('settings:import'),
+  // Lock/unlock PiP window dragging
+  setPipLocked: (locked) => ipcRenderer.send('set-pip-locked', locked),
 });
