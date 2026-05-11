@@ -470,3 +470,14 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+// ── PiP window lock ───────────────────────────────────────────────────────────
+// When locked the window cannot be dragged (setMovable(false)).  The renderer
+// also adds body.pip-locked which removes -webkit-app-region:drag from CSS.
+ipcMain.on('set-pip-locked', (_event, locked) => {
+  if (!mainWindow) return;
+  try { mainWindow.setMovable(!locked); } catch (_) {}
+  const settings = store.get('settings', {});
+  settings.pipLocked = !!locked;
+  store.set('settings', settings);
+});
