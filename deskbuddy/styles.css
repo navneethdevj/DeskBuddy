@@ -8226,3 +8226,144 @@ body.pip-anim-paused.pip-mode #world::before {
   align-items: center;
 }
 body.pip-mode.pip-locked #pip-lock-badge { display: flex; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   WAVE DETECTION & SOCIAL INTERACTION — new in V3
+   ══════════════════════════════════════════════════════════════════════════════
+
+   spinning-pat       — soft adorable wobble (Phase 1 deep-petting & wave excited)
+                        NOT a full 360° spin. Feels like a happy wiggle/lean.
+   spinning-pat-soft  — even gentler version for Phase 0 bliss (barely-there wriggle)
+
+   These were referenced in brain.js _fireDeepPetReaction() but had no CSS —
+   that caused the class to be added/removed with no visible effect (silent bug).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── spinning-pat: happy pat-wobble — cozy side-to-side lean ──────────────── */
+.companion.spinning-pat .companion-inner {
+  animation: companionPatWobble 0.95s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+@keyframes companionPatWobble {
+  0%   { transform: scale(1)     rotate(0deg)    translateY(0); }
+  18%  { transform: scale(1.032) rotate(8deg)    translateY(-0.4vh); }
+  38%  { transform: scale(1.028) rotate(-10deg)  translateY(-0.8vh); }
+  56%  { transform: scale(1.025) rotate(7deg)    translateY(-0.5vh); }
+  74%  { transform: scale(1.018) rotate(-5deg)   translateY(-0.2vh); }
+  88%  { transform: scale(1.010) rotate(2.5deg)  translateY(0); }
+  100% { transform: scale(1)     rotate(0deg)    translateY(0); }
+}
+
+/* ── spinning-pat-soft: barely-there wriggle — Phase 0 bliss ─────────────── */
+.companion.spinning-pat-soft .companion-inner {
+  animation: companionPatSoft 0.80s ease-in-out forwards !important;
+}
+@keyframes companionPatSoft {
+  0%   { transform: scale(1)     rotate(0deg)   translateY(0); }
+  25%  { transform: scale(1.018) rotate(4.5deg) translateY(-0.3vh); }
+  55%  { transform: scale(1.014) rotate(-5deg)  translateY(-0.5vh); }
+  80%  { transform: scale(1.008) rotate(2deg)   translateY(-0.1vh); }
+  100% { transform: scale(1)     rotate(0deg)   translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   HEAD TILT MIRROR — companion softly mirrors the user's head roll
+   Applied via Companion.setRotation() in brain.js _applyHeadTiltMirror().
+   The transition makes the JS lerp feel even silkier when setPosition fires.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Smooth the discrete per-frame rotation updates from JS spring lerp */
+.companion {
+  /* Only add transition when NOT in an overriding animation class.
+     0.06s is shorter than one rAF frame at 30fps, so it adds polish
+     without fighting the lerp. Cubic-ease-out feels organic. */
+  transition: transform 0.06s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Remove transition during active spinning/bouncing/shaking so CSS
+   keyframe timings are respected exactly (no easing interference). */
+.companion.spinning .companion-inner,
+.companion.spinning-wild .companion-inner,
+.companion.spinning-double .companion-inner,
+.companion.spinning-reverse .companion-inner,
+.companion.head-shaking .companion-inner,
+.companion.bouncing .companion-inner,
+.companion.sneezing .companion-inner,
+.companion.session-start-bounce .companion-inner,
+.companion.flow-milestone .companion-inner {
+  /* keyframe animations already have their own timing — no extra transition */
+}
+
+/* Disable companion-level transform transition during CSS animation classes
+   so keyframe control of .companion-inner is never softened by parent transition */
+.companion.spinning,
+.companion.spinning-wild,
+.companion.spinning-double,
+.companion.spinning-reverse,
+.companion.head-shaking,
+.companion.bouncing,
+.companion.shiver,
+.companion.sneezing {
+  transition: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   WAVE REACTION — special eye-widening state applied by brain.js
+   Used during the wave reaction excited phase to open eyes wider.
+   Applied as a body class: body.wave-reacting .companion .eye
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+body.wave-reacting .companion .eye {
+  transform: scaleY(1.18) !important;
+  transition: transform 0.15s ease-out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MULTI-FACE SOCIAL MODE — subtle visual cue when ≥2 faces detected
+   body data-face-count="2+" applied by brain.js _onMultiFaceDetected.
+   Keeps companion's glow slightly more energetic to signal social awareness.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+body[data-social-mode="multi"] .companion-inner {
+  /* Slightly faster breathe cycle — alive, curious energy */
+  animation-duration: 4.2s !important;
+}
+
+body[data-social-mode="multi"] .companion .eye {
+  /* Eyes open marginally wider — socially alert */
+  transform: scaleY(1.06);
+  transition: transform 0.4s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PiP DRAGGABLE — ensure PiP window has visual drag affordance
+   The actual drag is handled by Electron main process / preload.
+   The -webkit-app-region CSS tells the renderer which areas initiate drag.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* PiP bubble itself is fully draggable — the entire world div */
+body.pip-mode #world {
+  -webkit-app-region: drag;
+  cursor: grab;
+}
+
+/* But interactive children must opt OUT of drag so clicks still work */
+body.pip-mode #world .companion,
+body.pip-mode #world .companion *,
+body.pip-mode #world button,
+body.pip-mode #world [role="button"],
+body.pip-mode #pip-expand-btn,
+body.pip-mode #pip-lock-badge {
+  -webkit-app-region: no-drag;
+  cursor: auto;
+}
+
+body.pip-mode #world:active {
+  cursor: grabbing;
+}
+
+/* PiP locked: no drag cursor */
+body.pip-mode.pip-locked #world {
+  -webkit-app-region: no-drag;
+  cursor: default;
+}
