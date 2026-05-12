@@ -2408,13 +2408,13 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window drag region — companion body is the drag handle when NOT locked.
-   When pip-locked class is present, all drag regions are disabled. */
-body.pip-mode:not(.pip-locked) .companion    { -webkit-app-region: drag; }
-body.pip-mode.pip-locked      .companion     { -webkit-app-region: no-drag !important; }
-body.pip-mode .eye-wrap,
-body.pip-mode #compact-expand-btn,
-body.pip-mode #pip-hover-overlay { -webkit-app-region: no-drag; }
+/* PiP window drag — companion is drag handle ONLY when NOT locked.
+   pip-locked class disables all dragging instantly. */
+body.pip-mode:not(.pip-locked) .companion { -webkit-app-region: drag; }
+body.pip-mode.pip-locked      .companion  { -webkit-app-region: no-drag !important; cursor: default !important; }
+body.pip-mode                 .eye-wrap,
+body.pip-mode                 #compact-expand-btn,
+body.pip-mode                 #pip-hover-overlay { -webkit-app-region: no-drag; }
 
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
@@ -7675,758 +7675,554 @@ body.pip-mode #theme-canvas { display: none; }
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════
-   PiP BORDER RING SYSTEM
-   — #pip-border-ring sits at body level (outside #world) as a fixed
-     overlay that perfectly covers the pip window.  Border styles are
-     driven by body class pip-border-style-* and CSS custom properties.
-   ═══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   PiP BORDER SYSTEM  (v2 — shape-preserving)
+   All border effects use box-shadow on #world + ::before pseudo-element.
+   This guarantees the glow/ring ALWAYS follows the user's chosen shape
+   (square / rounded / circle) with zero bleed.
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── CSS variable defaults for the border system ─────────────────────── */
+/* ── CSS custom properties (set by JS) ───────────────────────────────────── */
 :root {
-  --pip-border-rgb:        138,147,255;   /* primary colour R,G,B */
-  --pip-border-rgb2:       255,121,176;   /* secondary colour */
-  --pip-border-thickness:  2px;
-  --pip-border-opacity:    0.85;
-  --pip-glow-px:           18px;          /* glow spread */
-  --pip-glow-blur:         12px;          /* glow blur softness */
-  --pip-anim-dur:          3.2s;          /* animation cycle */
-  --pip-anim-str:          1.0;           /* animation strength 0-1 */
-  --pip-hover-glow:        1;             /* 1 = hover glow on */
+  --pip-bc1:   138, 147, 255;   /* primary colour R,G,B  */
+  --pip-bc2:   255, 121, 176;   /* secondary colour R,G,B */
+  --pip-bthk:  2px;             /* border thickness */
+  --pip-bopa:  0.85;            /* border opacity   */
+  --pip-glow:  22px;            /* glow spread (px) */
+  --pip-blur:  14px;            /* glow blur (px)   */
+  --pip-adur:  3.0s;            /* animation cycle  */
 }
 
-/* ── Base ring element ─────────────────────────────────────────────────── */
-#pip-border-ring {
-  display: none;
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9997;
-  border-radius: 50%;
-  transition:
-    border-radius 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow    0.4s  ease,
-    border-color  0.4s  ease,
-    opacity       0.3s  ease;
-}
-body.pip-mode #pip-border-ring { display: block; }
-
-/* Ring tracks pip shape */
-body.pip-shape-circle.pip-mode  #pip-border-ring { border-radius: 50%;  }
-body.pip-shape-rounded.pip-mode #pip-border-ring { border-radius: 32px; }
-body.pip-shape-square.pip-mode  #pip-border-ring { border-radius: 16px; }
-
-/* ── HOVER GLOW — brightens ring on mouse-enter ─────────────────────── */
-body.pip-mode #world:hover ~ #pip-border-ring {
-  filter: brightness(calc(1 + 0.4 * var(--pip-hover-glow, 1)));
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: NONE
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-none #pip-border-ring {
-  border: none; box-shadow: none; opacity: 0;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: GLOW (default – pulsing soft aura)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-glow #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.7));
-  box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.45)),
-    0 0 calc(var(--pip-glow-px) * 2.5) calc(var(--pip-glow-blur) * 2)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.18)),
-    inset 0 0 calc(var(--pip-glow-px) * 0.5) rgba(var(--pip-border-rgb), 0.07);
-  animation: pipBorderPulse var(--pip-anim-dur) ease-in-out infinite;
-}
-@keyframes pipBorderPulse {
-  0%, 100% { opacity: 0.75; }
-  50%       { opacity: 1.0;  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: NEON (sharp bright neon tube)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-neon #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  box-shadow:
-    0 0 4px   2px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.9)),
-    0 0 12px  4px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.55)),
-    0 0 28px  8px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.28)),
-    0 0 56px 14px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.12)),
-    inset 0 0 6px rgba(var(--pip-border-rgb), 0.15);
-  animation: pipNeonFlicker var(--pip-anim-dur) ease-in-out infinite;
-}
-@keyframes pipNeonFlicker {
-  0%   { opacity: 1.0; }
-  92%  { opacity: 1.0; }
-  93%  { opacity: 0.6; }
-  94%  { opacity: 1.0; }
-  97%  { opacity: 0.8; }
-  100% { opacity: 1.0; }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: SOFT SHADOW (dreamy, no hard edge)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-soft #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.25));
-  box-shadow:
-    0 0 calc(var(--pip-glow-px) * 1.5) calc(var(--pip-glow-blur) * 1.8)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.35)),
-    0 4px 32px 8px rgba(0, 0, 0, 0.55);
-  animation: pipBreath var(--pip-anim-dur) ease-in-out infinite;
-}
-@keyframes pipBreath {
-  0%, 100% { box-shadow: 0 0 calc(var(--pip-glow-px) * 1.2) calc(var(--pip-glow-blur) * 1.5) rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.28)), 0 4px 32px 8px rgba(0,0,0,0.55); }
-  50%       { box-shadow: 0 0 calc(var(--pip-glow-px) * 2.2) calc(var(--pip-glow-blur) * 2.5) rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.50)), 0 4px 40px 10px rgba(0,0,0,0.60); }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: PULSE (rhythmic beat)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-pulse #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  animation: pipPulseRing var(--pip-anim-dur) ease-in-out infinite;
-}
-@keyframes pipPulseRing {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--pip-border-rgb), 0);
-    border-color: rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.5));
-  }
-  40% {
-    box-shadow:
-      0 0 0 8px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3)),
-      0 0 0 20px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.1));
-    border-color: rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  }
-  60% {
-    box-shadow:
-      0 0 0 12px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.18)),
-      0 0 0 28px rgba(var(--pip-border-rgb), 0.04);
-    border-color: rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.8));
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: CYBER (dashed tech grid)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-cyber #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) dashed
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  box-shadow:
-    0 0 8px  2px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.5)),
-    0 0 20px 4px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.2)),
-    inset 0 0 12px rgba(var(--pip-border-rgb), 0.06);
-  animation: pipCyberSpin var(--pip-anim-dur) linear infinite;
-}
-/* Cyber corner accents via ::before */
-body.pip-border-style-cyber #pip-border-ring::before {
+/* ── Shared ::before ring (the actual border line) ───────────────────────── */
+/* Only visible in pip-mode with a non-none style */
+body.pip-mode #world::before {
   content: '';
   position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  border: 1px solid rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.4));
-  animation: pipCyberSpin calc(var(--pip-anim-dur) * 1.6) linear infinite reverse;
-}
-@keyframes pipCyberSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  inset: 0;
+  border-radius: inherit;          /* ← key: always matches #world's shape */
+  pointer-events: none;
+  z-index: 9998;
+  box-sizing: border-box;
+  transition: border 0.25s ease, box-shadow 0.35s ease, opacity 0.25s ease;
 }
 
+/* Clear any ::before when no border style is set */
+body.pip-mode.pip-bstyle-none #world::before { display: none; }
+
 /* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: PASTEL (soft anime cute)
+   GLOW — box-shadow on #world (follows border-radius perfectly)
    ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-pastel #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.65));
+
+/* BASE: all pip-mode gets a tiny neutral shadow by default */
+body.pip-mode #world {
+  transition: box-shadow 0.35s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* ── NONE ─────────────────────────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-none #world {
+  box-shadow: none;
+}
+
+/* ── GLOW (default — pulsing soft aura) ─────────────────────────────────── */
+body.pip-mode.pip-bstyle-glow #world::before {
+  border: var(--pip-bthk) solid rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.65));
+}
+body.pip-mode.pip-bstyle-glow #world {
   box-shadow:
-    0 0 var(--pip-glow-px) calc(var(--pip-glow-blur) * 0.6)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.28)),
-    0 0 calc(var(--pip-glow-px) * 2) calc(var(--pip-glow-blur))
-      rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.18));
-  animation: pipPastelShift calc(var(--pip-anim-dur) * 2) ease-in-out infinite alternate;
+    0 0 var(--pip-glow)  var(--pip-blur)   rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.5)),
+    0 0 calc(var(--pip-glow) * 2.2) calc(var(--pip-blur) * 2) rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.22));
+  animation: pipGlowPulse var(--pip-adur) ease-in-out infinite;
 }
-@keyframes pipPastelShift {
-  0%   { border-color: rgba(var(--pip-border-rgb),  calc(var(--pip-border-opacity) * 0.55)); }
-  100% { border-color: rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.65)); }
+@keyframes pipGlowPulse {
+  0%,100% { box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.42)), 0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*1.8) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.18)); }
+  50%      { box-shadow: 0 0 calc(var(--pip-glow)*1.5) calc(var(--pip-blur)*1.4) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.65)), 0 0 calc(var(--pip-glow)*3) calc(var(--pip-blur)*2.5) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.30)); }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: RGB (hue-cycling rainbow)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-rgb #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid transparent;
-  background: linear-gradient(#0000, #0000) padding-box,
-              linear-gradient(
-                calc(var(--_rgb-deg, 0deg)),
-                hsl(calc(var(--_hue, 0) * 1deg), 100%, 65%),
-                hsl(calc(var(--_hue, 0) * 1deg + 120deg), 100%, 65%),
-                hsl(calc(var(--_hue, 0) * 1deg + 240deg), 100%, 65%)
-              ) border-box;
+/* ── NEON (sharp vivid tube) ─────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-neon #world::before {
+  border: var(--pip-bthk) solid rgba(var(--pip-bc1), var(--pip-bopa));
   box-shadow:
-    0 0 var(--pip-glow-px) calc(var(--pip-glow-blur) * 0.5)
-      hsla(calc(var(--_hue, 0) * 1deg), 100%, 60%, calc(var(--pip-border-opacity) * 0.5));
-  animation: pipRgbHue var(--pip-anim-dur) linear infinite,
-             pipRgbDeg calc(var(--pip-anim-dur) * 0.5) linear infinite;
+    0 0 3px  1px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.9)) inset,
+    0 0 3px  1px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.9));
 }
-@property --_hue { syntax: '<number>'; initial-value: 0; inherits: false; }
-@property --_rgb-deg { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-@keyframes pipRgbHue   { from { --_hue: 0; }   to { --_hue: 360; }   }
-@keyframes pipRgbDeg   { from { --_rgb-deg: 0deg; } to { --_rgb-deg: 360deg; } }
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: GLASS (frosted glass edge)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-glass #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(255, 255, 255, calc(var(--pip-border-opacity) * 0.35));
+body.pip-mode.pip-bstyle-neon #world {
   box-shadow:
-    0 0 0 1px rgba(255,255,255, 0.08),
-    0 0 var(--pip-glow-px) var(--pip-glow-blur) rgba(255,255,255, calc(var(--pip-border-opacity) * 0.12)),
-    inset 0 0 12px rgba(255,255,255, 0.04),
-    0 8px 32px rgba(0,0,0,0.5);
-  animation: pipGlassSheen calc(var(--pip-anim-dur) * 1.5) ease-in-out infinite;
+    0 0 6px  3px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.75)),
+    0 0 18px 6px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.45)),
+    0 0 38px 10px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.20));
+  animation: pipNeonFlicker var(--pip-adur) ease-in-out infinite;
 }
-@keyframes pipGlassSheen {
-  0%, 100% { border-color: rgba(255,255,255, calc(var(--pip-border-opacity) * 0.30)); }
-  50%       { border-color: rgba(255,255,255, calc(var(--pip-border-opacity) * 0.55)); }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: RETRO (arcade pixel-ish)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-retro #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 2px) solid
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  outline: calc(var(--pip-border-thickness) + 2px) solid
-           rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.5));
-  outline-offset: 4px;
-  box-shadow:
-    0 0 0 calc(var(--pip-border-thickness) * 2 + 4px) rgba(var(--pip-border-rgb), 0.1),
-    0 0 14px 2px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3));
-  animation: pipRetroStep var(--pip-anim-dur) steps(4, end) infinite;
-}
-@keyframes pipRetroStep {
-  0%   { opacity: 1.0; }
-  25%  { opacity: 0.85; }
-  50%  { opacity: 1.0; }
-  75%  { opacity: 0.9; }
-  100% { opacity: 1.0; }
+@keyframes pipNeonFlicker {
+  0%,89%,91%,94%,100% { opacity: 1.0; }
+  90%,93%             { opacity: 0.6; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: DREAMY (ultra soft layered glow)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-dreamy #pip-border-ring {
-  border: 1px solid rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.18));
-  box-shadow:
-    0 0 calc(var(--pip-glow-px) * 0.5)  0 rgba(var(--pip-border-rgb),  calc(var(--pip-border-opacity) * 0.55)),
-    0 0 calc(var(--pip-glow-px) * 1.5)  6px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.32)),
-    0 0 calc(var(--pip-glow-px) * 3)   12px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.16)),
-    0 0 calc(var(--pip-glow-px) * 5)   20px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity) * 0.10)),
-    0 0 calc(var(--pip-glow-px) * 8)   32px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity) * 0.05));
-  animation: pipDreamFloat calc(var(--pip-anim-dur) * 1.8) ease-in-out infinite;
+/* ── SOLID ───────────────────────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-solid #world::before {
+  border: var(--pip-bthk) solid rgba(var(--pip-bc1), var(--pip-bopa));
 }
-@keyframes pipDreamFloat {
-  0%, 100% { transform: scale(1);      opacity: 0.8;  }
-  33%       { transform: scale(1.008); opacity: 1.0;  }
-  66%       { transform: scale(0.996); opacity: 0.9;  }
+body.pip-mode.pip-bstyle-solid #world {
+  box-shadow: 0 0 8px 2px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.25));
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: AURA (northern-lights sweep)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-aura #pip-border-ring {
-  border: none;
-  box-shadow:
-    0 0 calc(var(--pip-glow-px) * 0.8) 0 rgba(var(--pip-border-rgb),  calc(var(--pip-border-opacity) * 0.8)),
-    0 0 calc(var(--pip-glow-px) * 2.5) 8px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.35)),
-    0 0 calc(var(--pip-glow-px) * 5)  18px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity) * 0.20));
-  animation: pipAuraSweep var(--pip-anim-dur) ease-in-out infinite;
+/* ── DOTTED ──────────────────────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-dotted #world::before {
+  border: calc(var(--pip-bthk) + 1px) dotted rgba(var(--pip-bc1), var(--pip-bopa));
 }
-@keyframes pipAuraSweep {
-  0%   { box-shadow: 0 0 calc(var(--pip-glow-px)*0.8) 0 rgba(var(--pip-border-rgb),calc(var(--pip-border-opacity)*0.8)), 0 0 calc(var(--pip-glow-px)*2.5) 8px rgba(var(--pip-border-rgb),calc(var(--pip-border-opacity)*0.35)), 0 0 calc(var(--pip-glow-px)*5) 18px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity)*0.20)); }
-  50%  { box-shadow: 0 0 calc(var(--pip-glow-px)*1.2) 2px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity)*0.9)), 0 0 calc(var(--pip-glow-px)*3.5) 12px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity)*0.45)), 0 0 calc(var(--pip-glow-px)*7) 24px rgba(var(--pip-border-rgb),calc(var(--pip-border-opacity)*0.22)); }
-  100% { box-shadow: 0 0 calc(var(--pip-glow-px)*0.8) 0 rgba(var(--pip-border-rgb),calc(var(--pip-border-opacity)*0.8)), 0 0 calc(var(--pip-glow-px)*2.5) 8px rgba(var(--pip-border-rgb),calc(var(--pip-border-opacity)*0.35)), 0 0 calc(var(--pip-glow-px)*5) 18px rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity)*0.20)); }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: VAPORWAVE (80s synthwave gradient)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-vaporwave #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid transparent;
-  background:
-    linear-gradient(#0000, #0000) padding-box,
-    linear-gradient(135deg,
-      rgba(var(--pip-border-rgb), var(--pip-border-opacity)),
-      rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.8)),
-      rgba(var(--pip-border-rgb), var(--pip-border-opacity))
-    ) border-box;
-  box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.4)),
-    0 0 calc(var(--pip-glow-px) * 2) calc(var(--pip-glow-blur) * 1.5)
-      rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.25));
-  animation: pipVaporShift var(--pip-anim-dur) ease-in-out infinite;
-}
-@keyframes pipVaporShift {
-  0%, 100% { filter: hue-rotate(0deg); }
-  50%       { filter: hue-rotate(20deg); }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: COZY (warm amber-rose)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-cozy #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.60));
-  box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.38)),
-    0 6px 28px 4px rgba(0, 0, 0, 0.45),
-    inset 0 0 8px rgba(var(--pip-border-rgb), 0.06);
-  animation: pipCozyWarm calc(var(--pip-anim-dur) * 1.6) ease-in-out infinite;
-}
-@keyframes pipCozyWarm {
-  0%, 100% { opacity: 0.82; filter: brightness(1.0); }
-  50%       { opacity: 1.0;  filter: brightness(1.12); }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: MINIMAL (ultra-thin elegant)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-minimal #pip-border-ring {
-  border: 1px solid rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.45));
-  box-shadow: 0 0 4px 1px rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.15));
-  animation: pipMinimalFade calc(var(--pip-anim-dur) * 2.5) ease-in-out infinite;
-}
-@keyframes pipMinimalFade {
-  0%, 100% { opacity: 0.7; }
-  50%       { opacity: 1.0; }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: PIXEL (chunky pixel art border)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-pixel #pip-border-ring {
-  border: calc(var(--pip-border-thickness) * 2 + 2px) solid
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  image-rendering: pixelated;
-  box-shadow:
-    0 0 0 2px rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.6)),
-    4px 4px 0 rgba(0, 0, 0, 0.4),
-    0 0 var(--pip-glow-px) rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3));
-  animation: pipPixelBlink var(--pip-anim-dur) steps(2, end) infinite;
-}
-@keyframes pipPixelBlink {
-  0%, 49% { opacity: 1.0; }
-  50%, 99% { opacity: 0.88; }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: DOTTED
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-dotted #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) dotted
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  box-shadow: 0 0 var(--pip-glow-px) var(--pip-glow-blur)
-    rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3));
-  animation: pipDottedSpin calc(var(--pip-anim-dur) * 4) linear infinite;
+body.pip-mode.pip-bstyle-dotted #world {
+  box-shadow: 0 0 10px 3px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.3));
+  animation: pipDottedSpin calc(var(--pip-adur) * 5) linear infinite;
 }
 @keyframes pipDottedSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  /* Spin the ::before pseudo which has border-radius:inherit — safe */
+}
+/* Rotate the ring itself for dotted */
+body.pip-mode.pip-bstyle-dotted #world::before {
+  animation: pipDotRing calc(var(--pip-adur) * 5) linear infinite;
+  transform-origin: center;
+}
+@keyframes pipDotRing { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
+
+/* ── DASHED ──────────────────────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-dashed #world::before {
+  border: calc(var(--pip-bthk) + 1px) dashed rgba(var(--pip-bc1), var(--pip-bopa));
+}
+body.pip-mode.pip-bstyle-dashed #world {
+  box-shadow: 0 0 8px 2px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.28));
+  animation: pipDashedGlow var(--pip-adur) ease-in-out infinite;
+}
+@keyframes pipDashedGlow {
+  0%,100%{box-shadow:0 0 8px 2px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.2));}
+  50%    {box-shadow:0 0 14px 4px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.45));}
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: BUBBLE (multi-ring soft bubbles)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-bubble #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.4));
+/* ── PULSE (heartbeat rings) ─────────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-pulse #world::before {
+  border: var(--pip-bthk) solid rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.7));
+}
+body.pip-mode.pip-bstyle-pulse #world {
+  animation: pipPulseRing var(--pip-adur) ease-in-out infinite;
+}
+@keyframes pipPulseRing {
+  0%,100%{ box-shadow: 0 0 0 0 rgba(var(--pip-bc1),0), 0 0 0 0 rgba(var(--pip-bc2),0); }
+  35%    { box-shadow: 0 0 0 8px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.35)), 0 0 0 0 rgba(var(--pip-bc2),0); }
+  60%    { box-shadow: 0 0 0 14px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.15)), 0 0 0 6px rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.18)); }
+  80%    { box-shadow: 0 0 0 22px rgba(var(--pip-bc1),0), 0 0 0 14px rgba(var(--pip-bc2),0.04); }
+}
+
+/* ── COZY (warm amber breathing) ─────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-cozy #world::before {
+  border: calc(var(--pip-bthk) + 1px) solid rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.62));
+}
+body.pip-mode.pip-bstyle-cozy #world {
   box-shadow:
-    0 0 0 calc(var(--pip-border-thickness) * 2 + 3px) rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.15)),
-    0 0 0 calc(var(--pip-border-thickness) * 3 + 8px) rgba(var(--pip-border-rgb2),calc(var(--pip-border-opacity) * 0.08)),
-    0 0 var(--pip-glow-px) var(--pip-glow-blur) rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3));
-  animation: pipBubbleScale calc(var(--pip-anim-dur) * 1.2) ease-in-out infinite;
+    0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.40)),
+    0 6px 28px 4px rgba(0, 0, 0, 0.42);
+  animation: pipCozyBreath calc(var(--pip-adur) * 1.6) ease-in-out infinite;
+}
+@keyframes pipCozyBreath {
+  0%,100%{ box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.32)), 0 6px 24px 4px rgba(0,0,0,0.40); }
+  50%    { box-shadow: 0 0 calc(var(--pip-glow)*1.6) calc(var(--pip-blur)*1.4) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.55)), 0 6px 32px 6px rgba(0,0,0,0.48); }
+}
+
+/* ── PASTEL (dual-colour shimmer) ─────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-pastel #world::before {
+  border: calc(var(--pip-bthk) + 1px) solid rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.60));
+  animation: pipPastelBorder calc(var(--pip-adur) * 2.2) ease-in-out infinite alternate;
+}
+@keyframes pipPastelBorder {
+  0%  { border-color: rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.55)); }
+  100%{ border-color: rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.65)); }
+}
+body.pip-mode.pip-bstyle-pastel #world {
+  box-shadow:
+    0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.32)),
+    0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*1.8) rgba(var(--pip-bc2), calc(var(--pip-bopa) * 0.18));
+  animation: pipPastelGlow calc(var(--pip-adur) * 2.2) ease-in-out infinite alternate;
+}
+@keyframes pipPastelGlow {
+  0%  { box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.35)), 0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*2) rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.15)); }
+  100%{ box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.42)), 0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*2) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.22)); }
+}
+
+/* ── RETRO (chunky double-border, step-flash) ────────────────────────────── */
+body.pip-mode.pip-bstyle-retro #world::before {
+  border: calc(var(--pip-bthk) + 2px) solid rgba(var(--pip-bc1), var(--pip-bopa));
+  outline: 2px solid rgba(var(--pip-bc2), calc(var(--pip-bopa) * 0.55));
+  outline-offset: 4px;
+}
+body.pip-mode.pip-bstyle-retro #world {
+  box-shadow: 0 0 12px 3px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.35));
+  animation: pipRetroStep var(--pip-adur) steps(3,end) infinite;
+}
+@keyframes pipRetroStep {
+  0%  { box-shadow: 0 0 12px 3px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.35)); opacity:1.0; }
+  33% { box-shadow: 0 0 8px  2px rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.50)); opacity:0.88; }
+  66% { box-shadow: 0 0 16px 4px rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.42)); opacity:1.0; }
+}
+
+/* ── CYBER (spinning dashed ring) ─────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-cyber #world::before {
+  border: calc(var(--pip-bthk) + 1px) dashed rgba(var(--pip-bc1), var(--pip-bopa));
+  animation: pipCyberSpin calc(var(--pip-adur) * 2) linear infinite;
+}
+body.pip-mode.pip-bstyle-cyber #world {
+  box-shadow:
+    0 0 10px 3px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.50)),
+    0 0 24px 6px rgba(var(--pip-bc1), calc(var(--pip-bopa) * 0.22));
+}
+@keyframes pipCyberSpin { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
+/* Note: ::before with border-radius:inherit rotates its dash pattern, not the element */
+
+/* ── VAPORWAVE (hue-shifting gradient border) ────────────────────────────── */
+body.pip-mode.pip-bstyle-vaporwave #world::before {
+  border: calc(var(--pip-bthk) + 1px) solid rgba(var(--pip-bc1), var(--pip-bopa));
+  animation: pipVapBorderHue var(--pip-adur) ease-in-out infinite;
+}
+@keyframes pipVapBorderHue {
+  0%,100%{ border-color: rgba(var(--pip-bc1),var(--pip-bopa)); }
+  50%    { border-color: rgba(var(--pip-bc2),var(--pip-bopa)); }
+}
+body.pip-mode.pip-bstyle-vaporwave #world {
+  box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.45));
+  animation: pipVapGlow var(--pip-adur) ease-in-out infinite;
+  filter: hue-rotate(0deg);
+}
+@keyframes pipVapGlow {
+  0%,100%{ box-shadow: 0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.45)); filter:hue-rotate(0deg); }
+  50%    { box-shadow: 0 0 calc(var(--pip-glow)*1.5) calc(var(--pip-blur)*1.5) rgba(var(--pip-bc2),calc(var(--pip-bopa)*0.55)); filter:hue-rotate(25deg); }
+}
+
+/* ── HOLOGRAPHIC (cycling rainbow glow + ring) ───────────────────────────── */
+body.pip-mode.pip-bstyle-holographic #world::before {
+  border: calc(var(--pip-bthk) + 1px) solid transparent;
+  background:
+    linear-gradient(rgba(0,0,0,0),rgba(0,0,0,0)) padding-box,
+    conic-gradient(
+      hsl(0,100%,65%),hsl(60,100%,65%),hsl(120,100%,65%),
+      hsl(180,100%,65%),hsl(240,100%,65%),hsl(300,100%,65%),hsl(360,100%,65%)
+    ) border-box;
+}
+body.pip-mode.pip-bstyle-holographic #world {
+  box-shadow:
+    0 0 var(--pip-glow) var(--pip-blur) rgba(200,180,255, calc(var(--pip-bopa)*0.45));
+  animation: pipHoloGlow calc(var(--pip-adur) * 0.7) linear infinite;
+}
+@keyframes pipHoloGlow {
+  from { filter: hue-rotate(0deg);   }
+  to   { filter: hue-rotate(360deg); }
+}
+
+/* ── PIXEL (chunky outline + offset drop-shadow) ─────────────────────────── */
+body.pip-mode.pip-bstyle-pixel #world::before {
+  border: calc(var(--pip-bthk) * 2 + 2px) solid rgba(var(--pip-bc1), var(--pip-bopa));
+  outline: 2px solid rgba(var(--pip-bc2), calc(var(--pip-bopa)*0.7));
+  outline-offset: 2px;
+}
+body.pip-mode.pip-bstyle-pixel #world {
+  box-shadow:
+    4px 4px 0 rgba(0,0,0,0.5),
+    0 0 10px 2px rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.3));
+  animation: pipPixelBlink var(--pip-adur) steps(2,end) infinite;
+}
+@keyframes pipPixelBlink {
+  0%,49%{ opacity:1.0; } 50%,99%{ opacity:0.85; }
+}
+
+/* ── BUBBLE (soft multi-ring halo) ───────────────────────────────────────── */
+body.pip-mode.pip-bstyle-bubble #world::before {
+  border: var(--pip-bthk) solid rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.45));
+  box-shadow:
+    0 0 0 4px rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.15)) inset,
+    0 0 0 2px rgba(var(--pip-bc2), calc(var(--pip-bopa)*0.12));
+}
+body.pip-mode.pip-bstyle-bubble #world {
+  box-shadow:
+    0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.32)),
+    0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*2) rgba(var(--pip-bc2), calc(var(--pip-bopa)*0.15)),
+    0 0 calc(var(--pip-glow)*3.5) calc(var(--pip-blur)*3) rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.06));
+  animation: pipBubbleScale calc(var(--pip-adur) * 1.3) ease-in-out infinite;
 }
 @keyframes pipBubbleScale {
-  0%, 100% { transform: scale(1);     }
-  50%       { transform: scale(1.015); }
+  0%,100%{ transform: scale(1); }
+  50%     { transform: scale(1.014); }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: HOLOGRAPHIC
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-holographic #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid transparent;
-  background:
-    linear-gradient(#0000, #0000) padding-box,
-    linear-gradient(
-      calc(var(--_holo-angle, 0deg)),
-      hsl(0,100%,65%), hsl(40,100%,65%), hsl(80,100%,65%),
-      hsl(160,100%,65%), hsl(200,100%,65%), hsl(260,100%,65%),
-      hsl(300,100%,65%), hsl(340,100%,65%), hsl(0,100%,65%)
-    ) border-box;
+/* ── CAT (pink glow + purr bounce) ───────────────────────────────────────── */
+body.pip-mode.pip-bstyle-cat #world::before {
+  border: calc(var(--pip-bthk) + 1px) solid rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.65));
+}
+body.pip-mode.pip-bstyle-cat #world {
   box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur) rgba(255,255,255, calc(var(--pip-border-opacity) * 0.3));
-  animation: pipHoloDeg var(--pip-anim-dur) linear infinite;
-}
-@property --_holo-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-@keyframes pipHoloDeg { from { --_holo-angle: 0deg; } to { --_holo-angle: 360deg; } }
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: FADED (barely-there whisper)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-faded #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.22));
-  box-shadow: 0 0 var(--pip-glow-px) calc(var(--pip-glow-blur) * 2)
-    rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.1));
-  animation: pipFadedDrift calc(var(--pip-anim-dur) * 3) ease-in-out infinite;
-}
-@keyframes pipFadedDrift {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 0.9; }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   BORDER STYLE: CAT-THEMED (pawprint accent + pink glow)
-   ══════════════════════════════════════════════════════════════ */
-body.pip-border-style-cat #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid
-          rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.6));
-  box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.45)),
-    0 0 calc(var(--pip-glow-px) * 2) calc(var(--pip-glow-blur) * 2)
-      rgba(var(--pip-border-rgb2), calc(var(--pip-border-opacity) * 0.20)),
-    inset 0 0 10px rgba(var(--pip-border-rgb), 0.08);
-  animation: pipCatPurr calc(var(--pip-anim-dur) * 0.9) ease-in-out infinite;
+    0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.48)),
+    0 0 calc(var(--pip-glow)*2) calc(var(--pip-blur)*2) rgba(var(--pip-bc2), calc(var(--pip-bopa)*0.22));
+  animation: pipCatPurr calc(var(--pip-adur)*0.85) ease-in-out infinite;
 }
 @keyframes pipCatPurr {
-  0%, 100% { transform: scale(1);     opacity: 0.85; }
-  25%       { transform: scale(1.01); opacity: 1.0;  }
-  75%       { transform: scale(0.99); opacity: 0.92; }
+  0%,100%{ transform:scale(1);    box-shadow:0 0 var(--pip-glow) var(--pip-blur) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.42)); }
+  25%    { transform:scale(1.012);box-shadow:0 0 calc(var(--pip-glow)*1.4) calc(var(--pip-blur)*1.3) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.60)); }
+  75%    { transform:scale(0.992);box-shadow:0 0 calc(var(--pip-glow)*0.8) calc(var(--pip-blur)*0.8) rgba(var(--pip-bc1),calc(var(--pip-bopa)*0.35)); }
+}
+
+/* ── FADED (whisper-thin, slowly drifts) ─────────────────────────────────── */
+body.pip-mode.pip-bstyle-faded #world::before {
+  border: 1px solid rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.25));
+}
+body.pip-mode.pip-bstyle-faded #world {
+  box-shadow: 0 0 calc(var(--pip-glow)*1.5) calc(var(--pip-blur)*2) rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.12));
+  animation: pipFadedDrift calc(var(--pip-adur)*3.5) ease-in-out infinite;
+}
+@keyframes pipFadedDrift {
+  0%,100%{ opacity:0.5; } 50%{ opacity:0.9; }
+}
+
+/* ── MINIMAL (1px, barely there) ─────────────────────────────────────────── */
+body.pip-mode.pip-bstyle-minimal #world::before {
+  border: 1px solid rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.38));
+}
+body.pip-mode.pip-bstyle-minimal #world {
+  box-shadow: 0 0 5px 1px rgba(var(--pip-bc1), calc(var(--pip-bopa)*0.12));
+  animation: pipMinimalBreath calc(var(--pip-adur)*2.8) ease-in-out infinite;
+}
+@keyframes pipMinimalBreath {
+  0%,100%{ opacity:0.65; } 50%{ opacity:1.0; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PiP LOCK SYSTEM
+   PiP HOVER ANIMATION — cursor-enter spring bounce
    ══════════════════════════════════════════════════════════════ */
+body.pip-mode #world.pip-hovered {
+  transform: scale(1.038) !important;
+}
+/* Eyes slightly enlarge on hover */
+body.pip-mode #world.pip-hovered .eye-wrap {
+  transform: scale(1.07);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+body.pip-mode .eye-wrap {
+  transition: transform 0.28s ease;
+}
+/* Hover glow boost — CSS class toggled by JS */
+body.pip-mode.pip-hover-glow #world.pip-hovered {
+  filter: brightness(1.12) saturate(1.08);
+}
 
-/* When locked: disable all drag regions */
-body.pip-mode.pip-locked .companion       { -webkit-app-region: no-drag !important; }
-body.pip-mode.pip-locked #world           { -webkit-app-region: no-drag !important; }
-body.pip-mode.pip-locked                  { -webkit-app-region: no-drag !important; }
-
-/* Lock indicator badge */
-#pip-lock-indicator {
+/* ══════════════════════════════════════════════════════════════
+   PiP LOCK INDICATOR
+   ══════════════════════════════════════════════════════════════ */
+#pip-lock-badge {
   display: none;
   position: fixed;
-  bottom: 6px;
-  right: 6px;
+  bottom: 5px;
+  right: 5px;
   z-index: 9999;
   pointer-events: none;
-  font-size: 11px;
-  line-height: 1;
-  padding: 3px 5px;
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.55);
-  transition: opacity 0.25s ease;
+  font-size: 10px;
+  padding: 2px 5px;
+  background: rgba(0,0,0,0.40);
+  border-radius: 5px;
+  color: rgba(255,255,255,0.45);
   -webkit-app-region: no-drag;
 }
-body.pip-mode.pip-locked #pip-lock-indicator  { display: flex; align-items: center; gap: 3px; }
-
-/* Lock indicator inner text styling */
-#pip-lock-indicator .pip-lock-icon { font-size: 9px; }
+body.pip-mode.pip-locked #pip-lock-badge { display: flex; align-items: center; gap: 3px; }
 
 /* ══════════════════════════════════════════════════════════════
-   SETTINGS UI — PiP Border Controls
+   SETTINGS UI — PiP Controls
    ══════════════════════════════════════════════════════════════ */
 
-/* Border style picker grid */
-.pip-border-style-grid {
+.pip-section-note {
+  font-size: 10px;
+  color: rgba(175,165,255,0.38);
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+
+/* Visual preset grid */
+.pip-preset-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  padding: 4px 0;
-}
-.pip-border-style-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 6px 4px 5px;
-  background: rgba(120, 115, 180, 0.08);
-  border: 1px solid rgba(160, 150, 255, 0.12);
-  border-radius: 7px;
-  cursor: pointer;
-  color: rgba(200, 190, 255, 0.60);
-  font-size: 9px;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
-  -webkit-app-region: no-drag;
-  text-align: center;
-  line-height: 1.2;
-}
-.pip-border-style-chip:hover {
-  background: rgba(130, 120, 220, 0.18);
-  border-color: rgba(180, 170, 255, 0.28);
-  color: rgba(220, 215, 255, 0.85);
-  transform: translateY(-1px);
-}
-.pip-border-style-chip.active {
-  background: rgba(130, 120, 255, 0.22);
-  border-color: rgba(160, 150, 255, 0.55);
-  color: rgba(220, 210, 255, 1.0);
-  box-shadow: 0 0 8px rgba(140, 130, 255, 0.25);
-}
-.pip-border-style-chip .pip-border-chip-icon {
-  font-size: 13px;
-  line-height: 1;
-}
-
-/* PiP visual preset row */
-.pip-preset-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  padding: 4px 0;
+  padding: 2px 0 6px;
 }
 .pip-preset-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 7px 5px;
-  background: rgba(110, 105, 170, 0.10);
-  border: 1px solid rgba(150, 140, 255, 0.14);
+  padding: 6px 4px 5px;
+  background: rgba(110,105,170,0.08);
+  border: 1px solid rgba(150,140,255,0.12);
   border-radius: 8px;
   cursor: pointer;
-  color: rgba(195, 185, 255, 0.65);
+  color: rgba(190,180,255,0.60);
   font-size: 9px;
-  transition: all 0.15s ease;
-  -webkit-app-region: no-drag;
-  text-align: center;
-}
-.pip-preset-chip:hover {
-  background: rgba(120, 110, 220, 0.18);
-  border-color: rgba(170, 160, 255, 0.30);
-  color: rgba(215, 205, 255, 0.90);
-  transform: translateY(-1px);
-}
-.pip-preset-chip.active {
-  background: rgba(130, 120, 255, 0.24);
-  border-color: rgba(165, 155, 255, 0.60);
-  color: rgba(225, 218, 255, 1.0);
-  box-shadow: 0 0 10px rgba(140, 130, 255, 0.28);
-}
-.pip-preset-chip .pip-preset-icon { font-size: 15px; line-height: 1; }
-
-/* PiP color picker row */
-.pip-color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 4px 0;
-}
-.pip-color-swatch-btn {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.15);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 0.12s, border-color 0.15s;
-  -webkit-app-region: no-drag;
-}
-.pip-color-swatch-btn:hover { transform: scale(1.18); border-color: rgba(255,255,255,0.4); }
-.pip-color-swatch-btn.active { border-color: rgba(255,255,255,0.75); transform: scale(1.12); }
-
-/* Color picker input styled */
-.pip-custom-color-wrap {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex: 1;
-}
-.pip-custom-color-wrap input[type="color"] {
-  width: 26px; height: 26px;
-  border: none; background: none; padding: 0; cursor: pointer;
-  border-radius: 50%; overflow: hidden; flex-shrink: 0;
-  -webkit-app-region: no-drag;
-}
-.pip-custom-color-label {
-  font-size: 10px;
-  color: rgba(190, 180, 255, 0.55);
-}
-
-/* Corner position buttons */
-.pip-corner-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 4px;
-  max-width: 140px;
-}
-.pip-corner-btn {
-  padding: 5px 6px;
-  background: rgba(110, 105, 175, 0.10);
-  border: 1px solid rgba(150, 145, 255, 0.14);
-  border-radius: 6px;
-  color: rgba(185, 175, 255, 0.60);
-  font-size: 9px;
-  cursor: pointer;
   text-align: center;
   transition: all 0.14s ease;
   -webkit-app-region: no-drag;
+  line-height: 1.2;
 }
-.pip-corner-btn:hover {
-  background: rgba(125, 115, 230, 0.20);
-  border-color: rgba(170, 160, 255, 0.32);
-  color: rgba(210, 200, 255, 0.88);
+.pip-preset-chip:hover {
+  background: rgba(120,110,220,0.18);
+  border-color: rgba(170,160,255,0.30);
+  color: rgba(215,205,255,0.90);
+  transform: translateY(-1px);
 }
-.pip-corner-btn.active {
-  background: rgba(130, 120, 255, 0.22);
-  border-color: rgba(165, 155, 255, 0.55);
-  color: rgba(225, 218, 255, 1.0);
+.pip-preset-chip.active {
+  background: rgba(130,120,255,0.24);
+  border-color: rgba(165,155,255,0.60);
+  color: rgba(225,218,255,1.0);
+  box-shadow: 0 0 10px rgba(140,130,255,0.28);
+}
+.pip-preset-icon { font-size: 14px; line-height: 1; }
+
+/* Border style chips */
+.pip-border-style-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 2px 0 6px;
+}
+.pip-border-style-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 3px 4px;
+  background: rgba(110,105,170,0.08);
+  border: 1px solid rgba(150,140,255,0.12);
+  border-radius: 7px;
+  cursor: pointer;
+  color: rgba(185,175,255,0.60);
+  font-size: 9px;
+  text-align: center;
+  transition: all 0.13s ease;
+  -webkit-app-region: no-drag;
+}
+.pip-border-style-chip span { font-size: 12px; line-height: 1; }
+.pip-border-style-chip:hover {
+  background: rgba(120,110,220,0.18);
+  border-color: rgba(170,160,255,0.28);
+  color: rgba(210,200,255,0.88);
+  transform: translateY(-1px);
+}
+.pip-border-style-chip.active {
+  background: rgba(130,120,255,0.22);
+  border-color: rgba(165,155,255,0.55);
+  color: rgba(220,210,255,1.0);
+  box-shadow: 0 0 8px rgba(140,130,255,0.25);
 }
 
-/* Settings subsection label for pip section */
-.pip-section-note {
-  font-size: 10px;
-  color: rgba(175, 165, 255, 0.38);
-  margin-bottom: 4px;
-  line-height: 1.4;
-}
-
-/* Two-column color pickers */
+/* Dual colour pickers */
 .pip-dual-color-wrap {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  margin: 4px 0;
 }
 .pip-dual-color-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   flex: 1;
-  min-width: 90px;
 }
 .pip-dual-color-col-label {
   font-size: 9px;
-  color: rgba(175, 165, 255, 0.45);
+  color: rgba(170,160,255,0.45);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .pip-dual-color-col input[type="color"] {
   width: 100%;
-  height: 28px;
-  border: 1px solid rgba(150, 140, 255, 0.20);
+  height: 26px;
+  border: 1px solid rgba(150,140,255,0.20);
   border-radius: 6px;
-  background: rgba(110, 105, 175, 0.12);
+  background: rgba(110,105,175,0.12);
   cursor: pointer;
   padding: 2px;
   -webkit-app-region: no-drag;
 }
 
-/* Pip anim speed label inside settings */
-.pip-anim-row-wrap { display: flex; flex-direction: column; gap: 2px; }
-.pip-anim-speed-labels {
+/* Colour swatches */
+.pip-swatch-row {
   display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: rgba(175, 165, 255, 0.35);
-  padding: 0 2px;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.pip-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+.pip-swatch:hover { transform: scale(1.2); border-color: rgba(255,255,255,0.45); }
+.pip-swatch.active { border-color: rgba(255,255,255,0.80); transform: scale(1.15); }
+
+/* ══════════════════════════════════════════════════════════════
+   PiP CORNER PICKER STYLES
+   ══════════════════════════════════════════════════════════════ */
+.pip-corner-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  max-width: 148px;
+}
+.pip-corner-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  background: rgba(110,105,175,0.10);
+  border: 1px solid rgba(150,145,255,0.14);
+  border-radius: 7px;
+  color: rgba(185,175,255,0.60);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  -webkit-app-region: no-drag;
+}
+.pip-corner-chip:hover {
+  background: rgba(125,115,230,0.22);
+  border-color: rgba(170,160,255,0.35);
+  color: rgba(215,205,255,0.92);
+  transform: scale(1.08);
+}
+.pip-corner-chip.active {
+  background: rgba(130,120,255,0.28);
+  border-color: rgba(165,155,255,0.62);
+  color: rgba(225,218,255,1.0);
+  box-shadow: 0 0 10px rgba(140,130,255,0.32);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PiP CURSOR HOVER ANIMATIONS — world element reacts to mouse
+   PiP ANIM PAUSED — when animation is off
    ══════════════════════════════════════════════════════════════ */
-
-/* Hover spring bounce on the whole pip window */
-body.pip-mode #world.pip-cursor-hover {
-  transform: scale(1.035);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-body.pip-mode #world {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Ring hover amplification */
-body.pip-mode #pip-border-ring.pip-ring-hover {
-  filter: brightness(1.35) saturate(1.15);
-  transition: filter 0.2s ease;
-}
-
-/* Companion's eyes widen slightly when cursor enters */
-body.pip-mode #world.pip-cursor-hover .eye-wrap {
-  transform: scale(1.06);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-body.pip-mode .eye-wrap {
-  transition: transform 0.3s ease;
-}
-
-/* Subtle upward float on hover */
-@keyframes pipHoverFloat {
-  0%   { transform: scale(1.035) translateY(0); }
-  50%  { transform: scale(1.038) translateY(-2px); }
-  100% { transform: scale(1.035) translateY(0); }
-}
-body.pip-mode #world.pip-cursor-hover .companion {
-  animation: pipHoverFloat 1.8s ease-in-out infinite;
+body.pip-anim-paused.pip-mode #world,
+body.pip-anim-paused.pip-mode #world::before {
+  animation: none !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PiP LOCK — disable all drag regions + CSS visual indicator
+   PiP LOCK BADGE
    ══════════════════════════════════════════════════════════════ */
-body.pip-mode.pip-locked .companion { -webkit-app-region: no-drag !important; }
-body.pip-mode.pip-locked #world     { -webkit-app-region: no-drag !important; }
-body.pip-mode.pip-locked            { cursor: default !important; }
-
-/* When NOT locked, companion is the drag handle */
-body.pip-mode:not(.pip-locked) .companion { -webkit-app-region: drag; }
-
-/* ══════════════════════════════════════════════════════════════
-   PiP ADDITIONAL BORDER STYLES — solid, dotted, blending, faded
-   already covered above but adding aliases/extra options here
-   ══════════════════════════════════════════════════════════════ */
-
-/* SOLID — clean crisp border, no animation */
-body.pip-border-style-solid #pip-border-ring {
-  border: var(--pip-border-thickness) solid
-          rgba(var(--pip-border-rgb), var(--pip-border-opacity));
-  box-shadow:
-    0 0 calc(var(--pip-glow-px) * 0.4) calc(var(--pip-glow-blur) * 0.3)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.3));
+#pip-lock-badge {
+  display: none;
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+  z-index: 9999;
+  pointer-events: none;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(0,0,0,0.45);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.42);
+  letter-spacing: 0.03em;
+  -webkit-app-region: no-drag;
+  gap: 3px;
+  align-items: center;
 }
-
-/* BLENDING — gradient that blends both colors around the ring */
-body.pip-border-style-blending #pip-border-ring {
-  border: calc(var(--pip-border-thickness) + 1px) solid transparent;
-  background:
-    linear-gradient(#0000, #0000) padding-box,
-    conic-gradient(
-      rgba(var(--pip-border-rgb),  var(--pip-border-opacity)) 0deg,
-      rgba(var(--pip-border-rgb2), var(--pip-border-opacity)) 120deg,
-      rgba(var(--pip-border-rgb),  var(--pip-border-opacity)) 240deg,
-      rgba(var(--pip-border-rgb2), var(--pip-border-opacity)) 360deg
-    ) border-box;
-  box-shadow:
-    0 0 var(--pip-glow-px) var(--pip-glow-blur)
-      rgba(var(--pip-border-rgb), calc(var(--pip-border-opacity) * 0.35));
-  animation: pipBlendSpin calc(var(--pip-anim-dur) * 3) linear infinite;
-}
-@keyframes pipBlendSpin {
-  from { background: linear-gradient(#0000,#0000) padding-box, conic-gradient(rgba(var(--pip-border-rgb),var(--pip-border-opacity)) 0deg, rgba(var(--pip-border-rgb2),var(--pip-border-opacity)) 120deg, rgba(var(--pip-border-rgb),var(--pip-border-opacity)) 240deg, rgba(var(--pip-border-rgb2),var(--pip-border-opacity)) 360deg) border-box; }
-  to   { background: linear-gradient(#0000,#0000) padding-box, conic-gradient(rgba(var(--pip-border-rgb),var(--pip-border-opacity)) 360deg, rgba(var(--pip-border-rgb2),var(--pip-border-opacity)) 480deg, rgba(var(--pip-border-rgb),var(--pip-border-opacity)) 600deg, rgba(var(--pip-border-rgb2),var(--pip-border-opacity)) 720deg) border-box; }
-}
+body.pip-mode.pip-locked #pip-lock-badge { display: flex; }
