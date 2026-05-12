@@ -304,8 +304,10 @@ const Brain = (() => {
 
   // Phone detection
   let _phoneDetectionEnabled = localStorage.getItem('deskbuddy_phone_detect') !== 'false';
-  let _phoneCheckMs          = 0;    // ms phone posture has been held continuously
+  let _phoneCheckMs          = 0;    // ms confidence has been above threshold continuously
   const _phoneCallbacks      = [];
+  let _phoneCount            = 0;    // escalation counter (resets on session start)
+  let _lastPhoneMs           = 0;    // epoch ms of last phone reaction (for escalation window)
 
   // Study encouragement
   let _lastEncouragementTime = 0;
@@ -1308,7 +1310,8 @@ const Brain = (() => {
     const now = Date.now();
     mouseX = e.clientX;
     mouseY = e.clientY;
-    lastMouseMoveTime = now;
+    lastMouseMoveTime         = now;
+    window._lastMouseTime     = now;   // exposed for perception.js inactivity signal
 
     // Startled: detect a sudden large jump in cursor position
     if (_prevMouseX >= 0) {
@@ -1331,7 +1334,8 @@ const Brain = (() => {
   }
 
   function onKeyDown(e) {
-    lastKeyTime = Date.now();
+    lastKeyTime           = Date.now();
+    window._lastKeyTime   = lastKeyTime;   // exposed for perception.js inactivity signal
 
     // Excited: rapid typing detection — track rolling keypress timestamps
     const now = Date.now();
@@ -1599,32 +1603,40 @@ const Brain = (() => {
         fillEl.style.width = window.perception.attentionScore + '%';
       }
 
-      // ── Phone detection ─────────────────────────────────────────────────
-      // Trigger: head bowed above readingPitchMax (sensitivity-dependent) for
-      // phoneDetectMs (also sensitivity-dependent).  Using readingPitchMax as
-      // the phone threshold ensures students reading books at GENTLE/NORMAL
-      // sensitivity are NOT flagged as phone-users until they bow far beyond
-      // the expected reading angle.
-      // We intentionally do NOT check correctedGazeY here — it is head-pose
-      // compensated and actively removes the downward-gaze signal we need.
+      // ── Phone detection — confidence-driven multi-signal pipeline ───────────
+      // Reads window.perception.phoneConfidence (0–95) built by perception.js
+      // from: object detection + gaze + posture + spatial proximity + inactivity.
+      //
+      // Thresholds are session-state-aware:
+      //   ACTIVE session   → thr 40, requires 2.5 s sustained evidence
+      //   No/idle session  → thr 55, requires 4.0 s (more lenient outside focus time)
+      //   PAUSED (break)   → timer resets — NEVER triggers during breaks
+      //
+      // Decay: confidence falling below threshold drains the timer (400 ms/tick)
+      // rather than instant-resetting, preventing rapid on/off flicker.
       if (_phoneDetectionEnabled && window.cameraAvailable) {
-        const p = window.perception;
-        const phoneThr = SENSITIVITY_PRESETS[_runtimeSensitivity || _sensitivityLevel]
-                      || SENSITIVITY_PRESETS['NORMAL'];
-        if (p?.facePresent && p.headPitch > phoneThr.readingPitchMax) {
-          _phoneCheckMs += 1000;
-          if (_phoneCheckMs >= phoneThr.phoneDetectMs && window._lastEmotion !== 'suspicious') {
-            // Jump straight to suspicious — skip DRIFTING arc
-            window._emotionChanged = { from: window._lastEmotion, to: 'suspicious' };
-            window._lastEmotion    = 'suspicious';
-            Emotion.setState('suspicious');
-            showWhisper('...📱?', 2500);
-            // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
-            _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
-          }
-        } else if (!p || !p.facePresent || p.headPitch < PHONE_PITCH_RESET) {
-          // Reset when face absent or head has lifted back up
+        const sState = (typeof Session !== 'undefined')
+          ? Session.getCurrentStats?.()?.state
+          : null;
+
+        if (sState === 'PAUSED') {
+          // Hard rule: never nag during breaks
           _phoneCheckMs = 0;
+        } else {
+          const conf = window.perception?.phoneConfidence ?? 0;
+          const thr  = sState === 'ACTIVE' ? 40 : 55;
+          const req  = sState === 'ACTIVE' ? 2500 : 4000;
+
+          if (conf >= thr) {
+            _phoneCheckMs += 1000;
+            if (_phoneCheckMs >= req) {
+              _phoneCheckMs = 0;
+              _triggerPhoneReaction(sState);
+              _phoneCallbacks.forEach(fn => { try { fn(); } catch (e) {} });
+            }
+          } else {
+            _phoneCheckMs = Math.max(0, _phoneCheckMs - 400);
+          }
         }
       }
 
@@ -2686,6 +2698,81 @@ const Brain = (() => {
     localStorage.setItem('deskbuddy_phone_detect', _phoneDetectionEnabled ? 'true' : 'false');
   }
 
+  /**
+   * Emotionally-escalating reaction to confirmed phone detection.
+   * Escalation resets on session start (Brain.resetPhoneCount).
+   * Within a 10-minute window, repeated detections escalate:
+   *   1st → suspicious → grumpy
+   *   2nd → pouty + whisper
+   *   3rd+ → sad + stern message
+   * Outside an ACTIVE session → gentle curious reaction only.
+   */
+  function _triggerPhoneReaction(sState) {
+    const now = Date.now();
+
+    // Reset escalation counter if it's been more than 10 minutes since last detection
+    if (now - _lastPhoneMs < 600000) {
+      _phoneCount++;
+    } else {
+      _phoneCount = 1;
+    }
+    _lastPhoneMs = now;
+
+    if (sState === 'ACTIVE') {
+      if (_phoneCount >= 3) {
+        Emotion.setState('sad');
+        const stern = [
+          '...please focus.',
+          'put it down... 📱',
+          'focus time... 📵',
+          '...phone away please.',
+        ];
+        showWhisper(stern[Math.floor(Math.random() * stern.length)], 5000);
+
+      } else if (_phoneCount === 2) {
+        Emotion.setState('pouty');
+        const pouty = [
+          'again with the phone 📱',
+          '...📱 again?',
+          'hey... eyes here.',
+          '...still?? 📱',
+        ];
+        showWhisper(pouty[Math.floor(Math.random() * pouty.length)], 4000);
+
+      } else {
+        // First detection — suspicious → grumpy escalation
+        Emotion.setState('suspicious');
+        const first = ['...📱?', '...hmm 📱', '...is that a phone?', '...👀📱'];
+        showWhisper(first[Math.floor(Math.random() * first.length)], 2500);
+
+        setTimeout(() => {
+          if (window._lastEmotion === 'suspicious') {
+            Emotion.setState('grumpy');
+            const grumpy = [
+              'put the phone down. 📱',
+              '...📱 away. focus.',
+              'hey! phone down.',
+              'no phones! 📵',
+            ];
+            showWhisper(grumpy[Math.floor(Math.random() * grumpy.length)], 3500);
+          }
+        }, 2000);
+      }
+
+    } else {
+      // Outside session — curious, non-nagging
+      Emotion.setState('curious');
+      const curious = ['...📱?', '...oh, phone?', '*notices phone*', '...📱 hm~'];
+      showWhisper(curious[Math.floor(Math.random() * curious.length)], 2500);
+    }
+  }
+
+  /** Reset phone escalation counter — call at session start. */
+  function resetPhoneCount() {
+    _phoneCount  = 0;
+    _lastPhoneMs = 0;
+  }
+
   /** Register a callback fired when phone-checking posture is sustained. */
   function onPhoneDetected(fn) {
     _phoneCallbacks.push(fn);
@@ -3227,6 +3314,7 @@ const Brain = (() => {
 
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
+           resetPhoneCount,
            onMilestone,
            setSensitivity, getSensitivityThresholds,
            getTimePeriod, applyTimePeriod,
