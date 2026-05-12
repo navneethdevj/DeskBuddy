@@ -26,18 +26,24 @@ const Camera = (() => {
 
   let faceLandmarker      = null;
   let handLandmarker      = null;
+  let objDetector         = null;
   let videoEl             = null;
   let lastFaceTimestampMs = -1;
   let lastHandTimestampMs = -1;
+  let lastObjTimestampMs  = -1;
   let running             = false;
   let _handInitPending    = false;
   let _handInitDone       = false;
+  let _objInitPending     = false;
+  let _objInitDone        = false;
 
   // Globals read by perception.js and brain.js
   window.cameraAvailable = false;
   window.faceResults     = null;
   window.handResults     = null;
   window.handAvailable   = false;
+  window.objResults      = [];   // [{categories:[{categoryName,score}], boundingBox:{originX,originY,width,height}}]
+  window.objAvailable    = false;
 
   // ── Public init ─────────────────────────────────────────────────────────────
 
@@ -57,6 +63,8 @@ const Camera = (() => {
 
       // Lazy HandLandmarker — delay so it doesn't compete with face init at startup
       setTimeout(_initHandLandmarker, 1800);
+      // Lazy ObjectDetector — delay further so hand + face are both stable first
+      setTimeout(_initObjDetector, 3500);
     } catch (err) {
       console.warn('[Camera] Unavailable —', err.message || err);
     }
@@ -189,6 +197,70 @@ const Camera = (() => {
       } catch (_) {
         // Hand detection is optional — silent failure keeps face tracking alive
       }
+    }
+
+    // Object detection at OBJ_FPS — only when ObjectDetector is ready
+    // Uses its own timestamp; a separate cadence keeps GPU load manageable.
+    if (objDetector &&
+        window.objAvailable &&
+        ms - lastObjTimestampMs >= OBJ_INTERVAL &&
+        ms > lastObjTimestampMs) {
+      try {
+        const res = objDetector.detectForVideo(videoEl, ms);
+        window.objResults    = res?.detections || [];
+        lastObjTimestampMs   = ms;
+      } catch (_) {
+        window.objResults = [];
+      }
+    }
+  }
+
+  // ── ObjectDetector (lazy, optional) ────────────────────────────────────────
+  // EfficientDet-Lite0 COCO — "cell phone" label.
+  // Runs at OBJ_FPS inside _loop() after init completes.
+  // GPU delegate preferred; falls back silently on failure.
+
+  const OBJ_FPS      = 5;
+  const OBJ_INTERVAL = Math.round(1000 / OBJ_FPS);  // 200 ms
+
+  async function _initObjDetector() {
+    if (_objInitPending || _objInitDone) return;
+    _objInitPending = true;
+    try {
+      const { ObjectDetector, FilesetResolver } = window;
+      if (!ObjectDetector) {
+        console.warn('[Camera] window.ObjectDetector not found — phone object detection disabled');
+        return;
+      }
+      if (!FilesetResolver) {
+        console.warn('[Camera] window.FilesetResolver not found — phone object detection disabled');
+        return;
+      }
+
+      const wasmPath = '../node_modules/@mediapipe/tasks-vision/wasm';
+      const vision   = await FilesetResolver.forVisionTasks(wasmPath);
+
+      const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
+        'object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
+
+      objDetector = await ObjectDetector.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: modelUrl,
+          delegate: 'GPU',
+        },
+        scoreThreshold: 0.25,
+        maxResults:     5,
+        runningMode:    'VIDEO',
+      });
+
+      window.objAvailable = true;
+      _objInitDone = true;
+      console.log('[Camera] ObjectDetector ready (GPU) — phone detection enabled');
+    } catch (err) {
+      console.warn('[Camera] ObjectDetector init failed (phone detection disabled):', err.message || err);
+      window.objAvailable = false;
+    } finally {
+      _objInitPending = false;
     }
   }
 
