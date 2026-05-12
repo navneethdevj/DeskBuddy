@@ -1744,9 +1744,11 @@
   <script>var exports = {}; var module = { exports: exports };</script>
   <script src="../node_modules/@mediapipe/tasks-vision/vision_bundle.cjs"></script>
   <script>
-    // Copy MediaPipe classes from CJS exports to window for camera.js
+    // Copy MediaPipe classes from CJS exports to window for camera.js + perception.js
     window.FaceLandmarker  = exports.FaceLandmarker;
     window.FilesetResolver = exports.FilesetResolver;
+    // HandLandmarker — lazy-initialised by camera.js for wave gesture detection
+    window.HandLandmarker  = exports.HandLandmarker;
   </script>
 
   <script src="components/emotion.js"></script>
