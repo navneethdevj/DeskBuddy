@@ -1,88 +1,67 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Safe IPC bridge — only named functions are exposed.
-// Raw ipcRenderer is never passed to the renderer.
-
 contextBridge.exposeInMainWorld('deskbuddy', {
   platform: process.platform,
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Send S / M / L resize request to main process.
-  resizeWindow: (preset) => ipcRenderer.send('resize-window', preset),
+  resizeWindow:        (preset)         => ipcRenderer.send('resize-window', preset),
+  setIgnoreMouseEvents:(ignore, options) => ipcRenderer.send('set-ignore-mouse-events', ignore, options),
 
-  // Toggle OS-level mouse pass-through.
-  // ignore=true + { forward: true } → clicks pass through, mousemove still reaches renderer.
-  // ignore=false → normal interactive mode.
-  setIgnoreMouseEvents: (ignore, options) =>
-    ipcRenderer.send('set-ignore-mouse-events', ignore, options),
-
-  // Toggle between compact overlay and full-screen mode.
   enterFullMode: () => ipcRenderer.send('enter-full-mode'),
   exitFullMode:  () => ipcRenderer.send('exit-full-mode'),
 
-  // PiP always-on-top toggle
-  setPipAlwaysOnTop: (flag) => ipcRenderer.send('set-pip-always-on-top', flag),
-
-  // Enable or disable auto-snap to nearest corner when PiP window is dragged.
+  setPipAlwaysOnTop: (flag)    => ipcRenderer.send('set-pip-always-on-top', flag),
   setPipSnapEnabled: (enabled) => ipcRenderer.send('set-pip-snap-enabled', enabled),
 
-  // Snap the PiP window to a named corner position (when in PiP mode).
-  // corner: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-right'
-  setPipCorner: (corner) => ipcRenderer.send('set-pip-corner', corner),
+  // Named corner snap — 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-right'
+  setPipCorner:      (corner)  => ipcRenderer.send('set-pip-corner', corner),
+  snapPipToCorner:   (corner)  => ipcRenderer.send('snap-pip-to-corner', corner),
 
-  // Fired by main after the window is shown (ready-to-show).
+  // Lock/unlock pip window dragging (OS-level setMovable)
+  setPipLocked:      (locked)  => ipcRenderer.send('set-pip-locked', locked),
+
   onWindowReady: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('window-ready', handler);
-    return () => ipcRenderer.removeListener('window-ready', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('window-ready', h);
+    return () => ipcRenderer.removeListener('window-ready', h);
   },
-
-  // Fired whenever the window is resized (preset buttons or OS drag handle).
   onWindowResized: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('window-resized', handler);
-    return () => ipcRenderer.removeListener('window-resized', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('window-resized', h);
+    return () => ipcRenderer.removeListener('window-resized', h);
   },
-
   onFullModeEntered: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('full-mode-entered', handler);
-    return () => ipcRenderer.removeListener('full-mode-entered', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('full-mode-entered', h);
+    return () => ipcRenderer.removeListener('full-mode-entered', h);
   },
   onFullModeExited: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('full-mode-exited', handler);
-    return () => ipcRenderer.removeListener('full-mode-exited', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('full-mode-exited', h);
+    return () => ipcRenderer.removeListener('full-mode-exited', h);
   },
 
-  // Settings persistence — survives localStorage clear.
-  getSettings: () => ipcRenderer.invoke('settings:get'),
+  getSettings: ()    => ipcRenderer.invoke('settings:get'),
   setSettings: (obj) => ipcRenderer.send('settings:set', obj),
 
-  // Share card — copy image to clipboard / save PNG via native dialog.
   copyImage: (dataUrl) => ipcRenderer.invoke('share-card:copy-image', dataUrl),
   saveImage: (dataUrl) => ipcRenderer.invoke('share-card:save-image', dataUrl),
 
-  // Session history backup
   exportHistory: (jsonString) => ipcRenderer.invoke('history:export', jsonString),
   importHistory: ()           => ipcRenderer.invoke('history:import'),
 
-  // App focus / blur — used for auto-PiP on app switch
   onAppBlur: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('app-blur', handler);
-    return () => ipcRenderer.removeListener('app-blur', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('app-blur', h);
+    return () => ipcRenderer.removeListener('app-blur', h);
   },
   onAppFocus: (fn) => {
-    const handler = (_event, ...args) => fn(...args);
-    ipcRenderer.on('app-focus', handler);
-    return () => ipcRenderer.removeListener('app-focus', handler);
+    const h = (_e, ...a) => fn(...a);
+    ipcRenderer.on('app-focus', h);
+    return () => ipcRenderer.removeListener('app-focus', h);
   },
 
-  // Settings backup
   exportSettings: (jsonString) => ipcRenderer.invoke('settings:export', jsonString),
   importSettings: ()           => ipcRenderer.invoke('settings:import'),
-  // Lock/unlock PiP window dragging
-  setPipLocked: (locked) => ipcRenderer.send('set-pip-locked', locked),
 });
