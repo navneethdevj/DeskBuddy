@@ -342,6 +342,36 @@ const Brain = (() => {
   // _runtimeSensitivity: temporary override that doesn't touch localStorage
   let   _runtimeSensitivity    = null;
 
+  // ── WAVE DETECTION REACTION ─────────────────────────────────────────────
+  // Triggered by perception.js waveDetected single-frame flag.
+  // Reaction is a multi-phase sequence: anticipation → excited recognition
+  // → bounce → happy wiggle → recovery. Gated by cooldown + DND + distress.
+  let _waveReactCooldownUntil  = 0;   // epoch ms — hard gate between reactions
+  let _waveReactActive         = false; // true while the reaction sequence runs
+  const WAVE_REACT_COOLDOWN_MS = 8000; // 8 s between wave reactions
+
+  // ── MULTI-FACE SOCIAL AWARENESS ─────────────────────────────────────────
+  // Tracks perception.faceCount transitions (stable-smoothed by perception.js).
+  // Triggers a group-curiosity reaction when additional faces appear and a
+  // cozy-relaxation reaction when they leave.
+  let _lastStableFaceCount        = 0;
+  let _multiFaceCooldownUntil     = 0;
+  let _multiFaceActive            = false;
+  const MULTI_FACE_COOLDOWN_MS    = 15000; // 15 s between multi-face reactions
+  const SINGLE_FACE_RELAX_DELAY   = 1200;  // ms after count drops before relaxing
+
+  // ── HEAD TILT MIRROR (perception-driven) ─────────────────────────────────
+  // Mirrors the user's head roll angle from perception.headTiltAngle onto the
+  // companion body via Companion.setRotation(). Uses a spring lerp so the
+  // movement feels organic rather than mechanical.
+  // Yields to _doHeadTilt() spontaneous behaviors via _spontaneousTiltActive.
+  let _headTiltMirrorCurrent   = 0;     // current lerped angle (degrees)
+  let _headTiltMirrorTarget    = 0;     // target from perception
+  let _spontaneousTiltActive   = false; // blocks mirror while spontaneous tilt runs
+  const HEAD_TILT_MIRROR_FACTOR = 0.28; // fraction of user tilt to mirror (subtle)
+  const HEAD_TILT_LERP          = 0.045; // spring lerp — soft & organic
+  const HEAD_TILT_DEAD_ZONE     = 2.5;  // degrees — ignore micro-tilt noise
+
   // ===== Activity Helpers =====
 
   function isMouseActive(now) {
@@ -399,6 +429,12 @@ const Brain = (() => {
 
     // Particle effects based on current emotion
     Particles.update(Emotion.getState());
+
+    // ── Perception-driven gesture events (wave, multi-face, head tilt) ──
+    // These run every rAF frame. wave flag is a single 66ms pulse — rAF
+    // catches it within the window. Head tilt lerps smoothly each frame.
+    _checkPerceptionGestures();
+    _applyHeadTiltMirror();
 
     var mouseActive = isMouseActive(now);
     var keyActive = isKeyActive(now);
@@ -2134,9 +2170,19 @@ const Brain = (() => {
 
   /** Tilt head to one side for a moment */
   function _doHeadTilt() {
+    _spontaneousTiltActive = true;
     const deg = (10 + Math.random() * 4) * (Math.random() > 0.5 ? 1 : -1);
     Companion.setRotation(deg);
-    setTimeout(() => Companion.setRotation(0), 1600 + Math.random() * 800);
+    // Force-apply: setRotation alone doesn't call applyPosition when no body lean is running
+    const pos = Companion.getPosition();
+    Companion.setPosition(pos.x, pos.y);
+    setTimeout(() => {
+      Companion.setRotation(0);
+      _headTiltMirrorCurrent = 0; // re-sync mirror baseline on reset
+      const pos2 = Companion.getPosition();
+      Companion.setPosition(pos2.x, pos2.y);
+      _spontaneousTiltActive = false;
+    }, 1600 + Math.random() * 800);
   }
 
   /** Add stretching class for the stretch animation */
@@ -2911,7 +2957,223 @@ const Brain = (() => {
     return Math.round((keys2s / 2) * 60 / 5);
   }
 
-  // ── DND (DO NOT DISTURB) STUB ─────────────────────────────────────────────
+  // ── PERCEPTION GESTURE EVENTS ────────────────────────────────────────────
+  //
+  // _checkPerceptionGestures() runs every rAF frame from tick().
+  // Handles: wave detection (single-frame flag), multi-face social awareness.
+  // Both use cooldowns + distress guards to never spam reactions.
+
+  function _checkPerceptionGestures() {
+    const p   = window.perception;
+    const now = Date.now();
+    if (!p) return;
+
+    // ── Wave detection ─────────────────────────────────────────────────
+    // perception.waveDetected is a one-cycle flag reset at the start of each
+    // perception eval (~66ms). rAF runs at 60fps so we catch it within the window.
+    if (p.waveDetected && !_waveReactActive && now > _waveReactCooldownUntil) {
+      _waveReactCooldownUntil = now + WAVE_REACT_COOLDOWN_MS;
+      _onWaveDetected();
+    }
+
+    // ── Multi-face social awareness ────────────────────────────────────
+    // faceCount is already temporally smoothed by perception.js — stable transitions only.
+    const fc = p.faceCount ?? 0;
+    if (fc !== _lastStableFaceCount) {
+      const wasMulti = _lastStableFaceCount >= 2;
+      const isMulti  = fc >= 2;
+      _lastStableFaceCount = fc;
+
+      if (isMulti && !wasMulti && now > _multiFaceCooldownUntil) {
+        _multiFaceCooldownUntil = now + MULTI_FACE_COOLDOWN_MS;
+        _multiFaceActive = true;
+        _onMultiFaceDetected(fc);
+      } else if (!isMulti && wasMulti) {
+        _multiFaceActive = false;
+        setTimeout(() => {
+          if (!window.perception || (window.perception.faceCount ?? 0) < 2) {
+            _onMultiFaceCleared();
+          }
+        }, SINGLE_FACE_RELAX_DELAY);
+      }
+    }
+  }
+
+  /**
+   * Perception-driven head tilt mirror.
+   * Lerps companion body rotation toward a fraction of the user's head roll.
+   * Yields to spontaneous _doHeadTilt() via _spontaneousTiltActive flag.
+   * Called every rAF frame — must be cheap (simple arithmetic + two DOM calls).
+   */
+  function _applyHeadTiltMirror() {
+    if (_spontaneousTiltActive) return;
+
+    const p           = window.perception;
+    const facePresent = window.cameraAvailable && p?.facePresent;
+
+    if (!facePresent) {
+      // Gently drift back to zero when face absent
+      if (Math.abs(_headTiltMirrorCurrent) > 0.08) {
+        _headTiltMirrorCurrent += (0 - _headTiltMirrorCurrent) * HEAD_TILT_LERP;
+        Companion.setRotation(_headTiltMirrorCurrent);
+        const pos = Companion.getPosition();
+        Companion.setPosition(pos.x, pos.y);
+      }
+      return;
+    }
+
+    const raw      = p.headTiltAngle || 0;
+    const filtered = Math.abs(raw) < HEAD_TILT_DEAD_ZONE ? 0 : raw;
+    _headTiltMirrorTarget = filtered * HEAD_TILT_MIRROR_FACTOR;
+
+    // Spring lerp — organic, never snaps, avoids jitter
+    _headTiltMirrorCurrent += (_headTiltMirrorTarget - _headTiltMirrorCurrent) * HEAD_TILT_LERP;
+
+    const rounded = Math.round(_headTiltMirrorCurrent * 100) / 100;
+    Companion.setRotation(rounded);
+    // Force-apply: setRotation alone does not call applyPosition().
+    // Calling setPosition with current values triggers applyPosition() cleanly.
+    const pos = Companion.getPosition();
+    Companion.setPosition(pos.x, pos.y);
+  }
+
+  /**
+   * Wave reaction — multi-phase sequence that feels alive and socially aware.
+   *
+   * Phase 1 (0 ms)    — Anticipation saccade (eyes notice the gesture)
+   * Phase 2 (80 ms)   — Excited recognition + look toward hand + whisper + sound
+   * Phase 3 (600 ms)  — Excited bounce + particle burst
+   * Phase 4 (1200 ms) — Happy shiver + double blink (embodied joy)
+   * Phase 5 (2000 ms) — Social follow-up whisper (50% chance)
+   * Phase 6 (2800 ms) — Recovery — gaze resets, flag clears
+   */
+  function _onWaveDetected() {
+    if (_dndActive) return;
+    const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
+    if (blocked.includes(window._lastEmotion)) { _waveReactActive = false; return; }
+
+    _waveReactActive = true;
+    const el = Companion.getElement();
+
+    // Phase 1 — tiny anticipation saccade
+    if (el) {
+      el.classList.add('saccade');
+      setTimeout(() => el && el.classList.remove('saccade'), 220);
+    }
+
+    // Phase 2 — excited recognition
+    setTimeout(() => {
+      if (typeof Emotion !== 'undefined') Emotion.preview('excited', 3200);
+
+      const c    = Companion.getCenter();
+      const side = (Math.random() > 0.5 ? 1 : -1);
+      Companion.lookAt(c.x + side * 110, c.y - 200);
+
+      const waveMsgs = [
+        'oh!! hi!! 👋', '*waves back excitedly*', 'HI HI HI!!',
+        'you waved at me!! ♡', '(*≧▽≦) !!!', 'hello!! ♡',
+        '*waves tiny paws*', 'you noticed me!!', 'heyyy~!! 👋',
+        '*beams with joy*', 'HIIII!!', '!!!! hi ♡',
+        'eeeee you waved!', '( ◕▽◕)つ 👋',
+        '*happy scream* HI!!', 'i see you!! 👋♡',
+        'oh oh oh hi!!', '*enthusiastically waves back*',
+      ];
+      showWhisper(waveMsgs[Math.floor(Math.random() * waveMsgs.length)], 4000);
+
+      if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
+    }, 80);
+
+    // Phase 3 — excited bounce + particles
+    setTimeout(() => {
+      if (el) {
+        el.classList.add('bouncing');
+        setTimeout(() => el && el.classList.remove('bouncing'), 700);
+      }
+      if (typeof Particles !== 'undefined') Particles.burst('happy', 9);
+    }, 600);
+
+    // Phase 4 — happy shiver + double blink
+    setTimeout(() => {
+      if (el) {
+        el.classList.add('shiver');
+        setTimeout(() => el && el.classList.remove('shiver'), 420);
+      }
+      _doDoubleBlink();
+    }, 1200);
+
+    // Phase 5 — social follow-up (50%)
+    setTimeout(() => {
+      if (Math.random() < 0.50) {
+        const followMsgs = [
+          'i love when you do that~', '...made my day ♡',
+          '*still smiling*', '...hi again ♡', 'do it again~',
+          '*happy tail wag*', '...you\'re the best.',
+          'i saw that~♡', '...hello to you too ♡',
+        ];
+        showWhisper(followMsgs[Math.floor(Math.random() * followMsgs.length)], 3000);
+      }
+    }, 2000);
+
+    // Phase 6 — recovery
+    setTimeout(() => {
+      Companion.resetLook();
+      _waveReactActive = false;
+    }, 2800);
+  }
+
+  /**
+   * Multi-face detected — companion becomes socially curious and scans the room.
+   */
+  function _onMultiFaceDetected(count) {
+    if (_dndActive) return;
+    const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
+    if (blocked.includes(window._lastEmotion)) return;
+
+    if (typeof Emotion !== 'undefined') Emotion.preview('curious', 4500);
+
+    const c = Companion.getCenter();
+    Companion.lookAt(c.x - 240, c.y - 40);
+    setTimeout(() => Companion.lookAt(c.x + 240, c.y - 20), 700);
+    setTimeout(() => Companion.lookAt(c.x + 60,  c.y - 60), 1500);
+    setTimeout(() => Companion.resetLook(), 2400);
+
+    const msgs = count >= 3 ? [
+      'so many people! ♡', 'a whole crowd~', '*looks around excitedly*',
+      'hello everyone!! ♡', 'ooh~ lots of people!', '*curious scanning*',
+      'oh wow, you brought friends!', 'more the merrier~',
+    ] : [
+      'oh! someone else is here~', '*notices the new face*', 'hello new friend~',
+      '...two of you? ♡', '*perks up* who\'s this?', 'ooh a visitor~',
+      'hi both of you ♡', '...oh! company!',
+    ];
+    setTimeout(() => {
+      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 4000);
+    }, 300);
+
+    if (typeof Sounds !== 'undefined') Sounds.play('curious_ooh');
+  }
+
+  /**
+   * Multi-face cleared — companion relaxes back to cozy one-on-one mode.
+   */
+  function _onMultiFaceCleared() {
+    if (_dndActive) return;
+    const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled',
+                     'love', 'being_patted', 'cozy'];
+    if (blocked.includes(window._lastEmotion)) return;
+
+    const relaxMsgs = [
+      '...just us again ♡', '*settles back down*', 'cozy again~',
+      '...back to normal ♡', '*sighs contentedly*', 'nice and quiet again~',
+      '...alone together ♡', '*cuddles closer*', '...it\'s just you now ♡',
+    ];
+    if (Math.random() < 0.70) {
+      showWhisper(relaxMsgs[Math.floor(Math.random() * relaxMsgs.length)], 3500);
+    }
+    if (typeof Emotion !== 'undefined') Emotion.preview('cozy', 2500);
+  }
+
+  // ── DND (DO NOT DISTURB) ─────────────────────────────────────────────────
 
   function setDNDActive(bool) {
     _dndActive = !!bool;
@@ -2933,6 +3195,7 @@ const Brain = (() => {
   /** Public wrappers so settings preview can trigger tear side-effects */
   function startTearEffect() { _startTears(); }
   function stopTearEffect()  { _stopTears();  }
+
 
   /**
    * Set how frequently the buddy does spontaneous idle behaviors.
