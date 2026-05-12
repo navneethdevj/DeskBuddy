@@ -590,7 +590,10 @@
                 </select>
               </div>
               <div class="settings-row">
-                <div class="settings-row-label">Phone detection</div>
+                <div class="settings-col">
+                  <div class="settings-row-label">Phone detection</div>
+                  <div class="settings-row-sublabel">Camera watches for your phone on screen</div>
+                </div>
                 <label class="settings-toggle">
                   <input type="checkbox" id="phone-detection-toggle">
                   <span class="settings-toggle-track"></span>
@@ -1749,6 +1752,8 @@
     window.FilesetResolver = exports.FilesetResolver;
     // HandLandmarker — lazy-initialised by camera.js for wave gesture detection
     window.HandLandmarker  = exports.HandLandmarker;
+    // ObjectDetector — lazy-initialised by camera.js for phone detection
+    window.ObjectDetector  = exports.ObjectDetector;
   </script>
 
   <script src="components/emotion.js"></script>
