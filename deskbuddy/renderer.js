@@ -1427,6 +1427,11 @@ const ThemeCanvas = (() => {
         // Immediate companion reaction — only on a fresh start (not resume from pause)
         if (oldState === 'IDLE') _fireSessionStartAnim();
 
+        // Reset phone escalation counter so first detection this session is always "first"
+        if (oldState === 'IDLE') {
+          if (typeof Brain !== 'undefined' && Brain.resetPhoneCount) Brain.resetPhoneCount();
+        }
+
         // Initialize distraction budget display
         if (oldState === 'IDLE') {
           const budget = Settings.get('distractionBudget') || 0;
