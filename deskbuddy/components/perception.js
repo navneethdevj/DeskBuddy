@@ -172,6 +172,16 @@ const Perception = (() => {
   let _waveHistory          = [];    // [{x, t}]
   let _waveLastDetectedAt   = 0;
 
+  // ── Phone confidence — multi-signal rolling state ──────────────────────────
+  // Smoothed confidence accumulates over time to prevent single-frame spikes.
+  // _phoneEma: exponential moving average of the raw per-frame score (0–95).
+  // _phoneHitBuffer: rolling 8-slot boolean — how many recent frames saw "cell phone".
+  // _phonePersistMs: continuous ms above detection threshold (anti-flicker gate).
+  let _phoneEma           = 0;
+  let _phoneHitBuffer     = [];       // rolling array of boolean hits
+  const PHONE_HIT_WINDOW  = 8;        // slots (one per OBJ_FPS frame = 1.6 s window)
+  const PHONE_EMA_ALPHA   = 0.25;     // smoothing factor — higher = faster response
+
   function _detectWave(handResults, now) {
     if (!handResults?.landmarks?.length) {
       // Brief hand dropout — preserve history but don't add new point
@@ -237,6 +247,7 @@ const Perception = (() => {
     attentionScore: 50, userState: 'NoFace', timeInStateMs: 0,
     faceCount: 0, multiPersonPresent: false,
     handPresent: false, handCount: 0, waveDetected: false,
+    phoneConfidence: 0, phoneDetected: false,
   };
 
   // ── Main evaluation loop ────────────────────────────────────────────────────
@@ -260,9 +271,12 @@ const Perception = (() => {
     // Always evaluate hand data regardless of face state
     _evaluateHands(now);
 
-    if (!has) { _handleNoFace(dt, now); return; }
-    nofaceMs = 0;
-    _processLandmarks(r, dt, now);
+    if (!has) { _handleNoFace(dt, now); }
+    else      { _processLandmarks(r, dt, now); }
+
+    // ── Phone confidence — runs every eval cycle regardless of face state ─────
+    // Uses cached window.objResults (populated by camera.js at 5 fps).
+    _updatePhoneConfidence();
   }
 
   function _evaluateHands(now) {
@@ -529,6 +543,100 @@ const Perception = (() => {
 
   function _bs(cats, name) {
     return cats.find(c => c.categoryName === name)?.score ?? 0;
+  }
+
+  // ── Phone confidence — true multi-signal pipeline ──────────────────────────
+  //
+  // Signal weights (max total 95):
+  //   1. Object detection  — 45  (EfficientDet "cell phone" hit, score-scaled)
+  //   2. Gaze + posture    — 20  (head bowed AND gaze down — combined only)
+  //   3. Spatial proximity — 20  (phone bounding-box near face centroid)
+  //   4. Inactivity        — 10  (no keyboard/mouse for 8 s)
+  //
+  // Signals 2-4 are SUPPORTING signals — they never independently trigger
+  // detection. Signal 1 (object) is the primary gate.
+  //
+  // _phoneEma: EMA of raw per-cycle score → damps flicker.
+  // _phoneHitBuffer: rolling hit-rate of object detections → temporal evidence.
+  // Final phoneConfidence = EMA-smoothed output, 0–95.
+  // phoneDetected = phoneConfidence >= 45  (requires solid object evidence).
+
+  function _updatePhoneConfidence() {
+    const p       = window.perception;
+    const objs    = window.objResults || [];
+
+    // ── Signal 1: object detection (weight 45) ──────────────────────────────
+    let raw = 0;
+
+    const phoneHit = objs.find(d =>
+      d.categories?.some(c => c.categoryName === 'cell phone' && c.score > 0.25)
+    );
+
+    // Update hit buffer — true/false per cycle (camera populates at 5fps,
+    // perception runs at 15fps, so many cycles share the same objResults;
+    // we record a boolean hit per EVAL cycle for temporal density).
+    _phoneHitBuffer.push(!!phoneHit);
+    if (_phoneHitBuffer.length > PHONE_HIT_WINDOW) _phoneHitBuffer.shift();
+
+    // Hit rate: fraction of recent cycles that had a detection
+    const hitRate = _phoneHitBuffer.filter(Boolean).length / _phoneHitBuffer.length;
+
+    if (phoneHit) {
+      const sc = phoneHit.categories.find(c => c.categoryName === 'cell phone')?.score || 0;
+      // Score-scale to 0–45; multiply by hit-rate for temporal persistence
+      raw += Math.min(45, Math.round(sc / 0.40 * 45) * hitRate);
+
+      // ── Signal 3: spatial proximity (weight 20) ─────────────────────────
+      // Require phone bounding-box center within 0.30 of face centroid.
+      // Suppresses TVs / monitors / background rectangles.
+      if (p.facePresent && phoneHit.boundingBox) {
+        const bb  = phoneHit.boundingBox;
+        const vid = document.getElementById('camera-feed');
+        const vW  = vid?.videoWidth  || 640;
+        const vH  = vid?.videoHeight || 480;
+        const bx  = (bb.originX + bb.width  / 2) / vW;
+        const by  = (bb.originY + bb.height / 2) / vH;
+        const dist = Math.hypot(bx - (p.faceX || 0.5), by - (p.faceY || 0.5));
+        if (dist < 0.30) raw += 20;
+        // Partial credit for objects in the lower-central region (phone held below face)
+        else if (dist < 0.55 && by > (p.faceY || 0.5)) raw += 8;
+      }
+    } else {
+      // Rapid decay when no object detected — don't let stale confidence linger
+      raw = 0;
+    }
+
+    // ── Signal 2: gaze + posture (weight 20) ────────────────────────────────
+    // Both conditions must hold: head bowed AND iris gaze downward.
+    // This signal STRENGTHENS object evidence — never independently fires.
+    // gazeY > 0.25 = iris looking downward (positive = downward in our coords).
+    if (p.facePresent && p.headPitch > 15 && p.gazeY > 0.25) {
+      raw += 20;
+    }
+
+    // ── Signal 4: inactivity (weight 10) ────────────────────────────────────
+    // Keyboard + mouse silence for 8 s → slightly more likely to be on phone.
+    // Gentle boost only — cannot carry the score above threshold alone.
+    const tKey   = window._lastKeyTime   || 0;
+    const tMouse = window._lastMouseTime || 0;
+    const silence = Date.now() - Math.max(tKey, tMouse);
+    if (silence > 8000) raw += 10;
+
+    // ── EMA smoothing ───────────────────────────────────────────────────────
+    // Alpha 0.25: new value contributes 25%, previous 75% → ~4-cycle lag.
+    // When raw drops to 0 (phone gone), faster decay: alpha 0.40.
+    const alpha = raw === 0 ? 0.40 : PHONE_EMA_ALPHA;
+    _phoneEma   = alpha * raw + (1 - alpha) * _phoneEma;
+
+    // Clamp and write
+    const conf = Math.min(95, Math.round(_phoneEma));
+    window.perception.phoneConfidence = conf;
+    // Detection threshold = 45: requires solid object signal + at least one support signal.
+    // Hysteresis: once detected, hold until confidence drops below 30 (prevents flicker).
+    const wasDetected = window.perception.phoneDetected;
+    window.perception.phoneDetected = wasDetected
+      ? conf >= 30    // hysteresis low threshold — holds detection state
+      : conf >= 45;   // entry threshold — requires solid evidence
   }
 
   return { init };
