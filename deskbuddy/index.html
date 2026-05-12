@@ -14,10 +14,6 @@
       <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⛶</button>
     </div>
   </div>
-  <!-- PiP border ring — fixed overlay matching the pip window shape -->
-  <div id="pip-border-ring" aria-hidden="true"></div>
-  <!-- PiP lock indicator — shows when window dragging is disabled -->
-  <div id="pip-lock-indicator" aria-hidden="true"><span class="pip-lock-icon">🔒</span> locked</div>
   <div id="status-bar"></div>
 
   <!-- Compact mode: click to expand to full-screen -->
@@ -675,35 +671,35 @@
       <hr class="settings-divider">
 
       <!-- ════════════════════════════════════════════════
-           GROUP 5b: PiP & Overlay  (all PiP settings consolidated)
+           GROUP 5b: PiP & Overlay
            ════════════════════════════════════════════════ -->
       <div class="settings-group">
         <button class="settings-group-title" aria-expanded="false">
           <span class="settings-section-icon">&#9633;</span>PiP &amp; Overlay<span class="settings-chevron" aria-hidden="true"></span>
         </button>
         <div class="settings-group-body">
-          <p class="pip-settings-group-note">Compact overlay window — shown when you switch apps.</p>
+          <p class="pip-settings-group-note">Compact overlay — shown when you switch apps.</p>
 
           <!-- ✦ VISUAL PRESETS -->
           <div class="settings-subsection">
             <button class="settings-subsection-title" aria-expanded="true">
               <span class="settings-subsection-icon">✦</span>Visual Presets<span class="settings-chevron" aria-hidden="true"></span>
             </button>
-            <div class="settings-subsection-body expanded">
-              <p class="pip-section-note">One-tap styles — applies border, glow, and colour together.</p>
+            <div class="settings-subsection-body">
+              <p class="pip-section-note">Each preset has a unique border style, colour, and animation speed.</p>
               <div class="pip-preset-grid" id="pip-preset-grid">
-                <button class="pip-preset-chip active" data-preset="default"><span class="pip-preset-icon">🌙</span>Default</button>
-                <button class="pip-preset-chip" data-preset="cozy"><span class="pip-preset-icon">🍂</span>Cozy</button>
-                <button class="pip-preset-chip" data-preset="neon"><span class="pip-preset-icon">⚡</span>Neon</button>
-                <button class="pip-preset-chip" data-preset="cyber"><span class="pip-preset-icon">🤖</span>Cyber</button>
-                <button class="pip-preset-chip" data-preset="dreamy"><span class="pip-preset-icon">🌸</span>Dreamy</button>
-                <button class="pip-preset-chip" data-preset="retro"><span class="pip-preset-icon">🕹</span>Retro</button>
-                <button class="pip-preset-chip" data-preset="rgb"><span class="pip-preset-icon">🌈</span>RGB</button>
-                <button class="pip-preset-chip" data-preset="glass"><span class="pip-preset-icon">🫧</span>Glass</button>
-                <button class="pip-preset-chip" data-preset="vaporwave"><span class="pip-preset-icon">🌊</span>Vapor</button>
-                <button class="pip-preset-chip" data-preset="pastel"><span class="pip-preset-icon">🎀</span>Pastel</button>
-                <button class="pip-preset-chip" data-preset="sleepy"><span class="pip-preset-icon">💤</span>Sleepy</button>
-                <button class="pip-preset-chip" data-preset="minimal"><span class="pip-preset-icon">◻</span>Minimal</button>
+                <button class="pip-preset-chip active" data-preset="default">   <span class="pip-preset-icon">🌙</span>Default</button>
+                <button class="pip-preset-chip" data-preset="cozy">             <span class="pip-preset-icon">🍂</span>Cozy</button>
+                <button class="pip-preset-chip" data-preset="neon">             <span class="pip-preset-icon">⚡</span>Neon</button>
+                <button class="pip-preset-chip" data-preset="cyber">            <span class="pip-preset-icon">🤖</span>Cyber</button>
+                <button class="pip-preset-chip" data-preset="pastel">           <span class="pip-preset-icon">🎀</span>Pastel</button>
+                <button class="pip-preset-chip" data-preset="retro">            <span class="pip-preset-icon">🕹</span>Retro</button>
+                <button class="pip-preset-chip" data-preset="vaporwave">        <span class="pip-preset-icon">🌊</span>Vapor</button>
+                <button class="pip-preset-chip" data-preset="cat">              <span class="pip-preset-icon">🐱</span>Cat</button>
+                <button class="pip-preset-chip" data-preset="sleepy">           <span class="pip-preset-icon">💤</span>Sleepy</button>
+                <button class="pip-preset-chip" data-preset="minimal">          <span class="pip-preset-icon">◻</span>Minimal</button>
+                <button class="pip-preset-chip" data-preset="holographic">      <span class="pip-preset-icon">🌀</span>Holo</button>
+                <button class="pip-preset-chip" data-preset="bubble">           <span class="pip-preset-icon">🫧</span>Bubble</button>
               </div>
             </div>
           </div>
@@ -713,7 +709,7 @@
             <button class="settings-subsection-title" aria-expanded="true">
               <span class="settings-subsection-icon">🎨</span>Appearance<span class="settings-chevron" aria-hidden="true"></span>
             </button>
-            <div class="settings-subsection-body expanded">
+            <div class="settings-subsection-body">
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Background opacity</div>
@@ -744,99 +740,84 @@
               <span class="settings-subsection-icon">✨</span>Border &amp; Glow<span class="settings-chevron" aria-hidden="true"></span>
             </button>
             <div class="settings-subsection-body">
-              <p class="pip-section-note">Pick a border style then fine-tune colours and intensity.</p>
+              <p class="pip-section-note">Border is drawn on top of the window, matching its shape perfectly.</p>
 
-              <!-- Border style grid -->
-              <div class="settings-row-label" style="margin-bottom:5px;">Border style</div>
+              <!-- Border style chips -->
+              <div class="settings-row-label" style="margin-bottom:5px;font-size:10.5px;">Border style</div>
               <div class="pip-border-style-grid" id="pip-border-style-grid">
-                <button class="pip-border-style-chip active" data-style="glow">    <span class="pip-border-chip-icon">💫</span>Glow</button>
-                <button class="pip-border-style-chip" data-style="neon">           <span class="pip-border-chip-icon">⚡</span>Neon</button>
-                <button class="pip-border-style-chip" data-style="soft">           <span class="pip-border-chip-icon">🌫</span>Soft</button>
-                <button class="pip-border-style-chip" data-style="pulse">          <span class="pip-border-chip-icon">💗</span>Pulse</button>
-                <button class="pip-border-style-chip" data-style="cyber">          <span class="pip-border-chip-icon">🤖</span>Cyber</button>
-                <button class="pip-border-style-chip" data-style="pastel">         <span class="pip-border-chip-icon">🌸</span>Pastel</button>
-                <button class="pip-border-style-chip" data-style="rgb">            <span class="pip-border-chip-icon">🌈</span>RGB</button>
-                <button class="pip-border-style-chip" data-style="glass">          <span class="pip-border-chip-icon">🫧</span>Glass</button>
-                <button class="pip-border-style-chip" data-style="retro">          <span class="pip-border-chip-icon">🕹</span>Retro</button>
-                <button class="pip-border-style-chip" data-style="dreamy">         <span class="pip-border-chip-icon">🌙</span>Dreamy</button>
-                <button class="pip-border-style-chip" data-style="aura">           <span class="pip-border-chip-icon">🌟</span>Aura</button>
-                <button class="pip-border-style-chip" data-style="vaporwave">      <span class="pip-border-chip-icon">🌊</span>Vapor</button>
-                <button class="pip-border-style-chip" data-style="cozy">           <span class="pip-border-chip-icon">🍂</span>Cozy</button>
-                <button class="pip-border-style-chip" data-style="minimal">        <span class="pip-border-chip-icon">◻</span>Minimal</button>
-                <button class="pip-border-style-chip" data-style="pixel">          <span class="pip-border-chip-icon">🟪</span>Pixel</button>
-                <button class="pip-border-style-chip" data-style="dotted">         <span class="pip-border-chip-icon">·····</span>Dotted</button>
-                <button class="pip-border-style-chip" data-style="bubble">         <span class="pip-border-chip-icon">🫧</span>Bubble</button>
-                <button class="pip-border-style-chip" data-style="holographic">    <span class="pip-border-chip-icon">🌀</span>Holo</button>
-                <button class="pip-border-style-chip" data-style="cat">            <span class="pip-border-chip-icon">🐱</span>Cat</button>
-                <button class="pip-border-style-chip" data-style="none">           <span class="pip-border-chip-icon">✕</span>None</button>
-                <button class="pip-border-style-chip" data-style="solid">          <span class="pip-border-chip-icon">▭</span>Solid</button>
-                <button class="pip-border-style-chip" data-style="blending">       <span class="pip-border-chip-icon">🌀</span>Blend</button>
-                <button class="pip-border-style-chip" data-style="faded">          <span class="pip-border-chip-icon">🌫</span>Faded</button>
-                <button class="pip-border-style-chip" data-style="vaporwave">      <span class="pip-border-chip-icon">🌊</span>Vapor</button>
+                <button class="pip-border-style-chip active" data-bstyle="glow">      <span>💫</span>Glow</button>
+                <button class="pip-border-style-chip" data-bstyle="neon">             <span>⚡</span>Neon</button>
+                <button class="pip-border-style-chip" data-bstyle="pulse">            <span>💗</span>Pulse</button>
+                <button class="pip-border-style-chip" data-bstyle="solid">            <span>▭</span>Solid</button>
+                <button class="pip-border-style-chip" data-bstyle="dotted">           <span>•••</span>Dotted</button>
+                <button class="pip-border-style-chip" data-bstyle="dashed">           <span>╌╌</span>Dashed</button>
+                <button class="pip-border-style-chip" data-bstyle="cozy">             <span>🍂</span>Cozy</button>
+                <button class="pip-border-style-chip" data-bstyle="pastel">           <span>🌸</span>Pastel</button>
+                <button class="pip-border-style-chip" data-bstyle="retro">            <span>🕹</span>Retro</button>
+                <button class="pip-border-style-chip" data-bstyle="cyber">            <span>🤖</span>Cyber</button>
+                <button class="pip-border-style-chip" data-bstyle="vaporwave">        <span>🌊</span>Vapor</button>
+                <button class="pip-border-style-chip" data-bstyle="holographic">      <span>🌀</span>Holo</button>
+                <button class="pip-border-style-chip" data-bstyle="pixel">            <span>🟪</span>Pixel</button>
+                <button class="pip-border-style-chip" data-bstyle="bubble">           <span>🫧</span>Bubble</button>
+                <button class="pip-border-style-chip" data-bstyle="cat">              <span>🐱</span>Cat</button>
+                <button class="pip-border-style-chip" data-bstyle="faded">            <span>🌫</span>Faded</button>
+                <button class="pip-border-style-chip" data-bstyle="minimal">          <span>◻</span>Minimal</button>
+                <button class="pip-border-style-chip" data-bstyle="none">             <span>✕</span>None</button>
               </div>
 
-              <!-- Colours -->
-              <div class="settings-row-label" style="margin-top:10px;margin-bottom:4px;">Colours</div>
+              <!-- Dual color pickers -->
+              <div class="settings-row-label" style="margin-top:10px;margin-bottom:4px;font-size:10.5px;">Colours</div>
               <div class="pip-dual-color-wrap">
                 <div class="pip-dual-color-col">
                   <div class="pip-dual-color-col-label">Primary</div>
-                  <input type="color" id="pip-border-color1-input" value="#8a93ff">
+                  <input type="color" id="pip-border-color1" value="#8a93ff">
                 </div>
                 <div class="pip-dual-color-col">
                   <div class="pip-dual-color-col-label">Secondary</div>
-                  <input type="color" id="pip-border-color2-input" value="#ff79b0">
+                  <input type="color" id="pip-border-color2" value="#ff79b0">
                 </div>
               </div>
-
-              <!-- Quick colour swatches -->
-              <div class="pip-color-row" id="pip-border-color-swatches" style="margin-top:6px;">
-                <button class="pip-color-swatch-btn" data-color1="#8a93ff" data-color2="#b0b8ff" style="background:#8a93ff" title="Periwinkle"></button>
-                <button class="pip-color-swatch-btn" data-color1="#ff79b0" data-color2="#ffb3d1" style="background:#ff79b0" title="Rose"></button>
-                <button class="pip-color-swatch-btn" data-color1="#00f5d4" data-color2="#00bbf9" style="background:#00f5d4" title="Teal"></button>
-                <button class="pip-color-swatch-btn" data-color1="#ffdd57" data-color2="#ff9f0a" style="background:#ffdd57" title="Gold"></button>
-                <button class="pip-color-swatch-btn" data-color1="#c084fc" data-color2="#f0abfc" style="background:#c084fc" title="Violet"></button>
-                <button class="pip-color-swatch-btn" data-color1="#34d399" data-color2="#6ee7b7" style="background:#34d399" title="Mint"></button>
-                <button class="pip-color-swatch-btn" data-color1="#fb923c" data-color2="#fde68a" style="background:#fb923c" title="Amber"></button>
-                <button class="pip-color-swatch-btn" data-color1="#ffffff" data-color2="#dde8ff" style="background:#ffffff" title="White"></button>
+              <!-- Quick swatches -->
+              <div class="pip-swatch-row" id="pip-swatches">
+                <button class="pip-swatch" style="background:#8a93ff" data-c1="#8a93ff" data-c2="#b0b8ff" title="Periwinkle"></button>
+                <button class="pip-swatch" style="background:#ff79b0" data-c1="#ff79b0" data-c2="#ffb3d1" title="Rose"></button>
+                <button class="pip-swatch" style="background:#00f5d4" data-c1="#00f5d4" data-c2="#00bbf9" title="Teal"></button>
+                <button class="pip-swatch" style="background:#ffdd57" data-c1="#ffdd57" data-c2="#ff9f0a" title="Gold"></button>
+                <button class="pip-swatch" style="background:#c084fc" data-c1="#c084fc" data-c2="#f0abfc" title="Violet"></button>
+                <button class="pip-swatch" style="background:#34d399" data-c1="#34d399" data-c2="#6ee7b7" title="Mint"></button>
+                <button class="pip-swatch" style="background:#fb923c" data-c1="#fb923c" data-c2="#fde68a" title="Amber"></button>
+                <button class="pip-swatch" style="background:#ffffff" data-c1="#ffffff" data-c2="#dde8ff" title="White"></button>
               </div>
 
-              <!-- Thickness -->
+              <!-- Sliders -->
               <div class="settings-row" style="margin-top:8px;">
                 <div>
                   <div class="settings-row-label">Thickness</div>
-                  <div class="settings-row-sublabel" id="pip-border-thickness-sublabel">2 px</div>
+                  <div class="settings-row-sublabel" id="pip-border-thick-lbl">2 px</div>
                 </div>
-                <input type="range" id="pip-border-thickness-slider" class="settings-slider" min="0" max="12" step="1" value="2">
+                <input type="range" id="pip-border-thick-slider" class="settings-slider" min="1" max="10" step="1" value="2">
               </div>
-
-              <!-- Opacity -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Border opacity</div>
-                  <div class="settings-row-sublabel" id="pip-border-opacity-sublabel">85%</div>
+                  <div class="settings-row-sublabel" id="pip-border-opa-lbl">85%</div>
                 </div>
-                <input type="range" id="pip-border-opacity-slider" class="settings-slider" min="0" max="100" step="5" value="85">
+                <input type="range" id="pip-border-opa-slider" class="settings-slider" min="0" max="100" step="5" value="85">
               </div>
-
-              <!-- Glow size -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Glow intensity</div>
-                  <div class="settings-row-sublabel" id="pip-glow-size-sublabel">60%</div>
+                  <div class="settings-row-sublabel" id="pip-glow-size-lbl">55%</div>
                 </div>
-                <input type="range" id="pip-glow-size-slider" class="settings-slider" min="0" max="100" step="5" value="60">
+                <input type="range" id="pip-glow-size-slider" class="settings-slider" min="0" max="100" step="5" value="55">
               </div>
-
-              <!-- Glow softness -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Glow softness</div>
-                  <div class="settings-row-sublabel" id="pip-glow-softness-sublabel">50%</div>
+                  <div class="settings-row-sublabel" id="pip-glow-soft-lbl">50%</div>
                 </div>
-                <input type="range" id="pip-glow-softness-slider" class="settings-slider" min="0" max="100" step="5" value="50">
+                <input type="range" id="pip-glow-soft-slider" class="settings-slider" min="0" max="100" step="5" value="50">
               </div>
-
-              <!-- Hover glow toggle -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Hover glow</div>
@@ -847,15 +828,13 @@
                   <span class="settings-toggle-track"></span>
                 </label>
               </div>
-
-              <!-- Emotion border sync -->
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Emotion glow sync</div>
-                  <div class="settings-row-sublabel">Glow colours react to buddy mood</div>
+                  <div class="settings-row-sublabel">Border colour follows buddy mood</div>
                 </div>
                 <label class="settings-toggle">
-                  <input type="checkbox" id="pip-emotion-border-sync-toggle" checked>
+                  <input type="checkbox" id="pip-emotion-sync-toggle" checked>
                   <span class="settings-toggle-track"></span>
                 </label>
               </div>
@@ -871,7 +850,6 @@
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Border animation</div>
-                  <div class="settings-row-sublabel">Enable animated border effects</div>
                 </div>
                 <label class="settings-toggle">
                   <input type="checkbox" id="pip-anim-enabled-toggle" checked>
@@ -881,19 +859,9 @@
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Speed</div>
-                  <div class="settings-row-sublabel" id="pip-anim-speed-sublabel">Normal</div>
+                  <div class="settings-row-sublabel" id="pip-anim-speed-lbl">Normal</div>
                 </div>
-                <div class="pip-anim-row-wrap">
-                  <input type="range" id="pip-anim-speed-slider" class="settings-slider" min="10" max="200" step="10" value="50">
-                  <div class="pip-anim-speed-labels"><span>Slow</span><span>Fast</span></div>
-                </div>
-              </div>
-              <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">Strength</div>
-                  <div class="settings-row-sublabel" id="pip-anim-strength-sublabel">50%</div>
-                </div>
-                <input type="range" id="pip-anim-strength-slider" class="settings-slider" min="0" max="100" step="5" value="50">
+                <input type="range" id="pip-anim-speed-slider" class="settings-slider" min="10" max="200" step="10" value="50">
               </div>
             </div>
           </div>
@@ -903,7 +871,7 @@
             <button class="settings-subsection-title" aria-expanded="true">
               <span class="settings-subsection-icon">🔒</span>Window<span class="settings-chevron" aria-hidden="true"></span>
             </button>
-            <div class="settings-subsection-body expanded">
+            <div class="settings-subsection-body">
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Always on top</div>
@@ -927,17 +895,44 @@
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Snap to corner</div>
-                  <div class="settings-row-sublabel">Auto-snap to nearest corner on release</div>
+                  <div class="settings-row-sublabel">Auto-snap on drag release</div>
                 </div>
                 <label class="toggle-switch">
                   <input type="checkbox" id="pip-snap-toggle" checked>
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- 📍 SNAP TO POSITION -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">📍</span>Snap to Position<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
+              <p class="pip-section-note">Instantly move the overlay to a screen position.</p>
+              <div class="pip-corner-picker" id="pip-corner-picker">
+                <button class="pip-corner-chip" data-corner="top-left"    title="Top-Left">↖</button>
+                <button class="pip-corner-chip" data-corner="top-center"  title="Top-Center">↑</button>
+                <button class="pip-corner-chip" data-corner="top-right"   title="Top-Right">↗</button>
+                <button class="pip-corner-chip" data-corner="bottom-left" title="Bottom-Left">↙</button>
+                <div></div>
+                <button class="pip-corner-chip" data-corner="bottom-right" title="Bottom-Right">↘</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 🔁 AUTO-COLLAPSE -->
+          <div class="settings-subsection">
+            <button class="settings-subsection-title" aria-expanded="false">
+              <span class="settings-subsection-icon">🔁</span>Auto-Collapse<span class="settings-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="settings-subsection-body">
               <div class="settings-row">
                 <div class="settings-row-info">
                   <div class="settings-row-label">Auto-collapse on app switch</div>
-                  <div class="settings-row-sublabel">Switch to compact overlay when you leave</div>
+                  <div class="settings-row-sublabel">Switch to overlay when you leave</div>
                 </div>
                 <label class="settings-toggle">
                   <input type="checkbox" id="auto-pip-toggle">
@@ -969,30 +964,12 @@
               <div class="settings-row" id="auto-pip-skip-session-row">
                 <div class="settings-row-info">
                   <div class="settings-row-label">Stay full during sessions</div>
-                  <div class="settings-row-sublabel">Don&#x2019;t collapse while a session is active</div>
+                  <div class="settings-row-sublabel">Don&#x2019;t collapse while session is active</div>
                 </div>
                 <label class="settings-toggle">
                   <input type="checkbox" id="auto-pip-skip-session-toggle">
                   <span class="settings-toggle-track"></span>
                 </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- 📍 POSITION -->
-          <div class="settings-subsection">
-            <button class="settings-subsection-title" aria-expanded="false">
-              <span class="settings-subsection-icon">📍</span>Position<span class="settings-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="settings-subsection-body">
-              <p class="pip-section-note">Snap buddy to a screen corner instantly.</p>
-              <div class="pip-corner-grid" id="pip-corner-grid">
-                <button class="pip-corner-btn" data-corner="top-left">↖ TL</button>
-                <button class="pip-corner-btn" data-corner="top-center">↑ TC</button>
-                <button class="pip-corner-btn" data-corner="top-right">↗ TR</button>
-                <button class="pip-corner-btn" data-corner="bottom-left">↙ BL</button>
-                <div></div>
-                <button class="pip-corner-btn" data-corner="bottom-right">↘ BR</button>
               </div>
             </div>
           </div>
@@ -1795,5 +1772,6 @@
   <script src="ui/history-panel.js"></script>
   <script src="components/iris-color.js"></script>
   <script src="renderer.js"></script>
+  <div id="pip-lock-badge" aria-hidden="true">🔒 locked</div>
 </body>
 </html>
