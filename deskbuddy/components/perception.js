@@ -178,9 +178,10 @@ const Perception = (() => {
   // _phoneHitBuffer: rolling 8-slot boolean — how many recent frames saw "cell phone".
   // _phonePersistMs: continuous ms above detection threshold (anti-flicker gate).
   let _phoneEma           = 0;
-  let _phoneHitBuffer     = [];       // rolling array of boolean hits
-  const PHONE_HIT_WINDOW  = 8;        // slots (one per OBJ_FPS frame = 1.6 s window)
+  let _phoneHitBuffer     = [];       // rolling array of boolean hits — one slot per OBJ frame
+  const PHONE_HIT_WINDOW  = 24;       // 24 eval-cycles @ 15fps ÷ 3 cycles-per-obj-frame = 8 obj-frames = 1.6 s
   const PHONE_EMA_ALPHA   = 0.25;     // smoothing factor — higher = faster response
+  let _phoneLastObjResults = null;    // deduplicate: only push to buffer when objResults pointer changes
 
   function _detectWave(handResults, now) {
     if (!handResults?.landmarks?.length) {
@@ -572,11 +573,14 @@ const Perception = (() => {
       d.categories?.some(c => c.categoryName === 'cell phone' && c.score > 0.25)
     );
 
-    // Update hit buffer — true/false per cycle (camera populates at 5fps,
-    // perception runs at 15fps, so many cycles share the same objResults;
-    // we record a boolean hit per EVAL cycle for temporal density).
-    _phoneHitBuffer.push(!!phoneHit);
-    if (_phoneHitBuffer.length > PHONE_HIT_WINDOW) _phoneHitBuffer.shift();
+    // Only push to hit buffer when objResults has actually changed (camera runs at 5fps,
+    // perception at 15fps — without dedup each detection gets triple-counted).
+    const currentObjs = window.objResults;
+    if (currentObjs !== _phoneLastObjResults) {
+      _phoneLastObjResults = currentObjs;
+      _phoneHitBuffer.push(!!phoneHit);
+      if (_phoneHitBuffer.length > PHONE_HIT_WINDOW) _phoneHitBuffer.shift();
+    }
 
     // Hit rate: fraction of recent cycles that had a detection
     const hitRate = _phoneHitBuffer.filter(Boolean).length / _phoneHitBuffer.length;
