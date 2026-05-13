@@ -6,6 +6,23 @@
   <title>DeskBuddy</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="deskbuddy-catmouth.css">
+  <style>
+    /* Personality Studio open button — settings panel */
+    .settings-action-btn-primary {
+      padding: 7px 14px; border-radius: 10px; cursor: pointer;
+      font: 600 12px/1 'Segoe UI', sans-serif;
+      background: rgba(155,135,255,.18);
+      border: 1px solid rgba(155,135,255,.32);
+      color: rgba(210,200,255,.85);
+      transition: background .18s, box-shadow .18s, transform .15s;
+      white-space: nowrap;
+    }
+    .settings-action-btn-primary:hover {
+      background: rgba(155,135,255,.30);
+      box-shadow: 0 0 14px rgba(155,135,255,.25);
+      transform: translateY(-1px);
+    }
+  </style>
 </head>
 <body>
   <div id="world">
@@ -603,44 +620,18 @@
             </div>
           </div>
 
-          <!-- sub: Personality -->
+          <!-- sub: Personality Studio -->
           <div class="settings-subsection">
-            <button class="settings-subsection-title" aria-expanded="false">
+            <button class="settings-subsection-title" aria-expanded="true">
               <span class="settings-subsection-icon">&#10022;</span>Personality<span class="settings-chevron" aria-hidden="true"></span>
             </button>
             <div class="settings-subsection-body">
-              <div class="settings-row">
+              <div class="settings-row" style="align-items:center;">
                 <div>
-                  <div class="settings-row-label">Idle speed</div>
-                  <div class="settings-row-sublabel" id="idle-speed-sublabel">Default</div>
+                  <div class="settings-row-label">Personality Studio</div>
+                  <div class="settings-row-sublabel">28 dimensions — energy, warmth, emotions&hellip;</div>
                 </div>
-                <div class="settings-triple-btn" id="idle-speed-btns">
-                  <button class="settings-triple-btn-item" data-val="1">&#x1F422; Calm</button>
-                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
-                  <button class="settings-triple-btn-item" data-val="3">&#x26A1; Hyper</button>
-                </div>
-              </div>
-              <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">Expressiveness</div>
-                  <div class="settings-row-sublabel" id="express-sublabel">Default</div>
-                </div>
-                <div class="settings-triple-btn" id="express-btns">
-                  <button class="settings-triple-btn-item" data-val="1">&#x1F338; Subtle</button>
-                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
-                  <button class="settings-triple-btn-item" data-val="3">&#x1F4A5; Drama</button>
-                </div>
-              </div>
-              <div class="settings-row">
-                <div>
-                  <div class="settings-row-label">Petting</div>
-                  <div class="settings-row-sublabel">Hold near buddy to snuggle</div>
-                </div>
-                <div class="settings-triple-btn" id="petting-btns">
-                  <button class="settings-triple-btn-item" data-val="1">&#x1F43E; Gentle</button>
-                  <button class="settings-triple-btn-item" data-val="2">&#10022; Default</button>
-                  <button class="settings-triple-btn-item" data-val="3">&#x1F495; Eager</button>
-                </div>
+                <button id="pe-open-btn" class="settings-action-btn-primary">Open ✦</button>
               </div>
             </div>
           </div>
@@ -669,6 +660,19 @@
             tap to preview &middot; hold to extend
           </div>
           <div id="emotion-grid"></div>
+          <div class="settings-row" style="margin-top:10px;align-items:center;">
+            <div>
+              <div class="settings-row-label">Wave reaction</div>
+              <div class="settings-row-sublabel">Buddy waves back when you wave at the camera &#x1F44B;</div>
+            </div>
+            <label class="settings-toggle" for="wave-reaction-toggle">
+              <input type="checkbox" id="wave-reaction-toggle" checked>
+              <span class="settings-toggle-track"></span>
+            </label>
+          </div>
+          <div class="settings-row-sublabel" style="padding:2px 12px 8px;font-size:10px;color:rgba(155,135,255,0.35);">
+            &#x1F4AC; To trigger: raise your hand so wrist is above shoulder height. Wave left&#x2013;right 3&times; clearly.
+          </div>
         </div>
       </div>
       <hr class="settings-divider">
@@ -1778,6 +1782,7 @@
   <script src="ui/history-stats.js"></script>
   <script src="ui/history-panel.js"></script>
   <script src="components/iris-color.js"></script>
+  <script src="ui/personality-editor.js"></script>
   <script src="renderer.js"></script>
   <div id="pip-lock-badge" aria-hidden="true">🔒 locked</div>
 </body>
