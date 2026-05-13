@@ -862,9 +862,24 @@ const ThemeCanvas = (() => {
   // Apply saved sensitivity and phone-detection from Settings
   Brain.setSensitivity(Settings.get('sensitivity'));
   if (Brain.setPhoneDetectionEnabled) Brain.setPhoneDetectionEnabled(Settings.get('phoneDetection'));
-  if (Brain.setIdleSpeed)      Brain.setIdleSpeed(Settings.get('idleSpeed') || 2);
-  if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 2);
-  if (Brain.setPettingMode)    Brain.setPettingMode(Settings.get('pettingMode') || 2);
+  if (Brain.setIdleSpeed)      Brain.setIdleSpeed(Settings.get('idleSpeed') || 5);
+  if (Brain.setExpressiveness) Brain.setExpressiveness(Settings.get('expressiveness') || 5);
+  if (Brain.setPettingMode)    Brain.setPettingMode(Settings.get('pettingMode') || 5);
+  // New personality dimensions
+  if (Brain.setTalkative)       Brain.setTalkative(Settings.get('talkative')       || 5);
+  if (Brain.setAffectionLevel)  Brain.setAffectionLevel(Settings.get('affectionLevel') || 5);
+  if (Brain.setJealousyLevel)   Brain.setJealousyLevel(Settings.get('jealousyLevel')   || 3);
+
+  // 9b. Personality Studio — init after Brain is running
+  if (typeof PersonalityEditor !== 'undefined') PersonalityEditor.init();
+
+  // Wire new personality settings → Brain live updates
+  Settings.onChange('talkative',      v => Brain.setTalkative      && Brain.setTalkative(v));
+  Settings.onChange('affectionLevel', v => Brain.setAffectionLevel && Brain.setAffectionLevel(v));
+  Settings.onChange('jealousyLevel',  v => Brain.setJealousyLevel  && Brain.setJealousyLevel(v));
+  Settings.onChange('phoneScolding',  v => Brain.setPhoneDetectionEnabled && Brain.setPhoneDetectionEnabled(v));
+  Settings.onChange('sensitivity',    v => Brain.setSensitivity(v));
+  Settings.onChange('voicePitch',     v => { if (typeof Sounds !== 'undefined' && Sounds.setPitchMult) Sounds.setPitchMult(0.5 + (v-1)/9*1.5); });
 
   // Apply saved blink rate
   if (Companion.setBlinkRate) Companion.setBlinkRate(Settings.get('blinkRate') || 'normal');
@@ -874,6 +889,16 @@ const ThemeCanvas = (() => {
 
   // 11. DND module — init click-to-cancel on the indicator
   DND.init();
+
+    // ── Wave reaction toggle ────────────────────────────────────────────────
+    const waveToggle = document.getElementById('wave-reaction-toggle');
+    if (waveToggle) {
+      waveToggle.checked = Settings.get('waveReaction') !== false;
+      waveToggle.addEventListener('change', () => {
+        Settings.set('waveReaction', waveToggle.checked);
+      });
+      Settings.onChange('waveReaction', v => { if (waveToggle) waveToggle.checked = !!v; });
+    }
 
   // The companion starts in full-screen mode on launch.
   // The user can switch to compact PiP overlay via the collapse button.
@@ -3157,90 +3182,13 @@ const ThemeCanvas = (() => {
       });
     }
 
-    // ── Idle speed triple-btn ────────────────────────────────────────────
-    const IDLE_SPEED_LABELS = { 1: 'Calm', 2: 'Default', 3: 'Hyper' };
-    const idleSpeedBtns   = document.getElementById('idle-speed-btns');
-    const idleSpeedLabel  = document.getElementById('idle-speed-sublabel');
+    // ── Personality Studio replaces the old triple-btn controls.
+    // Keep Settings.onChange wires so Brain stays in sync if settings load from disk.
+    Settings.onChange('idleSpeed',      v => { if (Brain.setIdleSpeed)      Brain.setIdleSpeed(v); });
+    Settings.onChange('expressiveness', v => { if (Brain.setExpressiveness) Brain.setExpressiveness(v); });
+    Settings.onChange('pettingMode',    v => { if (Brain.setPettingMode)    Brain.setPettingMode(v); });
 
-    function _applyIdleSpeed(v) {
-      const n = parseInt(v, 10) || 2;
-      if (idleSpeedLabel) idleSpeedLabel.textContent = IDLE_SPEED_LABELS[n] || 'Default';
-      if (idleSpeedBtns) {
-        idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
-          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
-        });
-      }
-      if (typeof Brain !== 'undefined' && Brain.setIdleSpeed) Brain.setIdleSpeed(n);
-    }
 
-    _applyIdleSpeed(Settings.get('idleSpeed'));
-
-    if (idleSpeedBtns) {
-      idleSpeedBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const v = parseInt(btn.dataset.val, 10);
-          Settings.set('idleSpeed', v);
-        });
-      });
-    }
-
-    Settings.onChange('idleSpeed', (v) => _applyIdleSpeed(v));
-
-    // ── Expressiveness triple-btn ────────────────────────────────────────
-    const EXPRESS_LABELS = { 1: 'Subtle', 2: 'Default', 3: 'Maximum drama' };
-    const expressBtns  = document.getElementById('express-btns');
-    const expressLabel = document.getElementById('express-sublabel');
-
-    function _applyExpressiveness(v) {
-      const n = parseInt(v, 10) || 2;
-      if (expressLabel) expressLabel.textContent = EXPRESS_LABELS[n] || 'Default';
-      if (expressBtns) {
-        expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
-          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
-        });
-      }
-      if (typeof Brain !== 'undefined' && Brain.setExpressiveness) Brain.setExpressiveness(n);
-    }
-
-    _applyExpressiveness(Settings.get('expressiveness'));
-
-    if (expressBtns) {
-      expressBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const v = parseInt(btn.dataset.val, 10);
-          Settings.set('expressiveness', v);
-        });
-      });
-    }
-
-    Settings.onChange('expressiveness', (v) => _applyExpressiveness(v));
-
-    // ── Petting mode triple-btn ──────────────────────────────────────────
-    const PETTING_LABELS = { 1: 'Gentle', 2: 'Default', 3: 'Eager' };
-    const pettingBtns = document.getElementById('petting-btns');
-
-    function _applyPettingMode(v) {
-      const n = parseInt(v, 10) || 2;
-      if (pettingBtns) {
-        pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(b => {
-          b.classList.toggle('active', parseInt(b.dataset.val, 10) === n);
-        });
-      }
-      if (typeof Brain !== 'undefined' && Brain.setPettingMode) Brain.setPettingMode(n);
-    }
-
-    _applyPettingMode(Settings.get('pettingMode'));
-
-    if (pettingBtns) {
-      pettingBtns.querySelectorAll('.settings-triple-btn-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const v = parseInt(btn.dataset.val, 10);
-          Settings.set('pettingMode', v);
-        });
-      });
-    }
-
-    Settings.onChange('pettingMode', (v) => _applyPettingMode(v));
     const emotionGrid = document.getElementById('emotion-grid');
     if (emotionGrid) {
       const GLOW = {
