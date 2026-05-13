@@ -161,12 +161,12 @@ const Perception = (() => {
   // ── Wave gesture detection ─────────────────────────────────────────────────
   // Wrist X-position history with directional reversal analysis.
   // Anti-false-positive: elevation check, noise floor, range guard, cooldown.
-  const WAVE_WINDOW_MS      = 1600;  // analyse last 1.6 s
+  const WAVE_WINDOW_MS      = 2500;  // analyse last 2.5 s (extended for 3fps)
   const WAVE_MIN_RANGE      = 0.10;  // minimum X-range (10% of frame width)
-  const WAVE_MIN_REVERSALS  = 3;     // need ≥ 3 direction changes
-  const WAVE_NOISE_FLOOR    = 0.006; // ignore movements smaller than this
-  const WAVE_ELEV_Y         = 0.72;  // wrist must be in upper 72% of frame
-  const WAVE_COOLDOWN_MS    = 5000;  // 5 s between wave detections
+  const WAVE_MIN_REVERSALS  = 2;     // need ≥ 2 direction changes (lower fps)
+  const WAVE_NOISE_FLOOR    = 0.012; // noise floor (higher = fewer false positives)
+  const WAVE_ELEV_Y         = 0.80;  // wrist must be in upper 80% of frame (more lenient)
+  const WAVE_COOLDOWN_MS    = 4000;  // 4 s between wave detections
   const WAVE_HAND_OPEN_MIN  = 0.04;  // index tip ≥ this above wrist (hand upright)
 
   let _waveHistory          = [];    // [{x, t}]
