@@ -1341,6 +1341,18 @@ const ThemeCanvas = (() => {
   const HEATMAP_MAX_BLOCKS = 90;
   const _heatmapData       = [];
   let   _heatmapInterval   = null;
+  let   _heatmapNodes      = [];   // pre-allocated block divs — no DOM churn each tick
+
+  function _heatmapBuild(strip) {
+    strip.innerHTML = '';
+    _heatmapNodes = [];
+    for (let i = 0; i < HEATMAP_MAX_BLOCKS; i++) {
+      const b = document.createElement('div');
+      b.className = 'fh-block fh-empty';
+      strip.appendChild(b);
+      _heatmapNodes.push(b);
+    }
+  }
 
   function _heatmapPush() {
     const state = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
@@ -1352,22 +1364,24 @@ const ThemeCanvas = (() => {
   function _heatmapRender() {
     const strip = document.getElementById('focus-heatmap-strip');
     if (!strip) return;
-    strip.innerHTML = '';
-    const empties = HEATMAP_MAX_BLOCKS - _heatmapData.length;
-    for (let i = 0; i < empties; i++) {
-      const b = document.createElement('div');
-      b.className = 'fh-block fh-empty';
-      strip.appendChild(b);
+    // Lazily build nodes if not yet done (e.g. panel just opened)
+    if (_heatmapNodes.length !== HEATMAP_MAX_BLOCKS || !strip.contains(_heatmapNodes[0])) {
+      _heatmapBuild(strip);
     }
-    _heatmapData.forEach(s => {
-      const b = document.createElement('div');
-      b.className = `fh-block fh-${s}`;
-      strip.appendChild(b);
-    });
+    const empties = HEATMAP_MAX_BLOCKS - _heatmapData.length;
+    for (let i = 0; i < HEATMAP_MAX_BLOCKS; i++) {
+      const node = _heatmapNodes[i];
+      if (i < empties) {
+        node.className = 'fh-block fh-empty';
+      } else {
+        node.className = 'fh-block fh-' + _heatmapData[i - empties];
+      }
+    }
   }
 
   function _heatmapStart() {
     _heatmapData.length = 0;
+    _heatmapNodes = [];   // force rebuild of pre-allocated nodes on next render
     if (_heatmapInterval) clearInterval(_heatmapInterval);
     _heatmapInterval = setInterval(_heatmapPush, 1000);
     _heatmapRender();
