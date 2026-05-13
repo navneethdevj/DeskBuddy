@@ -2408,13 +2408,22 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window drag — companion is drag handle ONLY when NOT locked.
+/* PiP window drag — entire #world is drag surface when NOT locked.
+   Interactive children override with no-drag below.
    pip-locked class disables all dragging instantly. */
-body.pip-mode:not(.pip-locked) .companion { -webkit-app-region: drag; }
-body.pip-mode.pip-locked      .companion  { -webkit-app-region: no-drag !important; cursor: default !important; }
-body.pip-mode                 .eye-wrap,
-body.pip-mode                 #compact-expand-btn,
-body.pip-mode                 #pip-hover-overlay { -webkit-app-region: no-drag; }
+body.pip-mode:not(.pip-locked) #world            { -webkit-app-region: drag; cursor: grab; }
+body.pip-mode:not(.pip-locked) #world:active      { cursor: grabbing; }
+body.pip-mode.pip-locked       #world             { -webkit-app-region: no-drag; cursor: default; }
+/* Companion still drag-capable for backwards compat */
+body.pip-mode:not(.pip-locked) .companion         { -webkit-app-region: drag; }
+body.pip-mode.pip-locked       .companion         { -webkit-app-region: no-drag !important; cursor: default !important; }
+/* All interactive elements must NOT be drag handles */
+body.pip-mode .eye-wrap,
+body.pip-mode #compact-expand-btn,
+body.pip-mode #pip-hover-overlay,
+body.pip-mode button,
+body.pip-mode input,
+body.pip-mode a { -webkit-app-region: no-drag; }
 
 /* Eyes gap slightly tighter in compact window */
 body.pip-mode .eyes {
@@ -8366,4 +8375,14 @@ body.pip-mode #world:active {
 body.pip-mode.pip-locked #world {
   -webkit-app-region: no-drag;
   cursor: default;
+}
+
+/* ── GPU promotion for frequently-animated elements ───────────────────────
+   promote elements that animate often so compositor can handle them independently */
+.companion, #world, .eye, .iris, .pupil {
+  will-change: transform;
+  transform: translateZ(0);
+}
+.whisper-bubble, #whisper-text {
+  will-change: opacity, transform;
 }
