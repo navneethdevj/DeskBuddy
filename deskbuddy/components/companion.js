@@ -10,6 +10,7 @@ const Companion = (() => {
   let x = 0;
   let y = 0;
   let rotation = 0;
+  let _pupils = null;  // cached NodeList — set once in create(), avoids per-frame DOM query
 
   let mouseX = 0;
   let mouseY = 0;
@@ -144,6 +145,9 @@ const Companion = (() => {
     y = 0;
     applyPosition();
 
+    // Cache pupil elements once — they never change after creation.
+    _pupils = el.querySelectorAll('.pupil');
+
     Emotion.init(el);
 
     document.addEventListener('mousemove', onMouseMove);
@@ -273,10 +277,9 @@ const Companion = (() => {
       pupilCurrentY = (pupilCurrentY / dist) * maxPx;
     }
 
-    if (!el) return;
-    var pupils = el.querySelectorAll('.pupil');
-    for (var i = 0; i < pupils.length; i++) {
-      pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
+    if (!el || !_pupils) return;
+    for (var i = 0; i < _pupils.length; i++) {
+      _pupils[i].style.transform = 'translate(' + pupilCurrentX + 'px, ' + pupilCurrentY + 'px)';
     }
   }
 
