@@ -350,7 +350,7 @@ const Brain = (() => {
   // → bounce → happy wiggle → recovery. Gated by cooldown + DND + distress.
   let _waveReactCooldownUntil  = 0;   // epoch ms — hard gate between reactions
   let _waveReactActive         = false; // true while the reaction sequence runs
-  const WAVE_REACT_COOLDOWN_MS = 8000; // 8 s between wave reactions
+  const WAVE_REACT_COOLDOWN_MS = 6000; // 6 s between wave reactions
 
   // ── MULTI-FACE SOCIAL AWARENESS ─────────────────────────────────────────
   // Tracks perception.faceCount transitions (stable-smoothed by perception.js).
@@ -2232,7 +2232,10 @@ const Brain = (() => {
       '...so interesting.', '*bright eyes*', 'hi hi~', '*paw tap*',
       '(๑˃ᴗ˂)ﻭ', '*wags tail*', '!', '...ooh.',
     ];
-    showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
+    const _talkMult = window._talkativeMult ?? 1.0;
+    if (Math.random() < Math.min(1, _talkMult * 0.85)) {
+      showWhisper(coos[Math.floor(Math.random() * coos.length)], 3500);
+    }
   }
 
   /** Tiny body shiver — brief excited wobble */
@@ -3130,87 +3133,111 @@ const Brain = (() => {
   }
 
   /**
-   * Wave reaction — multi-phase sequence that feels alive and socially aware.
+   * Wave reaction — adorable multi-phase recognition sequence.
    *
-   * Phase 1 (0 ms)    — Anticipation saccade (eyes notice the gesture)
-   * Phase 2 (80 ms)   — Excited recognition + look toward hand + whisper + sound
-   * Phase 3 (600 ms)  — Excited bounce + particle burst
-   * Phase 4 (1200 ms) — Happy shiver + double blink (embodied joy)
-   * Phase 5 (2000 ms) — Social follow-up whisper (50% chance)
-   * Phase 6 (2800 ms) — Recovery — gaze resets, flag clears
+   * Phase 1 (0ms)     — Eyes widen: micro-saccade + curious flash (recognition moment)
+   * Phase 2 (120ms)   — Excited recognition + look toward hand + happy sound
+   * Phase 3 (450ms)   — Wave back: rotation tilt sequence (companion waves!)
+   * Phase 4 (900ms)   — Joy burst: bounce + particles + overjoyed flash
+   * Phase 5 (1500ms)  — Settle into happy + warm follow-up whisper
+   * Phase 6 (2400ms)  — Slow blink (cat "I love you")
+   * Phase 7 (3200ms)  — Recovery: gaze reset, flag clears
+   *
+   * CPU efficiency: no loops, all setTimeout — zero extra rAF overhead.
    */
   function _onWaveDetected() {
     if (_dndActive) return;
+    // Check waveReaction setting
+    if (typeof Settings !== 'undefined' && Settings.get('waveReaction') === false) {
+      _waveReactActive = false; return;
+    }
     const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
     if (blocked.includes(window._lastEmotion)) { _waveReactActive = false; return; }
 
     _waveReactActive = true;
     const el = Companion.getElement();
+    const c  = Companion.getCenter();
 
-    // Phase 1 — tiny anticipation saccade
+    // ── Phase 1: Surprise recognition ──────────────────────────────────
     if (el) {
       el.classList.add('saccade');
-      setTimeout(() => el && el.classList.remove('saccade'), 220);
+      setTimeout(() => el && el.classList.remove('saccade'), 180);
     }
+    if (typeof Emotion !== 'undefined') Emotion.preview('curious', 250);
 
-    // Phase 2 — excited recognition
+    // ── Phase 2: Excited recognition — "I see you!" ─────────────────────
     setTimeout(() => {
-      if (typeof Emotion !== 'undefined') Emotion.preview('excited', 3200);
-
-      const c    = Companion.getCenter();
-      const side = (Math.random() > 0.5 ? 1 : -1);
-      Companion.lookAt(c.x + side * 110, c.y - 200);
+      if (typeof Emotion !== 'undefined') Emotion.preview('excited', 2800);
+      const side = Math.random() > 0.5 ? 1 : -1;
+      Companion.lookAt(c.x + side * 90, c.y - 220);
 
       const waveMsgs = [
-        'oh!! hi!! 👋', '*waves back excitedly*', 'HI HI HI!!',
-        'you waved at me!! ♡', '(*≧▽≦) !!!', 'hello!! ♡',
-        '*waves tiny paws*', 'you noticed me!!', 'heyyy~!! 👋',
-        '*beams with joy*', 'HIIII!!', '!!!! hi ♡',
-        'eeeee you waved!', '( ◕▽◕)つ 👋',
-        '*happy scream* HI!!', 'i see you!! 👋♡',
-        'oh oh oh hi!!', '*enthusiastically waves back*',
+        'oh!!!! hi!!! 👋✨', '*gasps* you WAVED at me!!',
+        'eeeee HI HI HI!!!! 👋', '(*≧▽≦) !!!!! hello!!',
+        'YOU WAVED!! i saw it!! 👋♡', 'oh oh oh!!! hi!!!! ♡',
+        'HIIII!!!! *waves tiny paws back*', '(◕‿◕) ...!! HI!!!',
+        '...!! *immediately waves back* 👋', 'you said hi to ME?? ♡♡',
+        '*lights up* HELLO!! 👋', 'aaaaa you noticed me!!!',
+        'best moment of my day. hi. ♡', '...!! *bouncing* HI!!!',
+        'i saw that!! i saw that!!! 👋✨',
       ];
       showWhisper(waveMsgs[Math.floor(Math.random() * waveMsgs.length)], 4000);
-
       if (typeof Sounds !== 'undefined') Sounds.play('happy_coo');
-    }, 80);
+    }, 120);
 
-    // Phase 3 — excited bounce + particles
+    // ── Phase 3: Wave back — companion tilts left-right ─────────────────
+    setTimeout(() => {
+      if (!el) return;
+      el.classList.add('shiver');
+      setTimeout(() => {
+        if (el) el.classList.remove('shiver');
+        // Little wave: quick rotation sequence left→right→left→center
+        const angles = [-14, 14, -10, 8, -4, 0];
+        let idx = 0;
+        const nextTilt = () => {
+          if (idx >= angles.length) { Companion.setRotation(0); return; }
+          Companion.setRotation(angles[idx++]);
+          const pos = Companion.getPosition();
+          Companion.setPosition(pos.x, pos.y);
+          setTimeout(nextTilt, 130 + Math.random() * 40);
+        };
+        nextTilt();
+      }, 360);
+    }, 450);
+
+    // ── Phase 4: Joy burst ───────────────────────────────────────────────
     setTimeout(() => {
       if (el) {
         el.classList.add('bouncing');
         setTimeout(() => el && el.classList.remove('bouncing'), 700);
       }
-      if (typeof Particles !== 'undefined') Particles.burst('happy', 9);
-    }, 600);
+      if (typeof Particles !== 'undefined') Particles.burst('happy', 10);
+      if (typeof Emotion !== 'undefined') Emotion.preview('overjoyed', 400);
+    }, 900);
 
-    // Phase 4 — happy shiver + double blink
+    // ── Phase 5: Settle — happy + warm follow-up ─────────────────────────
     setTimeout(() => {
-      if (el) {
-        el.classList.add('shiver');
-        setTimeout(() => el && el.classList.remove('shiver'), 420);
-      }
-      _doDoubleBlink();
-    }, 1200);
-
-    // Phase 5 — social follow-up (50%)
-    setTimeout(() => {
-      if (Math.random() < 0.50) {
+      if (typeof Emotion !== 'undefined') Emotion.preview('happy', 1600);
+      if (Math.random() < 0.65) {
         const followMsgs = [
-          'i love when you do that~', '...made my day ♡',
-          '*still smiling*', '...hi again ♡', 'do it again~',
-          '*happy tail wag*', '...you\'re the best.',
-          'i saw that~♡', '...hello to you too ♡',
+          '...made my whole day ♡', '*still smiling* hi~',
+          'do that again sometime ♡', '...you waved at me~',
+          '*tail wagging* ...hi ♡', 'i love when you do that~',
+          '...hello to you too ♡', '*happy sigh* ♡',
+          '...thank you for saying hi~', 'hi hi hi~♡',
         ];
-        showWhisper(followMsgs[Math.floor(Math.random() * followMsgs.length)], 3000);
+        showWhisper(followMsgs[Math.floor(Math.random() * followMsgs.length)], 3200);
       }
-    }, 2000);
+    }, 1500);
 
-    // Phase 6 — recovery
+    // ── Phase 6: Slow blink — cat "I love you" ───────────────────────────
+    setTimeout(() => { _doSlowBlink(); }, 2400);
+
+    // ── Phase 7: Recovery ────────────────────────────────────────────────
     setTimeout(() => {
       Companion.resetLook();
       _waveReactActive = false;
-    }, 2800);
+    }, 3200);
   }
 
   /**
@@ -3317,6 +3344,27 @@ const Brain = (() => {
     _cozyDeepMs = n === 1 ? 2000 : n === 3 ? 1000 : 1500;
   }
 
+
+  /** setTalkative(1-10) — controls ambient whisper frequency. */
+  function setTalkative(level) {
+    window._talkativeMult = Math.max(0.1, Math.min(2.5, (Number(level) || 5) / 5));
+  }
+
+  /** setAffectionLevel(1-10) — influences petting/cozy warmth. */
+  function setAffectionLevel(level) {
+    const n = Number(level) || 5;
+    window._affectionMult  = Math.max(0.5, Math.min(1.6,  1 + (n - 5) * 0.11));
+    window._cozyLingerMult = Math.max(0.5, Math.min(2.0,  1 + (n - 5) * 0.15));
+  }
+
+  /** setJealousyLevel(1-10) — scales look-away emotion thresholds. */
+  function setJealousyLevel(level) {
+    window._jealousyMult = Math.max(0.3, Math.min(2.5, (Number(level) || 3) / 3));
+  }
+
+  /** setWaveReactionEnabled(bool) — toggle wave reaction. Brain reads Settings directly. */
+  function setWaveReactionEnabled(bool) { void bool; }
+
   return { start, stop, getState, getFocusLevel, showWhisper,
            setPhoneDetectionEnabled, onPhoneDetected,
            resetPhoneCount,
@@ -3329,5 +3377,6 @@ const Brain = (() => {
            setIdleSpeed, setExpressiveness, setPettingMode,
            startTearEffect, stopTearEffect,
            triggerWelcomeBack: _welcomeBackSequence,
-           triggerLookSequence };
+           triggerLookSequence,
+           setTalkative, setAffectionLevel, setJealousyLevel, setWaveReactionEnabled };
 })();
