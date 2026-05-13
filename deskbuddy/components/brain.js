@@ -420,8 +420,13 @@ const Brain = (() => {
 
   // ===== Main Loop =====
 
-  function tick() {
+  function tick(timestamp) {
     animFrameId = requestAnimationFrame(tick);
+
+    // Drive camera detection from this shared RAF — eliminates a separate rAF loop.
+    if (window.cameraAvailable !== false && typeof Camera !== 'undefined' && Camera.tick) {
+      Camera.tick(timestamp);
+    }
 
     var now = Date.now();
     updateFocusMeter(now);
