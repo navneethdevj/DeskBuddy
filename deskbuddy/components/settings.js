@@ -5,10 +5,14 @@
  *   1. localStorage — synchronous, instant read on init.
  *   2. Electron Store via IPC — survives localStorage clear; reconciled async.
  *
+ * PERFORMANCE: _persist() is debounced 400ms so rapid Settings.set() calls
+ * (e.g. sliders dragging) don't hammer localStorage or IPC on every frame.
+ *
  * Usage:
  *   Settings.init()           — call once at startup
  *   Settings.get('key')       — synchronous read
- *   Settings.set('key', val)  — write + fire listeners + persist
+ *   Settings.set('key', val)  — write + fire listeners + persist (debounced)
+ *   Settings.resetKey('key')  — restore single key to default
  *   Settings.onChange(k, fn)  — subscribe to changes for key k
  *   Settings.dump()           — full snapshot for debug / export
  */
@@ -17,42 +21,66 @@ const Settings = (() => {
   const STORAGE_KEY = 'deskbuddy_settings';
 
   const DEFAULTS = {
-    mutePreset:      'ALL_ON',   // 'ALL_ON' | 'ESSENTIAL' | 'REMINDERS_ONLY' | 'ALL_OFF'
-    volume:          0.7,        // master volume 0–1
-    droneEnabled:    true,       // ambient soundscape on/off
-    brightness:      1.0,        // #world CSS filter brightness (0.3–1.0)
-    breakInterval:   25,         // minutes, 0 = disabled
-    sensitivity:     'NORMAL',   // 'GENTLE' | 'NORMAL' | 'STRICT'
-    phoneDetection:  true,       // brain.js phone posture detection
-    // ── Companion size (numeric %) ────────────────────────────────────────
-    // 100 = original M scale, 78 = old S, 122 = old L. Slider range 50–200.
+    mutePreset:      'ALL_ON',
+    volume:          0.7,
+    droneEnabled:    true,
+    brightness:      1.0,
+    breakInterval:   25,
+    sensitivity:     'NORMAL',
+    phoneDetection:  true,
     companionSize:   100,
-    nightAutoVolume: true,       // soundscape reduces volume at NIGHT
-    sessionLength:   25,         // default session duration in minutes
-    timerStep:       5,          // +/− step size in minutes for duration stepper
-    ticksEnabled:       true,       // soft timer tick sounds on/off
-    celebrationEnabled: true,       // confetti + banner on session complete
-    breakAnimEnabled:   true,       // teal glow + break card when break starts
-    keybinds:           {},         // override map: { [action_id]: 'KeyboardShortcut' }
-    // ── Window behaviour ──────────────────────────────────────────────
-    autoPipOnBlur:          true,  // collapse to PiP when the user switches to another app
-    autoPipDelay:           0,     // seconds to wait before collapsing (0 = instant)
-    autoPipRestore:         true,  // restore full mode when the user returns
-    autoPipSkipSession:     false, // skip auto-collapse when a focus session is running
-    pipShape:               'square', // 'square' | 'rounded' | 'circle'
-    // ── Buddy personality ──────────────────────────────────────────────
-    idleSpeed:              2,   // 1 = slow/calm, 3 = fast/hyper
-    expressiveness:         2,   // 1 = subtle, 3 = maximum
-    pettingMode:            2,   // 1 = gentle, 2 = default, 3 = eager
-    emotionPreviewDuration: 3,   // seconds the "tap to preview" hold lasts (1–10)
+    nightAutoVolume: true,
+    sessionLength:   25,
+    timerStep:       5,
+    ticksEnabled:       true,
+    celebrationEnabled: true,
+    breakAnimEnabled:   true,
+    keybinds:           {},
+    autoPipOnBlur:          true,
+    autoPipDelay:           0,
+    autoPipRestore:         true,
+    autoPipSkipSession:     false,
+    pipShape:               'square',
+    // ── Buddy personality (legacy 1-3 scale — migrated to 1-10 on load) ──
+    idleSpeed:              5,
+    expressiveness:         5,
+    pettingMode:            5,
+    emotionPreviewDuration: 3,
+    // ── Personality Studio extended dimensions ─────────────────────────
+    spontaneousFreq:  5,
+    reactionSpeed:    5,
+    affectionLevel:   5,
+    jealousyLevel:    3,
+    forgivenessSpeed: 6,
+    encourageFreq:    5,
+    distractPatience: 5,
+    talkative:        5,
+    voicePitch:       5,
+    whisperStyle:     'cute',
+    // Special behaviours
+    nightOwlMode:     false,
+    morningCheerful:  true,
+    streakCelebrate:  true,
+    waveReaction:     true,
+    multiPersonReact: true,
+    memoryWhispers:   true,
+    flowStateEnabled: true,
+    // Emotion sensitivity
+    emo_happy:   5,
+    emo_sad:     5,
+    emo_fear:    5,
+    emo_curious: 6,
+    emo_love:    5,
+    emo_grumpy:  5,
+    emo_shy:     5,
+    emo_excited: 5,
     // ── DND ────────────────────────────────────────────────────────────
-    dndDuration:            25,  // default duration in minutes (0 = infinite)
-    // ── Screen Time features ────────────────────────────────────────────
-    dailyFocusGoalMins:     0,   // 0 = disabled
-    distractionBudget:      0,   // 0 = unlimited
+    dndDuration:            25,
+    // ── Screen Time ────────────────────────────────────────────────────
+    dailyFocusGoalMins:     0,
+    distractionBudget:      0,
     sessionCategory:        'study',
     weeklyReportLastShown:  '',
-    // ── Anti-cheat ────────────────────────────────────────────────────
     antiCheatEnabled: true,
     // ── Buddy appearance ──────────────────────────────────────────────
     fullTheme:       'galaxy',
@@ -60,47 +88,38 @@ const Settings = (() => {
     eyeColor:        'periwinkle',
     eyeGlowColor:    'default',
     eyeRoundness:    'round',
-    // ── Eye / Face sizing (all numeric %, 100 = default) ──────────────
-    eyeSize:         100,  // eye-wrap scale 50–200; 100 = default
-    eyeGap:          6,    // gap between eyes in vmin (2–20); 6 = default
-    irisSize:        100,  // iris scale within eye 50–130; 100 = default
-    mouthSize:       100,  // mouth scale 50–150; 100 = default
-    noseSize:        100,  // nose scale 50–150; 100 = default
+    eyeSize:         100,
+    eyeGap:          6,
+    irisSize:        100,
+    mouthSize:       100,
+    noseSize:        100,
     blinkRate:       'normal',
     showEyebrows:    true,
-    showWhiskers:    true,   // whisker visibility toggle (true = visible)
+    showWhiskers:    true,
     noseStyle:       'triangle',
-    mouthStyle:      'arc',  // 'arc' | 'wide' | 'cat' | 'flat' | 'none'
+    mouthStyle:      'arc',
     mouthThickness:  'normal',
-    // ── Glow ──────────────────────────────────────────────────────────
-    // 'off' | 'subtle' | 'normal' | 'vivid'  (maps to slider 0-3)
     glowIntensity:   'normal',
-    // ── PiP / Overlay ─────────────────────────────────────────────────
-    pipOpacity:      78,         // 20–95 integer %
+    // ── PiP ───────────────────────────────────────────────────────────
+    pipOpacity:      78,
     pipAlwaysOnTop:         true,
     pipSnapEnabled:         true,
-    // ── PiP window lock ──────────────────────────────────────────────────
-    pipLocked:              false,   // true = window not draggable
-    // ── PiP Border system ────────────────────────────────────────────────
-    // Style: none|solid|dotted|dashed|glow|neon|pulse|cozy|pastel|retro|
-    //        cyber|dreamy|vaporwave|holographic|rgb|aura|minimal|pixel|
-    //        bubble|faded|blending|cat
+    pipLocked:              false,
     pipBorderStyle:         'glow',
-    pipBorderColor:         '#8a93ff',  // primary hex
-    pipBorderColor2:        '#ff79b0',  // secondary/gradient hex
-    pipBorderThickness:     2,          // px 1–10
-    pipBorderOpacity:       85,         // % 0–100
-    pipGlowSize:            55,         // % 0–100
-    pipGlowSoftness:        50,         // % 0–100
+    pipBorderColor:         '#8a93ff',
+    pipBorderColor2:        '#ff79b0',
+    pipBorderThickness:     2,
+    pipBorderOpacity:       85,
+    pipGlowSize:            55,
+    pipGlowSoftness:        50,
     pipAnimEnabled:         true,
-    pipAnimSpeed:           50,         // 10–200
+    pipAnimSpeed:           50,
     pipHoverGlow:           true,
     pipEmotionSync:         true,
-    // ── PiP Visual Preset ────────────────────────────────────────────────
     pipVisualPreset:        'default',
-    companionPos:    'center',   // 'left'|'center'|'right' (kept for legacy)
-    // ── Custom colour overrides ────────────────────────────────────────
-    customIrisHex:   '',         // hex string or '' for preset
+    companionPos:    'center',
+    // ── Custom colours ─────────────────────────────────────────────────
+    customIrisHex:   '',
     customIrisCenterHex: '',
     customIrisMidHex:    '',
     customIrisEdgeHex:   '',
@@ -108,73 +127,89 @@ const Settings = (() => {
     customIrisHighlightHex: '',
     customIrisPupilCoreHex: '',
     irisBorderEnabled: true,
-    irisBorderThickness: 100, // % (50–200), 100 = default
+    irisBorderThickness: 100,
     customGlowHex:   '',
     glowEmotionSync: true,
   };
 
   let _current = { ...DEFAULTS };
-  const _listeners = {};   // { key: [fn, fn, ...] }
+  const _listeners = {};
 
-  // ── Init ─────────────────────────────────────────────────────────────────
+  // ── Debounced persist ─────────────────────────────────────────────────────
+  // Prevents rapid Settings.set() calls (e.g. slider drag) from hammering
+  // localStorage or firing Electron IPC on every frame.
+  let _persistTimer = null;
+  const PERSIST_DEBOUNCE = 400; // ms
 
+  function _schedulePersist() {
+    clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(_persist, PERSIST_DEBOUNCE);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
-    // Fast synchronous read from localStorage first
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
         _current = { ...DEFAULTS, ...saved };
       }
-    } catch (e) { /* corrupt data — start with defaults */ }
+    } catch (e) {}
 
-    // Migrate deprecated theme names to supported ones
-    const VALID_THEMES = new Set(['galaxy', 'classic', 'forest', 'cherry', 'ocean',
-                                   'midnight', 'snow', 'aurora']);
+    // Theme validation
+    const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','ocean',
+                                   'midnight','snow','aurora']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
-    // Migrate deprecated mouth style names
-    const MOUTH_MIGRATE = { wave: 'arc', perky: 'wide', minimal: 'flat' };
+    // Mouth migration
+    const MOUTH_MIGRATE = { wave:'arc', perky:'wide', minimal:'flat' };
     if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
 
-    // ── Numeric migrations (old string → new numeric) ──────────────────────
     // companionSize: 'S'/'M'/'L' → number
     if (typeof _current.companionSize === 'string') {
-      _current.companionSize = ({ S: 78, M: 100, L: 122 })[_current.companionSize] ?? 100;
+      _current.companionSize = ({ S:78, M:100, L:122 })[_current.companionSize] ?? 100;
     }
-    // pupilSize: 'small'/'normal'/'large' → eyeSize number (remove old key)
+    // pupilSize → eyeSize
     if (typeof _current.pupilSize === 'string') {
       if (_current.eyeSize == null)
-        _current.eyeSize = ({ small: 78, normal: 100, large: 130 })[_current.pupilSize] ?? 100;
+        _current.eyeSize = ({ small:78, normal:100, large:130 })[_current.pupilSize] ?? 100;
       delete _current.pupilSize;
     }
-    // eyeSpacing: 'narrow'/'normal'/'wide' → eyeGap vmin
+    // eyeSpacing → eyeGap
     if (typeof _current.eyeSpacing === 'string') {
       if (_current.eyeGap == null)
-        _current.eyeGap = ({ narrow: 3, normal: 6, wide: 11 })[_current.eyeSpacing] ?? 6;
+        _current.eyeGap = ({ narrow:3, normal:6, wide:11 })[_current.eyeSpacing] ?? 6;
       delete _current.eyeSpacing;
     }
 
-    // Reconcile with main-process Store (survives localStorage clear)
+    // ── Migrate old 1-3 personality scale to new 1-10 ─────────────────────
+    // Old UI sent integer 1/2/3; new slider is 1-10.
+    // Detect old style: integer in [1,3] AND was saved as that int (not 4+).
+    // Map: 1→2 (very calm), 2→5 (default), 3→9 (hyper)
+    const _migrateScale = (key, map) => {
+      const v = _current[key];
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 3 &&
+          DEFAULTS[key] >= 4) {
+        // Only migrate if the DEFAULTS for this key is 4+ (i.e. new 1-10 range)
+        _current[key] = map[v] || 5;
+      }
+    };
+    _migrateScale('idleSpeed',      { 1:2, 2:5, 3:9 });
+    _migrateScale('expressiveness', { 1:2, 2:5, 3:9 });
+    _migrateScale('pettingMode',    { 1:2, 2:5, 3:9 });
+
+    // Electron Store reconcile (async, non-blocking)
     if (window.electronAPI?.getSettings) {
       window.electronAPI.getSettings().then(saved => {
         if (!saved) return;
         _current = { ...DEFAULTS, ...saved };
         if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
         if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
-        // Apply same numeric migrations after Electron Store reconcile
         if (typeof _current.companionSize === 'string')
-          _current.companionSize = ({ S: 78, M: 100, L: 122 })[_current.companionSize] ?? 100;
-        if (typeof _current.pupilSize === 'string') {
-          if (_current.eyeSize == null)
-            _current.eyeSize = ({ small: 78, normal: 100, large: 130 })[_current.pupilSize] ?? 100;
-          delete _current.pupilSize;
-        }
-        if (typeof _current.eyeSpacing === 'string') {
-          if (_current.eyeGap == null)
-            _current.eyeGap = ({ narrow: 3, normal: 6, wide: 11 })[_current.eyeSpacing] ?? 6;
-          delete _current.eyeSpacing;
-        }
+          _current.companionSize = ({ S:78, M:100, L:122 })[_current.companionSize] ?? 100;
+        _migrateScale('idleSpeed',      { 1:2, 2:5, 3:9 });
+        _migrateScale('expressiveness', { 1:2, 2:5, 3:9 });
+        _migrateScale('pettingMode',    { 1:2, 2:5, 3:9 });
         _persist();
         Object.keys(_current).forEach(key => _fire(key, _current[key]));
       }).catch(() => {});
@@ -182,7 +217,6 @@ const Settings = (() => {
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-
   function get(key) {
     return _current[key] !== undefined ? _current[key] : DEFAULTS[key];
   }
@@ -190,8 +224,15 @@ const Settings = (() => {
   function set(key, value) {
     if (_current[key] === value) return;
     _current[key] = value;
-    _persist();
+    _schedulePersist();   // ← debounced, not immediate
     _fire(key, value);
+  }
+
+  /** Restore one key to its factory default. */
+  function resetKey(key) {
+    if (Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
+      set(key, DEFAULTS[key]);
+    }
   }
 
   function onChange(key, fn) {
@@ -199,12 +240,9 @@ const Settings = (() => {
     _listeners[key].push(fn);
   }
 
-  function dump() {
-    return { ..._current };
-  }
+  function dump() { return { ..._current }; }
 
   // ── Private ───────────────────────────────────────────────────────────────
-
   function _fire(key, value) {
     (_listeners[key] || []).forEach(fn => {
       try { fn(value); } catch (e) {}
@@ -220,12 +258,7 @@ const Settings = (() => {
     }
   }
 
-  // ── Export / Import ──────────────────────────────────────────────────────
-
-  /**
-   * exportSettings() — serialise the current settings to a JSON string.
-   * Returns a wrapper object with metadata for validation on import.
-   */
+  // ── Export / Import ───────────────────────────────────────────────────────
   function exportSettings() {
     const payload = {
       version:    1,
@@ -236,49 +269,29 @@ const Settings = (() => {
     return JSON.stringify(payload, null, 2);
   }
 
-  /**
-   * importSettings(jsonString) — parse a JSON export and apply all settings.
-   * Unknown keys are ignored; known keys are merged over current values.
-   *
-   * @returns {{ success: boolean, applied: number, reason?: string }}
-   */
   function importSettings(jsonString) {
     let parsed;
-    try {
-      parsed = JSON.parse(jsonString);
-    } catch (_) {
-      return { success: false, reason: 'Invalid JSON file.' };
-    }
+    try { parsed = JSON.parse(jsonString); }
+    catch (_) { return { success: false, reason: 'Invalid JSON file.' }; }
 
-    if (!parsed.settings || typeof parsed.settings !== 'object' || Array.isArray(parsed.settings)) {
+    if (!parsed.settings || typeof parsed.settings !== 'object' || Array.isArray(parsed.settings))
       return { success: false, reason: 'File does not contain settings data.' };
-    }
 
-    // Only apply keys that exist in DEFAULTS (ignore unknown / future keys)
     const knownKeys = Object.keys(DEFAULTS);
     const incoming  = parsed.settings;
     let applied = 0;
-
     knownKeys.forEach(key => {
-      if (key in incoming) {
-        _current[key] = incoming[key];
-        _fire(key, _current[key]);
-        applied++;
-      }
+      if (key in incoming) { _current[key] = incoming[key]; _fire(key, _current[key]); applied++; }
     });
-
     _persist();
     return { success: true, applied };
   }
 
-  /**
-   * reset() — restore all settings to factory defaults and persist.
-   */
   function reset() {
     _current = { ...DEFAULTS };
     _persist();
     Object.keys(_current).forEach(key => _fire(key, _current[key]));
   }
 
-  return { init, get, set, onChange, dump, exportSettings, importSettings, reset };
+  return { init, get, set, resetKey, onChange, dump, exportSettings, importSettings, reset };
 })();
