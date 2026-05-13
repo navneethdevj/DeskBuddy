@@ -153,237 +153,491 @@ const ThemeCanvas = (() => {
     },
 
     // ── Forest ──────────────────────────────────────────────────────────────
+    // Anime/cartoon enchanted forest — hanging vines, money plant leaves,
+    // vine leaves drifting down, cartoon-outlined branches, magical fireflies.
     forest: {
-      max: 22, rate: 0.065,
-      _branches: null, _leaves: null, _bushes: null,
+      max: 30, rate: 0.072,
+      _branches: null, _leafClusters: null, _bushes: null, _vines: null,
+
       init(W, H) {
         _stars = [];
-        // Shorter seeds so branches stay in the lower screen border
+
+        // Branches: bottom corners grow up, top edges grow down (canopy framing)
         this._branches = _buildBranches(W, H, [
-          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.22, len: H * 0.22, w: 9,   depth: 5 },
-          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.24, len: H * 0.21, w: 8.5, depth: 5 },
-          { x:  W * 0.12, y: H * 1.01, angle: -Math.PI / 2 + 0.10, len: H * 0.16, w: 6,   depth: 4 },
-          { x:  W * 0.88, y: H * 1.01, angle: -Math.PI / 2 - 0.12, len: H * 0.15, w: 5.5, depth: 4 },
-          { x: -W * 0.01, y: H * 0.38, angle:  0.08,                len: W * 0.13, w: 4.5, depth: 3 },
-          { x:  W * 1.01, y: H * 0.34, angle:  Math.PI - 0.10,      len: W * 0.12, w: 4,   depth: 3 },
+          { x: -W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.22, len: H * 0.24, w: 9,   depth: 5 },
+          { x:  W * 1.02, y: H * 1.01, angle: -Math.PI / 2 - 0.24, len: H * 0.23, w: 8.5, depth: 5 },
+          { x:  W * 0.12, y: H * 1.01, angle: -Math.PI / 2 + 0.10, len: H * 0.17, w: 6,   depth: 4 },
+          { x:  W * 0.88, y: H * 1.01, angle: -Math.PI / 2 - 0.12, len: H * 0.16, w: 5.5, depth: 4 },
+          // Top canopy branches drooping down from upper edge
+          { x: W * 0.18, y: -5, angle:  Math.PI / 2 + 0.38, len: H * 0.22, w: 7,   depth: 5 },
+          { x: W * 0.82, y: -5, angle:  Math.PI / 2 - 0.36, len: H * 0.20, w: 6.5, depth: 5 },
         ]);
-        // Pre-compute leaf clusters at twig tips (only below mid-screen)
-        const HORIZON = H * 0.50;
-        this._leaves = [];
+
+        // Leaf clusters at twig tips (all heights — top branches too)
+        this._leafClusters = [];
         if (this._branches) {
           this._branches.forEach(seg => {
-            if (seg.w > 2.8 || seg.y2 < HORIZON) return;
-            for (let k = 0; k < Math.ceil(2 + seg.w * 0.8); k++) {
-              this._leaves.push({
-                x: seg.x2 + (Math.random() - 0.5) * 32,
-                y: seg.y2 - Math.random() * 18,
-                r: 7 + Math.random() * 16,
-                hue: 92 + Math.floor(Math.random() * 55),
-                l:   18 + Math.floor(Math.random() * 18),
-                a:   0.55 + Math.random() * 0.30,
+            if (seg.w > 2.8) return;
+            for (let k = 0; k < Math.ceil(2 + seg.w * 0.9); k++) {
+              this._leafClusters.push({
+                x: seg.x2 + (Math.random() - 0.5) * 36,
+                y: seg.y2 + (Math.random() - 0.5) * 16,
+                r: 8 + Math.random() * 18,
+                hue: 90 + Math.floor(Math.random() * 60),
+                l:   20 + Math.floor(Math.random() * 20),
+                a:   0.55 + Math.random() * 0.32,
               });
             }
           });
         }
-        // Pre-compute bushes along the bottom edge
+
+        // Bottom-edge undergrowth bushes
         this._bushes = Array.from({ length: 18 }, (_, i) => ({
           x: W * 0.03 + (i / 17) * W * 0.94,
           y: H * (0.88 + Math.random() * 0.09),
           r: 22 + Math.random() * 36,
           hue: 96 + Math.floor(Math.random() * 44),
-          l:   15 + Math.floor(Math.random() * 14),
+          l:   18 + Math.floor(Math.random() * 14),
           a:   0.58 + Math.random() * 0.30,
         }));
+
+        // Hanging vines from top edge — each vine has a stem + leaves along it.
+        // Alternating money-plant (round) and elongated vine leaves.
+        this._vines = Array.from({ length: 13 }, (_, i) => {
+          const xBase   = W * 0.02 + (i / 12) * W * 0.96 + (Math.random() - 0.5) * W * 0.04;
+          const dropLen = H * (0.14 + Math.random() * 0.30);
+          const numLeaves = Math.floor(dropLen / 26) + 2;
+          const leaves = [];
+          for (let s = 1; s <= numLeaves; s++) {
+            const prog   = s / (numLeaves + 1);
+            const swayX  = Math.sin(s * 1.9 + i) * 16;   // natural vine sway
+            const side   = (s % 2 === 0) ? 1 : -1;        // alternate sides
+            const ltype  = Math.random() < 0.62 ? 'money' : 'vine';
+            leaves.push({
+              x:    xBase + swayX + side * (13 + Math.random() * 11),
+              y:    prog * dropLen,
+              r:    9 + Math.random() * 13,
+              hue:  108 + Math.floor(Math.random() * 40),
+              l:    26 + Math.floor(Math.random() * 20),
+              rot:  side * (0.28 + Math.random() * 0.65),
+              a:    0.68 + Math.random() * 0.28,
+              type: ltype,
+              // vine stem point for drawing
+              stemX: xBase + swayX,
+              stemY: prog * dropLen,
+            });
+          }
+          return { xBase, dropLen, numLeaves, leaves };
+        });
       },
+
       drawBackground(ctx, W, H) {
-        const HORIZON = H * 0.50;
-        // Soft moonlight shaft
-        const cg = ctx.createRadialGradient(W / 2, -H * 0.05, 0, W / 2, H * 0.9, W * 0.55);
-        cg.addColorStop(0,   'rgba(205, 235, 190, 0.075)');
-        cg.addColorStop(0.45,'rgba(160, 210, 145, 0.030)');
-        cg.addColorStop(1,   'rgba(80,  150,  70, 0)');
+        // Soft magical canopy light shaft from above centre
+        const cg = ctx.createRadialGradient(W / 2, -H * 0.06, 0, W / 2, H * 0.88, W * 0.56);
+        cg.addColorStop(0,    'rgba(130, 240, 155, 0.09)');
+        cg.addColorStop(0.45, 'rgba(70,  200, 100, 0.035)');
+        cg.addColorStop(1,    'rgba(25,  110,  50, 0)');
         ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
-        // Fireflies
+
+        // Animated fireflies — more count, slightly brighter for anime feel
         const t = _frame * 0.018;
-        for (let i = 0; i < 18; i++) {
-          const fx = W * ((i * 0.137 + Math.sin(t + i) * 0.04 + 1) % 1);
-          const fy = H * 0.20 + H * 0.35 * ((i * 0.211 + Math.cos(t * 0.7 + i) * 0.03 + 1) % 1);
-          const fa = 0.12 + 0.08 * Math.sin(t * 1.4 + i * 1.7);
-          const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 4);
-          fg.addColorStop(0, `rgba(145, 255, 145, ${fa * 1.8})`);
-          fg.addColorStop(1, 'rgba(80, 200, 80, 0)');
-          ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < 22; i++) {
+          const fx = W * ((i * 0.137 + Math.sin(t + i) * 0.05 + 1) % 1);
+          const fy = H * 0.10 + H * 0.45 * ((i * 0.211 + Math.cos(t * 0.7 + i) * 0.04 + 1) % 1);
+          const fa = 0.10 + 0.11 * Math.sin(t * 1.5 + i * 1.9);
+          const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 5);
+          fg.addColorStop(0, `rgba(160, 255, 140, ${fa * 2.1})`);
+          fg.addColorStop(1, 'rgba(70, 210, 80, 0)');
+          ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fill();
         }
-        // Bushes (bottom edge undergrowth)
+
+        // Bottom bushes / undergrowth
         if (this._bushes) {
           this._bushes.forEach(b => {
             ctx.save(); ctx.globalAlpha = b.a;
-            ctx.fillStyle = `hsl(${b.hue}, 58%, ${b.l}%)`;
+            ctx.fillStyle = `hsl(${b.hue}, 62%, ${b.l}%)`;
             ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
           });
         }
-        // Branches — warm brown, confined to lower half
+
+        // ── Hanging vines from top ────────────────────────────────────────────
+        if (this._vines) {
+          ctx.save();
+          this._vines.forEach(vine => {
+            // Draw the vine stem as a wavy line
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(40, 100, 30, 0.52)';
+            ctx.lineWidth = 1.3;
+            ctx.moveTo(vine.xBase, 0);
+            vine.leaves.forEach(lf => {
+              ctx.lineTo(lf.stemX, lf.stemY);
+            });
+            // extend to vine tip
+            const lastLeaf = vine.leaves[vine.leaves.length - 1];
+            if (lastLeaf) ctx.lineTo(lastLeaf.stemX, vine.dropLen);
+            ctx.stroke();
+
+            // Draw each leaf
+            vine.leaves.forEach(lf => {
+              ctx.save();
+              ctx.globalAlpha = lf.a;
+              ctx.translate(lf.x, lf.y);
+              ctx.rotate(lf.rot);
+
+              if (lf.type === 'money') {
+                // Round money-plant / Pothos leaf — plump oval, bright green
+                ctx.fillStyle = `hsl(${lf.hue}, 60%, ${lf.l}%)`;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, lf.r * 0.70, lf.r, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Midrib
+                ctx.strokeStyle = `hsla(${lf.hue + 12}, 50%, ${lf.l + 22}%, 0.55)`;
+                ctx.lineWidth = 0.9;
+                ctx.beginPath(); ctx.moveTo(0, -lf.r); ctx.lineTo(0, lf.r); ctx.stroke();
+                // Veins (2 each side)
+                ctx.lineWidth = 0.55;
+                for (let v = 1; v <= 2; v++) {
+                  const vy = -lf.r * 0.55 + v * lf.r * 0.55;
+                  ctx.beginPath(); ctx.moveTo(0, vy); ctx.lineTo(-lf.r * 0.55, vy - lf.r * 0.18); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(0, vy); ctx.lineTo( lf.r * 0.55, vy - lf.r * 0.18); ctx.stroke();
+                }
+              } else {
+                // Elongated vine / heart-tip leaf
+                ctx.fillStyle = `hsl(${lf.hue - 8}, 55%, ${lf.l - 5}%)`;
+                ctx.beginPath();
+                ctx.moveTo(0, -lf.r * 1.45);
+                ctx.bezierCurveTo( lf.r * 0.68, -lf.r * 0.5,  lf.r * 0.68,  lf.r * 0.5, 0, lf.r * 1.45);
+                ctx.bezierCurveTo(-lf.r * 0.68,  lf.r * 0.5, -lf.r * 0.68, -lf.r * 0.5, 0, -lf.r * 1.45);
+                ctx.fill();
+                ctx.strokeStyle = `hsla(${lf.hue}, 48%, ${lf.l + 20}%, 0.50)`;
+                ctx.lineWidth = 0.9;
+                ctx.beginPath(); ctx.moveTo(0, -lf.r * 1.45); ctx.lineTo(0, lf.r * 1.45); ctx.stroke();
+              }
+              ctx.restore();
+            });
+          });
+          ctx.restore();
+        }
+
+        // ── Branches — anime 2-pass: dark outline then earthy green-brown ────
         const br = this._branches;
         if (br) {
-          ctx.save(); ctx.lineCap = 'round';
+          ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          // Pass 1: dark cartoon outline
           br.forEach(seg => {
-            if (seg.y1 < HORIZON && seg.y2 < HORIZON) return;
-            const r = Math.min(255, 95 + Math.round(seg.w * 5));
-            const g = Math.min(200, 58 + Math.round(seg.w * 4));
-            const a = Math.min(0.92, 0.58 + seg.w * 0.05);
-            ctx.strokeStyle = `rgba(${r}, ${g}, 22, ${a})`;
+            ctx.strokeStyle = `rgba(8, 28, 6, ${Math.min(0.55, 0.28 + seg.w * 0.025)})`;
+            ctx.lineWidth = seg.w + 2.8;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+          });
+          // Pass 2: warm earthy brown-green fill
+          br.forEach(seg => {
+            const rv = Math.min(185, 72 + Math.round(seg.w * 5.5));
+            const gv = Math.min(145, 52 + Math.round(seg.w * 4.5));
+            const bv = Math.min(55,  16 + Math.round(seg.w * 1.8));
+            ctx.strokeStyle = `rgba(${rv}, ${gv}, ${bv}, ${Math.min(0.95, 0.65 + seg.w * 0.04)})`;
             ctx.lineWidth = seg.w;
             ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
           });
           ctx.restore();
         }
-        // Leaf clusters on twig tips
-        if (this._leaves) {
+
+        // Leaf clusters at twig tips
+        if (this._leafClusters) {
           ctx.save();
-          this._leaves.forEach(lf => {
+          this._leafClusters.forEach(lf => {
             ctx.globalAlpha = lf.a;
-            ctx.fillStyle = `hsl(${lf.hue}, 62%, ${lf.l}%)`;
+            ctx.fillStyle = `hsl(${lf.hue}, 66%, ${lf.l}%)`;
             ctx.beginPath(); ctx.arc(lf.x, lf.y, lf.r, 0, Math.PI * 2); ctx.fill();
           });
           ctx.restore();
         }
       },
+
+      // Falling particles: mix of money-plant leaves, elongated vine leaves,
+      // and classic forest leaves — all fade in softly.
       create(W) {
-        return {
-          x: Math.random() * W * 1.2 - W * 0.1, y: -20 - Math.random() * 50,
-          vx: -0.9 + Math.random() * 1.8, vy: 0.7 + Math.random() * 1.3,
-          rot: Math.random() * Math.PI * 2, rotV: -0.03 + Math.random() * 0.06,
-          sz: 4 + Math.random() * 8, alpha: 0.48 + Math.random() * 0.42,
-          sw: Math.random() * Math.PI * 2, swAmp: 0.7 + Math.random() * 1.5,
-          swSpd: 0.016 + Math.random() * 0.020,
-          col: `hsl(${98 + Math.random() * 60},${52 + Math.random() * 30}%,${22 + Math.random() * 22}%)`,
-        };
+        const r = Math.random();
+        if (r < 0.38) {
+          // Money-plant leaf (round, bright green)
+          return {
+            type: 'money',
+            x: Math.random() * W * 1.1 - W * 0.05,
+            y: -22 - Math.random() * 55,
+            vx: -0.55 + Math.random() * 1.35, vy: 0.50 + Math.random() * 0.95,
+            rot: Math.random() * Math.PI * 2, rotV: -0.04 + Math.random() * 0.08,
+            sz: 10 + Math.random() * 16,
+            alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
+            life: 0, fadeIn: 12 + Math.floor(Math.random() * 10),
+            sw: Math.random() * Math.PI * 2, swAmp: 0.8 + Math.random() * 1.6,
+            swSpd: 0.014 + Math.random() * 0.018,
+            hue: 108 + Math.floor(Math.random() * 42),
+            l:   26 + Math.floor(Math.random() * 18),
+          };
+        } else if (r < 0.68) {
+          // Vine / elongated leaf (darker, pointed)
+          return {
+            type: 'vine',
+            x: Math.random() * W * 1.2 - W * 0.1,
+            y: -22 - Math.random() * 60,
+            vx: -0.75 + Math.random() * 1.55, vy: 0.62 + Math.random() * 1.15,
+            rot: Math.random() * Math.PI * 2, rotV: -0.035 + Math.random() * 0.07,
+            sz: 7 + Math.random() * 11,
+            alpha: 0, maxAlpha: 0.50 + Math.random() * 0.38,
+            life: 0, fadeIn: 10 + Math.floor(Math.random() * 10),
+            sw: Math.random() * Math.PI * 2, swAmp: 0.7 + Math.random() * 1.4,
+            swSpd: 0.016 + Math.random() * 0.020,
+            hue: 95 + Math.floor(Math.random() * 55),
+            l:   18 + Math.floor(Math.random() * 20),
+          };
+        } else {
+          // Classic forest leaf (slim oval)
+          return {
+            type: 'leaf',
+            x: Math.random() * W * 1.2 - W * 0.1,
+            y: -20 - Math.random() * 50,
+            vx: -0.9 + Math.random() * 1.8, vy: 0.7 + Math.random() * 1.3,
+            rot: Math.random() * Math.PI * 2, rotV: -0.03 + Math.random() * 0.06,
+            sz: 4 + Math.random() * 8,
+            alpha: 0, maxAlpha: 0.50 + Math.random() * 0.40,
+            life: 0, fadeIn: 8 + Math.floor(Math.random() * 10),
+            sw: Math.random() * Math.PI * 2, swAmp: 0.7 + Math.random() * 1.5,
+            swSpd: 0.016 + Math.random() * 0.020,
+            col: `hsl(${98 + Math.random() * 60},${52 + Math.random() * 30}%,${22 + Math.random() * 22}%)`,
+          };
+        }
       },
+
       draw(ctx, p) {
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
-        ctx.beginPath();
-        ctx.moveTo(0, -p.sz);
-        ctx.bezierCurveTo( p.sz * 0.6, -p.sz * 0.5,  p.sz * 0.6,  p.sz * 0.5, 0, p.sz);
-        ctx.bezierCurveTo(-p.sz * 0.6,  p.sz * 0.5, -p.sz * 0.6, -p.sz * 0.5, 0, -p.sz);
-        ctx.fill(); ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        if (p.type === 'money') {
+          // Round money-plant leaf
+          ctx.fillStyle = `hsl(${p.hue}, 60%, ${p.l}%)`;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.sz * 0.68, p.sz, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = `hsla(${p.hue + 12}, 48%, ${p.l + 22}%, 0.50)`;
+          ctx.lineWidth = 0.9;
+          ctx.beginPath(); ctx.moveTo(0, -p.sz); ctx.lineTo(0, p.sz); ctx.stroke();
+        } else if (p.type === 'vine') {
+          // Elongated vine leaf
+          ctx.fillStyle = `hsl(${p.hue}, 56%, ${p.l}%)`;
+          ctx.beginPath();
+          ctx.moveTo(0, -p.sz * 1.5);
+          ctx.bezierCurveTo( p.sz * 0.65, -p.sz * 0.5,  p.sz * 0.65,  p.sz * 0.5, 0, p.sz * 1.5);
+          ctx.bezierCurveTo(-p.sz * 0.65,  p.sz * 0.5, -p.sz * 0.65, -p.sz * 0.5, 0, -p.sz * 1.5);
+          ctx.fill();
+          ctx.strokeStyle = `hsla(${p.hue}, 45%, ${p.l + 20}%, 0.45)`;
+          ctx.lineWidth = 0.85;
+          ctx.beginPath(); ctx.moveTo(0, -p.sz * 1.5); ctx.lineTo(0, p.sz * 1.5); ctx.stroke();
+        } else {
+          // Classic forest leaf (slim diamond)
+          ctx.fillStyle = p.col;
+          ctx.beginPath();
+          ctx.moveTo(0, -p.sz);
+          ctx.bezierCurveTo( p.sz * 0.6, -p.sz * 0.5,  p.sz * 0.6,  p.sz * 0.5, 0, p.sz);
+          ctx.bezierCurveTo(-p.sz * 0.6,  p.sz * 0.5, -p.sz * 0.6, -p.sz * 0.5, 0, -p.sz);
+          ctx.fill();
+        }
+        ctx.restore();
       },
+
       update(p, W, H) {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; p.rot += p.rotV; return p.y < H + 40;
+        p.life++;
+        p.sw += p.swSpd;
+        p.x  += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y  += p.vy;
+        p.rot += p.rotV;
+        // Soft fade-in
+        p.alpha = p.life < p.fadeIn ? p.maxAlpha * (p.life / p.fadeIn) : p.maxAlpha;
+        return p.y < H + 45;
       },
     },
 
     // ── Cherry / Sakura ─────────────────────────────────────────────────────
+    // Anime sakura — branches from all 4 corners, cartoon 2-pass outline,
+    // soft corner pink bloom glows in drawBackground, dense fade-in petals.
     cherry: {
-      max: 32, rate: 0.09,
+      max: 55, rate: 0.13,
       _branches: null, _blossoms: null,
+
       init(W, H) {
         _stars = [];
-        // Shorter seeds — branches frame the border, not the face
+        // Branches emerge from all four corners for full anime framing
         this._branches = _buildBranches(W, H, [
-          { x:  W * 0.04, y: H * 1.01, angle: -Math.PI / 2 + 0.24, len: H * 0.23, w: 10,  depth: 5 },
-          { x:  W * 0.96, y: H * 1.01, angle: -Math.PI / 2 - 0.26, len: H * 0.22, w: 9.5, depth: 5 },
-          { x:  W * 0.20, y: H * 1.01, angle: -Math.PI / 2 + 0.08, len: H * 0.16, w: 6,   depth: 4 },
-          { x:  W * 0.80, y: H * 1.01, angle: -Math.PI / 2 - 0.10, len: H * 0.15, w: 5.5, depth: 4 },
-          { x: -W * 0.01, y: H * 0.40, angle:  0.10,                len: W * 0.12, w: 3.5, depth: 3 },
-          { x:  W * 1.01, y: H * 0.36, angle:  Math.PI - 0.12,      len: W * 0.11, w: 3,   depth: 3 },
+          // Bottom-left — main trunk, thick
+          { x:  W * 0.02, y: H * 1.01, angle: -Math.PI / 2 + 0.30, len: H * 0.38, w: 12,  depth: 6 },
+          // Bottom-right — main trunk, thick
+          { x:  W * 0.98, y: H * 1.01, angle: -Math.PI / 2 - 0.32, len: H * 0.36, w: 11.5, depth: 6 },
+          // Bottom-left secondary
+          { x:  W * 0.16, y: H * 1.01, angle: -Math.PI / 2 + 0.09, len: H * 0.22, w: 7,   depth: 4 },
+          // Bottom-right secondary
+          { x:  W * 0.84, y: H * 1.01, angle: -Math.PI / 2 - 0.11, len: H * 0.20, w: 6.5, depth: 4 },
+          // Top-left corner — drooping down into scene
+          { x:  -8,        y: -8,       angle:  Math.PI / 2 - 0.16,  len: H * 0.34, w: 9,   depth: 5 },
+          { x:  W * 0.09,  y: -8,       angle:  Math.PI / 2 + 0.22,  len: H * 0.22, w: 6,   depth: 4 },
+          // Top-right corner — drooping down into scene
+          { x:  W + 8,     y: -8,       angle:  Math.PI / 2 + 0.19,  len: H * 0.32, w: 8.5, depth: 5 },
+          { x:  W * 0.91,  y: -8,       angle:  Math.PI / 2 - 0.24,  len: H * 0.20, w: 5.5, depth: 4 },
         ]);
-        // Pre-compute blossom clusters at twig tips
-        const HORIZON = H * 0.50;
+
+        // Blossom clusters at all twig tips — no horizon restriction so
+        // top-corner branches bloom too.
         this._blossoms = [];
         if (this._branches) {
           this._branches.forEach(seg => {
-            if (seg.w > 2.6 || seg.y2 < HORIZON) return;
-            for (let k = 0; k < Math.ceil(2 + seg.w * 0.9); k++) {
+            if (seg.w > 2.8) return;
+            for (let k = 0; k < Math.ceil(2 + seg.w * 1.2); k++) {
               this._blossoms.push({
-                x: seg.x2 + (Math.random() - 0.5) * 28,
-                y: seg.y2 - Math.random() * 16,
-                r: 6 + Math.random() * 14,
-                hue: 330 + Math.floor(Math.random() * 28),
-                l:   72 + Math.floor(Math.random() * 16),
-                a:   0.52 + Math.random() * 0.32,
+                x:   seg.x2 + (Math.random() - 0.5) * 38,
+                y:   seg.y2 + (Math.random() - 0.5) * 16,
+                r:   7 + Math.random() * 18,
+                hue: 325 + Math.floor(Math.random() * 36),
+                l:   74 + Math.floor(Math.random() * 18),
+                a:   0.48 + Math.random() * 0.40,
               });
             }
           });
         }
       },
+
       drawBackground(ctx, W, H) {
-        const HORIZON = H * 0.50;
-        // Moon glow (upper-right)
-        const mx = W * 0.74, my = H * 0.11;
-        const mg = ctx.createRadialGradient(mx, my, 0, mx, my, W * 0.22);
-        mg.addColorStop(0,   'rgba(255, 240, 255, 0.26)');
-        mg.addColorStop(0.28,'rgba(245, 210, 248, 0.11)');
-        mg.addColorStop(1,   'rgba(210, 165, 230, 0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
-        // Soft ground petal glow
-        const gg = ctx.createLinearGradient(0, H * 0.80, 0, H);
-        gg.addColorStop(0, 'rgba(220, 100, 160, 0)');
-        gg.addColorStop(1, 'rgba(180,  60, 120, 0.08)');
-        ctx.fillStyle = gg; ctx.fillRect(0, H * 0.80, W, H * 0.20);
-        // Blossom ground clusters along bottom
+        // ── Corner bloom glows — the radiating pink light effect ─────────────
+        // Bottom-left
+        const gBL = ctx.createRadialGradient(0, H, 0, 0, H, W * 0.58);
+        gBL.addColorStop(0,    'rgba(255, 120, 168, 0.26)');
+        gBL.addColorStop(0.38, 'rgba(218, 76, 140, 0.11)');
+        gBL.addColorStop(1,    'rgba(170, 35, 100, 0)');
+        ctx.fillStyle = gBL; ctx.fillRect(0, 0, W, H);
+        // Bottom-right
+        const gBR = ctx.createRadialGradient(W, H, 0, W, H, W * 0.58);
+        gBR.addColorStop(0,    'rgba(255, 120, 168, 0.26)');
+        gBR.addColorStop(0.38, 'rgba(218, 76, 140, 0.11)');
+        gBR.addColorStop(1,    'rgba(170, 35, 100, 0)');
+        ctx.fillStyle = gBR; ctx.fillRect(0, 0, W, H);
+        // Top-left
+        const gTL = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.48);
+        gTL.addColorStop(0,    'rgba(238, 100, 160, 0.20)');
+        gTL.addColorStop(0.48, 'rgba(200, 62, 130, 0.07)');
+        gTL.addColorStop(1,    'rgba(155, 28, 95, 0)');
+        ctx.fillStyle = gTL; ctx.fillRect(0, 0, W, H);
+        // Top-right
+        const gTR = ctx.createRadialGradient(W, 0, 0, W, 0, W * 0.48);
+        gTR.addColorStop(0,    'rgba(238, 100, 160, 0.20)');
+        gTR.addColorStop(0.48, 'rgba(200, 62, 130, 0.07)');
+        gTR.addColorStop(1,    'rgba(155, 28, 95, 0)');
+        ctx.fillStyle = gTR; ctx.fillRect(0, 0, W, H);
+        // Soft central moonlit wash
+        const moon = ctx.createRadialGradient(W * 0.50, -H * 0.04, 0, W * 0.50, H * 0.52, W * 0.44);
+        moon.addColorStop(0,   'rgba(255, 230, 255, 0.08)');
+        moon.addColorStop(0.6, 'rgba(235, 185, 240, 0.03)');
+        moon.addColorStop(1,   'rgba(180, 90, 180, 0)');
+        ctx.fillStyle = moon; ctx.fillRect(0, 0, W, H);
+        // Ground petal scatter glow
+        const gg = ctx.createLinearGradient(0, H * 0.78, 0, H);
+        gg.addColorStop(0, 'rgba(235, 100, 158, 0)');
+        gg.addColorStop(1, 'rgba(205, 68, 128, 0.14)');
+        ctx.fillStyle = gg; ctx.fillRect(0, H * 0.78, W, H * 0.22);
+
+        // Blossom cloud under-layer (soft fill)
         if (this._blossoms) {
           ctx.save();
           this._blossoms.forEach(bl => {
-            ctx.globalAlpha = bl.a;
-            ctx.fillStyle = `hsl(${bl.hue}, 72%, ${bl.l}%)`;
+            ctx.globalAlpha = bl.a * 0.58;
+            ctx.fillStyle = `hsl(${bl.hue}, 82%, ${bl.l}%)`;
             ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r, 0, Math.PI * 2); ctx.fill();
           });
           ctx.restore();
         }
-        // Branches — warm pinkish-brown cherry wood, confined to lower half
+
+        // ── Branches — anime cartoon 2-pass ──────────────────────────────────
         const b = this._branches;
         if (b) {
-          ctx.save(); ctx.lineCap = 'round';
+          ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          // Pass 1: dark plum outline
           b.forEach(seg => {
-            if (seg.y1 < HORIZON && seg.y2 < HORIZON) return;
-            const r = Math.min(255, 105 + Math.round(seg.w * 6));
-            const g = Math.min(180,  42 + Math.round(seg.w * 2.5));
-            const bv = Math.min(120, 45 + Math.round(seg.w * 3));
-            const a  = Math.min(0.92, 0.56 + seg.w * 0.05);
-            ctx.strokeStyle = `rgba(${r}, ${g}, ${bv}, ${a})`;
+            ctx.strokeStyle = `rgba(35, 8, 28, ${Math.min(0.52, 0.25 + seg.w * 0.028)})`;
+            ctx.lineWidth = seg.w + 2.6;
+            ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+          });
+          // Pass 2: warm cherry-wood — pink-brown
+          b.forEach(seg => {
+            const rv = Math.min(255, 148 + Math.round(seg.w * 5.5));
+            const gv = Math.min(145,  50 + Math.round(seg.w * 3.0));
+            const bv = Math.min(115,  55 + Math.round(seg.w * 3.5));
+            ctx.strokeStyle = `rgba(${rv}, ${gv}, ${bv}, ${Math.min(0.95, 0.66 + seg.w * 0.04)})`;
             ctx.lineWidth = seg.w;
             ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
           });
           ctx.restore();
         }
-        // Blossom clusters on twig tips
+
+        // Blossom top layer (brighter, tighter)
         if (this._blossoms) {
           ctx.save();
           this._blossoms.forEach(bl => {
-            ctx.globalAlpha = bl.a * 0.85;
-            ctx.fillStyle = `hsl(${bl.hue}, 78%, ${bl.l + 6}%)`;
-            ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r * 0.7, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = bl.a * 0.88;
+            ctx.fillStyle = `hsl(${bl.hue}, 90%, ${bl.l + 8}%)`;
+            ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r * 0.52, 0, Math.PI * 2); ctx.fill();
           });
           ctx.restore();
         }
       },
-      create(W) {
+
+      // Petals spawn more from corner areas to reinforce the bloom sources.
+      create(W, H) {
+        // 35% chance: spawn near a corner (top-left or top-right)
+        const fromCorner = Math.random() < 0.35;
+        let startX;
+        if (fromCorner) {
+          startX = Math.random() < 0.5
+            ? Math.random() * W * 0.30        // top-left zone
+            : W * 0.70 + Math.random() * W * 0.30; // top-right zone
+        } else {
+          startX = Math.random() * W * 1.30 - W * 0.15;
+        }
         return {
-          x: Math.random() * W * 1.3 - W * 0.15, y: -20 - Math.random() * 80,
-          vx: -0.5 + Math.random() * 1.5, vy: 0.45 + Math.random() * 1.2,
-          rot: Math.random() * Math.PI * 2, rotV: -0.05 + Math.random() * 0.10,
-          sz: 3.5 + Math.random() * 6, alpha: 0.52 + Math.random() * 0.38,
-          sw: Math.random() * Math.PI * 2, swAmp: 1.1 + Math.random() * 2.4,
-          swSpd: 0.013 + Math.random() * 0.020,
-          col: `hsl(${335 + Math.random() * 28},${62 + Math.random() * 24}%,${68 + Math.random() * 16}%)`,
+          x: startX,
+          y: -18 - Math.random() * 70,
+          vx: -0.55 + Math.random() * 1.65,
+          vy:  0.38 + Math.random() * 1.05,
+          rot: Math.random() * Math.PI * 2,
+          rotV: -0.06 + Math.random() * 0.12,
+          sz: 3.5 + Math.random() * 7,
+          alpha: 0, maxAlpha: 0.52 + Math.random() * 0.40,
+          life: 0, fadeIn: 10 + Math.floor(Math.random() * 14),
+          sw: Math.random() * Math.PI * 2,
+          swAmp: 1.0 + Math.random() * 2.6,
+          swSpd: 0.012 + Math.random() * 0.022,
+          col: `hsl(${328 + Math.random() * 34},${66 + Math.random() * 24}%,${70 + Math.random() * 18}%)`,
         };
       },
+
       draw(ctx, p) {
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.globalAlpha = p.alpha; ctx.fillStyle = p.col;
+        // Teardrop petal shape
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-p.sz, -p.sz, -p.sz, -p.sz * 2.4, 0, -p.sz * 2.9);
-        ctx.bezierCurveTo( p.sz, -p.sz * 2.4,  p.sz, -p.sz, 0, 0);
+        ctx.bezierCurveTo(-p.sz, -p.sz,        -p.sz, -p.sz * 2.5, 0, -p.sz * 3.0);
+        ctx.bezierCurveTo( p.sz, -p.sz * 2.5,   p.sz, -p.sz,       0,  0);
         ctx.fill();
         ctx.restore();
       },
+
       update(p, W, H) {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy; p.rot += p.rotV; return p.y < H + 40;
+        p.life++;
+        p.sw  += p.swSpd;
+        p.x   += p.vx + Math.sin(p.sw) * p.swAmp;
+        p.y   += p.vy;
+        p.rot += p.rotV;
+        // Soft fade-in, then constant alpha
+        p.alpha = p.life < p.fadeIn ? p.maxAlpha * (p.life / p.fadeIn) : p.maxAlpha;
+        return p.y < H + 45;
       },
     },
 
