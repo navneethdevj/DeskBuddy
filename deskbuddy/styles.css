@@ -2524,25 +2524,31 @@ body.full-mode.theme-classic {
     #111111;
 }
 
-/* ── THEME: Forest (moonlit ancient forest) ─────────────────── */
+/* ── THEME: Forest (anime enchanted forest — magical, bright, cute) ─── */
 body.full-mode.theme-forest {
   background:
-    /* Canopy overhead — heavy dark green at top, lighter centre from moonlight */
-    linear-gradient(180deg, #040e06 0%, #071508 18%, #060f07 36%, #0a1a0c 55%, #071209 80%, #050c06 100%),
-    /* Moonlight pool — soft cool glow from above-centre */
-    radial-gradient(ellipse 48% 35% at 50% 0%,    rgba(185, 225, 180, 0.10) 0%, transparent 60%),
-    /* Forest floor warm undertone */
-    radial-gradient(ellipse 80% 32% at 50% 100%,  rgba(22,  58,  18, 0.72) 0%, transparent 55%),
-    /* Side depth shadows */
-    radial-gradient(ellipse 30% 80% at   0% 50%,  rgba( 2,   8,   2, 0.80) 0%, transparent 55%),
-    radial-gradient(ellipse 30% 80% at 100% 50%,  rgba( 2,   8,   2, 0.80) 0%, transparent 55%);
+    /* Base — deep but not pitch-black, warm forest green undertone */
+    linear-gradient(180deg, #030d05 0%, #061408 18%, #09190a 36%, #0d2010 55%, #091608 80%, #050f05 100%),
+    /* Canopy top-light — soft magical jade-green glow from above */
+    radial-gradient(ellipse 62% 44% at 50% 0%,    rgba(65, 210, 95, 0.11) 0%, transparent 62%),
+    /* Left-side forest depth — pillars of shadow */
+    radial-gradient(ellipse 32% 78% at   0% 50%,  rgba(4, 28, 6, 0.78)   0%, transparent 55%),
+    /* Right-side forest depth */
+    radial-gradient(ellipse 32% 78% at 100% 50%,  rgba(4, 28, 6, 0.78)   0%, transparent 55%),
+    /* Forest-floor warm earth tone */
+    radial-gradient(ellipse 88% 30% at 50% 100%,  rgba(18, 65, 18, 0.68) 0%, transparent 55%),
+    /* Centre magical glow — buddy floats in this soft light */
+    radial-gradient(ellipse 46% 52% at 50% 48%,   rgba(28, 115, 42, 0.07) 0%, transparent 65%);
+  background-size: auto;
 }
 body.full-mode.theme-forest::before {
-  content: '';
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 52% 38% at 50%  2%,  rgba(190, 230, 188, 0.07) 0%, transparent 58%),
-    radial-gradient(ellipse 40% 28% at 22% 40%,  rgba(30, 100, 40, 0.05)   0%, transparent 48%),
-    radial-gradient(ellipse 36% 22% at 78% 35%,  rgba(28,  88, 38, 0.05)   0%, transparent 46%);
+    /* Canopy shimmer at top */
+    radial-gradient(ellipse 58% 42% at 50%  2%,  rgba(120, 235, 145, 0.08) 0%, transparent 58%),
+    /* Left-side ambient glow — gives the enclosed forest feel */
+    radial-gradient(ellipse 38% 28% at 16% 38%,  rgba(32, 118, 48, 0.06)  0%, transparent 48%),
+    radial-gradient(ellipse 34% 24% at 84% 34%,  rgba(28, 108, 44, 0.06)  0%, transparent 46%);
   animation-duration: 10s;
 }
 
@@ -2573,25 +2579,36 @@ body.full-mode.theme-ocean::before {
   animation-duration: 14s;
 }
 
-/* ── THEME: Cherry / Sakura (night-time blossom) ────────────── */
+/* ── THEME: Cherry / Sakura (anime sakura night — corner blooms) ──── */
 body.full-mode.theme-cherry {
   background:
-    /* Night sky gradient — dark blue-purple top, warm deep rose at base */
-    linear-gradient(180deg, #090512 0%, #0e0618 22%, #130818 45%, #160a1a 65%, #120610 85%, #0d040e 100%),
-    /* Moonlit warm bloom in upper-right */
-    radial-gradient(ellipse 42% 36% at 75% 5%,   rgba(255, 235, 255, 0.12) 0%, transparent 60%),
-    /* Ground-level warm petal glow */
-    radial-gradient(ellipse 90% 28% at 50% 100%,  rgba(160,  42,  95, 0.32) 0%, transparent 55%),
-    /* Depth side shadows */
-    radial-gradient(ellipse 28% 80% at   0% 50%,  rgba( 8,   2,  12, 0.75) 0%, transparent 52%),
-    radial-gradient(ellipse 28% 80% at 100% 50%,  rgba( 8,   2,  12, 0.75) 0%, transparent 52%);
+    /* Night sky — deep warm-purple darkness */
+    linear-gradient(180deg, #070210 0%, #0c0418 22%, #110618 45%, #140818 65%, #100514 85%, #0b0310 100%),
+    /* BOTTOM-LEFT corner — strong radiating pink bloom */
+    radial-gradient(ellipse 62% 74% at   0% 100%, rgba(255, 118, 168, 0.32) 0%, rgba(215, 72, 142, 0.14) 40%, transparent 70%),
+    /* BOTTOM-RIGHT corner — mirror bloom */
+    radial-gradient(ellipse 62% 74% at 100% 100%, rgba(255, 118, 168, 0.32) 0%, rgba(215, 72, 142, 0.14) 40%, transparent 70%),
+    /* TOP-LEFT corner — softer bloom for top branches */
+    radial-gradient(ellipse 50% 58% at   0%   0%, rgba(232, 95, 158, 0.21) 0%, rgba(190, 54, 126, 0.08) 48%, transparent 68%),
+    /* TOP-RIGHT corner — mirror */
+    radial-gradient(ellipse 50% 58% at 100%  0%, rgba(232, 95, 158, 0.21) 0%, rgba(190, 54, 126, 0.08) 48%, transparent 68%),
+    /* Central moonlit wash */
+    radial-gradient(ellipse 40% 32% at 50%  3%, rgba(255, 228, 255, 0.09) 0%, transparent 62%),
+    /* Ground petal glow */
+    radial-gradient(ellipse 85% 26% at 50% 100%, rgba(178, 55, 112, 0.34) 0%, transparent 55%);
+  background-size: auto;
 }
 body.full-mode.theme-cherry::before {
-  content: '';
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 44% 32% at 74%  5%,  rgba(255, 235, 255, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 38% 22% at 22% 32%,  rgba(185,  55, 115, 0.05) 0%, transparent 48%),
-    radial-gradient(ellipse 34% 18% at 78% 28%,  rgba(165,  45, 100, 0.05) 0%, transparent 46%);
+    /* Central top shimmer */
+    radial-gradient(ellipse 46% 34% at 50%  3%, rgba(255, 228, 255, 0.07) 0%, transparent 55%),
+    /* LEFT border edge glow — reinforces the radiating side light */
+    radial-gradient(ellipse 18% 82% at   0% 50%, rgba(255, 135, 178, 0.11) 0%, transparent 55%),
+    /* RIGHT border edge glow */
+    radial-gradient(ellipse 18% 82% at 100% 50%, rgba(255, 135, 178, 0.11) 0%, transparent 55%),
+    radial-gradient(ellipse 36% 20% at 22% 32%,  rgba(195, 65, 122, 0.05)  0%, transparent 48%),
+    radial-gradient(ellipse 32% 18% at 78% 28%,  rgba(175, 55, 108, 0.05)  0%, transparent 46%);
   animation-duration: 10s;
 }
 
