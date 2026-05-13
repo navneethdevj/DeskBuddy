@@ -1,34 +1,23 @@
 /**
  * Camera — MediaPipe FaceLandmarker (multi-face) + HandLandmarker (lazy, optional).
  *
- * FaceLandmarker:
- *   - numFaces: 4 (expanded from 1 for multi-face social detection)
- *   - GPU delegate preferred; silent CPU fallback on failure
- *   - 15 FPS — writes window.faceResults each detection frame
- *   - tick(timestamp) is called by Brain's rAF loop — no self-scheduled RAF
+ * PERFORMANCE TUNING:
+ *   Face:  12 FPS  — was 15, saves ~20% GPU load
+ *   Hand:   3 FPS  — was 10; waves are slow gestures, 3fps is enough
+ *   Object: 3 FPS  — was 5; phone detection doesn't need fast refresh
  *
- * HandLandmarker:
- *   - Lazy-initialized 1.8 s after face tracking starts (non-blocking startup)
- *   - GPU delegate with CPU fallback
- *   - 10 FPS — writes window.handResults when ready
- *   - window.handAvailable = false until init succeeds
+ * HOW TO TRIGGER WAVE DETECTION:
+ *   Raise your hand so your wrist is in the upper 70% of the camera frame.
+ *   Wave it clearly left-right at least 3 times within ~1.5 seconds.
  *
- * ObjectDetector:
- *   - Lazy-initialized 3.5 s after startup
- *   - GPU delegate with silent fallback to disabled
- *   - 5 FPS — writes window.objResults when ready
- *
- * window.cameraAvailable = false → app uses no-camera fallback behavior.
- *
- * Iris landmarks (used by perception.js):
- *   Left iris center  = lm[468]   Right iris center = lm[473]
+ * tick(timestamp) called by Brain's rAF loop — no self-scheduled RAF.
  */
 const Camera = (() => {
 
-  const FPS             = 15;
-  const FRAME_INTERVAL  = Math.round(1000 / FPS);       // ~67 ms
-  const HAND_FPS        = 10;
-  const HAND_INTERVAL   = Math.round(1000 / HAND_FPS);  // 100 ms
+  const FPS             = 12;
+  const FRAME_INTERVAL  = Math.round(1000 / FPS);       // ~84ms
+  const HAND_FPS        = 3;
+  const HAND_INTERVAL   = Math.round(1000 / HAND_FPS);  // ~334ms
   const VIDEO_TIMEOUT   = 10000;
 
   let faceLandmarker      = null;
@@ -44,258 +33,163 @@ const Camera = (() => {
   let _objInitPending     = false;
   let _objInitDone        = false;
 
-  // Globals read by perception.js and brain.js
   window.cameraAvailable = false;
   window.faceResults     = null;
   window.handResults     = null;
   window.handAvailable   = false;
-  window.objResults      = [];   // [{categories:[{categoryName,score}], boundingBox:{originX,originY,width,height}}]
+  window.objResults      = [];
   window.objAvailable    = false;
-
-  // ── Public init ─────────────────────────────────────────────────────────────
 
   async function init() {
     videoEl = document.getElementById('camera-feed');
     if (!videoEl) { console.warn('[Camera] #camera-feed not found'); return; }
-
     try {
-      console.log('[Camera] Starting webcam…');
       await _startWebcam();
-      console.log('[Camera] Webcam ready — initializing FaceLandmarker…');
       await _initFaceLandmarker();
       window.cameraAvailable = true;
       running = true;
-      // NOTE: No self-scheduled requestAnimationFrame here.
-      // Brain.tick() calls Camera.tick(timestamp) each frame — one shared RAF loop.
-      console.log('[Camera] FaceLandmarker ready — %d FPS, numFaces=4', FPS);
-
-      // Lazy HandLandmarker — delay so it doesn't compete with face init at startup
-      setTimeout(_initHandLandmarker, 1800);
-      // Lazy ObjectDetector — delay further so hand + face are both stable first
-      setTimeout(_initObjDetector, 3500);
+      console.log('[Camera] FaceLandmarker ready — %dFPS', FPS);
+      setTimeout(_initHandLandmarker, 3000);
+      setTimeout(_initObjDetector,    5000);
     } catch (err) {
       console.warn('[Camera] Unavailable —', err.message || err);
     }
   }
 
-  // ── Webcam ──────────────────────────────────────────────────────────────────
-
   async function _startWebcam() {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('navigator.mediaDevices.getUserMedia not available');
-    }
+    if (!navigator.mediaDevices?.getUserMedia)
+      throw new Error('getUserMedia not available');
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'user' },
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
       audio: false,
     });
     videoEl.srcObject = stream;
-    try {
-      await new Promise((resolve, reject) => {
-        videoEl.addEventListener('loadeddata', resolve, { once: true });
-        videoEl.addEventListener('error',      reject,  { once: true });
-        setTimeout(() => reject(new Error('Video loadeddata timeout after 10 s')), VIDEO_TIMEOUT);
-      });
-    } catch (err) {
-      stream.getTracks().forEach(t => t.stop());
-      videoEl.srcObject = null;
-      throw err;
-    }
-    console.log('[Camera] Video ready — readyState=%d, %dx%d',
-      videoEl.readyState, videoEl.videoWidth, videoEl.videoHeight);
+    await new Promise((resolve, reject) => {
+      videoEl.addEventListener('loadeddata', resolve, { once: true });
+      videoEl.addEventListener('error',      reject,  { once: true });
+      setTimeout(() => reject(new Error('Video timeout')), VIDEO_TIMEOUT);
+    });
   }
-
-  // ── FaceLandmarker ──────────────────────────────────────────────────────────
 
   async function _initFaceLandmarker() {
     const { FaceLandmarker, FilesetResolver } = window;
-    if (!FaceLandmarker)  throw new Error('window.FaceLandmarker undefined — CJS shim failed');
-    if (!FilesetResolver) throw new Error('window.FilesetResolver undefined — CJS shim failed');
-
-    const wasmPath = '../node_modules/@mediapipe/tasks-vision/wasm';
-    const vision   = await FilesetResolver.forVisionTasks(wasmPath);
-
+    if (!FaceLandmarker || !FilesetResolver)
+      throw new Error('MediaPipe Vision not loaded');
+    const vision = await FilesetResolver.forVisionTasks(
+      '../node_modules/@mediapipe/tasks-vision/wasm'
+    );
     const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
       'face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-
-    // Try GPU first (much faster for multi-face); fall back to CPU silently.
-    const delegates = ['GPU', 'CPU'];
-    let lastErr;
-    for (const delegate of delegates) {
+    for (const delegate of ['GPU', 'CPU']) {
       try {
         faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: modelUrl,
-            delegate,
-          },
-          outputFaceBlendshapes:              true,
+          baseOptions: { modelAssetPath: modelUrl, delegate },
+          outputFaceBlendshapes: true,
           outputFacialTransformationMatrixes: true,
           runningMode: 'VIDEO',
-          numFaces: 4,   // ← multi-face social awareness
+          numFaces: 4,
         });
-        console.log('[Camera] FaceLandmarker delegate: %s', delegate);
+        console.log('[Camera] FaceLandmarker: %s', delegate);
         return;
-      } catch (err) {
-        console.warn('[Camera] FaceLandmarker delegate %s failed, trying next…', delegate, err.message || err);
-        lastErr = err;
-      }
+      } catch (_) {}
     }
-    throw lastErr;
+    throw new Error('FaceLandmarker failed on all delegates');
   }
-
-  // ── HandLandmarker (lazy, optional) ─────────────────────────────────────────
 
   async function _initHandLandmarker() {
     if (_handInitPending || _handInitDone) return;
     _handInitPending = true;
     try {
       const { HandLandmarker, FilesetResolver } = window;
-      if (!HandLandmarker) {
-        console.warn('[Camera] window.HandLandmarker not found — wave detection disabled');
+      if (!HandLandmarker || !FilesetResolver) {
+        console.warn('[Camera] HandLandmarker not available');
         return;
       }
-      if (!FilesetResolver) {
-        console.warn('[Camera] window.FilesetResolver not found — wave detection disabled');
-        return;
-      }
-
-      const wasmPath = '../node_modules/@mediapipe/tasks-vision/wasm';
-      const vision   = await FilesetResolver.forVisionTasks(wasmPath);
-
+      const vision = await FilesetResolver.forVisionTasks(
+        '../node_modules/@mediapipe/tasks-vision/wasm'
+      );
       const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
         'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: modelUrl,
-          delegate: 'GPU',  // GPU preferred for hand tracking performance
-        },
-        runningMode: 'VIDEO',
-        numHands: 2,
-      });
-
-      window.handAvailable = true;
-      _handInitDone = true;
-      console.log('[Camera] HandLandmarker ready (GPU) — wave detection enabled');
-    } catch (err) {
-      // GPU may not be available — retry with CPU before giving up
-      console.warn('[Camera] HandLandmarker GPU failed, retrying CPU…', err.message || err);
-      try {
-        const wasmPath2 = '../node_modules/@mediapipe/tasks-vision/wasm';
-        const vision2   = await FilesetResolver.forVisionTasks(wasmPath2);
-        const modelUrl2 = 'https://storage.googleapis.com/mediapipe-models/' +
-          'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-        handLandmarker = await HandLandmarker.createFromOptions(vision2, {
-          baseOptions: { modelAssetPath: modelUrl2, delegate: 'CPU' },
-          runningMode: 'VIDEO',
-          numHands: 2,
-        });
-        window.handAvailable = true;
-        _handInitDone = true;
-        console.log('[Camera] HandLandmarker ready (CPU fallback) — wave detection enabled');
-      } catch (err2) {
-        console.warn('[Camera] HandLandmarker init failed (wave detection disabled):', err2.message || err2);
-        window.handAvailable = false;
+      for (const delegate of ['GPU', 'CPU']) {
+        try {
+          handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: { modelAssetPath: modelUrl, delegate },
+            runningMode: 'VIDEO',
+            numHands: 1,
+          });
+          window.handAvailable = true;
+          _handInitDone = true;
+          console.log('[Camera] HandLandmarker: %s at %dFPS — wave: raise hand + wave left-right 3x', delegate, HAND_FPS);
+          return;
+        } catch (_) {}
       }
+      console.warn('[Camera] HandLandmarker unavailable — wave disabled');
+    } catch (err) {
+      console.warn('[Camera] HandLandmarker error:', err.message);
     } finally {
       _handInitPending = false;
     }
   }
 
-  // ── Detection loop ──────────────────────────────────────────────────────────
-  // Called by Brain's requestAnimationFrame tick — no self-scheduled RAF.
-
   function tick(timestamp) {
     if (!running) return;
-
     const ms = Math.round(timestamp);
     if (!videoEl || videoEl.readyState < 2) return;
 
-    // Face detection at FPS — strict monotonic timestamp guard
-    if (faceLandmarker &&
-        ms - lastFaceTimestampMs >= FRAME_INTERVAL &&
-        ms > lastFaceTimestampMs) {
+    if (faceLandmarker && ms - lastFaceTimestampMs >= FRAME_INTERVAL && ms > lastFaceTimestampMs) {
       try {
-        window.faceResults = faceLandmarker.detectForVideo(videoEl, ms);
+        window.faceResults  = faceLandmarker.detectForVideo(videoEl, ms);
         lastFaceTimestampMs = ms;
       } catch (err) {
-        console.warn('[Camera] Face detection error:', err.message || err);
+        console.warn('[Camera] Face error:', err.message);
       }
     }
 
-    // Hand detection at HAND_FPS — only when HandLandmarker is ready
-    // Uses a separate timestamp so it never conflicts with the face loop
-    if (handLandmarker &&
-        window.handAvailable &&
-        ms - lastHandTimestampMs >= HAND_INTERVAL &&
-        ms > lastHandTimestampMs) {
+    if (handLandmarker && window.handAvailable &&
+        ms - lastHandTimestampMs >= HAND_INTERVAL && ms > lastHandTimestampMs) {
       try {
-        window.handResults = handLandmarker.detectForVideo(videoEl, ms);
+        window.handResults  = handLandmarker.detectForVideo(videoEl, ms);
         lastHandTimestampMs = ms;
-      } catch (_) {
-        // Hand detection is optional — silent failure keeps face tracking alive
-      }
+      } catch (_) {}
     }
 
-    // Object detection at OBJ_FPS — only when ObjectDetector is ready
-    // Uses its own timestamp; a separate cadence keeps GPU load manageable.
-    if (objDetector &&
-        window.objAvailable &&
-        ms - lastObjTimestampMs >= OBJ_INTERVAL &&
-        ms > lastObjTimestampMs) {
+    if (objDetector && window.objAvailable &&
+        ms - lastObjTimestampMs >= OBJ_INTERVAL && ms > lastObjTimestampMs) {
       try {
-        const res = objDetector.detectForVideo(videoEl, ms);
-        window.objResults    = res?.detections || [];
-        lastObjTimestampMs   = ms;
+        const res        = objDetector.detectForVideo(videoEl, ms);
+        window.objResults  = res?.detections || [];
+        lastObjTimestampMs = ms;
       } catch (_) {
         window.objResults = [];
       }
     }
   }
 
-  // ── ObjectDetector (lazy, optional) ────────────────────────────────────────
-  // EfficientDet-Lite0 COCO — "cell phone" label.
-  // Runs at OBJ_FPS inside _loop() after init completes.
-  // GPU delegate preferred; falls back silently on failure.
-
-  const OBJ_FPS      = 5;
-  const OBJ_INTERVAL = Math.round(1000 / OBJ_FPS);  // 200 ms
+  const OBJ_FPS      = 3;
+  const OBJ_INTERVAL = Math.round(1000 / OBJ_FPS);
 
   async function _initObjDetector() {
     if (_objInitPending || _objInitDone) return;
     _objInitPending = true;
     try {
       const { ObjectDetector, FilesetResolver } = window;
-      if (!ObjectDetector) {
-        console.warn('[Camera] window.ObjectDetector not found — phone object detection disabled');
-        return;
-      }
-      if (!FilesetResolver) {
-        console.warn('[Camera] window.FilesetResolver not found — phone object detection disabled');
-        return;
-      }
-
-      const wasmPath = '../node_modules/@mediapipe/tasks-vision/wasm';
-      const vision   = await FilesetResolver.forVisionTasks(wasmPath);
-
+      if (!ObjectDetector || !FilesetResolver) { return; }
+      const vision = await FilesetResolver.forVisionTasks(
+        '../node_modules/@mediapipe/tasks-vision/wasm'
+      );
       const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
         'object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
-
       objDetector = await ObjectDetector.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: modelUrl,
-          delegate: 'GPU',
-        },
-        scoreThreshold: 0.25,
-        maxResults:     5,
-        runningMode:    'VIDEO',
+        baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
+        scoreThreshold: 0.30,
+        maxResults:     3,
+        runningMode: 'VIDEO',
       });
-
       window.objAvailable = true;
       _objInitDone = true;
-      console.log('[Camera] ObjectDetector ready (GPU) — phone detection enabled');
+      console.log('[Camera] ObjectDetector ready at %dFPS', OBJ_FPS);
     } catch (err) {
-      console.warn('[Camera] ObjectDetector init failed (phone detection disabled):', err.message || err);
-      window.objAvailable = false;
+      console.warn('[Camera] ObjectDetector failed:', err.message);
     } finally {
       _objInitPending = false;
     }
