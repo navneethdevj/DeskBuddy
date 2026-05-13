@@ -3,13 +3,20 @@
  *
  * FaceLandmarker:
  *   - numFaces: 4 (expanded from 1 for multi-face social detection)
+ *   - GPU delegate preferred; silent CPU fallback on failure
  *   - 15 FPS — writes window.faceResults each detection frame
+ *   - tick(timestamp) is called by Brain's rAF loop — no self-scheduled RAF
  *
  * HandLandmarker:
  *   - Lazy-initialized 1.8 s after face tracking starts (non-blocking startup)
- *   - GPU delegate with silent fallback to disabled
+ *   - GPU delegate with CPU fallback
  *   - 10 FPS — writes window.handResults when ready
  *   - window.handAvailable = false until init succeeds
+ *
+ * ObjectDetector:
+ *   - Lazy-initialized 3.5 s after startup
+ *   - GPU delegate with silent fallback to disabled
+ *   - 5 FPS — writes window.objResults when ready
  *
  * window.cameraAvailable = false → app uses no-camera fallback behavior.
  *
@@ -58,7 +65,8 @@ const Camera = (() => {
       await _initFaceLandmarker();
       window.cameraAvailable = true;
       running = true;
-      requestAnimationFrame(_loop);
+      // NOTE: No self-scheduled requestAnimationFrame here.
+      // Brain.tick() calls Camera.tick(timestamp) each frame — one shared RAF loop.
       console.log('[Camera] FaceLandmarker ready — %d FPS, numFaces=4', FPS);
 
       // Lazy HandLandmarker — delay so it doesn't compete with face init at startup
@@ -109,16 +117,29 @@ const Camera = (() => {
     const modelUrl = 'https://storage.googleapis.com/mediapipe-models/' +
       'face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: modelUrl,
-        delegate: 'CPU',   // CPU unchanged — stable across all hardware
-      },
-      outputFaceBlendshapes:              true,
-      outputFacialTransformationMatrixes: true,
-      runningMode: 'VIDEO',
-      numFaces: 4,   // ← expanded from 1 for multi-face social awareness
-    });
+    // Try GPU first (much faster for multi-face); fall back to CPU silently.
+    const delegates = ['GPU', 'CPU'];
+    let lastErr;
+    for (const delegate of delegates) {
+      try {
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: modelUrl,
+            delegate,
+          },
+          outputFaceBlendshapes:              true,
+          outputFacialTransformationMatrixes: true,
+          runningMode: 'VIDEO',
+          numFaces: 4,   // ← multi-face social awareness
+        });
+        console.log('[Camera] FaceLandmarker delegate: %s', delegate);
+        return;
+      } catch (err) {
+        console.warn('[Camera] FaceLandmarker delegate %s failed, trying next…', delegate, err.message || err);
+        lastErr = err;
+      }
+    }
+    throw lastErr;
   }
 
   // ── HandLandmarker (lazy, optional) ─────────────────────────────────────────
@@ -156,19 +177,35 @@ const Camera = (() => {
       _handInitDone = true;
       console.log('[Camera] HandLandmarker ready (GPU) — wave detection enabled');
     } catch (err) {
-      // GPU may not be available; HandLandmarker is optional — fail silently
-      console.warn('[Camera] HandLandmarker init failed (wave detection disabled):', err.message || err);
-      window.handAvailable = false;
+      // GPU may not be available — retry with CPU before giving up
+      console.warn('[Camera] HandLandmarker GPU failed, retrying CPU…', err.message || err);
+      try {
+        const wasmPath2 = '../node_modules/@mediapipe/tasks-vision/wasm';
+        const vision2   = await FilesetResolver.forVisionTasks(wasmPath2);
+        const modelUrl2 = 'https://storage.googleapis.com/mediapipe-models/' +
+          'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+        handLandmarker = await HandLandmarker.createFromOptions(vision2, {
+          baseOptions: { modelAssetPath: modelUrl2, delegate: 'CPU' },
+          runningMode: 'VIDEO',
+          numHands: 2,
+        });
+        window.handAvailable = true;
+        _handInitDone = true;
+        console.log('[Camera] HandLandmarker ready (CPU fallback) — wave detection enabled');
+      } catch (err2) {
+        console.warn('[Camera] HandLandmarker init failed (wave detection disabled):', err2.message || err2);
+        window.handAvailable = false;
+      }
     } finally {
       _handInitPending = false;
     }
   }
 
   // ── Detection loop ──────────────────────────────────────────────────────────
+  // Called by Brain's requestAnimationFrame tick — no self-scheduled RAF.
 
-  function _loop(timestamp) {
+  function tick(timestamp) {
     if (!running) return;
-    requestAnimationFrame(_loop);
 
     const ms = Math.round(timestamp);
     if (!videoEl || videoEl.readyState < 2) return;
@@ -264,5 +301,5 @@ const Camera = (() => {
     }
   }
 
-  return { init };
+  return { init, tick };
 })();
