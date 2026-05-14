@@ -101,23 +101,47 @@
                 <div class="theme-picker" id="full-theme-picker">
                   <button class="theme-chip" data-theme="galaxy"><span class="theme-swatch" style="background:linear-gradient(135deg,#0c0720,#5c2db2 70%)"></span>Galaxy</button>
                   <button class="theme-chip" data-theme="classic"><span class="theme-swatch" style="background:linear-gradient(135deg,#111,#1c1c1c)"></span>Classic</button>
-                  <button class="theme-chip" data-theme="forest"><span class="theme-swatch" style="background:linear-gradient(135deg,#040e06,#0a2a0e 70%)"></span>Forest</button>
-                  <button class="theme-chip" data-theme="cherry"><span class="theme-swatch" style="background:linear-gradient(135deg,#090512,#8a1840 70%)"></span>Sakura</button>
-                  <button class="theme-chip" data-theme="ocean"><span class="theme-swatch" style="background:linear-gradient(135deg,#010609,#042030 70%)"></span>Ocean</button>
-                  <button class="theme-chip" data-theme="midnight"><span class="theme-swatch" style="background:linear-gradient(135deg,#01020a,#08102a 70%)"></span>Midnight</button>
+                  <button class="theme-chip" data-theme="forest"><span class="theme-swatch" style="background:linear-gradient(135deg,#020c04,#0d3512 70%)"></span>Forest</button>
+                  <button class="theme-chip" data-theme="cherry"><span class="theme-swatch" style="background:linear-gradient(135deg,#080115,#7a1255 70%)"></span>Sakura</button>
+                  <button class="theme-chip" data-theme="ocean"><span class="theme-swatch" style="background:linear-gradient(135deg,#010e18,#0a5878 70%)"></span>Ocean</button>
                   <button class="theme-chip" data-theme="snow"><span class="theme-swatch" style="background:linear-gradient(135deg,#0a0e18,#1a2240 70%)"></span>Snow</button>
-                  <button class="theme-chip" data-theme="aurora"><span class="theme-swatch" style="background:linear-gradient(135deg,#020d10,#073020 70%)"></span>Aurora</button>
+                  <button class="theme-chip" data-theme="sunset"><span class="theme-swatch" style="background:linear-gradient(135deg,#0d0618,#c44010 70%)"></span>Sunset</button>
+                  <button class="theme-chip" data-theme="anime"><span class="theme-swatch" style="background:linear-gradient(135deg,#0a0512,#cc66aa 70%)"></span>Anime</button>
+                  <button class="theme-chip" data-theme="matrix"><span class="theme-swatch" style="background:linear-gradient(135deg,#000600,#003a00 70%)"></span>Matrix</button>
+                  <button class="theme-chip" data-theme="neon"><span class="theme-swatch" style="background:linear-gradient(135deg,#0a0018,#8800ff 70%)"></span>Neon</button>
+                  <button class="theme-chip" data-theme="cozy"><span class="theme-swatch" style="background:linear-gradient(135deg,#0e0704,#8a3a08 70%)"></span>Cozy</button>
                 </div>
               </div>
               <div class="settings-row">
                 <div>
                   <div class="settings-row-label">Particle effects</div>
-                  <div class="settings-row-sublabel">Falling leaves, snow, embers &amp; more</div>
+                  <div class="settings-row-sublabel">Falling leaves, snow, petals &amp; more</div>
                 </div>
                 <label class="settings-toggle">
                   <input type="checkbox" id="theme-particles-toggle" checked>
                   <span class="settings-toggle-track"></span>
                 </label>
+              </div>
+              <!-- Time-aware theme atmosphere -->
+              <div class="settings-row" id="theme-time-row">
+                <div>
+                  <div class="settings-row-label">Time-aware atmosphere</div>
+                  <div class="settings-row-sublabel">Forest, Sakura &amp; Sunset adapt to time of day</div>
+                </div>
+                <label class="settings-toggle">
+                  <input type="checkbox" id="theme-time-toggle">
+                  <span class="settings-toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-row" id="theme-time-lock-row" style="display:none">
+                <div class="settings-row-label">Lock to time period</div>
+                <select id="theme-time-lock" class="settings-select">
+                  <option value="auto">Auto (follow clock)</option>
+                  <option value="MORNING">Morning</option>
+                  <option value="AFTERNOON">Afternoon</option>
+                  <option value="EVENING">Evening</option>
+                  <option value="NIGHT">Night</option>
+                </select>
               </div>
               <!-- horizontal eye placement removed -->
               <div class="settings-row">
