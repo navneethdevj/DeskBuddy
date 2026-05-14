@@ -118,6 +118,9 @@ const Settings = (() => {
     pipEmotionSync:         true,
     pipVisualPreset:        'default',
     companionPos:    'center',
+    // ── Theme time-of-day awareness ────────────────────────────────────
+    themeTimeAware:  false,
+    themeTimeLock:   'auto',  // 'auto' | 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT'
     // ── Custom colours ─────────────────────────────────────────────────
     customIrisHex:   '',
     customIrisCenterHex: '',
@@ -156,9 +159,9 @@ const Settings = (() => {
       }
     } catch (e) {}
 
-    // Theme validation
+    // Theme validation — migrate removed themes to galaxy
     const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','ocean',
-                                   'midnight','snow','aurora']);
+                                   'snow','anime','matrix','sunset','neon','cozy']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
     // Mouth migration
@@ -204,7 +207,6 @@ const Settings = (() => {
         if (!saved) return;
         _current = { ...DEFAULTS, ...saved };
         if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
-        if (MOUTH_MIGRATE[_current.mouthStyle]) _current.mouthStyle = MOUTH_MIGRATE[_current.mouthStyle];
         if (typeof _current.companionSize === 'string')
           _current.companionSize = ({ S:78, M:100, L:122 })[_current.companionSize] ?? 100;
         _migrateScale('idleSpeed',      { 1:2, 2:5, 3:9 });
