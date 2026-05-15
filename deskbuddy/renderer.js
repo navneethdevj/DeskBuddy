@@ -10,6 +10,10 @@ const ThemeCanvas = (() => {
   let _particles = [], _active = false, _paused = false, _theme = 'galaxy';
   let _frame = 0;
   let _stars = [];  // shared star array (galaxy + future themes)
+  // Performance: cap canvas at ~30fps (33ms) to reduce GPU/CPU usage.
+  // Companion animations stay at 60fps (CSS) — only background particles throttle.
+  let _lastTickTime = 0;
+  const TICK_INTERVAL_MS = 33; // ~30fps cap for particle canvas
 
   function _initStars(W, H, count) {
     _stars = Array.from({ length: count }, () => ({
@@ -1441,8 +1445,14 @@ const ThemeCanvas = (() => {
     if (cfg && cfg.init) cfg.init(_canvas.width, _canvas.height);
   }
 
-  function _tick() {
+  function _tick(timestamp) {
     if (!_canvas || !_ctx || !_active) return;
+    // 30fps throttle — skip frame if not enough time has passed
+    if (timestamp - _lastTickTime < TICK_INTERVAL_MS) {
+      _animId = requestAnimationFrame(_tick);
+      return;
+    }
+    _lastTickTime = timestamp;
     const W = _canvas.width, H = _canvas.height;
     _ctx.clearRect(0, 0, W, H);
     const cfg = CFG[_theme];
@@ -1587,8 +1597,14 @@ const ThemeCanvas = (() => {
 
   // Apply saved companion size and brightness before wiring UI
   {
-    const size = Settings.get('companionSize') || 'M';
-    document.body.classList.add(`companion-size-${size}`);
+    // FIX: companionSize is a numeric value (50-200) after migration from old S/M/L.
+    // Set --companion-scale on :root so it's universally accessible in the CSS cascade.
+    const csz0 = Settings.get('companionSize') ?? 100;
+    const scale0 = (Number(csz0) || 100) / 100;
+    document.documentElement.style.setProperty('--companion-scale', String(scale0));
+    // Legacy class cleanup — only add if value is exactly a string preset
+    const sizeLegacy = (typeof csz0 === 'string' && /^[SML]$/.test(csz0)) ? csz0 : null;
+    if (sizeLegacy) document.body.classList.add(`companion-size-${sizeLegacy}`);
 
     // Brightness: apply to <html> so the body background (full-mode themes) is
     // also dimmed — not just #world content.
@@ -1632,10 +1648,14 @@ const ThemeCanvas = (() => {
     if (Settings.get('showWhiskers') === false) document.body.classList.add('hide-whiskers');
 
     // ── Apply numeric CSS vars at boot ───────────────────────────────────
+    // NOTE: --companion-scale is already set on :root above; also set on #world
+    // as belt-and-suspenders in case an Electron version doesn't cascade it.
     const _worldEl = document.getElementById('world');
     if (_worldEl) {
       const csz = Settings.get('companionSize') ?? 100;
-      _worldEl.style.setProperty('--companion-scale', String(csz / 100));
+      const cszScale = String((Number(csz) || 100) / 100);
+      document.documentElement.style.setProperty('--companion-scale', cszScale);
+      _worldEl.style.setProperty('--companion-scale', cszScale);
     }
     const _esz = Settings.get('eyeSize') ?? 100;
     document.body.style.setProperty('--eye-wrap-scale', String(_esz / 100));
@@ -1701,6 +1721,14 @@ const ThemeCanvas = (() => {
   _wireDND();
   _wireSidebar();
   _wireHistorySidebar();
+
+  // 13. Enhancements — new features (quick presets, quotes, streak, ambient, mood, pulse)
+  if (typeof Enhancements !== 'undefined') Enhancements.init();
+
+  // 14. Weekly report check — shows modal once per week if there are sessions
+  setTimeout(() => {
+    _checkWeeklyReport();
+  }, 2000);
 
   // 12. Sync main-process window state with the initial full-mode.
   // Without this, createWindow()'s alwaysOnTop=false is fine but the
@@ -2666,6 +2694,29 @@ const ThemeCanvas = (() => {
   function _exitFullMode() {
     if (!_isFullMode) return;
     _isFullMode = false;
+
+    // ── CRITICAL BUG FIX: close all full-mode overlays before PiP transition ──
+    // PersonalityEditor overlay is position:fixed z-index:9200 — it would cover
+    // the entire PiP window and make the buddy invisible if left open.
+    if (typeof PersonalityEditor !== 'undefined' && PersonalityEditor.close) {
+      PersonalityEditor.close();
+    }
+    // Close settings panel if open
+    const settingsPanel = document.getElementById('settings-panel');
+    if (settingsPanel) settingsPanel.classList.remove('settings-open');
+    // Close session sidebar if open
+    const sessionPanel = document.getElementById('session-panel');
+    if (sessionPanel) sessionPanel.classList.remove('sidebar-open');
+    // Close history panel if open
+    const historyPanel = document.getElementById('history-panel');
+    if (historyPanel) historyPanel.classList.remove('hp-panel-open');
+    // Hide break card
+    const breakCard = document.getElementById('break-card');
+    if (breakCard) { breakCard.classList.remove('active'); breakCard.setAttribute('aria-hidden','true'); }
+    // Hide weekly report modal
+    const wrModal = document.getElementById('weekly-report-modal');
+    if (wrModal) wrModal.setAttribute('aria-hidden', 'true');
+
     document.body.classList.remove('full-mode');
     document.body.classList.add('pip-mode');
     // Apply the one-shot entrance animation class; remove it after the animation duration.
@@ -3580,9 +3631,11 @@ const ThemeCanvas = (() => {
 
     function _applyCompanionSize(pct) {
       const scale = (Number(pct) || 100) / 100;
+      // Set on :root for full cascade availability, and on #world as direct override
+      document.documentElement.style.setProperty('--companion-scale', String(scale));
       const world = document.getElementById('world');
       if (world) world.style.setProperty('--companion-scale', String(scale));
-      // Also set on body for legacy rules still referencing body classes
+      // Remove legacy body classes so they don't interfere
       document.body.classList.remove('companion-size-S', 'companion-size-M', 'companion-size-L');
       if (companionSizeSlider) companionSizeSlider.value = String(pct);
       if (companionSizeSublabel) companionSizeSublabel.textContent = `${pct}%`;
