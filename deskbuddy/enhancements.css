@@ -1,0 +1,805 @@
+/* ==========================================================================
+   DeskBuddy Enhancements CSS
+   Premium theme overhaul + new feature UI + PiP fixes + layout improvements
+   ========================================================================== */
+
+/* ── Force PE overlay hidden in PiP mode (BUG FIX) ─────────────────────────
+   When personality editor is open and user collapses to PiP, the fixed
+   overlay was covering the entire window. This ensures it's always hidden. */
+body.pip-mode #pe-overlay { display: none !important; }
+
+/* ── Hide all full-mode panels in PiP ───────────────────────────────────────
+   Settings panel, history panel, session panel all disappear in PiP mode.
+   Only #world (the bubble) and #enh-pulse remain visible. */
+body.pip-mode #settings-panel,
+body.pip-mode #history-panel,
+body.pip-mode #session-panel,
+body.pip-mode #celebration-overlay,
+body.pip-mode #break-card,
+body.pip-mode #break-toast,
+body.pip-mode .milestone-badge,
+body.pip-mode #session-start-flash,
+body.pip-mode #break-end-flash,
+body.pip-mode #settings-gear-btn,
+body.pip-mode #full-collapse-btn,
+body.pip-mode #hp-icon,
+body.pip-mode #sp-icon,
+body.pip-mode #status-bar,
+body.pip-mode #outcome-screen,
+body.pip-mode #weekly-report-modal,
+body.pip-mode #theme-canvas {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ── PiP world: no transform scale (companion size only applies in full-mode) */
+body.pip-mode #world {
+  transform: none !important;
+  transition: box-shadow 0.3s ease, border-radius 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ── Full-mode: companion scale with spring transition ──────────────────── */
+body.full-mode #world {
+  transform: scale(var(--companion-scale, 1.0));
+  transform-origin: center center;
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── PiP drag cursor — whole bubble is draggable ───────────────────────── */
+body.pip-mode:not(.pip-locked) #world {
+  cursor: grab;
+}
+body.pip-mode:not(.pip-locked) #world:active {
+  cursor: grabbing;
+}
+/* WhatsApp-style: show a subtle grabbing indicator */
+body.pip-mode:not(.pip-locked) #world::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+body.pip-mode:not(.pip-locked) #world:hover::after {
+  opacity: 1;
+}
+body.pip-mode:not(.pip-locked) #world:active::after {
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.08) 0%, transparent 70%);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   PREMIUM THEME SYSTEM
+   Each theme gets: background gradient, accent colors, particle tuning,
+   text glow, subtle scan lines, ambient light bleed
+   ========================================================================== */
+
+/* ── GALAXY — Deep nebula with aurora accents ────────────────────────────── */
+body.theme-galaxy.full-mode {
+  background:
+    radial-gradient(ellipse 140% 80% at 20% 15%, rgba(32,18,68,0.95) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 80% 85%, rgba(18,28,68,0.90) 0%, transparent 50%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, rgba(6,4,22,1) 0%, rgba(10,6,28,1) 100%);
+}
+body.theme-galaxy.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 35% at 25% 20%, rgba(108,72,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 28% at 75% 18%, rgba(48,108,255,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 40% at 50% 75%, rgba(128,48,255,0.05) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── CLASSIC — Monochromatic ivory-dark ──────────────────────────────────── */
+body.theme-classic.full-mode {
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 0%, rgba(28,26,38,0.98) 0%, rgba(12,11,18,1) 60%),
+    linear-gradient(180deg, rgba(14,12,22,1) 0%, rgba(8,7,14,1) 100%);
+}
+body.theme-classic.full-mode #world {
+  --gaze-text-glow: rgba(200,195,230,0.25);
+}
+
+/* ── FOREST — Enchanted bioluminescent emerald ───────────────────────────── */
+body.theme-forest.full-mode {
+  background:
+    radial-gradient(ellipse 120% 70% at 0% 100%, rgba(4,32,12,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 100% 0%, rgba(8,40,16,0.90) 0%, transparent 50%),
+    radial-gradient(ellipse 130% 110% at 50% 50%, rgba(4,16,8,1) 0%, rgba(2,10,5,1) 100%);
+}
+body.theme-forest.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% 85%, rgba(22,168,48,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 15%, rgba(48,200,72,0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── CHERRY — Midnight sakura dreamscape ─────────────────────────────────── */
+body.theme-cherry.full-mode {
+  background:
+    radial-gradient(ellipse 140% 80% at 50% 100%, rgba(52,8,32,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 20% 10%, rgba(38,8,28,0.85) 0%, transparent 50%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, rgba(18,4,14,1) 0%, rgba(12,2,10,1) 100%);
+}
+body.theme-cherry.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 95%, rgba(255,48,128,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 5%, rgba(200,48,128,0.05) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── OCEAN — Deep bioluminescent abyss ───────────────────────────────────── */
+body.theme-ocean.full-mode {
+  background:
+    radial-gradient(ellipse 130% 70% at 50% 0%, rgba(4,18,42,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 80% at 0% 100%, rgba(4,22,48,0.92) 0%, transparent 50%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, rgba(2,8,22,1) 0%, rgba(4,12,28,1) 100%);
+}
+body.theme-ocean.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(22,168,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 70% 20%, rgba(18,128,255,0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── SNOW — Arctic aurora midnight ──────────────────────────────────────── */
+body.theme-snow.full-mode {
+  background:
+    radial-gradient(ellipse 120% 60% at 30% 0%, rgba(18,22,48,0.96) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 70% at 70% 0%, rgba(22,18,42,0.88) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(8,10,22,1) 0%, rgba(12,14,28,1) 100%);
+}
+body.theme-snow.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 90% 30% at 50% 0%, rgba(128,168,255,0.05) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── ANIME — Manga midnight amethyst ─────────────────────────────────────── */
+body.theme-anime.full-mode {
+  background:
+    radial-gradient(ellipse 130% 70% at 20% 15%, rgba(28,12,52,0.97) 0%, transparent 55%),
+    radial-gradient(ellipse 110% 65% at 80% 85%, rgba(38,8,52,0.90) 0%, transparent 52%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(12,6,24,1) 0%, rgba(8,4,18,1) 100%);
+}
+body.theme-anime.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 35% at 50% 5%, rgba(168,48,255,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 25% at 10% 50%, rgba(128,48,255,0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── MATRIX — Digital jade terminal ─────────────────────────────────────── */
+body.theme-matrix.full-mode {
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,8,2,1) 0%, rgba(0,4,1,1) 100%);
+}
+body.theme-matrix.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(0deg, rgba(0,255,64,0.015) 50%, transparent 50%);
+  background-size: 100% 3px;
+  pointer-events: none; z-index: 0;
+  animation: matrixScan 8s linear infinite;
+}
+@keyframes matrixScan {
+  from { background-position: 0 0; }
+  to   { background-position: 0 100vh; }
+}
+
+/* ── NEON — Cyberpunk violet-cyan cityscape ──────────────────────────────── */
+body.theme-neon.full-mode {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 100%, rgba(28,4,48,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 70% at 0% 50%, rgba(4,8,38,0.90) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(4,2,12,1) 0%, rgba(2,1,8,1) 100%);
+}
+body.theme-neon.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, transparent 70%, rgba(255,0,200,0.04) 100%),
+    radial-gradient(ellipse 80% 20% at 50% 100%, rgba(255,0,200,0.05) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+body.theme-neon.full-mode #world::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.06) 2px,
+    rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none; z-index: 0;
+}
+
+/* ── SUNSET — Amber-rose cinematic dusk ──────────────────────────────────── */
+body.theme-sunset.full-mode {
+  background:
+    radial-gradient(ellipse 150% 60% at 50% 90%, rgba(42,12,4,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 120% 70% at 20% 0%, rgba(38,18,8,0.88) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(16,6,2,1) 0%, rgba(10,4,2,1) 100%);
+}
+body.theme-sunset.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 90% 25% at 50% 95%, rgba(255,128,32,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 50% 55%, rgba(255,72,12,0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── COZY — Amber hearth winter warmth ───────────────────────────────────── */
+body.theme-cozy.full-mode {
+  background:
+    radial-gradient(ellipse 130% 70% at 50% 100%, rgba(38,14,4,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 20% 15%, rgba(28,10,4,0.88) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(14,5,2,1) 0%, rgba(10,4,2,1) 100%);
+}
+body.theme-cozy.full-mode #world::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 30% at 50% 100%, rgba(255,148,32,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 20% at 25% 75%, rgba(255,108,28,0.04) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ==========================================================================
+   QUICK PRESETS CHIPS
+   Session duration preset buttons injected above the Start button
+   ========================================================================== */
+
+.enh-quick-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 0 4px;
+}
+
+.enh-preset-chip {
+  position: relative;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid rgba(155,135,255,0.18);
+  background: rgba(155,135,255,0.06);
+  color: rgba(175,160,255,0.55);
+  font: 500 11px/1 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+}
+
+.enh-preset-chip::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(155,135,255,0.18) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.enh-preset-chip:hover::before { opacity: 1; }
+.enh-preset-chip:hover {
+  border-color: rgba(155,135,255,0.36);
+  color: rgba(210,195,255,0.85);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(155,135,255,0.15);
+}
+
+.enh-preset-chip.active {
+  border-color: rgba(155,135,255,0.55);
+  background: rgba(155,135,255,0.18);
+  color: rgba(220,210,255,0.95);
+  box-shadow: 0 0 14px rgba(155,135,255,0.22), 0 0 0 1px rgba(155,135,255,0.12) inset;
+}
+
+.enh-preset-chip.pop {
+  animation: chipPop 0.32s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes chipPop {
+  0%   { transform: scale(0.90); }
+  100% { transform: scale(1.0); }
+}
+
+.enh-preset-badge {
+  font-size: 8px;
+  vertical-align: super;
+  color: rgba(180,160,255,0.70);
+  margin-left: 2px;
+}
+
+/* ==========================================================================
+   FOCUS QUOTES
+   Rotating motivational quote at bottom of active session panel
+   ========================================================================== */
+
+#enh-focus-quote {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(155,135,255,0.04);
+  border: 1px solid rgba(155,135,255,0.08);
+  transition: opacity 0.4s ease;
+  -webkit-app-region: no-drag;
+}
+
+#enh-focus-quote.enh-quote-fading {
+  opacity: 0;
+}
+
+.enh-quote-text {
+  font: 300 11.5px/1.6 'Segoe UI', serif;
+  color: rgba(185,170,255,0.55);
+  font-style: italic;
+}
+
+.enh-quote-author {
+  font: 10px/1 'Segoe UI', sans-serif;
+  color: rgba(155,135,255,0.32);
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* ==========================================================================
+   STREAK COUNTER
+   ========================================================================== */
+
+#enh-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  background: rgba(255,168,32,0.07);
+  border: 1px solid rgba(255,168,32,0.14);
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.enh-streak-flame {
+  font-size: 14px;
+  filter: drop-shadow(0 0 6px rgba(255,168,32,0.55));
+}
+
+.enh-streak-count {
+  font: 700 15px/1 'Segoe UI', sans-serif;
+  color: rgba(255,190,64,0.90);
+  text-shadow: 0 0 10px rgba(255,168,32,0.45);
+}
+
+.enh-streak-label {
+  font: 10px/1 'Segoe UI', sans-serif;
+  color: rgba(255,190,64,0.50);
+}
+
+/* ==========================================================================
+   AMBIENT SOUND PLAYER
+   ========================================================================== */
+
+.enh-ambient-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+}
+
+.enh-ambient-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  -webkit-app-region: no-drag;
+}
+
+.enh-ambient-chip {
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(155,135,255,0.15);
+  background: rgba(155,135,255,0.05);
+  color: rgba(175,160,255,0.50);
+  font: 500 11px/1 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+
+.enh-ambient-chip:hover {
+  border-color: rgba(155,135,255,0.35);
+  color: rgba(200,185,255,0.80);
+  background: rgba(155,135,255,0.12);
+  transform: translateY(-1px);
+}
+
+.enh-ambient-chip.active {
+  border-color: rgba(155,135,255,0.55);
+  background: rgba(155,135,255,0.20);
+  color: rgba(220,210,255,0.95);
+  box-shadow: 0 0 12px rgba(155,135,255,0.20);
+}
+
+/* ==========================================================================
+   MOOD PICKER
+   ========================================================================== */
+
+#enh-mood-picker {
+  padding: 10px 0 6px;
+  -webkit-app-region: no-drag;
+}
+
+.enh-mood-label {
+  font: 10px/1 'Segoe UI', sans-serif;
+  color: rgba(155,135,255,0.38);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.enh-mood-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.enh-mood-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(155,135,255,0.14);
+  background: rgba(155,135,255,0.05);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.enh-mood-btn:hover {
+  transform: scale(1.25) translateY(-2px);
+  background: rgba(155,135,255,0.15);
+  border-color: rgba(155,135,255,0.35);
+  box-shadow: 0 4px 20px rgba(155,135,255,0.20);
+}
+
+.enh-mood-btn.active {
+  transform: scale(1.15);
+  background: rgba(155,135,255,0.22);
+  border-color: rgba(155,135,255,0.55);
+  box-shadow: 0 0 16px rgba(155,135,255,0.28);
+}
+
+.enh-mood-btn.pop {
+  animation: moodPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes moodPop {
+  0%  { transform: scale(0.85); }
+  60% { transform: scale(1.35); }
+  100%{ transform: scale(1.15); }
+}
+
+/* ==========================================================================
+   PULSE INDICATOR (PiP focus quality ring)
+   ========================================================================== */
+
+#enh-pulse {
+  display: none;
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
+  transition: box-shadow 0.5s ease;
+}
+
+#enh-pulse.enh-pulse-focused {
+  box-shadow: 0 0 0 2px rgba(68,232,140,0.55), 0 0 12px rgba(68,232,140,0.22);
+  animation: pulseFocused 2s ease-in-out infinite;
+}
+#enh-pulse.enh-pulse-drifting {
+  box-shadow: 0 0 0 2px rgba(255,220,32,0.50), 0 0 12px rgba(255,220,32,0.18);
+  animation: pulseDrifting 1.5s ease-in-out infinite;
+}
+#enh-pulse.enh-pulse-distracted {
+  box-shadow: 0 0 0 2px rgba(255,90,90,0.55), 0 0 14px rgba(255,90,90,0.22);
+  animation: pulseDistracted 1s ease-in-out infinite;
+}
+#enh-pulse.enh-pulse-critical {
+  box-shadow: 0 0 0 2px rgba(255,50,50,0.72), 0 0 18px rgba(255,50,50,0.30);
+  animation: pulseCritical 0.6s ease-in-out infinite;
+}
+
+@keyframes pulseFocused {
+  0%,100% { opacity: 0.70; } 50% { opacity: 1.0; }
+}
+@keyframes pulseDrifting {
+  0%,100% { opacity: 0.60; } 50% { opacity: 0.95; }
+}
+@keyframes pulseDistracted {
+  0%,100% { opacity: 0.55; } 50% { opacity: 1.0; }
+}
+@keyframes pulseCritical {
+  0%,100% { opacity: 0.45; } 50% { opacity: 1.0; }
+}
+
+/* ==========================================================================
+   IMPROVED SESSION PANEL LAYOUT
+   Cleaner hierarchy, better breathing room, reduced visual noise
+   ========================================================================== */
+
+#session-panel {
+  /* Ensure scrollbar doesn't bleed */
+  overflow: hidden;
+}
+
+/* Category pills: more rounded, softer */
+.sp-cat-pill {
+  transition: all 0.22s cubic-bezier(0.4,0,0.2,1) !important;
+}
+.sp-cat-pill.active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(155,135,255,0.20) !important;
+}
+.sp-cat-pill:hover:not(.active) {
+  transform: translateY(-1px);
+}
+
+/* Start button enhancement */
+#start-session {
+  transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1) !important;
+}
+#start-session:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+}
+#start-session:active {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+/* ==========================================================================
+   SETTINGS PANEL: IMPROVED STRUCTURE
+   Better accordion, sticky header, reduced cognitive load
+   ========================================================================== */
+
+/* Settings accordion: smooth open/close */
+.settings-group-body,
+.settings-subsection-body {
+  transition: opacity 0.2s ease;
+}
+.settings-group-body:not(.expanded),
+.settings-subsection-body:not(.expanded) {
+  opacity: 0;
+}
+.settings-group-body.expanded,
+.settings-subsection-body.expanded {
+  opacity: 1;
+}
+
+/* Group title: better hover feedback */
+.settings-group-title,
+.settings-subsection-title {
+  transition: background 0.18s ease !important;
+  border-radius: 10px;
+}
+.settings-group-title:hover,
+.settings-subsection-title:hover {
+  background: rgba(155,135,255,0.07) !important;
+}
+
+/* Settings sliders: smoother track */
+.settings-slider {
+  accent-color: rgba(155,135,255,0.80);
+}
+
+/* Style chips: consistent */
+.style-chip {
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1) !important;
+}
+.style-chip:hover:not(.active) {
+  transform: translateY(-1px);
+}
+.style-chip.active {
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   IMPROVED PiP BORDER STYLES — premium visual presets
+   ========================================================================== */
+
+/* Holographic: rainbow shimmer */
+body.pip-bstyle-holographic #world {
+  --pip-glow-a: 0 0 0 2px rgba(255,120,200,0.60), 0 0 20px rgba(180,120,255,0.25), 0 0 50px rgba(80,180,255,0.12), 0 8px 32px rgba(0,0,0,0.65);
+  --pip-glow-b: 0 0 0 2px rgba(80,200,255,0.65), 0 0 22px rgba(80,200,255,0.28), 0 0 55px rgba(255,120,200,0.14), 0 8px 34px rgba(0,0,0,0.68);
+  animation: pipGlowHolo 2.2s ease-in-out infinite !important;
+}
+@keyframes pipGlowHolo {
+  0%   { box-shadow: 0 0 0 2px rgba(255,120,200,0.60), 0 0 20px rgba(180,120,255,0.25), 0 8px 32px rgba(0,0,0,0.65); }
+  33%  { box-shadow: 0 0 0 2px rgba(120,80,255,0.65), 0 0 22px rgba(120,80,255,0.28), 0 8px 32px rgba(0,0,0,0.65); }
+  66%  { box-shadow: 0 0 0 2px rgba(80,200,255,0.60), 0 0 20px rgba(80,200,255,0.25), 0 8px 32px rgba(0,0,0,0.65); }
+  100% { box-shadow: 0 0 0 2px rgba(255,120,200,0.60), 0 0 20px rgba(180,120,255,0.25), 0 8px 32px rgba(0,0,0,0.65); }
+}
+
+/* Bubble: soft pearl shimmer */
+body.pip-bstyle-bubble #world {
+  --pip-glow-a: 0 0 0 1.5px rgba(165,243,252,0.45), 0 0 18px rgba(165,243,252,0.18), 0 0 40px rgba(199,210,254,0.10), 0 8px 32px rgba(0,0,0,0.60);
+  --pip-glow-b: 0 0 0 2px rgba(199,210,254,0.55), 0 0 22px rgba(199,210,254,0.22), 0 0 50px rgba(165,243,252,0.12), 0 8px 34px rgba(0,0,0,0.64);
+}
+
+/* Pixel: crisp hard border */
+body.pip-bstyle-pixel #world {
+  box-shadow: 0 0 0 2px rgba(155,135,255,0.75), 2px 2px 0 2px rgba(0,0,0,0.50),
+    0 0 0 4px rgba(0,0,0,0.80) !important;
+  animation: none !important;
+}
+
+/* ==========================================================================
+   COMPANION SESSION-START BOUNCE — more bouncy
+   ========================================================================== */
+
+@keyframes sessionStartBounce {
+  0%   { transform: translate(var(--comp-x,0px), var(--comp-y,0px)) scale(1) rotate(0deg); }
+  15%  { transform: translate(var(--comp-x,0px), calc(var(--comp-y,0px) - 22px)) scale(1.08) rotate(-3deg); }
+  30%  { transform: translate(var(--comp-x,0px), var(--comp-y,0px)) scale(0.94) rotate(2deg); }
+  45%  { transform: translate(var(--comp-x,0px), calc(var(--comp-y,0px) - 12px)) scale(1.05) rotate(-1.5deg); }
+  60%  { transform: translate(var(--comp-x,0px), var(--comp-y,0px)) scale(0.97) rotate(1deg); }
+  75%  { transform: translate(var(--comp-x,0px), calc(var(--comp-y,0px) - 6px)) scale(1.02) rotate(-0.5deg); }
+  100% { transform: translate(var(--comp-x,0px), var(--comp-y,0px)) scale(1) rotate(0deg); }
+}
+.companion.session-start-bounce {
+  animation: sessionStartBounce 0.95s cubic-bezier(0.36,0.07,0.19,0.97) both !important;
+}
+
+/* ==========================================================================
+   MILESTONE BADGE — premium glow
+   ========================================================================== */
+
+#milestone-badge {
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1) !important;
+}
+#milestone-badge.visible {
+  animation: badgePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both !important;
+}
+@keyframes badgePop {
+  from { transform: translateX(-50%) scale(0.7) translateY(-6px); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1) translateY(0px); opacity: 1; }
+}
+
+/* ==========================================================================
+   HISTORY PANEL — premium scrollable card list
+   ========================================================================== */
+
+/* Session cards: hover lift */
+.hp-session-card {
+  transition: all 0.20s cubic-bezier(0.4,0,0.2,1) !important;
+}
+.hp-session-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 24px rgba(155,135,255,0.14) !important;
+}
+
+/* ==========================================================================
+   BREAK CARD — more premium
+   ========================================================================== */
+
+#break-card {
+  backdrop-filter: blur(32px) saturate(2.2) !important;
+  transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1) !important;
+}
+#break-card.active {
+  animation: breakCardIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both !important;
+}
+@keyframes breakCardIn {
+  from { transform: translateX(-50%) scale(0.88) translateY(12px); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1) translateY(0); opacity: 1; }
+}
+
+/* ==========================================================================
+   CONFETTI — improved physics
+   ========================================================================== */
+
+.confetti-particle {
+  animation: confettiFall var(--dur, 2.5s) cubic-bezier(0.25,0.46,0.45,0.94) var(--del, 0s) both !important;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: 1; }
+  90%  { opacity: 0.85; }
+  100% {
+    transform: translate(var(--dx, 0px), var(--dy, 800px)) rotate(var(--rot, 360deg));
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   FOCUS HEATMAP — cleaner blocks
+   ========================================================================== */
+
+.fh-block {
+  transition: background 0.3s ease !important;
+  border-radius: 2px !important;
+}
+
+/* ==========================================================================
+   DND overlay ring — premium look
+   ========================================================================== */
+
+#dnd-indicator {
+  transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+}
+#dnd-indicator.dnd-active {
+  animation: dndPulse 2.5s ease-in-out infinite !important;
+}
+@keyframes dndPulse {
+  0%,100% { box-shadow: 0 0 0 2px rgba(255,90,90,0.40); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,90,90,0.65), 0 0 18px rgba(255,90,90,0.22); }
+}
+
+/* ==========================================================================
+   SMOOTH SCROLLBAR for all panels
+   ========================================================================== */
+
+#settings-body,
+#history-panel,
+.settings-group-body,
+.settings-subsection-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155,135,255,0.18) transparent;
+}
+#settings-body::-webkit-scrollbar,
+#history-panel::-webkit-scrollbar { width: 4px; }
+#settings-body::-webkit-scrollbar-track,
+#history-panel::-webkit-scrollbar-track { background: transparent; }
+#settings-body::-webkit-scrollbar-thumb,
+#history-panel::-webkit-scrollbar-thumb {
+  background: rgba(155,135,255,0.18);
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   GLOBAL PERFORMANCE HINT
+   Force GPU compositing on animated elements to reduce main-thread work
+   ========================================================================== */
+
+.companion,
+#world,
+#enh-pulse,
+#theme-canvas,
+.confetti-particle {
+  will-change: transform;
+  transform: translateZ(0); /* promote to own compositing layer */
+}
+
+/* Don't apply will-change to static elements — wastes GPU memory */
+.settings-row,
+.pe-row,
+.sp-cat-pill {
+  will-change: auto;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: Reduce motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .companion,
+  .companion-inner,
+  #enh-pulse,
+  .confetti-particle {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
