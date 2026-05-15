@@ -133,6 +133,10 @@ const Settings = (() => {
     irisBorderThickness: 100,
     customGlowHex:   '',
     glowEmotionSync: true,
+    // ── Enhancements ──────────────────────────────────────────────────────
+    ambientPreset:   'off',
+    ambientVolume:   0.18,
+    moodLastSession: '',
   };
 
   let _current = { ...DEFAULTS };
