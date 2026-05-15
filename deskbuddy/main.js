@@ -59,9 +59,16 @@ function _loadPos(dim) {
   return { x: SNAP_MARGIN, y: SNAP_MARGIN };
 }
 
-let _snapTimer  = null;
-let _isPipMode  = false;
-let _pipLocked  = false;  // tracks pip window lock — prevents drag + snap
+let _snapTimer    = null;
+let _isPipMode    = false;
+let _pipLocked    = false;  // tracks pip window lock — prevents drag + snap
+
+// ── WhatsApp-style drag tracking — velocity + momentum snap ───────────────
+let _dragVelX     = 0;
+let _dragVelY     = 0;
+let _dragLastPos  = null;
+let _dragLastTime = null;
+let _dragTrail    = [];  // last N positions for velocity estimation
 
 function _doSnapToNearestZone() {
   if (!mainWindow || _pipLocked) return;
@@ -109,6 +116,54 @@ function _doSnapToCorner() {
   store.set('windowPos', { x: safeX, y: safeY });
 }
 
+// ── WhatsApp-style momentum snap ─────────────────────────────────────────
+// Determines snap target by projecting current position forward using
+// drag velocity, then snapping to the nearest of 9 zones.
+// This matches WhatsApp's PiP behavior: throw → flies to nearest edge.
+function _doSnapWithMomentum() {
+  if (!mainWindow || _pipLocked) return;
+  const [curX, curY] = mainWindow.getPosition();
+  const [w, h]       = mainWindow.getSize();
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const m = SNAP_MARGIN;
+
+  // Project position forward based on velocity (momentum prediction)
+  const MOMENTUM_MS   = 220; // how far ahead to project (ms of current velocity)
+  const projX = curX + _dragVelX * MOMENTUM_MS;
+  const projY = curY + _dragVelY * MOMENTUM_MS;
+
+  // 9 snap zones: corners + edge-midpoints + center
+  const half = Math.round((sw - w) / 2);
+  const vmid = Math.round((sh - h) / 2);
+  const zones = [
+    { x: m,         y: m         },  // top-left
+    { x: half,      y: m         },  // top-center
+    { x: sw-w-m,    y: m         },  // top-right
+    { x: m,         y: vmid      },  // mid-left
+    { x: sw-w-m,    y: vmid      },  // mid-right
+    { x: m,         y: sh-h-m    },  // bottom-left
+    { x: half,      y: sh-h-m    },  // bottom-right (was bottom-center)
+    { x: sw-w-m,    y: sh-h-m    },  // bottom-right
+  ];
+
+  // Find nearest zone to projected position
+  const best = zones.reduce((nearest, z) => {
+    const d = Math.hypot((z.x + w/2) - (projX + w/2), (z.y + h/2) - (projY + h/2));
+    return (!nearest || d < nearest.dist) ? { ...z, dist: d } : nearest;
+  }, null);
+
+  const safeX = Math.max(0, Math.min(best.x, sw - w));
+  const safeY = Math.max(0, Math.min(best.y, sh - h));
+
+  // Animate with smooth transition (Electron setPosition is instant — use setBounds)
+  mainWindow.setBounds({ x: safeX, y: safeY, width: w, height: h }, process.platform === 'darwin');
+  store.set('windowPos', { x: safeX, y: safeY });
+
+  // Reset velocity after snap
+  _dragVelX = 0; _dragVelY = 0;
+  _dragLastPos = null; _dragLastTime = null;
+}
+
 function createWindow() {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -149,13 +204,28 @@ function createWindow() {
   mainWindow.on('moved', () => {
     if (_pipLocked) return;
     const [x, y] = mainWindow.getPosition();
+    const now = Date.now();
+
+    // Track drag velocity for WhatsApp-style momentum snap
+    if (_dragLastPos && _dragLastTime) {
+      const dt = Math.max(1, now - _dragLastTime);
+      _dragVelX = (x - _dragLastPos.x) / dt;
+      _dragVelY = (y - _dragLastPos.y) / dt;
+    }
+    _dragLastPos  = { x, y };
+    _dragLastTime = now;
+
     store.set('windowPos', { x, y });
     clearTimeout(_snapTimer);
+
     if (_isPipMode) {
       const snapEnabled = (store.get('settings', {}).pipSnapEnabled !== false);
-      if (snapEnabled) _snapTimer = setTimeout(_doSnapToNearestZone, 420);
+      if (snapEnabled) {
+        // Short delay — snap fires quickly like WhatsApp
+        _snapTimer = setTimeout(_doSnapWithMomentum, 180);
+      }
     } else {
-      _snapTimer = setTimeout(_doSnapToCorner, 400);
+      _snapTimer = setTimeout(_doSnapToCorner, 350);
     }
   });
 
