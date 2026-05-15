@@ -420,6 +420,10 @@ const Brain = (() => {
 
   // ===== Main Loop =====
 
+  // ── Performance: separate high-frequency (every frame) vs low-frequency work ──
+  let _brainLowFreqLast = 0;
+  const BRAIN_LOW_FREQ_INTERVAL = 100; // run expensive checks every 100ms, not every frame
+
   function tick(timestamp) {
     animFrameId = requestAnimationFrame(tick);
 
@@ -438,9 +442,7 @@ const Brain = (() => {
     Particles.update(Emotion.getState());
 
     // ── Perception-driven gesture events (wave, multi-face, head tilt) ──
-    // These run every rAF frame. wave flag is a single 66ms pulse — rAF
-    // catches it within the window. Head tilt lerps smoothly each frame.
-    _checkPerceptionGestures();
+    // MOVED to 100ms low-frequency block below for performance.
     _applyHeadTiltMirror();
 
     var mouseActive = isMouseActive(now);
@@ -498,8 +500,13 @@ const Brain = (() => {
         break;
     }
 
-    // Focus-driven emotion
+    // Focus-driven emotion — run every frame (cheap state check)
     applyFocusEmotion();
+
+    // ── Perception gestures: runs every frame (wave flag is single-cycle) ──
+    // Wave detection uses a one-cycle flag from perception.js that resets
+    // immediately — it MUST be polled every rAF frame to avoid missing it.
+    _checkPerceptionGestures();
   }
 
   // ===== Focus Meter =====
