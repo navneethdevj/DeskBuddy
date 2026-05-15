@@ -3815,14 +3815,31 @@ body.pip-mode #settings-panel { display: none !important; }
   margin-bottom: 2px;
 }
 
-/* ── Companion size scale (applied via body class) ─────────── */
-/* Companion size — driven by --companion-scale CSS var set from slider.
-   Legacy body classes are kept for graceful fallback on old saved settings. */
-#world { transform: scale(var(--companion-scale, 1.0)); transform-origin: center center; }
-/* Legacy: only apply scale if --companion-scale not explicitly overridden */
-body.companion-size-S #world { transform: scale(var(--companion-scale, 0.78)); transform-origin: center center; }
-body.companion-size-M #world { transform: scale(var(--companion-scale, 1.00)); transform-origin: center center; }
-body.companion-size-L #world { transform: scale(var(--companion-scale, 1.22)); transform-origin: center center; }
+/* ── Companion size scale (applied via CSS custom property on :root / #world) ─
+   --companion-scale is set in JS via Settings.set('companionSize', pct).
+   Applied to both :root and #world.style for maximum compatibility across
+   Electron versions. Smooth transition gives a satisfying spring resize. */
+:root { --companion-scale: 1.0; }
+
+/* Full-mode: scale the entire #world so background + companion resize together */
+body.full-mode #world {
+  transform: scale(var(--companion-scale, 1.0));
+  transform-origin: center center;
+  /* Spring ease — bouncy scale-in/out */
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* PiP mode: no scale transform — window dimensions handle sizing */
+body.pip-mode #world {
+  /* Deliberately no transform: scale here — pip window size is controlled by
+     Electron setBounds(); applying CSS scale would double-scale the content.
+     The pipEntrance animation still works because it's separate. */
+  transform: none !important;
+  transition: none;
+}
+/* Keep legacy fallback classes working for any first-run saves */
+body.companion-size-S body.full-mode #world { transform: scale(var(--companion-scale, 0.78)); }
+body.companion-size-M body.full-mode #world { transform: scale(var(--companion-scale, 1.00)); }
+body.companion-size-L body.full-mode #world { transform: scale(var(--companion-scale, 1.22)); }
 
 /* =====================================================================
    ALL_OFF MUTED VISUAL — sealed mouth + CSS × when sound is silenced
