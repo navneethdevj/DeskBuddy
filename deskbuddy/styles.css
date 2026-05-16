@@ -2759,51 +2759,148 @@ body.theme-particles-off.theme-cozy    #world::after {
 }
 body.theme-particles-off.theme-forest  #world::after {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(18,55,18,.55)  0%, transparent 65%),
-    radial-gradient(ellipse 40% 55% at  0%  60%, rgba(10,40,12,.35)  0%, transparent 55%),
-    radial-gradient(ellipse 40% 55% at 100% 55%, rgba(10,40,12,.35)  0%, transparent 55%);
+    radial-gradient(ellipse 70% 55% at 50% 100%, rgba(18,58,18,.60)  0%, transparent 65%),
+    radial-gradient(ellipse 45% 60% at  0%  58%, rgba(10,42,12,.38)  0%, transparent 55%),
+    radial-gradient(ellipse 45% 60% at 100% 52%, rgba(10,42,12,.38)  0%, transparent 55%),
+    radial-gradient(ellipse 60% 30% at 50%  20%, rgba(12,30,8,.22)   0%, transparent 55%);
 }
 body.theme-particles-off.theme-cherry  #world::after {
   background:
-    radial-gradient(ellipse 80% 38% at 50% 100%, rgba(160,40,90,.38)   0%, transparent 65%),
-    radial-gradient(ellipse 55% 30% at 75%   5%, rgba(255,200,240,.06) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(175,45,100,.40)  0%, transparent 65%),
+    radial-gradient(ellipse 55% 32% at 75%   5%, rgba(255,205,242,.07) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 28% at 25%  12%, rgba(220,160,200,.06) 0%, transparent 50%);
 }
 body.theme-particles-off.theme-ocean   #world::after {
-  background: radial-gradient(ellipse 80% 32% at 50% 100%, rgba(8,80,130,.42) 0%, transparent 65%);
+  background:
+    radial-gradient(ellipse 80% 35% at 50% 100%, rgba(5,90,148,.48)   0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 50%   8%, rgba(8,155,210,.08)  0%, transparent 55%),
+    radial-gradient(ellipse 45% 55% at  0%  60%, rgba(4,68,115,.28)   0%, transparent 52%);
 }
 body.theme-particles-off.theme-snow    #world::after {
   background:
-    radial-gradient(ellipse 70% 28% at 50% 100%, rgba(162,188,244,.28) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 35% at 50%   0%, rgba(140,168,240,.16) 0%, transparent 52%);
+    radial-gradient(ellipse 70% 32% at 50% 100%, rgba(165,192,248,.32) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 38% at 50%   0%, rgba(145,172,245,.20) 0%, transparent 52%),
+    radial-gradient(ellipse 50% 45% at 25%  45%, rgba(138,168,242,.10) 0%, transparent 50%);
 }
 body.theme-particles-off.theme-sunset  #world::after {
   background:
-    radial-gradient(ellipse 60% 35% at 50%  68%, rgba(255,160,40,.22)  0%, transparent 60%),
-    radial-gradient(ellipse 80% 24% at 50% 100%, rgba(200,80,20,.28)   0%, transparent 58%);
+    radial-gradient(ellipse 60% 38% at 50%  65%, rgba(220,50,200,.22)  0%, transparent 60%),
+    radial-gradient(ellipse 80% 28% at 50% 100%, rgba(165,25,155,.32)  0%, transparent 58%),
+    radial-gradient(ellipse 40% 35% at 50%  50%, rgba(100,0,180,.12)   0%, transparent 55%);
 }
 body.theme-particles-off.theme-anime   #world::after {
   background:
-    radial-gradient(ellipse 65% 42% at 50%  50%, rgba(200,100,180,.16) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 25% at 50% 100%, rgba(200,80,150,.20)  0%, transparent 58%);
+    radial-gradient(ellipse 65% 45% at 50%  50%, rgba(210,105,188,.18) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 28% at 50% 100%, rgba(200,80,158,.22)  0%, transparent 58%),
+    radial-gradient(ellipse 50% 35% at 75%  15%, rgba(160,80,220,.10)  0%, transparent 52%);
 }
 body.theme-particles-off.theme-matrix  #world::after {
   background:
-    radial-gradient(ellipse 60% 48% at 50%  50%, rgba(0,80,0,.20)      0%, transparent 62%),
-    radial-gradient(ellipse 80% 22% at 50% 100%, rgba(0,55,0,.28)      0%, transparent 58%);
+    radial-gradient(ellipse 60% 52% at 50%  50%, rgba(0,90,0,.22)      0%, transparent 62%),
+    radial-gradient(ellipse 80% 25% at 50% 100%, rgba(0,60,0,.32)      0%, transparent 58%),
+    radial-gradient(ellipse 40% 40% at 50%   5%, rgba(0,55,0,.14)      0%, transparent 55%);
 }
 body.theme-particles-off.theme-neon    #world::after {
   background:
-    radial-gradient(ellipse 55% 45% at 50%  50%, rgba(100,0,200,.18)   0%, transparent 62%),
-    radial-gradient(ellipse 80% 22% at 50% 100%, rgba(80,0,180,.25)    0%, transparent 58%);
+    radial-gradient(ellipse 55% 48% at 50%  50%, rgba(105,0,210,.20)   0%, transparent 62%),
+    radial-gradient(ellipse 80% 25% at 50% 100%, rgba(80,0,188,.28)    0%, transparent 58%),
+    radial-gradient(ellipse 45% 30% at 80%  20%, rgba(0,200,220,.08)   0%, transparent 55%);
 }
 body.theme-particles-off.theme-cozy    #world::after {
   background:
-    radial-gradient(ellipse 60% 45% at 50%  88%, rgba(220,100,20,.28)  0%, transparent 60%),
-    radial-gradient(ellipse 40% 55% at  0%  62%, rgba(180,60,10,.18)   0%, transparent 52%),
-    radial-gradient(ellipse 40% 55% at 100% 58%, rgba(165,55, 8,.16)   0%, transparent 50%);
+    radial-gradient(ellipse 60% 48% at 50%  88%, rgba(232,108,22,.32)  0%, transparent 60%),
+    radial-gradient(ellipse 42% 58% at  0%  62%, rgba(188,65,12,.20)   0%, transparent 52%),
+    radial-gradient(ellipse 42% 58% at 100% 58%, rgba(175,58, 8,.18)   0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 50%  50%, rgba(240,160,55,.08)  0%, transparent 55%);
 }
 
-body.full-mode #full-collapse-btn  { display: block; }
+
+/* ── EXPANDED TIME-OF-DAY FILTERS — all scene themes ────────────────────
+   Smooth CSS transitions between periods. The canvas handles the deep
+   scene shift; these filters tint the companion/UI subtly to match.    */
+
+/* FOREST */
+body[data-theme-period="MORNING"].theme-forest   #world { filter: brightness(1.10) saturate(1.18) hue-rotate(8deg); }
+body[data-theme-period="AFTERNOON"].theme-forest  #world { filter: none; }
+body[data-theme-period="EVENING"].theme-forest    #world { filter: sepia(.20) saturate(1.16) hue-rotate(-8deg) brightness(.88); }
+body[data-theme-period="NIGHT"].theme-forest      #world { filter: sepia(.14) hue-rotate(-25deg) brightness(.72) saturate(.82); }
+
+/* SAKURA */
+body[data-theme-period="MORNING"].theme-cherry    #world { filter: brightness(1.08) saturate(1.20) hue-rotate(6deg); }
+body[data-theme-period="AFTERNOON"].theme-cherry  #world { filter: none; }
+body[data-theme-period="EVENING"].theme-cherry    #world { filter: sepia(.16) saturate(1.24) hue-rotate(-14deg) brightness(.86); }
+body[data-theme-period="NIGHT"].theme-cherry      #world { filter: hue-rotate(-28deg) brightness(.74) saturate(.84); }
+
+/* OCEAN */
+body[data-theme-period="MORNING"].theme-ocean     #world { filter: brightness(1.06) saturate(1.14) hue-rotate(4deg); }
+body[data-theme-period="AFTERNOON"].theme-ocean   #world { filter: none; }
+body[data-theme-period="EVENING"].theme-ocean     #world { filter: sepia(.10) saturate(1.10) hue-rotate(-8deg) brightness(.88); }
+body[data-theme-period="NIGHT"].theme-ocean       #world { filter: hue-rotate(-18deg) brightness(.68) saturate(.78); }
+
+/* SNOW */
+body[data-theme-period="MORNING"].theme-snow      #world { filter: brightness(1.04) saturate(1.08) hue-rotate(6deg); }
+body[data-theme-period="AFTERNOON"].theme-snow    #world { filter: brightness(1.08) saturate(1.12); }
+body[data-theme-period="EVENING"].theme-snow      #world { filter: sepia(.22) saturate(1.20) hue-rotate(-5deg) brightness(.90); }
+body[data-theme-period="NIGHT"].theme-snow        #world { filter: hue-rotate(-15deg) brightness(.70) saturate(.80); }
+
+/* CHROMAWAVE (sunset key) */
+body[data-theme-period="MORNING"].theme-sunset    #world { filter: brightness(1.06) hue-rotate(22deg) saturate(1.22); }
+body[data-theme-period="AFTERNOON"].theme-sunset  #world { filter: none; }
+body[data-theme-period="EVENING"].theme-sunset    #world { filter: sepia(.14) saturate(1.20) brightness(.90); }
+body[data-theme-period="NIGHT"].theme-sunset      #world { filter: brightness(.65) saturate(.80) hue-rotate(-20deg); }
+
+/* ANIME */
+body[data-theme-period="MORNING"].theme-anime     #world { filter: brightness(1.06) saturate(1.16) hue-rotate(10deg); }
+body[data-theme-period="AFTERNOON"].theme-anime   #world { filter: none; }
+body[data-theme-period="EVENING"].theme-anime     #world { filter: sepia(.12) saturate(1.18) hue-rotate(-8deg) brightness(.88); }
+body[data-theme-period="NIGHT"].theme-anime       #world { filter: hue-rotate(-20deg) brightness(.72) saturate(.82); }
+
+/* NEON CITY */
+body[data-theme-period="MORNING"].theme-neon      #world { filter: brightness(1.06) saturate(1.14) hue-rotate(12deg); }
+body[data-theme-period="AFTERNOON"].theme-neon    #world { filter: none; }
+body[data-theme-period="EVENING"].theme-neon      #world { filter: saturate(1.22) brightness(.90); }
+body[data-theme-period="NIGHT"].theme-neon        #world { filter: brightness(.82) saturate(1.15); }
+
+/* COZY */
+body[data-theme-period="MORNING"].theme-cozy      #world { filter: brightness(1.08) saturate(1.12) hue-rotate(5deg); }
+body[data-theme-period="AFTERNOON"].theme-cozy    #world { filter: none; }
+body[data-theme-period="EVENING"].theme-cozy      #world { filter: sepia(.18) saturate(1.20) brightness(.90); }
+body[data-theme-period="NIGHT"].theme-cozy        #world { filter: sepia(.08) brightness(.72) saturate(.88); }
+
+/* Smooth transitions between time periods */
+body[data-theme-period] #world {
+  transition: filter 90s linear;
+}
+
+/* ── SENSAMODE — soft solid-colour backgrounds ────────────────────────
+   When body.sensa-mode is active, the canvas is hidden and each theme
+   gets its own soft signature colour as the sole background.           */
+body.sensa-mode #theme-canvas { opacity: 0; pointer-events: none; }
+
+body.sensa-mode body { background: var(--sensa-bg, #0d0820) !important; }
+body.sensa-mode #world {
+  background: var(--sensa-bg, #0d0820) !important;
+}
+
+/* Per-theme SensaMode soft palette — deep but quiet */
+body.sensa-mode.theme-galaxy   { --sensa-bg: #0c0820; }
+body.sensa-mode.theme-classic  { --sensa-bg: #111111; }
+body.sensa-mode.theme-forest   { --sensa-bg: #0d1f0d; }  /* soft forest green */
+body.sensa-mode.theme-cherry   { --sensa-bg: #200d18; }  /* soft sakura pink  */
+body.sensa-mode.theme-ocean    { --sensa-bg: #061420; }  /* soft ocean blue   */
+body.sensa-mode.theme-snow     { --sensa-bg: #0e1428; }  /* soft ice blue     */
+body.sensa-mode.theme-sunset   { --sensa-bg: #180828; }  /* soft retro purple */
+body.sensa-mode.theme-anime    { --sensa-bg: #120820; }  /* soft anime violet */
+body.sensa-mode.theme-matrix   { --sensa-bg: #030a03; }  /* soft matrix green */
+body.sensa-mode.theme-neon     { --sensa-bg: #060018; }  /* soft neon indigo  */
+body.sensa-mode.theme-cozy     { --sensa-bg: #180c06; }  /* soft amber brown  */
+
+/* SensaMode: preserve world #world overlay glow but reduce intensity */
+body.sensa-mode #world::before {
+  opacity: 0.35 !important;
+}
+
+
 body.full-mode #compact-expand-btn { display: none;  }
 
 /* Full mode #world: no rounded corners, no glow ring, fills screen.
