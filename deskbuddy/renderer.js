@@ -77,1364 +77,3465 @@ const ThemeCanvas = (() => {
     ];
   }
 
-  // ── Per-theme configs ────────────────────────────────────────────────────────
-  const CFG = {
-    // ── Galaxy ──────────────────────────────────────────────────────────────
-    galaxy: {
-      max: 4, rate: 0.022,
-      _nebulae: null,
-      init(W, H) {
-        _initStars(W, H, 130);
-        this._nebulae = [
-          { x: W * 0.14, y: H * 0.22, rx: W * 0.24, ry: H * 0.14, hue: 258, spd: 0.0025 },
-          { x: W * 0.80, y: H * 0.16, rx: W * 0.20, ry: H * 0.11, hue: 198, spd: 0.0032 },
-          { x: W * 0.50, y: H * 0.55, rx: W * 0.32, ry: H * 0.20, hue: 295, spd: 0.0018 },
-          { x: W * 0.28, y: H * 0.72, rx: W * 0.18, ry: H * 0.09, hue: 230, spd: 0.0028 },
-        ];
-      },
-      drawBackground(ctx, W, H) {
-        // Twinkling stars
-        _stars.forEach(s => {
-          s.twinklePhase += s.twinkleSpd;
-          const a = s.alpha * (0.45 + 0.55 * Math.sin(s.twinklePhase));
-          ctx.save();
-          ctx.globalAlpha = a;
-          if (s.r > 1.1) {  // cross-flare on bright stars
-            ctx.strokeStyle = `rgba(218, 224, 255, ${a * 0.55})`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(s.x - s.r * 2.8, s.y); ctx.lineTo(s.x + s.r * 2.8, s.y); ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(s.x, s.y - s.r * 2.8); ctx.lineTo(s.x, s.y + s.r * 2.8); ctx.stroke();
-          }
-          ctx.fillStyle = 'rgba(222, 226, 255, 1)';
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        });
-        // Nebula soft glow blobs
-        const t = _frame;
-        this._nebulae.forEach(n => {
-          const pulse = 0.038 + 0.014 * Math.sin(t * n.spd);
-          const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.rx);
-          g.addColorStop(0,   `hsla(${n.hue},72%,55%,${pulse * 1.6})`);
-          g.addColorStop(0.4, `hsla(${n.hue+18},65%,48%,${pulse * 0.7})`);
-          g.addColorStop(1,   `hsla(${n.hue},58%,38%,0)`);
-          ctx.save();
-          ctx.scale(1, n.ry / n.rx);
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(n.x, n.y * (n.rx / n.ry), n.rx, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        });
-      },
-      create(W, H) {
-        return {
-          x: Math.random() * W * 0.8, y: Math.random() * H * 0.38 - H * 0.05,
-          vx: 2.8 + Math.random() * 3, vy: 1.8 + Math.random() * 2,
-          len: 85 + Math.random() * 80, alpha: 0, maxAlpha: 0.7 + Math.random() * 0.25,
-          life: 0, maxLife: 48 + Math.random() * 65,
-        };
-      },
-      draw(ctx, p) {
-        const d = Math.hypot(p.vx, p.vy);
-        const tx = p.x - (p.vx / d) * p.len, ty = p.y - (p.vy / d) * p.len;
-        const g = ctx.createLinearGradient(p.x, p.y, tx, ty);
-        g.addColorStop(0,   `rgba(255,255,255,${p.alpha})`);
-        g.addColorStop(0.3, `rgba(185,200,255,${p.alpha * 0.5})`);
-        g.addColorStop(1,   `rgba(140,165,255,0)`);
-        ctx.save(); ctx.strokeStyle = g; ctx.lineWidth = 1.8;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke();
+
+  // ── Smooth time-of-day blend system ──────────────────────────────────────────
+  // Returns a blend object { period, next, t } where t=0 means pure period,
+  // t=1 means pure next. Transitions happen over 45min windows around hour marks.
+  let H_CACHED = 600; // fallback for palm drawing before canvas is ready
+
+  const _PERIOD_ORDER = ['NIGHT','MORNING','AFTERNOON','EVENING','NIGHT'];
+  const _PERIOD_HOURS = {
+    MORNING:   [5,  11],  // 05:00–11:00
+    AFTERNOON: [11, 17],  // 11:00–17:00
+    EVENING:   [17, 21],  // 17:00–21:00
+    NIGHT:     [21, 29],  // 21:00–05:00 (+24 wrap)
+  };
+  // Transition windows (minutes before next period starts where blending begins)
+  const _BLEND_WINDOW_MIN = 50;
+
+  function _getTimePeriodRaw() {
+    const h = new Date().getHours();
+    if (h >= 5  && h < 11) return 'MORNING';
+    if (h >= 11 && h < 17) return 'AFTERNOON';
+    if (h >= 17 && h < 21) return 'EVENING';
+    return 'NIGHT';
+  }
+
+  function _getSmoothBlend() {
+    const now  = new Date();
+    const h    = now.getHours();
+    const m    = now.getMinutes();
+    const totalMin = h * 60 + m;
+
+    // Each boundary: minute of day when period changes
+    const bounds = [
+      { at: 5  * 60, from: 'NIGHT',     to: 'MORNING'   },
+      { at: 11 * 60, from: 'MORNING',   to: 'AFTERNOON' },
+      { at: 17 * 60, from: 'AFTERNOON', to: 'EVENING'   },
+      { at: 21 * 60, from: 'EVENING',   to: 'NIGHT'     },
+    ];
+
+    for (const b of bounds) {
+      const dist = b.at - totalMin;
+      if (dist >= 0 && dist <= _BLEND_WINDOW_MIN) {
+        // Approaching this boundary — blend toward `to`
+        return { period: b.from, next: b.to, t: 1 - dist / _BLEND_WINDOW_MIN };
+      }
+      // Just past boundary — blend out of transition
+      const pastDist = totalMin - b.at;
+      if (pastDist >= 0 && pastDist <= 12) {
+        return { period: b.to, next: b.to, t: 1.0 };
+      }
+    }
+    // Stable period, no blending
+    const p = _getTimePeriodRaw();
+    return { period: p, next: p, t: 1.0 };
+  }
+
+  // Read period from body attribute (set by renderer main(), respects lock/auto)
+  function _getCanvasPeriod() {
+    return document.body.dataset.themePeriod || _getTimePeriodRaw();
+  }
+
+  // Color lerp helpers
+  function _lrp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+  function _rgb(c, a) {
+    if (a === undefined) return `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+    return `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a.toFixed(3)})`;
+  }
+  function _lrpRgbArr(c1, c2, t) {
+    return [_lrp(c1[0],c2[0],t), _lrp(c1[1],c2[1],t), _lrp(c1[2],c2[2],t)];
+  }
+
+  // Blend between two period color palettes using the smooth blend object
+  // palette = { MORNING:{...}, AFTERNOON:{...}, EVENING:{...}, NIGHT:{...} }
+  // Each value is an array [r,g,b]
+  function _blendPeriodColors(palette, blend) {
+    const { period, next, t } = blend;
+    const keys = Object.keys(palette[period] || palette.AFTERNOON);
+    const result = {};
+    keys.forEach(k => {
+      const c1 = palette[period]  ? palette[period][k]  : palette.AFTERNOON[k];
+      const c2 = palette[next]    ? palette[next][k]    : c1;
+      result[k] = _lrpRgbArr(c1, c2, t);
+    });
+    return result;
+  }
+
+// ── Per-theme configs — PREMIUM REWORK ──────────────────────────────────────
+//
+// Time-aware helper: reads current period from body data-attribute.
+// Returns object { period, rawH } where period ∈ MORNING/AFTERNOON/EVENING/NIGHT.
+//
+function _getCanvasPeriod() {
+  return document.body.dataset.themePeriod || 'AFTERNOON';
+}
+
+// Lerp helper for smooth color blending
+function _lrp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+function _lrpRgb(c1, c2, t) {
+  return [_lrp(c1[0], c2[0], t), _lrp(c1[1], c2[1], t), _lrp(c1[2], c2[2], t)];
+}
+function _rgb(c, a) {
+  if (a === undefined) return `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+  return `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a.toFixed(3)})`;
+}
+
+const CFG = {
+
+  // ── Galaxy — kept pristine ────────────────────────────────────────────────
+  galaxy: {
+    max: 4, rate: 0.022,
+    _nebulae: null,
+    init(W, H) {
+      _initStars(W, H, 130);
+      this._nebulae = [
+        { x: W*0.14, y: H*0.22, rx: W*0.24, ry: H*0.14, hue: 258, spd: 0.0025 },
+        { x: W*0.80, y: H*0.16, rx: W*0.20, ry: H*0.11, hue: 198, spd: 0.0032 },
+        { x: W*0.50, y: H*0.55, rx: W*0.32, ry: H*0.20, hue: 295, spd: 0.0018 },
+        { x: W*0.28, y: H*0.72, rx: W*0.18, ry: H*0.09, hue: 230, spd: 0.0028 },
+      ];
+    },
+    drawBackground(ctx, W, H) {
+      _stars.forEach(s => {
+        s.twinklePhase += s.twinkleSpd;
+        const a = s.alpha * (0.45 + 0.55 * Math.sin(s.twinklePhase));
+        ctx.save(); ctx.globalAlpha = a;
+        if (s.r > 1.1) {
+          ctx.strokeStyle = `rgba(218,224,255,${a*0.55})`; ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(s.x-s.r*2.8,s.y); ctx.lineTo(s.x+s.r*2.8,s.y); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(s.x,s.y-s.r*2.8); ctx.lineTo(s.x,s.y+s.r*2.8); ctx.stroke();
+        }
+        ctx.fillStyle='rgba(222,226,255,1)'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
         ctx.restore();
-      },
-      update(p, W, H) {
-        p.x += p.vx; p.y += p.vy; p.life++;
-        p.alpha = p.life < 10 ? (p.life / 10) * p.maxAlpha
-          : p.life > p.maxLife - 14 ? Math.max(0, p.alpha - p.maxAlpha / 14)
-          : p.maxAlpha;
-        return p.life < p.maxLife && p.x < W + p.len && p.y < H + p.len;
-      },
+      });
+      const t = _frame;
+      this._nebulae.forEach(n => {
+        const pulse = 0.038 + 0.014*Math.sin(t*n.spd);
+        const g = ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.rx);
+        g.addColorStop(0,`hsla(${n.hue},72%,55%,${pulse*1.6})`);
+        g.addColorStop(0.4,`hsla(${n.hue+18},65%,48%,${pulse*0.7})`);
+        g.addColorStop(1,`hsla(${n.hue},58%,38%,0)`);
+        ctx.save(); ctx.scale(1, n.ry/n.rx); ctx.fillStyle=g;
+        ctx.beginPath(); ctx.arc(n.x,n.y*(n.rx/n.ry),n.rx,0,Math.PI*2); ctx.fill(); ctx.restore();
+      });
+    },
+    create(W,H) {
+      return { x:Math.random()*W*0.8, y:Math.random()*H*0.38-H*0.05,
+        vx:2.8+Math.random()*3, vy:1.8+Math.random()*2, len:85+Math.random()*80,
+        alpha:0, maxAlpha:0.7+Math.random()*0.25, life:0, maxLife:48+Math.random()*65 };
+    },
+    draw(ctx, p) {
+      const d=Math.hypot(p.vx,p.vy), tx=p.x-(p.vx/d)*p.len, ty=p.y-(p.vy/d)*p.len;
+      const g=ctx.createLinearGradient(p.x,p.y,tx,ty);
+      g.addColorStop(0,`rgba(255,255,255,${p.alpha})`);
+      g.addColorStop(0.3,`rgba(185,200,255,${p.alpha*0.5})`);
+      g.addColorStop(1,'rgba(140,165,255,0)');
+      ctx.save(); ctx.strokeStyle=g; ctx.lineWidth=1.8;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(tx,ty); ctx.stroke(); ctx.restore();
+    },
+    update(p,W,H) {
+      p.x+=p.vx; p.y+=p.vy; p.life++;
+      p.alpha = p.life<10?(p.life/10)*p.maxAlpha : p.life>p.maxLife-14?Math.max(0,p.alpha-p.maxAlpha/14):p.maxAlpha;
+      return p.life<p.maxLife && p.x<W+p.len && p.y<H+p.len;
+    },
+  },
+
+  // ── FOREST — Premium Enchanted Forest Scene ───────────────────────────────
+  // Inspired by Ghibli forest tunnel: ancient arching trees, twisting roots,
+  // hanging vines, a forest path, time-of-day sky, fireflies at dusk/night.
+  forest: {
+    max: 55, rate: 0.14,
+    _trunks: null, _vines: null, _groundFlora: null,
+    _canopyPoints: null, _spores: null,
+
+    init(W, H) {
+      _stars = [];
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      // Left trunk system: 2 large trunks from bottom-left edge
+      this._trunks = {
+        L: [
+          { bx: W*0.02, by: H, tx: W*0.08, ty: H*0.02, cp1x: W*0.04, cp1y: H*0.55, cp2x: W*0.06, cp2y: H*0.28, w1: W*0.10, w2: W*0.030 },
+          { bx: W*0.14, by: H, tx: W*0.16, ty: H*0.05, cp1x: W*0.13, cp1y: H*0.55, cp2x: W*0.17, cp2y: H*0.28, w1: W*0.07, w2: W*0.022 },
+        ],
+        R: [
+          { bx: W*0.98, by: H, tx: W*0.92, ty: H*0.02, cp1x: W*0.96, cp1y: H*0.55, cp2x: W*0.94, cp2y: H*0.28, w1: W*0.10, w2: W*0.030 },
+          { bx: W*0.86, by: H, tx: W*0.84, ty: H*0.05, cp1x: W*0.87, cp1y: H*0.55, cp2x: W*0.83, cp2y: H*0.28, w1: W*0.07, w2: W*0.022 },
+        ],
+      };
+
+      // Vine tendrils
+      this._vines = Array.from({ length: 12 }, (_, i) => {
+        const side = i < 6 ? 'L' : 'R';
+        const sx = side === 'L' ? W*rng(0.04,0.22) : W*rng(0.78,0.96);
+        return {
+          sx, sy: H*rng(0.0, 0.25),
+          length: H*rng(0.18, 0.48),
+          sway: rng(0, Math.PI*2),
+          swSpd: rng(0.006, 0.014),
+          swAmp: rng(8, 22),
+          col: `hsl(${110+rng(0,40)|0},${60+rng(0,20)|0}%,${22+rng(0,14)|0}%)`,
+          w: rng(1.5, 3.5),
+          segs: Math.floor(rng(6, 14)),
+        };
+      });
+
+      // Ground flora: small plants, flowers, rocks along the path edges
+      this._groundFlora = Array.from({ length: 28 }, (_, i) => {
+        const side = i % 2 === 0 ? -1 : 1;
+        const xBase = W*0.5 + side * W*rng(0.08, 0.42);
+        return {
+          x: xBase + rng(-W*0.04, W*0.04),
+          y: H*rng(0.72, 0.98),
+          type: Math.random() < 0.6 ? 'leaf' : Math.random() < 0.5 ? 'flower' : 'fern',
+          hue: 95 + rng(0, 55)|0,
+          sz: rng(0.015, 0.040) * Math.min(W, H),
+          rot: rng(-0.5, 0.5),
+          phase: rng(0, Math.PI*2),
+          spd: rng(0.008, 0.018),
+        };
+      });
+
+      // Canopy arch points (top of screen, connecting both tree groups)
+      this._canopyPoints = Array.from({ length: 20 }, (_, i) => ({
+        x: W * i/19,
+        y: H * (0.0 + 0.22 * Math.pow(Math.abs(i/19 - 0.5)*2, 1.6)),
+        phase: rng(0, Math.PI*2),
+        spd: rng(0.004, 0.01),
+      }));
+
+      // Bioluminescent spores for evening
+      this._spores = Array.from({ length: 22 }, () => ({
+        x: W*rng(0.1, 0.9), y: H*rng(0.38, 0.92),
+        r: rng(2, 5), hue: rng(0,1) < 0.5 ? 165 : 280,
+        phase: rng(0, Math.PI*2), spd: rng(0.02, 0.04),
+      }));
     },
 
-    // ── Forest — pure atmospheric Ghibli enchanted forest ─────────────────
-    // No drawings. Pure atmosphere: light shafts, spores, fireflies, motes.
-    forest: {
-      max: 38, rate: 0.085,
-      _shafts: null, _spores: null,
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const t = _frame * 0.012;
 
-      init(W, H) {
-        _stars = [];
-        // Diagonal light shafts from upper-left canopy
-        this._shafts = Array.from({ length: 6 }, (_, i) => ({
-          x:     W * (0.05 + i * 0.18) + (Math.random() - 0.5) * W * 0.08,
-          angle: 0.18 + Math.random() * 0.22,   // slight diagonal
-          width: W * (0.04 + Math.random() * 0.06),
-          alpha: 0.022 + Math.random() * 0.018,
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.004 + Math.random() * 0.006,
-        }));
-        // Static bioluminescent spore positions (drawn in drawBackground)
-        this._spores = Array.from({ length: 18 }, () => ({
-          x: Math.random() * W,
-          y: H * 0.25 + Math.random() * H * 0.65,
-          r: 1.2 + Math.random() * 2.8,
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.018 + Math.random() * 0.028,
-          hue:   108 + Math.floor(Math.random() * 60),
-        }));
-      },
+      // ── 1. Sky through the forest tunnel ──────────────────────────────────
+      const SKY = {
+        MORNING:   { t:[255,225,170], b:[195,230,185], cg:[255,248,220,0.55] },
+        AFTERNOON: { t:[140,195,245], b:[215,238,200], cg:[220,248,255,0.30] },
+        EVENING:   { t:[55, 38, 120], b:[110,80, 165], cg:[80,60,140,0.40] },
+        NIGHT:     { t:[12, 10,  38], b:[28, 25,  75], cg:[20,15,55,0.25] },
+      };
+      const sk = SKY[period] || SKY.AFTERNOON;
 
-      drawBackground(ctx, W, H) {
-        const t = _frame * 0.016;
+      // Sky gradient in center tunnel opening
+      const skyG = ctx.createRadialGradient(W*0.5, H*0.38, 0, W*0.5, H*0.38, W*0.55);
+      skyG.addColorStop(0,   _rgb(sk.t, 1.0));
+      skyG.addColorStop(0.55, _rgb(sk.b, 0.90));
+      skyG.addColorStop(1,   _rgb(sk.t, 0));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
 
-        // ── Canopy light shafts ────────────────────────────────────────
-        this._shafts.forEach(sh => {
-          sh.phase += sh.spd;
-          const alpha = sh.alpha * (0.65 + 0.35 * Math.sin(sh.phase));
-          const x0 = sh.x - Math.cos(sh.angle) * H * 1.2;
-          const y0 = -H * 0.08;
-          const x1 = sh.x + Math.cos(sh.angle) * H * 0.5;
-          const y1 = H * 1.05;
-          const g = ctx.createLinearGradient(x0, y0, sh.x, H * 0.55);
-          g.addColorStop(0,   `rgba(80, 220, 105, ${alpha * 1.8})`);
-          g.addColorStop(0.4, `rgba(55, 185, 78,  ${alpha * 0.9})`);
-          g.addColorStop(1,   `rgba(30, 120, 48,  0)`);
-          ctx.save();
-          ctx.translate(sh.x, 0);
-          ctx.rotate(sh.angle - Math.PI / 2);
-          const sg = ctx.createLinearGradient(-sh.width * 0.5, 0, sh.width * 0.5, 0);
-          sg.addColorStop(0,   'rgba(70, 210, 95, 0)');
-          sg.addColorStop(0.4, `rgba(80, 225, 105, ${alpha})`);
-          sg.addColorStop(0.6, `rgba(80, 225, 105, ${alpha})`);
-          sg.addColorStop(1,   'rgba(70, 210, 95, 0)');
-          ctx.fillStyle = sg;
-          ctx.fillRect(-sh.width * 0.5, 0, sh.width, H * 1.4);
-          ctx.restore();
+      // Base ground ambient
+      const groundAmb = ctx.createLinearGradient(0, H*0.45, 0, H);
+      if (period === 'EVENING' || period === 'NIGHT') {
+        groundAmb.addColorStop(0, 'rgba(28,18,48,0)');
+        groundAmb.addColorStop(1, 'rgba(8,6,22,0.88)');
+      } else if (period === 'MORNING') {
+        groundAmb.addColorStop(0, 'rgba(60,55,30,0)');
+        groundAmb.addColorStop(1, 'rgba(28,22,12,0.78)');
+      } else {
+        groundAmb.addColorStop(0, 'rgba(32,42,20,0)');
+        groundAmb.addColorStop(1, 'rgba(12,18,8,0.82)');
+      }
+      ctx.fillStyle = groundAmb; ctx.fillRect(0, H*0.45, W, H*0.55);
+
+      // ── 2. Distant hills through gap ─────────────────────────────────────
+      if (period !== 'NIGHT') {
+        const hillColors = {
+          MORNING:   [[148,175,130,0.55],[118,148,108,0.45],[90,120,85,0.40]],
+          AFTERNOON: [[118,168,110,0.60],[95,145,90,0.50],[72,118,68,0.45]],
+          EVENING:   [[68,72,95,0.55],[52,58,88,0.50],[38,42,72,0.45]],
+        };
+        const hc = hillColors[period] || hillColors.AFTERNOON;
+        [0, 1, 2].forEach(li => {
+          const baseY = H*(0.48 + li*0.055);
+          ctx.beginPath();
+          ctx.moveTo(W*0.18, H);
+          for (let xi = 0; xi <= 16; xi++) {
+            const fx = W*0.18 + xi*(W*0.64/16);
+            const fy = baseY - H*0.08*Math.sin(xi*0.55+li*1.2+1.5) - H*0.04*Math.sin(xi*1.1+li*0.8);
+            xi===0 ? ctx.moveTo(fx,fy) : ctx.lineTo(fx,fy);
+          }
+          ctx.lineTo(W*0.82, H); ctx.lineTo(W*0.18, H); ctx.closePath();
+          const [r,g,b,a] = hc[li];
+          ctx.fillStyle = `rgba(${r},${g},${b},${a})`; ctx.fill();
         });
+      }
 
-        // ── Bioluminescent ground mist ──────────────────────────────────
-        const mistG = ctx.createLinearGradient(0, H * 0.78, 0, H);
-        mistG.addColorStop(0, 'rgba(22, 88, 34, 0)');
-        mistG.addColorStop(0.6, 'rgba(18, 72, 28, 0.12)');
-        mistG.addColorStop(1,  'rgba(12, 55, 20, 0.28)');
-        ctx.fillStyle = mistG; ctx.fillRect(0, H * 0.78, W, H * 0.22);
+      // ── 3. Morning sun glow through center ────────────────────────────────
+      if (period === 'MORNING') {
+        const sunG = ctx.createRadialGradient(W*0.5, H*0.42, 0, W*0.5, H*0.42, W*0.38);
+        sunG.addColorStop(0,   'rgba(255,248,200,0.72)');
+        sunG.addColorStop(0.25,'rgba(255,228,150,0.38)');
+        sunG.addColorStop(0.55,'rgba(230,200,120,0.12)');
+        sunG.addColorStop(1,   'rgba(200,175,100,0)');
+        ctx.fillStyle = sunG; ctx.fillRect(0, 0, W, H);
 
-        // ── Static glowing spores ───────────────────────────────────────
+        // Diagonal light shafts
+        for (let i = 0; i < 5; i++) {
+          const shx = W*(0.32 + i*0.09) + Math.sin(t*0.4+i)*W*0.02;
+          const sha = 0.06 + 0.04*Math.sin(t*0.7+i*1.3);
+          ctx.save();
+          const sg = ctx.createLinearGradient(shx, 0, shx+W*0.018, H*0.8);
+          sg.addColorStop(0, `rgba(255,240,180,${sha*1.8})`);
+          sg.addColorStop(0.5, `rgba(255,235,165,${sha*0.8})`);
+          sg.addColorStop(1, 'rgba(255,228,150,0)');
+          ctx.fillStyle = sg;
+          ctx.beginPath();
+          ctx.moveTo(shx-W*0.01, 0);
+          ctx.lineTo(shx+W*0.03, 0);
+          ctx.lineTo(shx+W*0.05, H*0.85);
+          ctx.lineTo(shx+W*0.02, H*0.85);
+          ctx.closePath(); ctx.fill(); ctx.restore();
+        }
+      }
+
+      // ── 4. Evening / Night bioluminescence ───────────────────────────────
+      if (period === 'EVENING' || period === 'NIGHT') {
         this._spores.forEach(sp => {
           sp.phase += sp.spd;
-          const pulse = 0.5 + 0.5 * Math.sin(sp.phase);
-          const alpha = 0.18 + 0.22 * pulse;
-          const g = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, sp.r * 3.5);
-          g.addColorStop(0,   `hsla(${sp.hue}, 80%, 65%, ${alpha * 2.2})`);
-          g.addColorStop(0.5, `hsla(${sp.hue}, 70%, 52%, ${alpha * 0.6})`);
-          g.addColorStop(1,   `hsla(${sp.hue}, 60%, 40%, 0)`);
+          const pulse = 0.5 + 0.5*Math.sin(sp.phase);
+          const a = (period === 'NIGHT' ? 0.55 : 0.35) * pulse;
+          const g = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, sp.r*4.5);
+          g.addColorStop(0, `hsla(${sp.hue},90%,75%,${a*2.8})`);
+          g.addColorStop(0.45, `hsla(${sp.hue},80%,55%,${a*0.9})`);
+          g.addColorStop(1, `hsla(${sp.hue},65%,35%,0)`);
           ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r * 3.5, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r*4.5, 0, Math.PI*2); ctx.fill();
         });
+      }
 
-        // ── Animated fireflies ─────────────────────────────────────────
-        for (let i = 0; i < 20; i++) {
-          const fx = W * ((i * 0.137 + Math.sin(t + i * 1.3) * 0.06 + 1) % 1);
-          const fy = H * 0.08 + H * 0.62 * ((i * 0.211 + Math.cos(t * 0.68 + i * 0.88) * 0.05 + 1) % 1);
-          const fa = Math.max(0, 0.06 + 0.15 * Math.sin(t * 1.7 + i * 2.1));
-          const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 6);
-          fg.addColorStop(0, `rgba(175, 255, 145, ${fa * 2.5})`);
-          fg.addColorStop(0.5, `rgba(100, 235, 90, ${fa})`);
-          fg.addColorStop(1,   'rgba(55, 195, 65, 0)');
-          ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, 6, 0, Math.PI * 2); ctx.fill();
-        }
-      },
+      // ── 5. Ground path (dirt trail) ────────────────────────────────────────
+      ctx.save();
+      // Path shape: trapezoid narrowing to center
+      const pathG = ctx.createLinearGradient(0, H*0.60, 0, H);
+      if (period === 'MORNING') {
+        pathG.addColorStop(0, 'rgba(125,100,62,0.55)');
+        pathG.addColorStop(1, 'rgba(88,68,40,0.80)');
+      } else if (period === 'EVENING' || period === 'NIGHT') {
+        pathG.addColorStop(0, 'rgba(38,32,48,0.72)');
+        pathG.addColorStop(1, 'rgba(18,15,28,0.88)');
+      } else {
+        pathG.addColorStop(0, 'rgba(105,82,52,0.60)');
+        pathG.addColorStop(1, 'rgba(68,52,32,0.82)');
+      }
+      ctx.fillStyle = pathG;
+      ctx.beginPath();
+      ctx.moveTo(W*0.35, H*0.62); ctx.lineTo(W*0.65, H*0.62);
+      ctx.lineTo(W*0.80, H);       ctx.lineTo(W*0.20, H);
+      ctx.closePath(); ctx.fill();
 
-      // Particles: floating spores, drifting dust motes, luminescent orbs
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.38) {
-          // Luminescent spore
-          return {
-            type: 'spore',
-            x: Math.random() * W * 1.1 - W * 0.05,
-            y: H + 15,
-            vx: (Math.random() - 0.5) * 0.55,
-            vy: -(0.28 + Math.random() * 0.58),
-            r: 1.8 + Math.random() * 3.2,
-            hue: 100 + Math.floor(Math.random() * 72),
-            alpha: 0, maxAlpha: 0.45 + Math.random() * 0.35,
-            life: 0, fadeIn: 18, maxLife: 130 + Math.floor(Math.random() * 90),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.8 + Math.random() * 1.5,
-            swSpd: 0.012 + Math.random() * 0.018,
-          };
-        } else if (r < 0.72) {
-          // Dust mote
-          return {
-            type: 'dust',
-            x: Math.random() * W,
-            y: H * 0.1 + Math.random() * H * 0.85,
-            vx: (Math.random() - 0.5) * 0.30,
-            vy: -(0.08 + Math.random() * 0.22),
-            r: 0.8 + Math.random() * 1.5,
-            alpha: 0, maxAlpha: 0.20 + Math.random() * 0.25,
-            life: 0, fadeIn: 25, maxLife: 200 + Math.floor(Math.random() * 120),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9,
-            swSpd: 0.008 + Math.random() * 0.012,
-          };
-        } else {
-          // Drifting leaf-mote (very soft)
-          return {
-            type: 'leaf',
-            x: Math.random() * W * 1.2 - W * 0.1,
-            y: -15,
-            vx: (Math.random() - 0.5) * 0.65,
-            vy: 0.35 + Math.random() * 0.65,
-            rot: Math.random() * Math.PI * 2,
-            rotV: (Math.random() - 0.5) * 0.035,
-            sz: 4 + Math.random() * 7,
-            hue: 100 + Math.floor(Math.random() * 55),
-            alpha: 0, maxAlpha: 0.28 + Math.random() * 0.30,
-            life: 0, fadeIn: 14,
-            sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.2,
-            swSpd: 0.014 + Math.random() * 0.018,
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'spore') {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.2);
-          g.addColorStop(0,   `hsla(${p.hue}, 82%, 68%, 1)`);
-          g.addColorStop(0.45,`hsla(${p.hue}, 72%, 55%, 0.5)`);
-          g.addColorStop(1,   `hsla(${p.hue}, 60%, 40%, 0)`);
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.2, 0, Math.PI * 2); ctx.fill();
-        } else if (p.type === 'dust') {
-          ctx.fillStyle = 'rgba(190, 255, 200, 1)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        } else {
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = `hsla(${p.hue}, 62%, 38%, 1)`;
+      // Path stones/texture hints
+      if (period !== 'NIGHT') {
+        ctx.globalAlpha = 0.25;
+        for (let si = 0; si < 12; si++) {
+          const sx = W*(0.22 + (si%4)*0.14) + Math.sin(si*2.3)*W*0.04;
+          const sy = H*(0.68 + Math.floor(si/4)*0.10);
+          const sr = W*0.022;
+          ctx.fillStyle = si%3===0 ? 'rgba(145,120,85,1)' : 'rgba(115,95,65,1)';
           ctx.beginPath();
-          ctx.moveTo(0, -p.sz);
-          ctx.bezierCurveTo( p.sz * 0.55, -p.sz * 0.4,  p.sz * 0.55,  p.sz * 0.4, 0, p.sz);
-          ctx.bezierCurveTo(-p.sz * 0.55,  p.sz * 0.4, -p.sz * 0.55, -p.sz * 0.4, 0, -p.sz);
+          ctx.ellipse(sx, sy, sr, sr*0.55, (si%3-1)*0.3, 0, Math.PI*2);
           ctx.fill();
         }
-        ctx.restore();
-      },
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
 
-      update(p, W, H) {
-        p.life++; p.sw += p.swSpd;
-        p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy;
-        if (p.rot !== undefined) p.rot += p.rotV;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = (p.maxLife && p.life > p.maxLife - 24) ? Math.max(0, (p.maxLife - p.life) / 24) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        if (p.type === 'spore' || p.type === 'dust') return p.life < (p.maxLife || 300) && p.y > -40 && p.y < H + 40;
-        return p.y < H + 30;
-      },
-    },
-
-    // ── Cherry / Sakura — pure bokeh dreamscape, no branches ─────────────────
-    // Large soft pink bokeh orbs radiating from below, layered glows, dreamy petals.
-    cherry: {
-      max: 52, rate: 0.115,
-      _bokeh: null,
-
-      init(W, H) {
-        _stars = [];
-        // Bokeh orbs — large, soft, various depths
-        this._bokeh = Array.from({ length: 22 }, (_, i) => ({
-          x: (i % 2 === 0 ? Math.random() * W * 0.45 : W * 0.55 + Math.random() * W * 0.45),
-          y: H * 0.45 + Math.random() * H * 0.65,
-          r: 28 + Math.random() * 72,
-          hue: 328 + Math.floor(Math.random() * 28),
-          alpha: 0.06 + Math.random() * 0.09,
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.006 + Math.random() * 0.010,
-          driftX: (Math.random() - 0.5) * 0.18,
-          driftY: -(0.04 + Math.random() * 0.10),
-        }));
-      },
-
-      drawBackground(ctx, W, H) {
-        // Bottom radiant bloom — layered soft pink
-        const bL = ctx.createRadialGradient(W * 0.28, H * 0.95, 0, W * 0.28, H * 0.95, W * 0.72);
-        bL.addColorStop(0,   'rgba(255, 95, 158, 0.18)');
-        bL.addColorStop(0.35,'rgba(215, 58, 130, 0.08)');
-        bL.addColorStop(1,   'rgba(165, 28, 95, 0)');
-        ctx.fillStyle = bL; ctx.fillRect(0, 0, W, H);
-
-        const bR = ctx.createRadialGradient(W * 0.72, H * 0.95, 0, W * 0.72, H * 0.95, W * 0.72);
-        bR.addColorStop(0,   'rgba(255, 95, 158, 0.18)');
-        bR.addColorStop(0.35,'rgba(215, 58, 130, 0.08)');
-        bR.addColorStop(1,   'rgba(165, 28, 95, 0)');
-        ctx.fillStyle = bR; ctx.fillRect(0, 0, W, H);
-
-        // Moonlit crown at top — soft lavender-white
-        const moon = ctx.createRadialGradient(W * 0.50, -H * 0.08, 0, W * 0.50, H * 0.38, W * 0.52);
-        moon.addColorStop(0,   'rgba(255, 235, 255, 0.11)');
-        moon.addColorStop(0.55,'rgba(220, 180, 255, 0.04)');
-        moon.addColorStop(1,   'rgba(155, 90, 200, 0)');
-        ctx.fillStyle = moon; ctx.fillRect(0, 0, W, H);
-
-        // Animated bokeh orbs
-        this._bokeh.forEach(bk => {
-          bk.phase += bk.spd;
-          bk.x += bk.driftX;
-          bk.y += bk.driftY;
-          // Wrap gently
-          if (bk.y < -bk.r) bk.y = H + bk.r;
-          const pulse = 0.7 + 0.3 * Math.sin(bk.phase);
-          const a = bk.alpha * pulse;
-          const g = ctx.createRadialGradient(bk.x, bk.y, 0, bk.x, bk.y, bk.r);
-          g.addColorStop(0,    `hsla(${bk.hue}, 88%, 78%, ${a * 2.2})`);
-          g.addColorStop(0.38, `hsla(${bk.hue}, 82%, 65%, ${a * 1.1})`);
-          g.addColorStop(0.72, `hsla(${bk.hue}, 75%, 52%, ${a * 0.35})`);
-          g.addColorStop(1,    `hsla(${bk.hue}, 68%, 40%, 0)`);
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(bk.x, bk.y, bk.r, 0, Math.PI * 2); ctx.fill();
-        });
-
-        // Petal floor scatter glow
-        const pg = ctx.createLinearGradient(0, H * 0.82, 0, H);
-        pg.addColorStop(0,  'rgba(225, 88, 148, 0)');
-        pg.addColorStop(1,  'rgba(195, 55, 118, 0.13)');
-        ctx.fillStyle = pg; ctx.fillRect(0, H * 0.82, W, H * 0.18);
-      },
-
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.65) {
-          // Soft teardrop petal
-          return {
-            type: 'petal',
-            x: Math.random() * W * 1.35 - W * 0.18,
-            y: -20 - Math.random() * 65,
-            vx: (Math.random() - 0.5) * 1.1,
-            vy:  0.35 + Math.random() * 0.90,
-            rot: Math.random() * Math.PI * 2,
-            rotV: (Math.random() - 0.5) * 0.09,
-            sz: 4 + Math.random() * 8,
-            alpha: 0, maxAlpha: 0.48 + Math.random() * 0.40,
-            life: 0, fadeIn: 12,
-            sw: Math.random() * Math.PI * 2,
-            swAmp: 1.2 + Math.random() * 2.8, swSpd: 0.011 + Math.random() * 0.020,
-            col: `hsl(${330 + Math.random() * 30},${68 + Math.random() * 22}%,${72 + Math.random() * 16}%)`,
-          };
-        } else if (r < 0.88) {
-          // Bokeh particle — soft glowing orb
-          return {
-            type: 'bokeh',
-            x: Math.random() * W,
-            y: H * 0.6 + Math.random() * H * 0.5,
-            vx: (Math.random() - 0.5) * 0.35,
-            vy: -(0.15 + Math.random() * 0.38),
-            r: 6 + Math.random() * 22,
-            hue: 325 + Math.floor(Math.random() * 35),
-            alpha: 0, maxAlpha: 0.08 + Math.random() * 0.12,
-            life: 0, fadeIn: 28, maxLife: 160 + Math.floor(Math.random() * 100),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.8, swSpd: 0.009 + Math.random() * 0.013,
-          };
+      // ── 6. Ground flora ───────────────────────────────────────────────────
+      this._groundFlora.forEach(fl => {
+        fl.phase += fl.spd;
+        const sway = Math.sin(fl.phase) * fl.sz * 0.15;
+        ctx.save(); ctx.globalAlpha = 0.82;
+        if (fl.type === 'flower') {
+          const fc = period === 'EVENING' || period === 'NIGHT'
+            ? `hsl(${fl.hue+150},85%,65%)` : `hsl(${fl.hue-20},90%,72%)`;
+          ctx.fillStyle = fc;
+          for (let pi = 0; pi < 5; pi++) {
+            const pa = (pi/5)*Math.PI*2 + fl.rot;
+            const px = fl.x + Math.cos(pa)*fl.sz*0.55 + sway;
+            const py = fl.y + Math.sin(pa)*fl.sz*0.38;
+            ctx.beginPath(); ctx.arc(px, py, fl.sz*0.28, 0, Math.PI*2); ctx.fill();
+          }
+          ctx.fillStyle = period === 'EVENING' ? 'rgba(255,200,80,0.9)' : 'rgba(255,255,200,0.95)';
+          ctx.beginPath(); ctx.arc(fl.x+sway, fl.y, fl.sz*0.18, 0, Math.PI*2); ctx.fill();
+        } else if (fl.type === 'fern') {
+          ctx.strokeStyle = `hsl(${fl.hue},${65}%,${period==='NIGHT'?18:32}%)`;
+          ctx.lineWidth = Math.max(1, fl.sz*0.06);
+          for (let fi = 0; fi < 7; fi++) {
+            const fa = fl.rot + (fi-3)*0.22;
+            const len = fl.sz*(0.6+fi*0.05);
+            ctx.beginPath();
+            ctx.moveTo(fl.x+sway, fl.y);
+            ctx.quadraticCurveTo(fl.x+Math.sin(fa)*len*0.5+sway, fl.y-len*0.5,
+              fl.x+Math.sin(fa)*len+sway*1.5, fl.y-len);
+            ctx.stroke();
+          }
         } else {
-          // Sparkle
-          return {
-            type: 'sparkle',
-            x: Math.random() * W,
-            y: Math.random() * H,
-            vx: (Math.random() - 0.5) * 0.45,
-            vy: -(0.12 + Math.random() * 0.35),
-            r: 0.8 + Math.random() * 1.8,
-            alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
-            life: 0, fadeIn: 10, maxLife: 55 + Math.floor(Math.random() * 45),
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'petal') {
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = p.col;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.bezierCurveTo(-p.sz, -p.sz,       -p.sz, -p.sz * 2.6, 0, -p.sz * 3.1);
-          ctx.bezierCurveTo( p.sz, -p.sz * 2.6,  p.sz, -p.sz,       0,  0);
-          ctx.fill();
-        } else if (p.type === 'bokeh') {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-          g.addColorStop(0,   `hsla(${p.hue}, 90%, 80%, 1)`);
-          g.addColorStop(0.45,`hsla(${p.hue}, 82%, 65%, 0.55)`);
-          g.addColorStop(1,   `hsla(${p.hue}, 72%, 50%, 0)`);
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        } else {
-          // 4-point star sparkle
-          ctx.strokeStyle = 'rgba(255, 215, 255, 1)'; ctx.lineWidth = p.r;
-          ctx.lineCap = 'round';
-          const s = p.r * 4;
-          ctx.beginPath(); ctx.moveTo(p.x - s, p.y); ctx.lineTo(p.x + s, p.y); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x, p.y + s); ctx.stroke();
+          // leaf cluster
+          ctx.fillStyle = `hsl(${fl.hue},${58+Math.random()*20|0}%,${period==='NIGHT'?16:28}%)`;
+          for (let li = 0; li < 3; li++) {
+            const la = fl.rot + (li-1)*0.45;
+            ctx.save(); ctx.translate(fl.x+sway, fl.y); ctx.rotate(la);
+            ctx.beginPath();
+            ctx.ellipse(0, -fl.sz*0.45, fl.sz*0.18, fl.sz*0.42, 0, 0, Math.PI*2);
+            ctx.fill(); ctx.restore();
+          }
         }
         ctx.restore();
-      },
+      });
 
-      update(p, W, H) {
-        p.life++; p.sw += p.swSpd;
-        p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy;
-        if (p.rot !== undefined) p.rot += p.rotV;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = (p.maxLife && p.life > p.maxLife - 20) ? Math.max(0, (p.maxLife - p.life) / 20) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        if (p.type === 'petal') return p.y < H + 40;
-        if (p.type === 'bokeh') return p.life < p.maxLife && p.y > -40;
-        return p.life < p.maxLife;
-      },
-    },
-
-    // ── Ocean — vibrant cartoon reef ────────────────────────────────────────
-    ocean: {
-      max: 28, rate: 0.072,
-      _caustics: null, _coral: null, _fish: null,
-
-      init(W, H) {
-        _stars = [];
-        // Animated caustic light patches from surface
-        this._caustics = Array.from({ length: 18 }, () => ({
-          x: Math.random() * W,
-          y: H * 0.02 + Math.random() * H * 0.60,
-          rx: 20 + Math.random() * 55, ry: 8 + Math.random() * 22,
-          rot: Math.random() * Math.PI,
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.014 + Math.random() * 0.024,
-        }));
-        // Coral formations along seafloor
-        this._coral = Array.from({ length: 14 }, (_, i) => ({
-          x: W * 0.04 + (i / 13) * W * 0.92,
-          y: H,
-          h: H * (0.08 + Math.random() * 0.15),
-          type: Math.random() < 0.5 ? 'fan' : 'branch',
-          hue: [0, 22, 280, 185, 320, 45][Math.floor(Math.random() * 6)],
-          w: 8 + Math.random() * 18,
-          phase: Math.random() * Math.PI * 2,
-        }));
-        // School of fish paths
-        this._fish = Array.from({ length: 8 }, (_, i) => ({
-          x: Math.random() < 0.5 ? -80 : W + 80,
-          y: H * 0.10 + Math.random() * H * 0.62,
-          vx: (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 1.2),
-          vy: (Math.random() - 0.5) * 0.3,
-          sz: 12 + Math.random() * 22,
-          hue: [195, 28, 45, 280, 160, 320][Math.floor(Math.random() * 6)],
-          phase: i * 0.8,
-          active: Math.random() > 0.4,
-        }));
-      },
-
-      drawBackground(ctx, W, H) {
-        const t = _frame * 0.018;
-
-        // ── Surface shimmer — bright teal rays from top ────────────────
-        const surfG = ctx.createLinearGradient(W / 2, 0, W / 2, H * 0.52);
-        surfG.addColorStop(0,   'rgba(42, 192, 240, 0.14)');
-        surfG.addColorStop(0.5, 'rgba(18, 145, 210, 0.05)');
-        surfG.addColorStop(1,   'rgba(8,  100, 170, 0)');
-        ctx.fillStyle = surfG; ctx.fillRect(0, 0, W, H * 0.52);
-
-        // ── Animated caustic ellipses ──────────────────────────────────
-        this._caustics.forEach(c => {
-          c.phase += c.spd;
-          const pulse = 0.55 + 0.45 * Math.sin(c.phase);
-          const a = (0.028 + 0.022 * pulse);
-          const cy = c.y + Math.sin(c.phase * 0.7) * 12;
+      // ── 7. Large ancient tree trunks (L + R) ──────────────────────────────
+      ['L','R'].forEach(side => {
+        const trunks = this._trunks[side];
+        trunks.forEach((tr, ti) => {
+          // Trunk fill — bark gradient
+          const barkL = side==='L' ? tr.bx - tr.w1*0.5 : tr.bx - tr.w1*0.5;
+          const barkR = side==='L' ? tr.bx + tr.w1*0.5 : tr.bx + tr.w1*0.5;
+          const barkG = ctx.createLinearGradient(barkL, 0, barkR, 0);
+          if (period === 'MORNING') {
+            barkG.addColorStop(0, 'rgba(52,35,18,1)');
+            barkG.addColorStop(0.35, 'rgba(78,55,28,1)');
+            barkG.addColorStop(0.65, 'rgba(88,62,32,1)');
+            barkG.addColorStop(1, 'rgba(42,28,12,1)');
+          } else if (period === 'EVENING' || period === 'NIGHT') {
+            barkG.addColorStop(0, 'rgba(22,16,8,1)');
+            barkG.addColorStop(0.4, 'rgba(38,28,14,1)');
+            barkG.addColorStop(1, 'rgba(12,8,4,1)');
+          } else {
+            barkG.addColorStop(0, 'rgba(42,28,14,1)');
+            barkG.addColorStop(0.4, 'rgba(68,48,24,1)');
+            barkG.addColorStop(0.7, 'rgba(75,52,26,1)');
+            barkG.addColorStop(1, 'rgba(32,20,8,1)');
+          }
           ctx.save();
-          ctx.translate(c.x, cy); ctx.rotate(c.rot + c.phase * 0.08);
-          const g = ctx.createRadialGradient(0, 0, 0, 0, 0, c.rx);
-          g.addColorStop(0,   `rgba(95, 228, 255, ${a * 2.8})`);
-          g.addColorStop(0.5, `rgba(42, 195, 245, ${a * 1.2})`);
-          g.addColorStop(1,   `rgba(18, 155, 225, 0)`);
+          ctx.fillStyle = barkG;
+          // Organic trunk silhouette using cubic bezier
+          const sign = side==='L' ? 1 : -1;
+          const cx = tr.bx;
+          ctx.beginPath();
+          // Left edge of trunk
+          ctx.moveTo(cx - tr.w1*0.5, tr.by);
+          ctx.bezierCurveTo(
+            cx - tr.w1*0.5 + sign*W*0.01, tr.by - H*0.25,
+            cx - tr.w2*0.5 + sign*W*0.005, tr.ty + H*0.3,
+            cx - tr.w2*0.5, tr.ty
+          );
+          // Right edge of trunk
+          ctx.lineTo(cx + tr.w2*0.5, tr.ty);
+          ctx.bezierCurveTo(
+            cx + tr.w2*0.5 - sign*W*0.005, tr.ty + H*0.3,
+            cx + tr.w1*0.5 - sign*W*0.01, tr.by - H*0.25,
+            cx + tr.w1*0.5, tr.by
+          );
+          ctx.closePath(); ctx.fill();
+
+          // Bark texture strips
+          if (period !== 'NIGHT') {
+            ctx.globalAlpha = 0.18;
+            ctx.strokeStyle = ti===0 ? 'rgba(200,160,90,1)' : 'rgba(180,140,75,1)';
+            ctx.lineWidth = 1.5;
+            for (let bk = 0; bk < 5; bk++) {
+              const by2 = H*(0.25 + bk*0.14);
+              const bw = tr.w1*_lrp(0.95, 0.4, by2/H);
+              ctx.beginPath();
+              ctx.moveTo(cx - bw*0.45, by2);
+              ctx.quadraticCurveTo(cx+sign*bw*0.08, by2 - H*0.02, cx+bw*0.38, by2+H*0.01);
+              ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+          }
+
+          // Root protrusions at base
+          ctx.fillStyle = barkG;
+          for (let ri = 0; ri < 3; ri++) {
+            const rx = cx + (ri-1)*tr.w1*0.32 + side==='L'?-tr.w1*0.08:tr.w1*0.08;
+            ctx.beginPath();
+            ctx.moveTo(rx, H);
+            ctx.bezierCurveTo(rx-tr.w1*0.15, H*0.88, rx-tr.w1*0.05, H*0.80, rx+sign*tr.w1*0.12, H*0.78);
+            ctx.lineTo(rx+sign*tr.w1*0.22, H);
+            ctx.closePath(); ctx.fill();
+          }
+          ctx.restore();
+        });
+      });
+
+      // ── 8. Hanging vines ──────────────────────────────────────────────────
+      this._vines.forEach(v => {
+        v.sway += v.swSpd;
+        const sw = Math.sin(v.sway) * v.swAmp;
+        ctx.save();
+        ctx.strokeStyle = v.col; ctx.lineWidth = v.w; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(v.sx, v.sy);
+        const mid = v.sy + v.length * 0.55;
+        ctx.bezierCurveTo(v.sx+sw*0.4, v.sy+v.length*0.25,
+          v.sx+sw, mid, v.sx+sw*1.2, v.sy+v.length);
+        ctx.stroke();
+        // Small leaf nodes along vine
+        ctx.fillStyle = `hsl(${110+Math.random()*35|0},55%,${period==='NIGHT'?15:28}%)`;
+        for (let lni = 1; lni < 4; lni++) {
+          const lny = v.sy + v.length*(lni/4);
+          const lnx = v.sx + sw*(lni/4);
+          ctx.save(); ctx.translate(lnx, lny); ctx.rotate((Math.random()-0.5)*1.2);
+          ctx.beginPath(); ctx.ellipse(0,0,v.w*2.5,v.w*1.2,0.4,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+      });
+
+      // ── 9. Leaf canopy arch overhead ──────────────────────────────────────
+      const canopyHue = period==='MORNING' ? 95 : period==='EVENING'||period==='NIGHT' ? 128 : 108;
+      const canopyLight = period==='MORNING' ? 32 : period==='EVENING' ? 20 : period==='NIGHT' ? 12 : 28;
+      for (let pass = 0; pass < 3; pass++) {
+        ctx.save();
+        ctx.fillStyle = `hsla(${canopyHue-pass*8},${68-pass*8}%,${canopyLight+pass*4}%,${0.88-pass*0.18})`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        // Draw left canopy mass
+        ctx.bezierCurveTo(W*0.05, H*(-0.05+pass*0.02), W*0.18, H*(0.08+pass*0.04), W*(0.22+pass*0.02), H*(0.18+pass*0.06));
+        ctx.lineTo(W*(0.30+pass*0.03), H*(0.10+pass*0.04));
+        ctx.bezierCurveTo(W*(0.35+pass*0.03), H*(0.04+pass*0.02), W*(0.42+pass*0.02), H*(0.0+pass*0.01), W*0.5, H*(-0.02+pass*0.03));
+        ctx.bezierCurveTo(W*(0.58-pass*0.02), H*(0.0+pass*0.01), W*(0.65-pass*0.03), H*(0.04+pass*0.02), W*(0.70-pass*0.03), H*(0.10+pass*0.04));
+        ctx.lineTo(W*(0.78-pass*0.02), H*(0.18+pass*0.06));
+        ctx.bezierCurveTo(W*(0.82-pass*0.02), H*(0.08+pass*0.04), W*0.95, H*(-0.05+pass*0.02), W, 0);
+        ctx.lineTo(W, -10); ctx.lineTo(0, -10); ctx.closePath();
+        ctx.fill(); ctx.restore();
+      }
+
+      // Canopy depth with leaf-dapple
+      if (period !== 'NIGHT') {
+        ctx.save(); ctx.globalAlpha = 0.22;
+        for (let dap = 0; dap < 18; dap++) {
+          const dx = W*(0.02 + dap*0.054);
+          const dy = H*(0.0 + 0.14*Math.sin(dap*0.8+t*0.5));
+          const dr = W*0.025 + Math.sin(dap*1.7)*W*0.01;
+          const dayCol = period==='MORNING' ? `rgba(200,235,130,1)` : `rgba(160,218,100,1)`;
+          ctx.fillStyle = dayCol;
+          ctx.beginPath(); ctx.arc(dx, dy, dr, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // ── 10. Evening/Night fireflies ────────────────────────────────────────
+      if (period === 'EVENING' || period === 'NIGHT') {
+        const ffCount = period === 'NIGHT' ? 30 : 18;
+        for (let ff = 0; ff < ffCount; ff++) {
+          const ffx = W*((ff*0.137 + Math.sin(t+ff*1.3)*0.06 + 1) % 1);
+          const ffy = H*(0.28 + 0.62*((ff*0.211 + Math.cos(t*0.62+ff*0.88)*0.05 + 1) % 1));
+          const ffa = Math.max(0, 0.08 + 0.28*Math.sin(t*1.8+ff*2.3));
+          const ffG = ctx.createRadialGradient(ffx, ffy, 0, ffx, ffy, 7);
+          ffG.addColorStop(0, `rgba(210,255,160,${ffa*3.5})`);
+          ffG.addColorStop(0.45, `rgba(120,240,90,${ffa*1.5})`);
+          ffG.addColorStop(1, 'rgba(55,200,60,0)');
+          ctx.fillStyle = ffG; ctx.beginPath(); ctx.arc(ffx, ffy, 7, 0, Math.PI*2); ctx.fill();
+        }
+      }
+
+      // ── 11. Side vignette (tree edge darkening) ────────────────────────────
+      const vigL = ctx.createLinearGradient(0, 0, W*0.28, 0);
+      vigL.addColorStop(0, 'rgba(4,8,2,0.88)'); vigL.addColorStop(1, 'rgba(4,8,2,0)');
+      const vigR = ctx.createLinearGradient(W, 0, W*0.72, 0);
+      vigR.addColorStop(0, 'rgba(4,8,2,0.88)'); vigR.addColorStop(1, 'rgba(4,8,2,0)');
+      ctx.fillStyle = vigL; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = vigR; ctx.fillRect(0, 0, W, H);
+    },
+
+    create(W, H) {
+      const period = _getCanvasPeriod();
+      const r = Math.random();
+      if (r < 0.42) {
+        // Falling leaf — real tumbling physics
+        return {
+          type: 'leaf',
+          x: Math.random()*W*1.3 - W*0.15, y: -18 - Math.random()*50,
+          vx: (Math.random()-0.5)*0.80,
+          vy:  1.0 + Math.random()*1.8,   // real leaf speed
+          rot: Math.random()*Math.PI*2,
+          rotV: (Math.random()-0.5)*0.055,
+          sz: 5 + Math.random()*9,
+          hue: (period==='EVENING'||period==='NIGHT') ? 120+Math.random()*45|0 : 88+Math.random()*55|0,
+          sat: 55+Math.random()*25|0,
+          alpha: 0, maxAlpha: 0.60+Math.random()*0.30,
+          life: 0, fadeIn: 10,
+          sw: Math.random()*Math.PI*2, swAmp: 1.0+Math.random()*1.8, swSpd: 0.016+Math.random()*0.020,
+        };
+      } else if (r < 0.72) {
+        // Bioluminescent spore (evening/night) or dust mote (day)
+        return {
+          type: period==='EVENING'||period==='NIGHT' ? 'spore' : 'dust',
+          x: Math.random()*W*1.1-W*0.05, y: H+15,
+          vx: (Math.random()-0.5)*0.5,
+          vy: -(0.30+Math.random()*0.60),
+          r: 1.5+Math.random()*3,
+          hue: period==='EVENING'||period==='NIGHT' ? (Math.random()<0.5?168:285) : 105+Math.random()*60|0,
+          alpha: 0, maxAlpha: period==='EVENING'||period==='NIGHT' ? 0.60+Math.random()*0.30 : 0.22+Math.random()*0.22,
+          life: 0, fadeIn: 20, maxLife: 140+Math.random()*100|0,
+          sw: Math.random()*Math.PI*2, swAmp: 0.5+Math.random()*1.0, swSpd: 0.010+Math.random()*0.015,
+        };
+      } else {
+        // Forest mote — drifting upward
+        return {
+          type: 'mote',
+          x: Math.random()*W, y: H*0.2+Math.random()*H*0.75,
+          vx: (Math.random()-0.5)*0.28,
+          vy: -(0.08+Math.random()*0.25),
+          r: 0.8+Math.random()*1.5,
+          alpha: 0, maxAlpha: 0.18+Math.random()*0.22,
+          life: 0, fadeIn: 28, maxLife: 220+Math.random()*130|0,
+          sw: Math.random()*Math.PI*2, swAmp: 0.35+Math.random()*0.75, swSpd: 0.007+Math.random()*0.011,
+        };
+      }
+    },
+
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'leaf') {
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = `hsl(${p.hue},${p.sat}%,32%)`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-p.sz*0.55, -p.sz*0.38, -p.sz*0.55, -p.sz*2.5, 0, -p.sz*3.0);
+        ctx.bezierCurveTo( p.sz*0.55, -p.sz*2.5,  p.sz*0.55, -p.sz*0.38, 0, 0);
+        ctx.fill();
+        ctx.strokeStyle = `hsl(${p.hue+15},${p.sat-10}%,42%)`;
+        ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-p.sz*3.0); ctx.stroke();
+      } else if (p.type === 'spore') {
+        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.5);
+        g.addColorStop(0, `hsla(${p.hue},90%,72%,1)`);
+        g.addColorStop(0.4, `hsla(${p.hue},78%,55%,0.5)`);
+        g.addColorStop(1, `hsla(${p.hue},65%,38%,0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*3.5,0,Math.PI*2); ctx.fill();
+      } else if (p.type === 'dust') {
+        ctx.fillStyle = 'rgba(195,240,195,1)';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(220,230,210,0.8)';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      p.life++;
+      if (p.sw !== undefined) { p.sw+=p.swSpd; p.x+=p.vx+Math.sin(p.sw)*p.swAmp; } else p.x+=p.vx;
+      p.y += p.vy;
+      if (p.rot !== undefined) p.rot += p.rotV;
+      const fi = Math.min(1, p.life/p.fadeIn);
+      const fo = (p.maxLife && p.life>p.maxLife-22) ? Math.max(0,(p.maxLife-p.life)/22) : 1;
+      p.alpha = p.maxAlpha*fi*fo;
+      if (p.type==='leaf') return p.y < H+35;
+      if (p.type==='spore'||p.type==='dust'||p.type==='mote') return p.life<(p.maxLife||280) && p.y>-50 && p.y<H+40;
+      return p.y < H+30;
+    },
+  },
+
+  // ── SAKURA (cherry) — Premium Japanese Garden Scene ──────────────────────
+  // Reference: garden with stone path, reflective pond, red bridge, pagoda,
+  // cherry tree trunks framing left+right, rolling blossoms hills.
+  // Time-of-day: MORNING (pink/peach dawn), AFTERNOON (blue sky vivid),
+  //              EVENING (dusk purple, lanterns), NIGHT (deep indigo, stars).
+  cherry: {
+    max: 70, rate: 0.20,
+    _bokeh: null, _lanterns: null, _stars: null, _clouds: null,
+
+    init(W, H) {
+      _stars = [];
+      // Background bokeh orbs
+      this._bokeh = Array.from({ length: 24 }, (_, i) => ({
+        x: (i%2===0 ? Math.random()*W*0.45 : W*0.55+Math.random()*W*0.45),
+        y: H*0.42+Math.random()*H*0.62,
+        r: 24+Math.random()*68,
+        hue: 326+Math.floor(Math.random()*30),
+        alpha: 0.04+Math.random()*0.08,
+        phase: Math.random()*Math.PI*2,
+        spd: 0.006+Math.random()*0.010,
+        driftX: (Math.random()-0.5)*0.16,
+        driftY: -(0.035+Math.random()*0.09),
+      }));
+      // Lanterns for evening
+      this._lanterns = [
+        { x: W*0.22, y: H*0.72, r: W*0.018, phase: 0, spd: 0.055 },
+        { x: W*0.31, y: H*0.68, r: W*0.015, phase: 1.2, spd: 0.048 },
+        { x: W*0.68, y: H*0.71, r: W*0.016, phase: 0.7, spd: 0.062 },
+        { x: W*0.78, y: H*0.69, r: W*0.014, phase: 2.1, spd: 0.052 },
+        // Bridge lanterns
+        { x: W*0.58, y: H*0.60, r: W*0.012, phase: 0.3, spd: 0.070 },
+        { x: W*0.72, y: H*0.58, r: W*0.011, phase: 1.5, spd: 0.058 },
+      ];
+      // Soft clouds
+      this._clouds = Array.from({ length: 8 }, (_, i) => ({
+        x: W*(0.05+i*0.12)+Math.random()*W*0.08, y: H*(0.04+Math.random()*0.18),
+        w: W*(0.08+Math.random()*0.12), h: H*(0.028+Math.random()*0.04),
+        phase: Math.random()*Math.PI*2, spd: 0.003+Math.random()*0.004,
+        alpha: 0.45+Math.random()*0.35,
+      }));
+      // Night stars
+      this._stars = Array.from({ length: 60 }, () => ({
+        x: Math.random()*W, y: Math.random()*H*0.55,
+        r: 0.4+Math.random()*1.2, alpha: 0.2+Math.random()*0.65,
+        phase: Math.random()*Math.PI*2, spd: 0.015+Math.random()*0.025,
+      }));
+    },
+
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const t = _frame * 0.010;
+
+      // ── 1. Sky gradient ────────────────────────────────────────────────────
+      const SKYP = {
+        MORNING:   { t:[205,170,225], m:[245,195,210], b:[255,220,200] },
+        AFTERNOON: { t:[88, 155,240], m:[155,205,255], b:[210,235,255] },
+        EVENING:   { t:[45, 32, 110], m:[120,75, 150], b:[210,105,138] },
+        NIGHT:     { t:[12, 10,  42], m:[28,  22, 72], b:[55,  38,  95] },
+      };
+      const sk = SKYP[period] || SKYP.AFTERNOON;
+      const skyG = ctx.createLinearGradient(0, 0, 0, H*0.65);
+      skyG.addColorStop(0, _rgb(sk.t));
+      skyG.addColorStop(0.45, _rgb(sk.m));
+      skyG.addColorStop(1, _rgb(sk.b));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Stars (night/late evening) ─────────────────────────────────────
+      if (period === 'NIGHT' || period === 'EVENING') {
+        const starAlpha = period === 'NIGHT' ? 1.0 : 0.4;
+        this._stars.forEach(s => {
+          s.phase += s.spd;
+          const sa = s.alpha * starAlpha * (0.35 + 0.65*Math.sin(s.phase));
+          ctx.save(); ctx.globalAlpha = sa;
+          ctx.fillStyle = 'rgba(255,240,255,1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // ── 3. Soft morning/afternoon clouds ──────────────────────────────────
+      if (period === 'MORNING' || period === 'AFTERNOON') {
+        this._clouds.forEach(c => {
+          c.phase += c.spd;
+          const pulse = 0.8 + 0.2*Math.sin(c.phase);
+          ctx.save(); ctx.globalAlpha = c.alpha * pulse;
+          const cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.w*0.55);
+          const cc = period === 'MORNING' ? 'rgba(255,245,252,1)' : 'rgba(255,252,255,1)';
+          cg.addColorStop(0, cc); cg.addColorStop(0.55, cc.replace(',1)',',.6)'));
+          cg.addColorStop(1, cc.replace(',1)',',.0)'));
+          ctx.scale(1, c.h/(c.w*0.55)); ctx.fillStyle = cg;
+          ctx.beginPath(); ctx.arc(c.x, c.y*(c.w*0.55/c.h), c.w*0.55, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // ── 4. Rolling distant hills ───────────────────────────────────────────
+      const HILLS = {
+        MORNING:   [[148,125,165],[155,135,175],[165,148,188]],
+        AFTERNOON: [[88, 138,85], [105,158,98], [120,170,112]],
+        EVENING:   [[62, 52, 100],[75,62,118],[88,72,130]],
+        NIGHT:     [[22, 18,  50],[28,22,65],  [35,28,78]],
+      };
+      const hc = HILLS[period] || HILLS.AFTERNOON;
+      [2,1,0].forEach(li => {
+        const baseY = H*(0.50 + li*0.04);
+        ctx.beginPath();
+        for (let xi = 0; xi <= 20; xi++) {
+          const fx = xi*(W/20);
+          const fy = baseY - H*(0.06+li*0.012)*Math.sin(xi*0.42+li*1.5+1.2) - H*0.025*Math.sin(xi*0.95+li*0.7);
+          xi===0 ? ctx.moveTo(fx,fy) : ctx.lineTo(fx,fy);
+        }
+        ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+        ctx.fillStyle = _rgb(hc[li], 0.75+li*0.08); ctx.fill();
+      });
+
+      // ── 5. Mid-ground cherry blossom trees (pink cloud masses) ───────────
+      const BLOOM_COL = {
+        MORNING:   [230,170,200], AFTERNOON: [255,180,205],
+        EVENING:   [190,130,165], NIGHT:     [130,90,120],
+      };
+      const bc = BLOOM_COL[period] || BLOOM_COL.AFTERNOON;
+      // Multiple overlapping bloom clusters across mid-ground
+      const bloomCenters = [
+        {x:W*0.05,y:H*0.46,rx:W*0.12,ry:H*0.09},
+        {x:W*0.18,y:H*0.43,rx:W*0.11,ry:H*0.08},
+        {x:W*0.32,y:H*0.45,rx:W*0.13,ry:H*0.09},
+        {x:W*0.50,y:H*0.46,rx:W*0.10,ry:H*0.07},
+        {x:W*0.62,y:H*0.43,rx:W*0.14,ry:H*0.09},
+        {x:W*0.76,y:H*0.44,rx:W*0.12,ry:H*0.08},
+        {x:W*0.90,y:H*0.47,rx:W*0.11,ry:H*0.09},
+      ];
+      bloomCenters.forEach(bl => {
+        // Each tree mass: multiple overlapping ellipses
+        for (let bi=0; bi<4; bi++) {
+          const boffx = (bi-1.5)*bl.rx*0.35;
+          const boffy = bi*bl.ry*(-0.18);
+          const bg = ctx.createRadialGradient(bl.x+boffx, bl.y+boffy, 0, bl.x+boffx, bl.y+boffy, bl.rx*(0.7+bi*0.1));
+          const aa = 0.52-bi*0.10;
+          bg.addColorStop(0, _rgb(bc, aa*1.3));
+          bg.addColorStop(0.55, _rgb(bc, aa*0.65));
+          bg.addColorStop(1, _rgb(bc, 0));
+          ctx.fillStyle = bg;
+          ctx.save(); ctx.scale(1, bl.ry/bl.rx);
+          ctx.beginPath(); ctx.arc(bl.x+boffx, (bl.y+boffy)*bl.rx/bl.ry, bl.rx*(0.7+bi*0.1), 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      // ── 6. Reflective pond/lake ────────────────────────────────────────────
+      // Pond shape centered at ~60% x, 65-78% y
+      const px = W*0.58, py = H*0.65, prx = W*0.30, pry = H*0.13;
+      const pondG = ctx.createLinearGradient(px, py-pry, px, py+pry);
+      if (period === 'MORNING') {
+        pondG.addColorStop(0, 'rgba(200,185,215,0.75)');
+        pondG.addColorStop(0.5, 'rgba(175,195,220,0.85)');
+        pondG.addColorStop(1, 'rgba(148,168,198,0.90)');
+      } else if (period === 'AFTERNOON') {
+        pondG.addColorStop(0, 'rgba(155,200,240,0.78)');
+        pondG.addColorStop(0.5, 'rgba(130,185,228,0.88)');
+        pondG.addColorStop(1, 'rgba(105,162,210,0.92)');
+      } else if (period === 'EVENING') {
+        pondG.addColorStop(0, 'rgba(88,68,135,0.82)');
+        pondG.addColorStop(0.5, 'rgba(72,55,118,0.88)');
+        pondG.addColorStop(1, 'rgba(52,38,90,0.92)');
+      } else {
+        pondG.addColorStop(0, 'rgba(22,18,55,0.88)');
+        pondG.addColorStop(1, 'rgba(12,10,38,0.95)');
+      }
+      ctx.save();
+      ctx.fillStyle = pondG;
+      ctx.beginPath(); ctx.ellipse(px, py, prx, pry, 0, 0, Math.PI*2); ctx.fill();
+
+      // Pond shimmer lines
+      if (period !== 'NIGHT') {
+        ctx.globalAlpha = 0.18;
+        ctx.strokeStyle = 'rgba(255,255,255,1)'; ctx.lineWidth = 0.8;
+        for (let wi=0; wi<5; wi++) {
+          const wy = py - pry*0.3 + wi*pry*0.15 + Math.sin(t+wi*1.2)*pry*0.04;
+          const wx = prx*(0.4+wi*0.06);
+          ctx.beginPath(); ctx.moveTo(px-wx, wy); ctx.lineTo(px+wx, wy); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // Lily pads
+      ctx.globalAlpha = 0.65;
+      const LILY = period==='NIGHT' ? 'rgba(22,38,18,1)' : 'rgba(58,105,45,1)';
+      const LILY2 = period==='NIGHT' ? 'rgba(18,28,14,1)' : 'rgba(42,88,32,1)';
+      [[px-prx*0.3,py],[px,py+pry*0.3],[px+prx*0.25,py-pry*0.1],[px-prx*0.5,py+pry*0.2]].forEach(([lx,ly],li) => {
+        ctx.fillStyle = li%2===0?LILY:LILY2;
+        ctx.beginPath(); ctx.ellipse(lx,ly,W*0.018,W*0.011,li*0.5,0,Math.PI*2); ctx.fill();
+        // Notch
+        ctx.fillStyle='rgba(0,0,0,0.15)';
+        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.arc(lx,ly,W*0.018,(-0.3+li*0.5),(-0.6+li*0.5),true); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      // ── 7. Stone path ─────────────────────────────────────────────────────
+      // Winding from bottom-left toward center-right
+      ctx.save();
+      const pathCol = period==='EVENING'||period==='NIGHT'
+        ? 'rgba(58,50,72,0.85)' : 'rgba(125,115,100,0.80)';
+      ctx.fillStyle = pathCol;
+      ctx.beginPath();
+      ctx.moveTo(W*0.05, H);
+      ctx.bezierCurveTo(W*0.10, H*0.90, W*0.22, H*0.82, W*0.35, H*0.75);
+      ctx.bezierCurveTo(W*0.42, H*0.72, W*0.48, H*0.70, W*0.55, H*0.68);
+      ctx.bezierCurveTo(W*0.50, H*0.72, W*0.44, H*0.80, W*0.30, H*0.88);
+      ctx.bezierCurveTo(W*0.18, H*0.94, W*0.10, H*0.97, W*0.05, H);
+      ctx.closePath(); ctx.fill();
+
+      // Stone blocks on path
+      if (period !== 'NIGHT') {
+        ctx.globalAlpha = 0.40;
+        const stoneRows = [[W*0.10,H*0.92,0.06],[W*0.16,H*0.88,0.055],[W*0.23,H*0.84,0.05],
+          [W*0.30,H*0.80,0.045],[W*0.37,H*0.77,0.040],[W*0.44,H*0.74,0.035]];
+        stoneRows.forEach(([sx,sy,sw],si) => {
+          const stW = W*sw, stH = H*0.025;
+          for (let si2=0; si2<3; si2++) {
+            ctx.fillStyle = si%2===0?'rgba(168,155,130,1)':'rgba(145,132,108,1)';
+            ctx.beginPath();
+            ctx.roundRect(sx+si2*stW*0.85-stW*0.5, sy-stH*0.5, stW*0.78, stH*0.88, 2);
+            ctx.fill();
+          }
+        });
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+
+      // ── 8. Japanese pagoda (far right) ────────────────────────────────────
+      ctx.save();
+      const pagX = W*0.73, pagY = H*0.52, pagW = W*0.048, pagH = H*0.20;
+      const pagCol = period==='MORNING' ? 'rgba(68,52,78,0.70)' : period==='AFTERNOON' ? 'rgba(55,42,65,0.72)' :
+        period==='EVENING' ? 'rgba(45,35,72,0.78)' : 'rgba(18,14,30,0.85)';
+      ctx.fillStyle = pagCol;
+      // 4-tier pagoda
+      for (let tier=0; tier<4; tier++) {
+        const tw = pagW*(1.5-tier*0.25);
+        const ty = pagY + (3-tier)*pagH*0.26;
+        const th = pagH*0.25;
+        ctx.beginPath();
+        ctx.rect(pagX-tw*0.5, ty, tw, th*0.65);
+        ctx.fill();
+        // Curved roof
+        ctx.beginPath();
+        ctx.moveTo(pagX-tw*0.68, ty);
+        ctx.quadraticCurveTo(pagX-tw*0.28, ty-th*0.45, pagX, ty-th*0.50);
+        ctx.quadraticCurveTo(pagX+tw*0.28, ty-th*0.45, pagX+tw*0.68, ty);
+        ctx.fill();
+      }
+      // Spire
+      ctx.beginPath(); ctx.moveTo(pagX, pagY-pagH*0.10);
+      ctx.lineTo(pagX-W*0.004, pagY+pagH*0.02); ctx.lineTo(pagX+W*0.004, pagY+pagH*0.02);
+      ctx.fill();
+      // Evening lantern glow on pagoda
+      if (period==='EVENING'||period==='NIGHT') {
+        const pglow = ctx.createRadialGradient(pagX,pagY+pagH*0.05,0,pagX,pagY+pagH*0.05,pagW*2.5);
+        pglow.addColorStop(0,'rgba(255,180,60,0.28)'); pglow.addColorStop(1,'rgba(255,140,40,0)');
+        ctx.fillStyle=pglow; ctx.fillRect(pagX-pagW*3,pagY-pagH*0.1,pagW*6,pagH*0.5);
+      }
+      ctx.restore();
+
+      // ── 9. Red arched bridge ──────────────────────────────────────────────
+      ctx.save();
+      const brX = W*0.62, brY = H*0.63, brW = W*0.16;
+      const bridgeCol = period==='NIGHT' ? 'rgba(105,28,22,0.82)' : 'rgba(185,42,35,0.88)';
+      ctx.strokeStyle = bridgeCol; ctx.lineWidth = H*0.018; ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(brX-brW*0.5, brY);
+      ctx.quadraticCurveTo(brX, brY-H*0.04, brX+brW*0.5, brY);
+      ctx.stroke();
+      ctx.lineWidth = H*0.008;
+      // Bridge railings
+      ctx.beginPath(); ctx.moveTo(brX-brW*0.5, brY-H*0.02); ctx.lineTo(brX+brW*0.5, brY-H*0.02); ctx.stroke();
+      ctx.restore();
+
+      // ── 10. Foreground cherry tree trunks (L + R) ────────────────────────
+      [[W*0.03,  W*0.15,  1],    // Left primary trunk
+       [W*0.18,  W*0.24,  -0.4], // Left secondary
+       [W*0.97,  W*0.85,  -1],   // Right primary
+       [W*0.82,  W*0.76,  0.4],  // Right secondary
+      ].forEach(([bx, topX, lean], ti) => {
+        ctx.save();
+        const trW1 = W*(ti<2?0.06:0.06), trW2 = W*(ti<2?0.018:0.018);
+        const BARK = period==='EVENING'||period==='NIGHT' ? ['rgba(28,18,12,1)','rgba(45,30,20,1)','rgba(35,22,14,1)']
+          : ['rgba(48,30,18,1)','rgba(72,48,28,1)','rgba(58,38,22,1)'];
+        const tg = ctx.createLinearGradient(bx-trW1*0.5,0,bx+trW1*0.5,0);
+        tg.addColorStop(0, BARK[0]); tg.addColorStop(0.38, BARK[1]); tg.addColorStop(1, BARK[2]);
+        ctx.fillStyle = tg;
+        // Trunk from bottom to beyond top
+        ctx.beginPath();
+        ctx.moveTo(bx-trW1*0.5, H+5);
+        ctx.bezierCurveTo(bx-trW1*0.4+lean*10, H*0.60, topX-trW2*0.5+lean*5, H*0.20, topX-trW2*0.5, -20);
+        ctx.lineTo(topX+trW2*0.5, -20);
+        ctx.bezierCurveTo(topX+trW2*0.5+lean*5, H*0.20, bx+trW1*0.4+lean*10, H*0.60, bx+trW1*0.5, H+5);
+        ctx.closePath(); ctx.fill();
+
+        // Branch extending inward with blossom cluster
+        const brDir = ti<2 ? 1 : -1;
+        const brY2 = H*(ti<2?0.25:0.28);
+        const brEndX = topX + brDir*W*(0.14+ti*0.02);
+        ctx.strokeStyle = tg; ctx.lineWidth = trW2*1.5; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(topX, brY2);
+        ctx.bezierCurveTo(topX+brDir*W*0.06, brY2-H*0.04, topX+brDir*W*0.11, brY2-H*0.01, brEndX, brY2+H*0.02);
+        ctx.stroke();
+
+        // Blossom cluster on branch
+        const clX = brEndX, clY = brY2;
+        const bloomA = period==='NIGHT'?0.40:0.75;
+        const blCol = period==='MORNING'?[245,185,215]:period==='AFTERNOON'?[255,190,220]:period==='EVENING'?[200,140,175]:[140,100,130];
+        for (let bi=0; bi<6; bi++) {
+          const boffx = (bi-2.5)*W*0.032+Math.random()*W*0.01;
+          const boffy = (Math.random()-0.5)*H*0.04;
+          const br = W*0.040+Math.random()*W*0.025;
+          const bg = ctx.createRadialGradient(clX+boffx,clY+boffy,0,clX+boffx,clY+boffy,br);
+          bg.addColorStop(0, _rgb(blCol, bloomA));
+          bg.addColorStop(0.55, _rgb(blCol, bloomA*0.55));
+          bg.addColorStop(1, _rgb(blCol, 0));
+          ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(clX+boffx,clY+boffy,br,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      // ── 11. Lanterns (evening/night) ──────────────────────────────────────
+      if (period==='EVENING'||period==='NIGHT') {
+        this._lanterns.forEach(ln => {
+          ln.phase += ln.spd;
+          const flicker = 0.80+0.20*Math.sin(ln.phase)+0.08*Math.sin(ln.phase*2.5);
+          const la = (period==='NIGHT'?0.55:0.40)*flicker;
+          const lg = ctx.createRadialGradient(ln.x,ln.y,0,ln.x,ln.y,ln.r*4.5*flicker);
+          lg.addColorStop(0, `rgba(255,195,80,${la*3.2})`);
+          lg.addColorStop(0.25, `rgba(245,155,45,${la*1.5})`);
+          lg.addColorStop(0.6, `rgba(220,100,25,${la*0.4})`);
+          lg.addColorStop(1, 'rgba(180,60,10,0)');
+          ctx.fillStyle=lg; ctx.fillRect(ln.x-ln.r*5,ln.y-ln.r*5,ln.r*10,ln.r*10);
+          // Lantern body
+          ctx.save(); ctx.globalAlpha=0.88;
+          ctx.fillStyle=`rgba(255,210,100,${flicker*0.9})`;
+          ctx.beginPath(); ctx.ellipse(ln.x,ln.y,ln.r,ln.r*1.4,0,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // ── 12. Animated bokeh orbs ────────────────────────────────────────────
+      if (period !== 'NIGHT') {
+        this._bokeh.forEach(bk => {
+          bk.phase += bk.spd; bk.x += bk.driftX; bk.y += bk.driftY;
+          if (bk.y < -bk.r) bk.y = H+bk.r;
+          const pulse = 0.7+0.3*Math.sin(bk.phase);
+          const a = bk.alpha*pulse;
+          const g = ctx.createRadialGradient(bk.x,bk.y,0,bk.x,bk.y,bk.r);
+          g.addColorStop(0, `hsla(${bk.hue},90%,82%,${a*2.5})`);
+          g.addColorStop(0.38, `hsla(${bk.hue},82%,68%,${a*1.2})`);
+          g.addColorStop(1, `hsla(${bk.hue},70%,52%,0)`);
+          ctx.fillStyle=g; ctx.beginPath(); ctx.arc(bk.x,bk.y,bk.r,0,Math.PI*2); ctx.fill();
+        });
+      }
+
+      // ── 13. Bottom ground vignette ─────────────────────────────────────────
+      const gndG = ctx.createLinearGradient(0,H*0.88,0,H);
+      gndG.addColorStop(0,'rgba(0,0,0,0)');
+      gndG.addColorStop(1, period==='NIGHT'?'rgba(5,3,15,0.45)':period==='EVENING'?'rgba(25,12,35,0.35)':'rgba(30,20,28,0.22)');
+      ctx.fillStyle=gndG; ctx.fillRect(0,H*0.88,W,H*0.12);
+    },
+
+    create(W, H) {
+      const r = Math.random();
+      if (r < 0.68) {
+        // Cherry petal — faster, real tumbling
+        return {
+          type: 'petal',
+          x: Math.random()*W*1.40-W*0.20,
+          y: -22-Math.random()*80,
+          vx: (Math.random()-0.5)*1.20,
+          vy:  1.2+Math.random()*2.0,  // real petal speed
+          rot: Math.random()*Math.PI*2,
+          rotV: (Math.random()-0.5)*0.10,
+          sz: 3.5+Math.random()*7.5,
+          alpha: 0, maxAlpha: 0.55+Math.random()*0.38,
+          life: 0, fadeIn: 10,
+          sw: Math.random()*Math.PI*2,
+          swAmp: 1.4+Math.random()*2.8, swSpd: 0.013+Math.random()*0.020,
+          col: `hsl(${330+Math.random()*28|0},${68+Math.random()*20|0}%,${72+Math.random()*16|0}%)`,
+        };
+      } else if (r < 0.88) {
+        return {
+          type: 'bokeh',
+          x: Math.random()*W, y: H*0.55+Math.random()*H*0.5,
+          vx: (Math.random()-0.5)*0.35, vy: -(0.12+Math.random()*0.35),
+          r: 5+Math.random()*20, hue: 323+Math.floor(Math.random()*38),
+          alpha: 0, maxAlpha: 0.07+Math.random()*0.12,
+          life: 0, fadeIn: 28, maxLife: 140+Math.floor(Math.random()*90),
+          sw: Math.random()*Math.PI*2, swAmp: 0.4+Math.random()*0.9, swSpd: 0.009+Math.random()*0.012,
+        };
+      } else {
+        return {
+          type: 'sparkle',
+          x: Math.random()*W, y: Math.random()*H,
+          vx: (Math.random()-0.5)*0.42, vy: -(0.12+Math.random()*0.32),
+          r: 0.7+Math.random()*1.6,
+          alpha: 0, maxAlpha: 0.50+Math.random()*0.35,
+          life: 0, fadeIn: 9, maxLife: 50+Math.floor(Math.random()*42),
+        };
+      }
+    },
+
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'petal') {
+        ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.col;
+        // Realistic oval petal shape
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-p.sz*0.58, -p.sz*0.42, -p.sz*0.55, -p.sz*2.55, 0, -p.sz*3.05);
+        ctx.bezierCurveTo( p.sz*0.55, -p.sz*2.55,  p.sz*0.58, -p.sz*0.42, 0, 0);
+        ctx.fill();
+        // Petal vein
+        ctx.strokeStyle = `rgba(255,255,255,0.28)`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-p.sz*3.0); ctx.stroke();
+      } else if (p.type === 'bokeh') {
+        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+        g.addColorStop(0,`hsla(${p.hue},92%,82%,1)`); g.addColorStop(0.45,`hsla(${p.hue},82%,65%,0.5)`);
+        g.addColorStop(1,`hsla(${p.hue},72%,50%,0)`); ctx.fillStyle=g;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.strokeStyle='rgba(255,215,252,1)'; ctx.lineWidth=p.r; ctx.lineCap='round';
+        const s=p.r*4;
+        ctx.beginPath(); ctx.moveTo(p.x-s,p.y); ctx.lineTo(p.x+s,p.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x,p.y-s); ctx.lineTo(p.x,p.y+s); ctx.stroke();
+      }
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      p.life++; p.sw += p.swSpd;
+      p.x += p.vx + Math.sin(p.sw)*p.swAmp; p.y += p.vy;
+      if (p.rot !== undefined) p.rot += p.rotV;
+      const fi = Math.min(1, p.life/p.fadeIn);
+      const fo = (p.maxLife && p.life>p.maxLife-18) ? Math.max(0,(p.maxLife-p.life)/18) : 1;
+      p.alpha = p.maxAlpha*fi*fo;
+      if (p.type==='petal') return p.y < H+45;
+      if (p.type==='bokeh') return p.life<p.maxLife && p.y>-45;
+      return p.life<p.maxLife;
+    },
+  },
+
+
+  // ── OCEAN — Deep Sea Premium Rework ─────────────────────────────────────────
+  // Layered underwater world: caustic light, real kelp, clickable bubbles,
+  // realistic fish schools, coral reef, time-of-day depth lighting.
+  ocean: {
+    max: 45, rate: 0.14,
+    _caustics: null, _kelp: null, _coral: null, _fishSchools: null,
+    _bubblesStore: [],  // permanent bubble store for click detection
+    _pops: [],          // pop animations
+
+    init(W, H) {
+      _stars = [];
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      // Animated caustic light patches — organic shifting ellipses from surface
+      this._caustics = Array.from({ length: 22 }, () => ({
+        x: rng(0, W), y: rng(H * 0.0, H * 0.55),
+        rx: rng(18, 72), ry: rng(6, 20),
+        rot: rng(0, Math.PI),
+        phase: rng(0, Math.PI * 2),
+        spd:   rng(0.012, 0.030),
+        driftX: rng(-0.18, 0.18),
+      }));
+
+      // Kelp forest: tall swaying seaweed along sides + scattered mid
+      this._kelp = Array.from({ length: 18 }, (_, i) => {
+        const side = i < 7 ? 'L' : i < 14 ? 'R' : 'M';
+        const x = side === 'L' ? rng(W * 0.0, W * 0.28)
+                : side === 'R' ? rng(W * 0.72, W * 1.0)
+                : rng(W * 0.30, W * 0.70);
+        return {
+          x, baseY: H,
+          height: H * rng(0.30, 0.72),
+          segs: Math.floor(rng(7, 13)),
+          hue: 128 + rng(0, 30)|0,
+          sat: 58 + rng(0, 22)|0,
+          w: rng(3.5, 8.0),
+          phase: rng(0, Math.PI * 2),
+          swSpd: rng(0.008, 0.018),
+          swAmp: rng(12, 36),
+          sub: Math.floor(rng(0, 3)), // sub-fronds count
+        };
+      });
+
+      // Coral formations: fan coral, brain coral, branch coral, anemone
+      this._coral = Array.from({ length: 20 }, (_, i) => {
+        const types = ['fan', 'branch', 'anemone', 'brain', 'tube'];
+        return {
+          x: W * 0.02 + (i / 19) * W * 0.96,
+          h: H * rng(0.06, 0.20),
+          type: types[i % types.length],
+          hue: [0, 22, 280, 185, 320, 45, 350, 60, 200][i % 9],
+          w: rng(6, 20),
+          phase: rng(0, Math.PI * 2),
+          swSpd: rng(0.010, 0.022),
+          sub: Math.floor(rng(2, 6)),
+        };
+      });
+
+      // Fish schools: multiple species, varied sizes and behaviors
+      this._fishSchools = [
+        // Tropical school - small, fast, colorful
+        { fish: Array.from({ length: 7 }, (_, i) => ({
+          x: rng(-200, W + 200), y: H * rng(0.12, 0.55),
+          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.8, 1.6),
+          vy: (rng(-1,1)) * 0.2,
+          sz: rng(8, 14), phase: i * 0.7,
+          hue: 28 + i * 22, sat: 85, col2: 48 + i * 18,
+          bodyRatio: 0.35, finH: 0.55,
+        })), type: 'tropical', offsetSpread: 28 },
+        // Deep fish - larger, slower, more muted
+        { fish: Array.from({ length: 4 }, (_, i) => ({
+          x: rng(-300, W + 300), y: H * rng(0.50, 0.80),
+          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.3, 0.65),
+          vy: (rng(-1,1)) * 0.12,
+          sz: rng(22, 42), phase: i * 1.1,
+          hue: 195 + i * 15, sat: 55, col2: 220 + i * 10,
+          bodyRatio: 0.30, finH: 0.48,
+        })), type: 'deep', offsetSpread: 45 },
+        // Mid-water angelfish - iconic shape
+        { fish: Array.from({ length: 5 }, (_, i) => ({
+          x: rng(-150, W + 150), y: H * rng(0.30, 0.68),
+          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.5, 1.0),
+          vy: (rng(-1,1)) * 0.15,
+          sz: rng(15, 25), phase: i * 0.9,
+          hue: 38 + i * 8, sat: 88, col2: 320,
+          bodyRatio: 0.58, finH: 0.80, // tall fins = angelfish
+        })), type: 'angel', offsetSpread: 18 },
+      ];
+
+      this._bubblesStore = [];
+      this._pops = [];
+    },
+
+    _drawKelp(ctx, k, t, period) {
+      const segLen = k.height / k.segs;
+      const sway = Math.sin(k.phase + t) * k.swAmp;
+      const kLight = period === 'NIGHT' ? 18 : period === 'EVENING' ? 22 : 32;
+      ctx.save();
+      ctx.strokeStyle = `hsl(${k.hue},${k.sat}%,${kLight}%)`;
+      ctx.lineWidth = k.w;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      let px = k.x, py = k.baseY;
+      const pts = [[px, py]];
+      for (let s = 0; s < k.segs; s++) {
+        const prog = s / k.segs;
+        const sw = sway * prog * prog; // more sway at tip
+        const nx = k.x + sw;
+        const ny = k.baseY - (s + 1) * segLen;
+        pts.push([nx, ny]);
+      }
+
+      // Draw main stalk as smooth bezier chain
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i][0] + pts[i+1][0]) * 0.5;
+        const my = (pts[i][1] + pts[i+1][1]) * 0.5;
+        ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+      }
+      ctx.lineTo(pts[pts.length-1][0], pts[pts.length-1][1]);
+      ctx.stroke();
+
+      // Sub-fronds every few segments
+      if (k.sub > 0) {
+        ctx.lineWidth = k.w * 0.42;
+        for (let sf = 0; sf < k.sub; sf++) {
+          const si = Math.floor((sf + 1) * k.segs / (k.sub + 1));
+          if (si >= pts.length) continue;
+          const [fx, fy] = pts[si];
+          const flen = segLen * 1.2;
+          const fdir = sf % 2 === 0 ? 1 : -1;
+          const fsway = sw * (si / k.segs);
+          ctx.beginPath();
+          ctx.moveTo(fx, fy);
+          ctx.quadraticCurveTo(
+            fx + fdir * flen * 0.55 + fsway * 0.4, fy - flen * 0.45,
+            fx + fdir * flen * 0.85 + fsway, fy - flen * 0.92
+          );
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    },
+
+    _drawFish(ctx, f, t, period) {
+      const dir = f.vx >= 0 ? 1 : -1;
+      f.phase += 0.055;
+      const tailWag = Math.sin(f.phase * 2.2) * f.sz * 0.25;
+      const bodyWobble = Math.sin(f.phase) * f.sz * 0.03;
+
+      const alpha = period === 'NIGHT' ? 0.60 : 0.82;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(f.x, f.y + bodyWobble);
+      ctx.scale(dir, 1);
+
+      // Body gradient
+      const bg = ctx.createLinearGradient(-f.sz, 0, f.sz, 0);
+      bg.addColorStop(0, `hsl(${f.hue},${f.sat}%,35%)`);
+      bg.addColorStop(0.4, `hsl(${f.hue},${f.sat}%,52%)`);
+      bg.addColorStop(1, `hsl(${f.hue},${f.sat - 10}%,42%)`);
+
+      // Fish body — ellipse with tapering tail
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.ellipse(f.sz * 0.1, 0, f.sz * 0.82, f.sz * f.bodyRatio, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Caudal fin (tail)
+      ctx.fillStyle = `hsl(${f.hue - 10},${f.sat}%,42%)`;
+      ctx.beginPath();
+      ctx.moveTo(-f.sz * 0.70, 0);
+      ctx.lineTo(-f.sz * 1.45, -f.sz * f.finH * 0.65 + tailWag);
+      ctx.lineTo(-f.sz * 1.48, 0);
+      ctx.lineTo(-f.sz * 1.45,  f.sz * f.finH * 0.65 - tailWag);
+      ctx.closePath(); ctx.fill();
+
+      // Dorsal fin
+      ctx.beginPath();
+      ctx.moveTo(-f.sz * 0.1, -f.sz * f.bodyRatio);
+      ctx.quadraticCurveTo(f.sz * 0.15, -f.sz * f.bodyRatio * 1.6, f.sz * 0.55, -f.sz * f.bodyRatio);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${f.hue},${f.sat}%,38%)`; ctx.fill();
+
+      // Pectoral fin (angelfish style taller)
+      if (f.bodyRatio > 0.50) {
+        ctx.beginPath();
+        ctx.moveTo(f.sz * 0.1, f.sz * 0.10);
+        ctx.quadraticCurveTo(-f.sz * 0.15, f.sz * 0.68, f.sz * 0.30, f.sz * f.bodyRatio * 0.90);
+        ctx.quadraticCurveTo(f.sz * 0.50, f.sz * 0.42, f.sz * 0.10, f.sz * 0.10);
+        ctx.fillStyle = `hsl(${f.hue + 10},${f.sat - 5}%,48%)`; ctx.fill();
+      }
+
+      // Eye + highlight
+      const eyeX = f.sz * 0.52, eyeY = -f.sz * 0.08;
+      ctx.fillStyle = 'rgba(8,6,4,0.90)';
+      ctx.beginPath(); ctx.arc(eyeX, eyeY, f.sz * 0.095, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.80)';
+      ctx.beginPath(); ctx.arc(eyeX + f.sz * 0.035, eyeY - f.sz * 0.035, f.sz * 0.032, 0, Math.PI * 2); ctx.fill();
+
+      // Color stripe / pattern
+      ctx.save(); ctx.globalAlpha *= 0.52;
+      ctx.fillStyle = `hsl(${f.col2},90%,72%)`;
+      ctx.beginPath(); ctx.ellipse(f.sz * 0.22, 0, f.sz * 0.18, f.sz * f.bodyRatio * 0.58, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      ctx.restore();
+    },
+
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const blend  = _getSmoothBlend();
+      const t = _frame * 0.016;
+
+      // ── 1. Water column gradient ─────────────────────────────────────────
+      const WATER = {
+        MORNING:   { t:[20,100,160], m:[12,72,128], b:[6,38,78] },
+        AFTERNOON: { t:[8,145,210],  m:[5,105,172], b:[3,58,112] },
+        EVENING:   { t:[8,55,115],   m:[5,35,85],   b:[2,18,52] },
+        NIGHT:     { t:[3,18,48],    m:[2,10,32],   b:[1,5,18]  },
+      };
+      const wc = _blendPeriodColors(WATER, blend);
+      const wg = ctx.createLinearGradient(0, 0, 0, H);
+      wg.addColorStop(0,   _rgb(wc.t));
+      wg.addColorStop(0.48, _rgb(wc.m));
+      wg.addColorStop(1,   _rgb(wc.b));
+      ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Surface shimmer layer ─────────────────────────────────────────
+      if (period !== 'NIGHT') {
+        const surfA = period === 'MORNING' ? 0.12 : 0.09;
+        const sg = ctx.createLinearGradient(0, 0, 0, H * 0.38);
+        sg.addColorStop(0, `rgba(80,215,255,${surfA * 1.4})`);
+        sg.addColorStop(0.4, `rgba(45,185,240,${surfA * 0.6})`);
+        sg.addColorStop(1, 'rgba(18,140,210,0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.38);
+      }
+
+      // ── 3. Caustic light patches ─────────────────────────────────────────
+      if (period !== 'NIGHT') {
+        const causA = period === 'MORNING' ? 0.055 : period === 'AFTERNOON' ? 0.040 : 0.020;
+        ctx.save(); ctx.globalCompositeOperation = 'screen';
+        this._caustics.forEach(c => {
+          c.phase += c.spd; c.x += c.driftX;
+          if (c.x < -80) c.x = W + 80;
+          if (c.x > W + 80) c.x = -80;
+          const pulse = 0.55 + 0.45 * Math.sin(c.phase);
+          const a = causA * pulse;
+          const cy = c.y + Math.sin(c.phase * 0.72) * 14;
+          ctx.save();
+          ctx.translate(c.x, cy); ctx.rotate(c.rot + c.phase * 0.06);
+          const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, c.rx);
+          cg.addColorStop(0,   `rgba(120,245,255,${a * 2.6})`);
+          cg.addColorStop(0.45,`rgba(68,210,255,${a * 1.1})`);
+          cg.addColorStop(1,   'rgba(22,165,230,0)');
           ctx.scale(1, c.ry / c.rx);
-          ctx.fillStyle = g;
+          ctx.fillStyle = cg;
           ctx.beginPath(); ctx.arc(0, 0, c.rx, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         });
+        ctx.restore();
+      }
 
-        // ── Coral formations ───────────────────────────────────────────
-        this._coral.forEach(c => {
-          c.phase += 0.015;
-          const sway = Math.sin(t + c.phase) * 4;
-          ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-          if (c.type === 'fan') {
-            // Fan coral — multiple arcing arms from base
-            for (let a = -0.7; a <= 0.7; a += 0.22) {
-              const ah = c.h * (0.7 + Math.abs(a) * 0.4);
-              ctx.strokeStyle = `hsla(${c.hue}, 80%, 58%, 0.68)`;
-              ctx.lineWidth = 2.2 + Math.abs(a) * 2;
-              ctx.beginPath(); ctx.moveTo(c.x, c.y);
-              ctx.quadraticCurveTo(
-                c.x + Math.sin(a) * c.w * 2.2 + sway, c.y - ah * 0.55,
-                c.x + Math.sin(a) * c.w * 3.5 + sway, c.y - ah
-              );
-              ctx.stroke();
-            }
-          } else {
-            // Branch coral — Y-shaped branching
-            ctx.strokeStyle = `hsla(${c.hue}, 72%, 52%, 0.72)`;
-            ctx.lineWidth = c.w * 0.6;
-            ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + sway, c.y - c.h * 0.55); ctx.stroke();
-            ctx.lineWidth = c.w * 0.42;
-            ctx.beginPath(); ctx.moveTo(c.x + sway, c.y - c.h * 0.55);
-            ctx.lineTo(c.x + sway - c.w * 1.4, c.y - c.h); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(c.x + sway, c.y - c.h * 0.55);
-            ctx.lineTo(c.x + sway + c.w * 1.4, c.y - c.h); ctx.stroke();
-          }
-          ctx.restore();
-        });
-
-        // ── School of fish ─────────────────────────────────────────────
-        this._fish.forEach(f => {
-          if (!f.active) {
-            if (Math.random() < 0.003) f.active = true;
-            return;
-          }
-          f.phase += 0.06;
-          f.x += f.vx + Math.sin(f.phase * 0.4) * 0.3;
-          f.y += f.vy + Math.sin(f.phase) * 0.5;
-          const dir = f.vx > 0 ? 1 : -1;
-          ctx.save();
-          ctx.globalAlpha = 0.78;
-          ctx.fillStyle = `hsla(${f.hue}, 72%, 55%, 1)`;
-          ctx.translate(f.x, f.y); ctx.scale(dir, 1);
-          ctx.beginPath();
-          ctx.ellipse(0, 0, f.sz, f.sz * 0.38, 0, 0, Math.PI * 2); ctx.fill();
-          // Tail
-          ctx.beginPath();
-          ctx.moveTo(-f.sz * 0.68, 0);
-          ctx.lineTo(-f.sz * 1.35, -f.sz * 0.42 + Math.sin(f.phase * 2) * f.sz * 0.2);
-          ctx.lineTo(-f.sz * 1.35,  f.sz * 0.42 - Math.sin(f.phase * 2) * f.sz * 0.2);
-          ctx.closePath(); ctx.fill();
-          // Stripe
-          ctx.fillStyle = `hsla(${f.hue + 40}, 80%, 72%, 0.6)`;
-          ctx.beginPath();
-          ctx.ellipse(f.sz * 0.1, 0, f.sz * 0.22, f.sz * 0.20, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-          // Wrap
-          if (f.vx > 0 && f.x > W + 100) { f.x = -80; f.y = H * 0.10 + Math.random() * H * 0.62; f.active = Math.random() > 0.3; }
-          if (f.vx < 0 && f.x < -100)    { f.x = W + 80; f.y = H * 0.10 + Math.random() * H * 0.62; f.active = Math.random() > 0.3; }
-        });
-
-        // ── Seafloor sand gradient ─────────────────────────────────────
-        const sg = ctx.createLinearGradient(0, H * 0.86, 0, H);
-        sg.addColorStop(0, 'rgba(18, 65, 95, 0)');
-        sg.addColorStop(1, 'rgba(12, 42, 68, 0.70)');
-        ctx.fillStyle = sg; ctx.fillRect(0, H * 0.86, W, H * 0.14);
-      },
-
-      create(W, H) {
-        // Bubbles rising from seafloor
-        return {
-          x: Math.random() * W,
-          y: H + 12,
-          vx: (Math.random() - 0.5) * 0.55,
-          vy: -(0.45 + Math.random() * 1.15),
-          r: 1.8 + Math.random() * 8.5,
-          alpha: 0.08 + Math.random() * 0.20,
-          sw: Math.random() * Math.PI * 2,
-          swAmp: 0.5 + Math.random() * 1.2, swSpd: 0.018 + Math.random() * 0.025,
-        };
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        ctx.strokeStyle = 'rgba(145, 228, 255, 0.88)'; ctx.lineWidth = 1.0;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = 'rgba(188, 245, 255, 0.10)'; ctx.fill();
-        if (p.r > 4) {
-          ctx.fillStyle = 'rgba(255,255,255,0.18)';
-          ctx.beginPath(); ctx.arc(p.x - p.r * 0.28, p.y - p.r * 0.28, p.r * 0.28, 0, Math.PI * 2); ctx.fill();
+      // ── 4. Night bioluminescence on water ────────────────────────────────
+      if (period === 'NIGHT' || period === 'EVENING') {
+        ctx.save(); ctx.globalCompositeOperation = 'screen';
+        for (let bi = 0; bi < 14; bi++) {
+          const bx = W * ((bi * 0.143 + Math.sin(t * 0.3 + bi) * 0.04 + 1) % 1);
+          const by = H * (0.35 + 0.55 * ((bi * 0.217 + Math.cos(t * 0.22 + bi * 0.9) * 0.03 + 1) % 1));
+          const ba = (period === 'NIGHT' ? 0.04 : 0.018) * (0.5 + 0.5 * Math.sin(t * 2.2 + bi * 1.7));
+          const bg2 = ctx.createRadialGradient(bx, by, 0, bx, by, 35);
+          bg2.addColorStop(0, `rgba(80,255,200,${ba * 4})`);
+          bg2.addColorStop(1, 'rgba(30,200,160,0)');
+          ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(bx, by, 35, 0, Math.PI * 2); ctx.fill();
         }
         ctx.restore();
-      },
+      }
 
-      update(p, W, H) {
-        p.sw += p.swSpd;
-        p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-        p.y += p.vy;
-        return p.y > -30;
-      },
+      // ── 5. Kelp forest ───────────────────────────────────────────────────
+      this._kelp.forEach(k => {
+        k.phase += k.swSpd;
+        this._drawKelp(ctx, k, t, period);
+      });
+
+      // ── 6. Coral reef formations ─────────────────────────────────────────
+      this._coral.forEach(c => {
+        c.phase += c.swSpd;
+        const sw = Math.sin(c.phase) * 5;
+        const baseY = H;
+        const corA = period === 'NIGHT' ? 0.50 : 0.80;
+
+        ctx.save(); ctx.globalAlpha = corA; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+        if (c.type === 'fan') {
+          const steps = c.sub + 3;
+          for (let a = -0.8; a <= 0.8; a += 1.6 / steps) {
+            const ah = c.h * (0.65 + Math.abs(a) * 0.45);
+            ctx.strokeStyle = `hsl(${c.hue},82%,${period === 'NIGHT' ? 28 : 48}%)`;
+            ctx.lineWidth = 2.0 + Math.abs(a) * 2.5;
+            ctx.beginPath(); ctx.moveTo(c.x, baseY);
+            ctx.quadraticCurveTo(
+              c.x + Math.sin(a) * c.w * 2.5 + sw, baseY - ah * 0.6,
+              c.x + Math.sin(a) * c.w * 4.0 + sw * 1.3, baseY - ah
+            );
+            ctx.stroke();
+          }
+        } else if (c.type === 'branch') {
+          // Y-tree branching
+          const drawBranch = (x, y, len, angle, depth) => {
+            if (depth === 0) return;
+            const ex = x + Math.sin(angle + sw * 0.04) * len;
+            const ey = y - Math.cos(angle) * len;
+            ctx.strokeStyle = `hsl(${c.hue},${70 - depth * 8}%,${period === 'NIGHT' ? 22 : 42}%)`;
+            ctx.lineWidth = depth * c.w * 0.22;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+            drawBranch(ex, ey, len * 0.68, angle - 0.42, depth - 1);
+            drawBranch(ex, ey, len * 0.68, angle + 0.42, depth - 1);
+          };
+          drawBranch(c.x, baseY, c.h * 0.55, 0, 4);
+        } else if (c.type === 'anemone') {
+          // Anemone tentacles fanning out
+          for (let ai = 0; ai < c.sub + 4; ai++) {
+            const ang = (ai / (c.sub + 4)) * Math.PI * 2;
+            const tlen = c.h * (0.65 + Math.sin(c.phase + ai * 0.8) * 0.18);
+            ctx.strokeStyle = `hsl(${c.hue + ai * 15},90%,${period === 'NIGHT' ? 32 : 58}%)`;
+            ctx.lineWidth = 2.8;
+            ctx.beginPath(); ctx.moveTo(c.x, baseY);
+            ctx.bezierCurveTo(
+              c.x + Math.cos(ang) * tlen * 0.35 + sw, baseY - tlen * 0.4,
+              c.x + Math.cos(ang) * tlen * 0.75 + sw * 1.2, baseY - tlen * 0.78,
+              c.x + Math.cos(ang) * tlen * 0.90 + sw * 1.5, baseY - tlen
+            );
+            ctx.stroke();
+            // Tentacle tip blob
+            const tipX = c.x + Math.cos(ang) * tlen * 0.90 + sw * 1.5;
+            const tipY = baseY - tlen;
+            ctx.fillStyle = `hsl(${c.hue + ai * 20},95%,72%)`;
+            ctx.beginPath(); ctx.arc(tipX, tipY, 3.5, 0, Math.PI * 2); ctx.fill();
+          }
+        } else if (c.type === 'brain') {
+          // Brain coral — rounded dome with ridge texture
+          ctx.fillStyle = `hsl(${c.hue},65%,${period === 'NIGHT' ? 22 : 38}%)`;
+          ctx.beginPath();
+          ctx.ellipse(c.x, baseY - c.h * 0.5, c.w * 1.8, c.h * 0.55, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = `hsl(${c.hue + 10},72%,${period === 'NIGHT' ? 15 : 28}%)`;
+          ctx.lineWidth = 1.5;
+          for (let ri = -2; ri <= 2; ri++) {
+            ctx.beginPath();
+            ctx.moveTo(c.x - c.w * 1.6, baseY - c.h * 0.5 + ri * c.h * 0.14);
+            ctx.quadraticCurveTo(c.x + sw * 0.4, baseY - c.h * 0.5 + ri * c.h * 0.14 - c.h * 0.08,
+              c.x + c.w * 1.6, baseY - c.h * 0.5 + ri * c.h * 0.14);
+            ctx.stroke();
+          }
+        } else { // tube
+          for (let ti = 0; ti < c.sub + 2; ti++) {
+            const tx = c.x + (ti - c.sub * 0.5) * c.w * 0.8;
+            const th = c.h * (0.6 + ti * 0.12);
+            ctx.fillStyle = `hsl(${c.hue + ti * 12},80%,${period === 'NIGHT' ? 25 : 45}%)`;
+            ctx.beginPath();
+            ctx.roundRect(tx - c.w * 0.28, baseY - th, c.w * 0.56, th, [c.w * 0.28, c.w * 0.28, 0, 0]);
+            ctx.fill();
+            // Tube opening ring
+            ctx.strokeStyle = `hsl(${c.hue + ti * 12},88%,${period === 'NIGHT' ? 35 : 62}%)`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.ellipse(tx, baseY - th, c.w * 0.28, c.w * 0.14, 0, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+        ctx.restore();
+      });
+
+      // ── 7. Fish schools ──────────────────────────────────────────────────
+      this._fishSchools.forEach(school => {
+        school.fish.forEach(f => {
+          // Schooling behavior: fish drift toward leader slightly
+          const leader = school.fish[0];
+          if (f !== leader) {
+            f.vx += (leader.vx - f.vx) * 0.004;
+            f.vy += (leader.vy - f.vy) * 0.003;
+            const dist = Math.hypot(f.x - leader.x, f.y - leader.y);
+            if (dist > school.offsetSpread * 2.5) {
+              f.vx += (leader.x - f.x) * 0.001;
+              f.vy += (leader.y - f.y) * 0.001;
+            }
+          }
+          // Gentle directional drift
+          f.vx += (Math.random() - 0.5) * 0.015;
+          f.vy += (Math.random() - 0.5) * 0.010;
+          f.vx = Math.max(-2.5, Math.min(2.5, f.vx));
+          f.vy = Math.max(-0.8, Math.min(0.8, f.vy));
+
+          f.x += f.vx; f.y += f.vy;
+          // Wrap horizontally
+          if (f.vx > 0 && f.x > W + 120) f.x = -120;
+          if (f.vx < 0 && f.x < -120) f.x = W + 120;
+          f.y = Math.max(H * 0.05, Math.min(H * 0.88, f.y));
+
+          this._drawFish(ctx, f, t, period);
+        });
+      });
+
+      // ── 8. Sandy seafloor ────────────────────────────────────────────────
+      const sfA = period === 'NIGHT' ? 0.75 : 0.88;
+      const sfCol = period === 'NIGHT' ? [4, 18, 42] : period === 'EVENING' ? [8, 32, 72] : [15, 55, 95];
+      const sf = ctx.createLinearGradient(0, H * 0.87, 0, H);
+      sf.addColorStop(0, _rgb(sfCol, 0));
+      sf.addColorStop(0.3, _rgb(sfCol, sfA * 0.5));
+      sf.addColorStop(1, _rgb(sfCol, sfA));
+      ctx.fillStyle = sf; ctx.fillRect(0, H * 0.87, W, H * 0.13);
+
+      // Sand ripples
+      if (period !== 'NIGHT') {
+        ctx.save(); ctx.globalAlpha = 0.10;
+        ctx.strokeStyle = 'rgba(80,155,195,1)'; ctx.lineWidth = 0.8;
+        for (let ri = 0; ri < 8; ri++) {
+          const ry = H * (0.90 + ri * 0.012);
+          const ramp = Math.sin(t * 0.5 + ri * 0.8) * W * 0.006;
+          ctx.beginPath(); ctx.moveTo(0, ry + ramp);
+          ctx.bezierCurveTo(W * 0.25, ry - ramp, W * 0.75, ry + ramp, W, ry - ramp);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // ── 9. Pop animations ───────────────────────────────────────────────
+      this._pops = this._pops.filter(pop => {
+        pop.frame++;
+        const prog = pop.frame / pop.maxFrame;
+        ctx.save();
+        ctx.globalAlpha = (1 - prog) * 0.85;
+        ctx.strokeStyle = 'rgba(180,240,255,1)'; ctx.lineWidth = 1.5;
+        // Expanding ring
+        ctx.beginPath(); ctx.arc(pop.x, pop.y, pop.r * (1 + prog * 2.5), 0, Math.PI * 2); ctx.stroke();
+        // Pop droplets
+        for (let di = 0; di < 6; di++) {
+          const da = (di / 6) * Math.PI * 2;
+          const dr = pop.r * (1.8 + prog * 3.5);
+          const dx = pop.x + Math.cos(da) * dr;
+          const dy = pop.y + Math.sin(da) * dr;
+          ctx.fillStyle = 'rgba(150,235,255,1)';
+          ctx.beginPath(); ctx.arc(dx, dy, 1.5 * (1 - prog), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        return pop.frame < pop.maxFrame;
+      });
+
+      // ── 10. Depth vignette ───────────────────────────────────────────────
+      const dv = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.1, W * 0.5, H * 0.4, W * 0.85);
+      const dvCol = period === 'NIGHT' ? 'rgba(0,2,12,' : period === 'EVENING' ? 'rgba(1,4,20,' : 'rgba(0,8,25,';
+      dv.addColorStop(0, dvCol + '0)');
+      dv.addColorStop(0.65, dvCol + '0)');
+      dv.addColorStop(1, dvCol + '0.58)');
+      ctx.fillStyle = dv; ctx.fillRect(0, 0, W, H);
     },
 
-    classic: null,
+    // Bubble click detection
+    handleClick(x, y) {
+      let popped = false;
+      this._bubblesStore = this._bubblesStore.filter(b => {
+        const dist = Math.hypot(b.x - x, b.y - y);
+        if (dist <= b.r + 8) {
+          this._pops.push({ x: b.x, y: b.y, r: b.r, frame: 0, maxFrame: 22 });
+          popped = true;
+          return false; // remove bubble
+        }
+        return true;
+      });
+      return popped;
+    },
 
-    // ── Snow ─────────────────────────────────────────────────────────────────
-    snow: {
-      max: 60, rate: 0.22,
-      _mountains: null,
-      init(W, H) {
-        _initStars(W, H, 90);
-        _stars.forEach(s => { s.y = s.y * 0.50; });
-        this._mountains = _buildMountains(W, H);
-      },
-      drawBackground(ctx, W, H) {
-        _stars.forEach(s => {
-          s.twinklePhase += s.twinkleSpd;
-          const a = s.alpha * 0.52 * (0.48 + 0.52 * Math.sin(s.twinklePhase));
-          ctx.save(); ctx.globalAlpha = a;
-          ctx.fillStyle = 'rgba(200, 215, 255, 1)';
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.85, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        });
-        const mx = W * 0.28, my = H * 0.13, mr = Math.min(W, H) * 0.042;
-        const moonHalo = ctx.createRadialGradient(mx, my, mr * 0.4, mx, my, mr * 3.2);
-        moonHalo.addColorStop(0,   'rgba(235, 245, 255, 0.20)');
-        moonHalo.addColorStop(0.55,'rgba(210, 228, 255, 0.08)');
-        moonHalo.addColorStop(1,   'rgba(180, 205, 255, 0)');
-        ctx.fillStyle = moonHalo; ctx.beginPath(); ctx.arc(mx, my, mr * 3.2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(240, 248, 255, 0.90)';
-        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
-        if (this._mountains) {
-          this._mountains.forEach(layer => {
-            const pts = layer.pts;
-            ctx.save();
-            ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.closePath(); ctx.fillStyle = layer.fill; ctx.fill();
-            ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.closePath(); ctx.clip();
-            const terrainPts = pts.slice(1, pts.length - 3);
-            const topY = terrainPts.reduce((min, p) => (p.y < min ? p.y : min), Infinity);
-            const sg = ctx.createLinearGradient(0, topY - 4, 0, topY + layer.snowFade);
-            sg.addColorStop(0,    'rgba(225, 240, 255, 0.72)');
-            sg.addColorStop(0.45, 'rgba(200, 225, 252, 0.32)');
-            sg.addColorStop(1,    'rgba(180, 210, 248, 0)');
-            ctx.fillStyle = sg; ctx.fillRect(0, topY - 4, W, layer.snowFade + 8);
-            ctx.restore();
+    create(W, H) {
+      const b = {
+        type: 'bubble',
+        x: W * 0.04 + Math.random() * W * 0.92,
+        y: H + 18 + Math.random() * 60, // start below screen
+        vx: (Math.random() - 0.5) * 0.45,
+        vy: -(0.40 + Math.random() * 1.10),
+        r: 2.5 + Math.random() * 11,
+        alpha: 0, maxAlpha: 0.12 + Math.random() * 0.22,
+        sw: Math.random() * Math.PI * 2,
+        swAmp: 0.6 + Math.random() * 1.4,
+        swSpd: 0.015 + Math.random() * 0.022,
+        life: 0,
+        popped: false,
+      };
+      this._bubblesStore.push(b);
+      return b;
+    },
+
+    draw(ctx, p) {
+      if (p.popped) return;
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      // Main bubble
+      ctx.strokeStyle = 'rgba(160, 240, 255, 0.90)';
+      ctx.lineWidth = Math.max(0.6, p.r * 0.08);
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      // Inner shimmer fill
+      const bg = ctx.createRadialGradient(p.x - p.r * 0.3, p.y - p.r * 0.3, 0, p.x, p.y, p.r);
+      bg.addColorStop(0, 'rgba(255,255,255,0.14)');
+      bg.addColorStop(0.6, 'rgba(180,245,255,0.06)');
+      bg.addColorStop(1, 'rgba(80,195,240,0)');
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      // Highlight specular
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.arc(p.x - p.r * 0.30, p.y - p.r * 0.32, p.r * 0.22, 0, Math.PI * 2); ctx.fill();
+      if (p.r > 6) {
+        ctx.fillStyle = 'rgba(200,245,255,0.28)';
+        ctx.beginPath(); ctx.arc(p.x + p.r * 0.18, p.y + p.r * 0.22, p.r * 0.10, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      if (p.popped) return false;
+      p.life++; p.sw += p.swSpd;
+      p.x += p.vx + Math.sin(p.sw) * p.swAmp;
+      p.y += p.vy;
+      // Gentle x clamp
+      if (p.x < p.r) p.x = p.r;
+      if (p.x > W - p.r) p.x = W - p.r;
+      // Fade in at bottom, fade out at top
+      const fadeIn = Math.min(1, p.life / 15);
+      const fadeOut = p.y < H * 0.08 ? Math.max(0, (p.y - (-p.r)) / (H * 0.08)) : 1;
+      p.alpha = p.maxAlpha * fadeIn * fadeOut;
+      const alive = p.y > -p.r - 10;
+      if (!alive) this._bubblesStore = this._bubblesStore.filter(b => b !== p);
+      return alive;
+    },
+  },
+
+  classic: null,
+
+  // ── SNOW — Complete Rework: Premium Winter Scene ─────────────────────────
+  // Time-aware: MORNING (blue-grey dawn, light purple aurora hints),
+  //             AFTERNOON (crisp bright white, blue sky),
+  //             EVENING (golden hour on snow, warm edges),
+  //             NIGHT (deep navy, full aurora, frozen silence).
+  snow: {
+    max: 85, rate: 0.28,
+    _pines: null, _aurora: null, _ground: null, _cabinLights: null, _breath: null,
+
+    init(W, H) {
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+      _stars = [];
+      _initStars(W, H, 70);
+      _stars.forEach(s => { s.y *= 0.55; });
+
+      // Pine trees: layered at different depths
+      this._pines = Array.from({ length: 22 }, (_, i) => {
+        const depth = i < 7 ? 0 : i < 14 ? 1 : 2; // far, mid, near
+        return {
+          x: W * (i / 21) + rng(-W * 0.02, W * 0.02),
+          baseY: H * (0.58 + depth * 0.10),
+          height: H * (0.12 + (2 - depth) * 0.06 + rng(0, 0.05)),
+          layers: 4 + depth,
+          depth,
+          phase: rng(0, Math.PI * 2),
+          swSpd: rng(0.003, 0.008),
+          snowLoad: rng(0.3, 0.8),
+        };
+      });
+
+      // Aurora bands for night/evening
+      this._aurora = Array.from({ length: 5 }, (_, i) => ({
+        phase: i * 1.3,
+        spd: 0.006 + i * 0.003,
+        hue: 155 + i * 28,
+        y: H * (0.06 + i * 0.08),
+        amp: H * (0.045 + i * 0.012),
+        alpha: 0.0,
+      }));
+
+      // Snow ground hills
+      this._ground = Array.from({ length: 3 }, (_, li) => {
+        const pts = [];
+        const steps = 24;
+        for (let j = 0; j <= steps; j++) {
+          pts.push({
+            x: W * j / steps,
+            y: H * (0.68 + li * 0.09) - H * (0.045 + li * 0.015) * Math.sin(j * 0.42 + li * 1.8),
           });
         }
-        const gg = ctx.createLinearGradient(0, H * 0.82, 0, H);
-        gg.addColorStop(0, 'rgba(160, 185, 240, 0)');
-        gg.addColorStop(1, 'rgba(165, 192, 248, 0.16)');
-        ctx.fillStyle = gg; ctx.fillRect(0, H * 0.82, W, H * 0.18);
-      },
-      create(W) {
-        const big = Math.random() < 0.18;
-        return {
-          x: Math.random() * W * 1.3 - W * 0.15, y: -12 - Math.random() * 40,
-          vx: -0.4 + Math.random() * 0.8,
-          vy: big ? (0.35 + Math.random() * 0.50) : (0.55 + Math.random() * 1.10),
-          r:  big ? (3.5 + Math.random() * 4.5)   : (0.8 + Math.random() * 2.8),
-          alpha: big ? (0.35 + Math.random() * 0.25) : (0.50 + Math.random() * 0.40),
-          sw: Math.random() * Math.PI * 2,
-          swAmp: 0.5 + Math.random() * 1.5, swSpd: 0.010 + Math.random() * 0.018,
-          windResp: 0.4 + Math.random() * 1.2,
-        };
-      },
-      draw(ctx, p) {
-        // Real 6-arm snowflake geometry
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        ctx.strokeStyle = 'rgba(210, 228, 255, 0.88)';
-        ctx.lineWidth = Math.max(0.5, p.r * 0.18); ctx.lineCap = 'round';
+        return { pts, li };
+      });
+
+      // Cabin warm lights (small glowing windows)
+      this._cabinLights = [
+        { x: W * 0.12, y: H * 0.65, w: W * 0.022, h: H * 0.018, phase: 0, spd: 0.06 },
+        { x: W * 0.82, y: H * 0.62, w: W * 0.018, h: H * 0.016, phase: 1.4, spd: 0.05 },
+      ];
+
+      // Breath/steam puffs from cabin chimney
+      this._breath = [];
+    },
+
+    _drawPine(ctx, tree, period) {
+      const { x, baseY, height, layers, snowLoad } = tree;
+      const trunkH = height * 0.18;
+      const trunkW = height * 0.055;
+
+      // Trunk
+      const trunkCol = period === 'MORNING' ? 'rgba(52,35,18,0.78)' :
+        period === 'EVENING' ? 'rgba(75,48,22,0.68)' : 'rgba(35,22,10,0.85)';
+      ctx.fillStyle = trunkCol;
+      ctx.beginPath();
+      ctx.rect(x - trunkW * 0.5, baseY - trunkH, trunkW, trunkH);
+      ctx.fill();
+
+      // Layered triangular branches with snow on top
+      const treeCol = period === 'NIGHT' ? 'rgba(18,28,18,0.92)' :
+        period === 'EVENING' ? 'rgba(32,52,28,0.85)' :
+        period === 'MORNING' ? 'rgba(28,45,22,0.82)' : 'rgba(22,42,18,0.88)';
+
+      for (let li = 0; li < layers; li++) {
+        const prog = li / layers;
+        const layW = height * (0.32 + (1 - prog) * 0.38);
+        const layY = baseY - trunkH - li * height * 0.18;
+        const layH = height * (0.22 + (1 - prog) * 0.06);
+
+        ctx.fillStyle = treeCol;
+        ctx.beginPath();
+        ctx.moveTo(x - layW, layY);
+        ctx.lineTo(x + layW, layY);
+        ctx.lineTo(x, layY - layH);
+        ctx.closePath(); ctx.fill();
+
+        // Snow on branch edges
+        const snowA = snowLoad * (0.55 + prog * 0.45);
+        ctx.fillStyle = `rgba(230,240,255,${snowA * 0.80})`;
+        ctx.beginPath();
+        ctx.moveTo(x - layW, layY);
+        ctx.lineTo(x - layW + layW * 0.22, layY);
+        ctx.lineTo(x - layW * 0.62, layY - layH * 0.32);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x + layW, layY);
+        ctx.lineTo(x + layW - layW * 0.22, layY);
+        ctx.lineTo(x + layW * 0.62, layY - layH * 0.32);
+        ctx.closePath(); ctx.fill();
+        // Snow cap
+        ctx.beginPath();
+        ctx.moveTo(x, layY - layH);
+        ctx.lineTo(x - layW * 0.30, layY - layH * 0.65);
+        ctx.lineTo(x + layW * 0.30, layY - layH * 0.65);
+        ctx.closePath(); ctx.fillStyle = `rgba(235,245,255,${snowA * 0.65})`; ctx.fill();
+      }
+    },
+
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const blend = _getSmoothBlend();
+      const t = _frame * 0.012;
+
+      // ── 1. Sky gradient ───────────────────────────────────────────────────
+      const SKY = {
+        MORNING:   { t:[145,162,210], b:[200,215,240] },
+        AFTERNOON: { t:[98, 148,218], b:[195,218,248] },
+        EVENING:   { t:[200,95, 60],  b:[248,185,128] },
+        NIGHT:     { t:[8,  12, 35],  b:[22, 30, 68]  },
+      };
+      const sk = _blendPeriodColors(SKY, blend);
+      const skyG = ctx.createLinearGradient(0, 0, 0, H * 0.78);
+      skyG.addColorStop(0, _rgb(sk.t)); skyG.addColorStop(1, _rgb(sk.b));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Stars (night/early morning) ────────────────────────────────────
+      if (period === 'NIGHT' || period === 'MORNING') {
+        const sA = period === 'NIGHT' ? 1.0 : 0.38;
+        _stars.forEach(s => {
+          s.twinklePhase += s.twinkleSpd;
+          const a = s.alpha * sA * (0.35 + 0.65 * Math.sin(s.twinklePhase));
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.fillStyle = 'rgba(210,225,255,1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.82, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // ── 3. Aurora Borealis ─────────────────────────────────────────────────
+      const auroraAlpha = period === 'NIGHT' ? 1.0 : period === 'MORNING' ? 0.25 : 0;
+      if (auroraAlpha > 0) {
+        ctx.save(); ctx.globalCompositeOperation = 'screen';
+        this._aurora.forEach(au => {
+          au.phase += au.spd;
+          au.alpha = auroraAlpha * (0.06 + 0.05 * Math.sin(au.phase * 0.7));
+          const points = [];
+          for (let ai = 0; ai <= W; ai += W / 28) {
+            points.push({
+              x: ai,
+              y: au.y + Math.sin(ai / W * Math.PI * 3 + au.phase) * au.amp
+                + Math.sin(ai / W * Math.PI * 5.5 + au.phase * 1.3) * au.amp * 0.38,
+            });
+          }
+          const auH = H * 0.10;
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, points[0].y);
+          points.forEach((p, i) => {
+            if (i > 0) ctx.lineTo(p.x, p.y);
+          });
+          ctx.lineTo(W, points[points.length - 1].y + auH);
+          ctx.lineTo(0, points[0].y + auH);
+          ctx.closePath();
+          const ag = ctx.createLinearGradient(0, au.y - au.amp, 0, au.y + au.amp + auH);
+          ag.addColorStop(0, `hsla(${au.hue},90%,62%,0)`);
+          ag.addColorStop(0.35, `hsla(${au.hue},90%,62%,${au.alpha * 2.2})`);
+          ag.addColorStop(0.65, `hsla(${au.hue + 30},88%,58%,${au.alpha * 1.6})`);
+          ag.addColorStop(1, `hsla(${au.hue},80%,55%,0)`);
+          ctx.fillStyle = ag; ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      // ── 4. Sun/Moon ───────────────────────────────────────────────────────
+      if (period === 'NIGHT') {
+        // Crescent moon
+        const mx = W * 0.78, my = H * 0.10, mr = Math.min(W, H) * 0.038;
+        const moonG = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.5);
+        moonG.addColorStop(0, 'rgba(240,248,255,0.22)');
+        moonG.addColorStop(1, 'rgba(200,220,255,0)');
+        ctx.fillStyle = moonG; ctx.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
+        ctx.fillStyle = 'rgba(235,245,255,0.92)';
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(22,30,68,1)';
+        ctx.beginPath(); ctx.arc(mx + mr * 0.42, my - mr * 0.05, mr * 0.85, 0, Math.PI * 2); ctx.fill();
+      } else if (period === 'AFTERNOON') {
+        const sx = W * 0.72, sy = H * 0.08;
+        const sunG = ctx.createRadialGradient(sx, sy, 0, sx, sy, W * 0.20);
+        sunG.addColorStop(0, 'rgba(255,252,210,0.92)');
+        sunG.addColorStop(0.12, 'rgba(255,240,180,0.55)');
+        sunG.addColorStop(0.4, 'rgba(255,225,150,0.15)');
+        sunG.addColorStop(1, 'rgba(240,210,130,0)');
+        ctx.fillStyle = sunG; ctx.fillRect(0, 0, W, H * 0.38);
+      } else if (period === 'EVENING') {
+        const sx = W * 0.82, sy = H * 0.20;
+        const sunG = ctx.createRadialGradient(sx, sy, 0, sx, sy, W * 0.28);
+        sunG.addColorStop(0, 'rgba(255,200,80,0.72)');
+        sunG.addColorStop(0.22, 'rgba(255,150,50,0.38)');
+        sunG.addColorStop(1, 'rgba(220,80,20,0)');
+        ctx.fillStyle = sunG; ctx.fillRect(0, 0, W, H * 0.55);
+      }
+
+      // ── 5. Distant snow mountains ─────────────────────────────────────────
+      const MTN = {
+        MORNING:   [[148,162,205,0.55],[120,138,188,0.68],[88,108,160,0.80]],
+        AFTERNOON: [[175,200,235,0.50],[148,178,220,0.65],[110,148,200,0.78]],
+        EVENING:   [[200,130,100,0.52],[180,100,70,0.65],[145,75,48,0.78]],
+        NIGHT:     [[18, 25, 68, 0.58],[12, 18, 52, 0.72],[6,  10, 35, 0.85]],
+      };
+      const mc = MTN[period] || MTN.AFTERNOON;
+      [2, 1, 0].forEach(li => {
+        const baseY = H * (0.42 + li * 0.065);
+        ctx.beginPath();
+        for (let xi = 0; xi <= 18; xi++) {
+          const fx = xi * (W / 18);
+          const fy = baseY - H * (0.08 + li * 0.012) * Math.sin(xi * 0.52 + li * 1.6 + 2.0)
+            - H * 0.035 * Math.sin(xi * 1.08 + li * 0.7);
+          xi === 0 ? ctx.moveTo(fx, fy) : ctx.lineTo(fx, fy);
+        }
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+        const [r, g, b, a] = mc[li];
+        ctx.fillStyle = `rgba(${r},${g},${b},${a})`; ctx.fill();
+
+        // Snow cap on mountains
+        if (period !== 'EVENING') {
+          ctx.save(); ctx.clip();
+          const scY = baseY - H * (0.08 + li * 0.012) * 0.75;
+          const scG = ctx.createLinearGradient(0, scY - H * 0.04, 0, scY + H * 0.055);
+          scG.addColorStop(0, `rgba(235,242,255,${0.65 - li * 0.12})`);
+          scG.addColorStop(0.55, `rgba(215,228,252,${0.28 - li * 0.06})`);
+          scG.addColorStop(1, 'rgba(200,218,250,0)');
+          ctx.fillStyle = scG; ctx.fillRect(0, scY - H * 0.04, W, H * 0.09); ctx.restore();
+        }
+      });
+
+      // ── 6. Pine tree forest ───────────────────────────────────────────────
+      this._pines.sort((a, b) => a.depth - b.depth).forEach(tree => {
+        tree.phase += tree.swSpd;
+        const depthAlpha = [0.45, 0.68, 0.88][tree.depth];
+        ctx.save(); ctx.globalAlpha = depthAlpha;
+        this._drawPine(ctx, tree, period);
+        ctx.restore();
+      });
+
+      // ── 7. Cabin with warm light (EVENING/NIGHT) ──────────────────────────
+      if (period === 'EVENING' || period === 'NIGHT') {
+        this._cabinLights.forEach(cl => {
+          cl.phase += cl.spd;
+          const flicker = 0.82 + 0.18 * Math.sin(cl.phase) + 0.08 * Math.sin(cl.phase * 2.3);
+          // Warm window glow
+          const wg = ctx.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.w * 3.5);
+          wg.addColorStop(0, `rgba(255,200,90,${0.38 * flicker})`);
+          wg.addColorStop(0.4, `rgba(240,165,55,${0.18 * flicker})`);
+          wg.addColorStop(1, 'rgba(210,130,30,0)');
+          ctx.fillStyle = wg; ctx.fillRect(cl.x - cl.w * 4, cl.y - cl.h * 4, cl.w * 8, cl.h * 8);
+          // Window pane
+          ctx.fillStyle = `rgba(255,210,110,${0.82 * flicker})`;
+          ctx.beginPath(); ctx.roundRect(cl.x - cl.w, cl.y - cl.h, cl.w * 2, cl.h * 2, 2); ctx.fill();
+        });
+
+        // Chimney smoke puffs
+        if (Math.random() < 0.04) {
+          this._breath.push({
+            x: this._cabinLights[0].x - W * 0.005,
+            y: this._cabinLights[0].y - H * 0.08,
+            r: 4 + Math.random() * 6,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: -(0.22 + Math.random() * 0.35),
+            alpha: 0, maxAlpha: 0.18, life: 0, maxLife: 80 + Math.random() * 50|0,
+          });
+        }
+        this._breath = this._breath.filter(b => {
+          b.life++; b.x += b.vx; b.y += b.vy; b.r += 0.08;
+          b.alpha = b.life < 12 ? b.life / 12 * b.maxAlpha
+            : b.life > b.maxLife - 20 ? Math.max(0, (b.maxLife - b.life) / 20 * b.maxAlpha)
+            : b.maxAlpha;
+          ctx.save(); ctx.globalAlpha = b.alpha;
+          ctx.fillStyle = 'rgba(200,205,218,1)';
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          return b.life < b.maxLife;
+        });
+      }
+
+      // ── 8. Snow ground ────────────────────────────────────────────────────
+      this._ground.forEach(layer => {
+        const gCol = period === 'EVENING' ? [248, 195, 155] :
+          period === 'NIGHT' ? [48, 62, 108] : [228, 238, 252];
+        const gA = [0.70, 0.82, 0.92][layer.li];
+        ctx.beginPath();
+        ctx.moveTo(layer.pts[0].x, layer.pts[0].y);
+        for (let i = 1; i < layer.pts.length; i++) {
+          const p0 = layer.pts[i - 1], p1 = layer.pts[i];
+          const mx = (p0.x + p1.x) * 0.5, my = (p0.y + p1.y) * 0.5;
+          ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
+        }
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+        const gg = ctx.createLinearGradient(0, layer.pts[0].y, 0, H);
+        gg.addColorStop(0, _rgb(gCol, gA));
+        gg.addColorStop(1, _rgb(gCol, Math.min(1, gA + 0.12)));
+        ctx.fillStyle = gg; ctx.fill();
+
+        // Soft shadow under ground crest
+        ctx.save();
+        const sg = ctx.createLinearGradient(0, layer.pts[0].y, 0, layer.pts[0].y + H * 0.04);
+        const shadowCol = period === 'NIGHT' ? 'rgba(20,28,70,' : 'rgba(140,165,210,';
+        sg.addColorStop(0, shadowCol + '0.22)'); sg.addColorStop(1, shadowCol + '0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, layer.pts[0].y, W, H * 0.04); ctx.restore();
+      });
+
+      // ── 9. Bottom snow sparkle ─────────────────────────────────────────────
+      if (period === 'AFTERNOON' || period === 'MORNING') {
+        ctx.save(); ctx.globalAlpha = 0.40;
+        for (let si = 0; si < 18; si++) {
+          const sx = W * ((si * 0.17 + Math.sin(t + si) * 0.03 + 1) % 1);
+          const sy = H * (0.78 + Math.random() * 0.18);
+          const sa = 0.3 + 0.7 * Math.sin(t * 2.5 + si * 1.8);
+          ctx.fillStyle = `rgba(255,255,255,${sa * 0.65})`;
+          ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // ── 10. Edge vignette ─────────────────────────────────────────────────
+      const vigC = period === 'NIGHT' ? 'rgba(2,4,18,' : 'rgba(8,18,48,';
+      const vigL = ctx.createLinearGradient(0, 0, W * 0.18, 0);
+      vigL.addColorStop(0, vigC + '0.45)'); vigL.addColorStop(1, vigC + '0)');
+      const vigR = ctx.createLinearGradient(W, 0, W * 0.82, 0);
+      vigR.addColorStop(0, vigC + '0.45)'); vigR.addColorStop(1, vigC + '0)');
+      ctx.fillStyle = vigL; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = vigR; ctx.fillRect(0, 0, W, H);
+    },
+
+    create(W) {
+      const big = Math.random() < 0.14;
+      return {
+        x: Math.random() * W * 1.35 - W * 0.17,
+        y: -18 - Math.random() * 45,
+        vx: -0.35 + Math.random() * 0.70,
+        vy: big ? (0.28 + Math.random() * 0.42) : (0.48 + Math.random() * 0.90),
+        r:  big ? (4.0  + Math.random() * 5.5)  : (0.9  + Math.random() * 3.0),
+        alpha: big ? (0.30 + Math.random() * 0.22) : (0.52 + Math.random() * 0.38),
+        rot: Math.random() * Math.PI * 2,
+        rotV: (Math.random() - 0.5) * 0.028,
+        sw: Math.random() * Math.PI * 2,
+        swAmp: 0.45 + Math.random() * 1.40, swSpd: 0.008 + Math.random() * 0.016,
+        windResp: 0.35 + Math.random() * 1.1,
+        isBig: big,
+      };
+    },
+
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.isBig) {
+        // 6-arm snowflake
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.strokeStyle = 'rgba(218,232,255,0.92)';
+        ctx.lineWidth = Math.max(0.5, p.r * 0.14); ctx.lineCap = 'round';
         for (let i = 0; i < 6; i++) {
-          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(i * Math.PI / 3);
+          ctx.save(); ctx.rotate(i * Math.PI / 3);
           ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -p.r);
-          ctx.moveTo(0, -p.r * 0.5); ctx.lineTo(-p.r * 0.28, -p.r * 0.72);
-          ctx.moveTo(0, -p.r * 0.5); ctx.lineTo( p.r * 0.28, -p.r * 0.72);
+          ctx.moveTo(0, -p.r * 0.40); ctx.lineTo(-p.r * 0.24, -p.r * 0.60);
+          ctx.moveTo(0, -p.r * 0.40); ctx.lineTo( p.r * 0.24, -p.r * 0.60);
+          ctx.moveTo(0, -p.r * 0.70); ctx.lineTo(-p.r * 0.20, -p.r * 0.88);
+          ctx.moveTo(0, -p.r * 0.70); ctx.lineTo( p.r * 0.20, -p.r * 0.88);
           ctx.stroke(); ctx.restore();
         }
         ctx.restore();
-      },
-      update(p, W, H) {
-        const wind = Math.sin(_frame * 0.005) * 1.4 + Math.sin(_frame * 0.022) * 0.5;
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp + wind * p.windResp; p.y += p.vy;
-        if (p.x < -30) p.x = W + 20;
-        if (p.x > W + 30) p.x = -20;
-        return p.y < H + 20;
-      },
+      } else {
+        // Small snowflake circle with cross
+        ctx.strokeStyle = 'rgba(215,228,255,0.85)';
+        ctx.lineWidth = Math.max(0.4, p.r * 0.18); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.42, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.r, p.y); ctx.lineTo(p.x + p.r, p.y);
+        ctx.moveTo(p.x, p.y - p.r); ctx.lineTo(p.x, p.y + p.r);
+        ctx.stroke();
+      }
+      ctx.restore();
     },
 
-    // ── Sunset — cinematic golden hour with embers and god rays ─────────────
-    sunset: {
-      max: 42, rate: 0.095,
-      _rays: null, _clouds: null,
+    update(p, W, H) {
+      const wind = Math.sin(_frame * 0.004) * 1.2 + Math.sin(_frame * 0.019) * 0.48;
+      p.sw += p.swSpd; p.rot += p.rotV;
+      p.x += p.vx + Math.sin(p.sw) * p.swAmp + wind * p.windResp;
+      p.y += p.vy;
+      if (p.x < -35) p.x = W + 22;
+      if (p.x > W + 35) p.x = -22;
+      return p.y < H + 25;
+    },
+  },
 
-      init(W, H) {
-        _stars = [];
-        // God rays from sun disc at horizon
-        this._rays = Array.from({ length: 8 }, (_, i) => ({
-          angle: (-0.65 + i * 0.185) * Math.PI,
-          width: W * (0.018 + Math.random() * 0.022),
-          alpha: 0.028 + Math.random() * 0.025,
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.003 + Math.random() * 0.004,
-        }));
-        // Atmospheric cloud wisps
-        this._clouds = Array.from({ length: 7 }, (_, i) => ({
-          x: W * (0.05 + i * 0.14) + (Math.random() - 0.5) * W * 0.08,
-          y: H * (0.18 + Math.random() * 0.32),
-          w: W * (0.12 + Math.random() * 0.18),
-          h: H * (0.04 + Math.random() * 0.06),
-          alpha: 0.08 + Math.random() * 0.12,
-          phase: Math.random() * Math.PI * 2, spd: 0.004 + Math.random() * 0.005,
-          hue: 18 + Math.floor(Math.random() * 22),
-        }));
-      },
+  // ── SUNSET → "CHROMAWAVE" — Retro Drive / Vaporwave Scene ───────────────
+  // Renamed. Premium retro-wave aesthetic: perspective grid, neon horizon,
+  // palm silhouettes, scanlines, time-of-day sky.
+  sunset: {
+    max: 52, rate: 0.10,
+    _rays: null, _clouds: null, _palms: null, _gridLines: null, _stars: null,
 
-      drawBackground(ctx, W, H) {
-        const t = _frame;
-        const sunY = H * 0.66;
-        const sunX = W * 0.50;
+    init(W, H) {
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+      _stars = [];
 
-        // ── God rays from horizon ──────────────────────────────────────
-        this._rays.forEach(r => {
-          r.phase += r.spd;
-          const alpha = r.alpha * (0.6 + 0.4 * Math.sin(r.phase));
-          ctx.save();
-          ctx.translate(sunX, sunY);
-          ctx.rotate(r.angle);
-          const sg = ctx.createLinearGradient(-r.width * 0.5, 0, r.width * 0.5, 0);
-          sg.addColorStop(0,   'rgba(255, 210, 80, 0)');
-          sg.addColorStop(0.5, `rgba(255, 200, 70, ${alpha})`);
-          sg.addColorStop(1,   'rgba(255, 210, 80, 0)');
-          ctx.fillStyle = sg;
-          ctx.fillRect(-r.width * 0.5, -H * 0.08, r.width, H * 1.2);
-          ctx.restore();
+      this._rays = Array.from({ length: 9 }, (_, i) => ({
+        angle: (-0.70 + i * 0.175) * Math.PI,
+        width: W * (0.016 + rng(0, 0.020)),
+        alpha: 0.025 + rng(0, 0.022),
+        phase: rng(0, Math.PI * 2),
+        spd: 0.0025 + rng(0, 0.003),
+      }));
+
+      this._clouds = Array.from({ length: 8 }, (_, i) => ({
+        x: W * (0.04 + i * 0.13) + rng(-W * 0.06, W * 0.06),
+        y: H * (0.15 + rng(0, 0.28)),
+        w: W * (0.10 + rng(0, 0.16)),
+        h: H * (0.038 + rng(0, 0.055)),
+        alpha: 0.06 + rng(0, 0.10),
+        phase: rng(0, Math.PI * 2), spd: 0.003 + rng(0, 0.004),
+        hue: 285 + Math.floor(rng(-20, 20)),
+      }));
+
+      // Retro palm trees — silhouette
+      this._palms = [
+        { x: W * 0.07, h: H * 0.38, lean: 0.18, side: 1 },
+        { x: W * 0.14, h: H * 0.30, lean: 0.08, side: -1 },
+        { x: W * 0.88, h: H * 0.36, lean: -0.15, side: -1 },
+        { x: W * 0.93, h: H * 0.28, lean: -0.06, side: 1 },
+      ];
+
+      // Perspective grid lines
+      const vanishX = W * 0.50, vanishY = H * 0.60;
+      this._gridLines = [];
+      for (let gi = 0; gi <= 18; gi++) {
+        this._gridLines.push({
+          type: 'v',
+          sx: W * (gi / 18), sy: H,
+          ex: vanishX, ey: vanishY,
         });
+      }
+      for (let hi = 0; hi < 12; hi++) {
+        const prog = hi / 11;
+        const gy = vanishY + (H - vanishY) * prog * prog;
+        this._gridLines.push({ type: 'h', y: gy, prog });
+      }
 
-        // ── Sun corona ────────────────────────────────────────────────
-        const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.28);
-        sg.addColorStop(0,    'rgba(255, 230, 120, 0.62)');
-        sg.addColorStop(0.18, 'rgba(255, 185, 60,  0.28)');
-        sg.addColorStop(0.45, 'rgba(235, 120, 35,  0.10)');
-        sg.addColorStop(1,    'rgba(195, 72,  18,  0)');
-        ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+      this._stars = Array.from({ length: 55 }, () => ({
+        x: rng(0, W), y: rng(0, H * 0.65),
+        r: 0.4 + rng(0, 1.2), alpha: 0.2 + rng(0, 0.65),
+        phase: rng(0, Math.PI * 2), spd: 0.012 + rng(0, 0.022),
+      }));
+    },
 
-        // ── Cloud wisps ───────────────────────────────────────────────
+    _drawPalm(ctx, palm, t, period) {
+      const { x, h, lean } = palm;
+      const baseY = H_CACHED;
+      const tipX = x + lean * h;
+      const tipY = baseY - h;
+
+      const palmCol = 'rgba(8,4,2,0.92)';
+      ctx.save();
+      ctx.fillStyle = palmCol;
+      ctx.lineWidth = h * 0.035; ctx.strokeStyle = palmCol;
+
+      // Trunk (tapering bezier)
+      ctx.beginPath();
+      ctx.moveTo(x - h * 0.022, baseY);
+      ctx.bezierCurveTo(
+        x - h * 0.018 + lean * h * 0.3, baseY - h * 0.35,
+        tipX - h * 0.010, tipY + h * 0.22,
+        tipX, tipY
+      );
+      ctx.lineTo(tipX + h * 0.012, tipY);
+      ctx.bezierCurveTo(
+        tipX + h * 0.010, tipY + h * 0.22,
+        x + h * 0.018 + lean * h * 0.3, baseY - h * 0.35,
+        x + h * 0.022, baseY
+      );
+      ctx.closePath(); ctx.fill();
+
+      // Fronds
+      const fronds = 7;
+      for (let fi = 0; fi < fronds; fi++) {
+        const fa = ((fi / fronds) * Math.PI * 2) + Math.sin(t * 0.8 + fi) * 0.12;
+        const fl = h * (0.35 + Math.abs(Math.sin(fa)) * 0.12);
+        const fcpx = tipX + Math.cos(fa) * fl * 0.45;
+        const fcpy = tipY + Math.sin(fa) * fl * 0.38 - h * 0.05;
+        const fex = tipX + Math.cos(fa) * fl;
+        const fey = tipY + Math.sin(fa) * fl;
+        if (fey < baseY) {
+          ctx.lineWidth = h * 0.018;
+          ctx.beginPath(); ctx.moveTo(tipX, tipY);
+          ctx.quadraticCurveTo(fcpx, fcpy, fex, fey);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    },
+
+    drawBackground(ctx, W, H) {
+      // Cache H for palm drawing
+      H_CACHED = H;
+      const period = _getCanvasPeriod();
+      const blend = _getSmoothBlend();
+      const t = _frame * 0.012;
+
+      // ── 1. Sky gradient ───────────────────────────────────────────────────
+      const SKY = {
+        MORNING:   { t:[22,14,55],  m:[110,50,130], b:[210,120,90] },
+        AFTERNOON: { t:[18,8, 42],  m:[80, 25,110], b:[185,70, 65] },
+        EVENING:   { t:[12,4, 28],  m:[55, 15,88],  b:[225,90, 30] },
+        NIGHT:     { t:[4, 2, 18],  m:[18, 8, 45],  b:[45, 20, 75] },
+      };
+      const sk = _blendPeriodColors(SKY, blend);
+      const skyG = ctx.createLinearGradient(0, 0, 0, H);
+      skyG.addColorStop(0,    _rgb(sk.t));
+      skyG.addColorStop(0.45, _rgb(sk.m));
+      skyG.addColorStop(1,    _rgb(sk.b));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Stars ─────────────────────────────────────────────────────────
+      this._stars.forEach(s => {
+        s.phase += s.spd;
+        const sa = s.alpha * (0.4 + 0.6 * Math.sin(s.phase));
+        ctx.save(); ctx.globalAlpha = sa;
+        ctx.fillStyle = 'rgba(255,225,255,1)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 3. Sun/Moon disc ─────────────────────────────────────────────────
+      const sunX = W * 0.50, sunY = H * 0.60;
+      if (period !== 'NIGHT') {
+        const SUN_COL = {
+          MORNING:   [255, 180, 200],
+          AFTERNOON: [255, 140, 160],
+          EVENING:   [255, 110, 60],
+        };
+        const sc = SUN_COL[period] || SUN_COL.AFTERNOON;
+        const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.32);
+        sg.addColorStop(0,   _rgb(sc, 0.68));
+        sg.addColorStop(0.18, _rgb(sc, 0.32));
+        sg.addColorStop(0.50, _rgb(sc, 0.08));
+        sg.addColorStop(1,   'rgba(180,40,100,0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, H * 0.25, W, H * 0.55);
+        // Hard sun disc
+        ctx.fillStyle = _rgb(sc, 0.88);
+        ctx.beginPath(); ctx.arc(sunX, sunY, W * 0.028, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // ── 4. God rays ───────────────────────────────────────────────────────
+      this._rays.forEach(r => {
+        r.phase += r.spd;
+        const a = r.alpha * (0.55 + 0.45 * Math.sin(r.phase));
+        ctx.save();
+        ctx.translate(sunX, sunY); ctx.rotate(r.angle);
+        const rg = ctx.createLinearGradient(-r.width * 0.5, 0, r.width * 0.5, 0);
+        const rHue = period === 'NIGHT' ? 280 : period === 'EVENING' ? 30 : 320;
+        rg.addColorStop(0,   'rgba(200,80,200,0)');
+        rg.addColorStop(0.5, `hsla(${rHue},85%,68%,${a})`);
+        rg.addColorStop(1,   'rgba(200,80,200,0)');
+        ctx.fillStyle = rg;
+        ctx.fillRect(-r.width * 0.5, -H * 0.1, r.width, H * 1.25);
+        ctx.restore();
+      });
+
+      // ── 5. Retro perspective grid ─────────────────────────────────────────
+      const GRID_COL = {
+        MORNING:   [220, 80, 200],
+        AFTERNOON: [200, 60, 200],
+        EVENING:   [245, 50, 130],
+        NIGHT:     [160, 40, 220],
+      };
+      const gc = GRID_COL[period] || GRID_COL.AFTERNOON;
+      ctx.save();
+      ctx.lineWidth = 0.8;
+      this._gridLines.forEach(gl => {
+        if (gl.type === 'v') {
+          const a = 0.28 + 0.12 * Math.sin(t * 0.6);
+          ctx.strokeStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},${a})`;
+          ctx.beginPath(); ctx.moveTo(gl.sx, gl.sy); ctx.lineTo(gl.ex, gl.ey); ctx.stroke();
+        } else {
+          const a = (0.08 + gl.prog * 0.32) * (0.6 + 0.4 * Math.sin(t * 0.8 + gl.prog * 2));
+          ctx.strokeStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},${a})`;
+          ctx.beginPath(); ctx.moveTo(0, gl.y); ctx.lineTo(W, gl.y); ctx.stroke();
+        }
+      });
+      ctx.restore();
+
+      // ── 6. Grid floor fill ────────────────────────────────────────────────
+      const flG = ctx.createLinearGradient(0, H * 0.60, 0, H);
+      flG.addColorStop(0, 'rgba(12,4,28,0)');
+      flG.addColorStop(1, 'rgba(4,2,18,0.82)');
+      ctx.fillStyle = flG; ctx.fillRect(0, H * 0.60, W, H * 0.40);
+
+      // ── 7. Neon horizon line ──────────────────────────────────────────────
+      const hLineY = H * 0.60;
+      const hlG = ctx.createLinearGradient(0, hLineY - 2, 0, hLineY + 2);
+      hlG.addColorStop(0, `rgba(${gc[0]},${gc[1]},${gc[2]},0.06)`);
+      hlG.addColorStop(0.5, `rgba(${gc[0]},${gc[1]},${gc[2]},0.55)`);
+      hlG.addColorStop(1, `rgba(${gc[0]},${gc[1]},${gc[2]},0.06)`);
+      ctx.fillStyle = hlG; ctx.fillRect(0, hLineY - 2, W, 4);
+      // Glow
+      const hlGlow = ctx.createLinearGradient(0, hLineY - 18, 0, hLineY + 18);
+      hlGlow.addColorStop(0, `rgba(${gc[0]},${gc[1]},${gc[2]},0)`);
+      hlGlow.addColorStop(0.5, `rgba(${gc[0]},${gc[1]},${gc[2]},0.18)`);
+      hlGlow.addColorStop(1, `rgba(${gc[0]},${gc[1]},${gc[2]},0)`);
+      ctx.fillStyle = hlGlow; ctx.fillRect(0, hLineY - 18, W, 36);
+
+      // ── 8. Cloud wisps ────────────────────────────────────────────────────
+      this._clouds.forEach(c => {
+        c.phase += c.spd;
+        const pulse = 0.72 + 0.28 * Math.sin(c.phase);
+        ctx.save(); ctx.globalAlpha = c.alpha * pulse;
+        const cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.w * 0.52);
+        cg.addColorStop(0, `hsla(${c.hue},72%,68%,1)`);
+        cg.addColorStop(0.5, `hsla(${c.hue},65%,55%,0.5)`);
+        cg.addColorStop(1, `hsla(${c.hue},58%,42%,0)`);
+        ctx.scale(1, c.h / (c.w * 0.52));
+        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(c.x, c.y * c.w * 0.52 / c.h, c.w * 0.52, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 9. Palm tree silhouettes ──────────────────────────────────────────
+      this._palms.forEach(palm => this._drawPalm(ctx, palm, t, period));
+
+      // ── 10. Scanline overlay (retro CRT effect) ───────────────────────────
+      const scanA = 0.028;
+      for (let sy = 0; sy < H; sy += 3) {
+        ctx.fillStyle = `rgba(0,0,0,${scanA})`;
+        ctx.fillRect(0, sy, W, 1);
+      }
+
+      // ── 11. Bottom vignette ───────────────────────────────────────────────
+      const bv = ctx.createLinearGradient(0, H * 0.80, 0, H);
+      bv.addColorStop(0, 'rgba(2,1,10,0)');
+      bv.addColorStop(1, 'rgba(2,1,10,0.72)');
+      ctx.fillStyle = bv; ctx.fillRect(0, H * 0.80, W, H * 0.20);
+    },
+
+    create(W, H) {
+      const r = Math.random();
+      if (r < 0.42) {
+        return {
+          type: 'ember',
+          x: W * 0.12 + Math.random() * W * 0.76,
+          y: H * 0.55 + Math.random() * H * 0.42,
+          vx: (Math.random() - 0.5) * 1.4, vy: -(0.52 + Math.random() * 1.45),
+          r: 1.0 + Math.random() * 3.5,
+          hue: [300, 320, 340, 20, 38, 270][Math.floor(Math.random() * 6)],
+          alpha: 0, maxAlpha: 0.60 + Math.random() * 0.32,
+          life: 0, fadeIn: 10, maxLife: 75 + Math.floor(Math.random() * 60),
+          sw: Math.random() * Math.PI * 2, swAmp: 0.8 + Math.random() * 2.2, swSpd: 0.016 + Math.random() * 0.024,
+        };
+      } else if (r < 0.72) {
+        return {
+          type: 'mote',
+          x: Math.random() * W, y: H * 0.28 + Math.random() * H * 0.58,
+          vx: (Math.random() - 0.5) * 0.48, vy: -(0.07 + Math.random() * 0.22),
+          r: 0.7 + Math.random() * 1.6,
+          hue: 285 + Math.floor(Math.random() * 65),
+          alpha: 0, maxAlpha: 0.20 + Math.random() * 0.22,
+          life: 0, fadeIn: 22, maxLife: 175 + Math.floor(Math.random() * 105),
+          sw: Math.random() * Math.PI * 2, swAmp: 0.45 + Math.random() * 1.0, swSpd: 0.009 + Math.random() * 0.013,
+        };
+      } else {
+        return {
+          type: 'bird',
+          x: Math.random() < 0.5 ? -40 : W + 40,
+          y: H * 0.10 + Math.random() * H * 0.38,
+          vx: (Math.random() < 0.5 ? 1 : -1) * (0.75 + Math.random() * 1.5),
+          vy: (Math.random() - 0.5) * 0.22,
+          sz: 5 + Math.random() * 9, flapPhase: Math.random() * Math.PI * 2,
+          alpha: 0, maxAlpha: 0.65 + Math.random() * 0.28,
+          life: 0, fadeIn: 15,
+        };
+      }
+    },
+
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'ember') {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.0);
+        g.addColorStop(0,    `hsla(${p.hue + 25},100%,92%,1)`);
+        g.addColorStop(0.35, `hsla(${p.hue},     94%,68%,0.72)`);
+        g.addColorStop(1,    `hsla(${p.hue - 10},80%,42%,0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.0, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'mote') {
+        ctx.fillStyle = `hsla(${p.hue},88%,72%,1)`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      } else {
+        const d = p.vx > 0 ? 1 : -1;
+        const f = Math.sin(p.flapPhase) * p.sz * 0.58;
+        ctx.fillStyle = 'rgba(6,3,14,0.92)';
+        [[0, d], [d, -d]].forEach(([mx, ex]) => {
+          ctx.beginPath();
+          ctx.moveTo(p.x + mx * p.sz * 0.02, p.y);
+          ctx.quadraticCurveTo(p.x + ex * p.sz * 0.52, p.y - f, p.x + ex * p.sz, p.y);
+          ctx.quadraticCurveTo(p.x + ex * p.sz * 0.52, p.y + f * 0.55, p.x + mx * p.sz * 0.02, p.y);
+          ctx.fill();
+        });
+      }
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      p.life++;
+      if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; } else p.x += p.vx;
+      p.y += p.vy;
+      if (p.flapPhase !== undefined) p.flapPhase += 0.13;
+      const fi = Math.min(1, p.life / p.fadeIn);
+      const fo = (p.maxLife && p.life > p.maxLife - 18) ? Math.max(0, (p.maxLife - p.life) / 18) : 1;
+      p.alpha = p.maxAlpha * fi * fo;
+      if (p.type === 'bird') return p.x > -80 && p.x < W + 80;
+      return p.life < p.maxLife && p.y > -25;
+    },
+  },
+
+  // ── ANIME — Premium Manga × Anime Scene ─────────────────────────────────
+  // Stylized: anime sky with painterly clouds, manga speed-line bursts,
+  // floating sakura/energy petals, halftone texture, light flares.
+  // Time-of-day: day/evening/night anime atmosphere.
+  anime: {
+    max: 35, rate: 0.085,
+    _stars: null, _clouds: null, _halftone: null, _flares: null, _speedBursts: null,
+
+    init(W, H) {
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      this._stars = Array.from({ length: 65 }, () => ({
+        x: rng(0, W), y: rng(0, H * 0.88),
+        r: 0.5 + rng(0, 1.5), alpha: 0.20 + rng(0, 0.70),
+        phase: rng(0, Math.PI * 2), spd: 0.015 + rng(0, 0.030),
+      }));
+
+      // Anime-style chunky clouds
+      this._clouds = Array.from({ length: 6 }, (_, i) => ({
+        x: W * (0.06 + i * 0.16) + rng(-W * 0.06, W * 0.06),
+        y: H * (0.08 + rng(0, 0.25)),
+        w: W * (0.09 + rng(0, 0.12)),
+        phase: rng(0, Math.PI * 2),
+        spd: 0.004 + rng(0, 0.004),
+        alpha: 0.60 + rng(0, 0.32),
+        hue: 220 + rng(0, 80)|0,
+        puffs: Math.floor(rng(3, 7)),
+      }));
+
+      // Halftone dot grid (pre-computed positions)
+      this._halftone = [];
+      const dot_spacing = Math.max(10, Math.min(W, H) * 0.022);
+      for (let hx = dot_spacing; hx < W; hx += dot_spacing) {
+        for (let hy = dot_spacing; hy < H; hy += dot_spacing) {
+          this._halftone.push({ x: hx, y: hy, r: dot_spacing * 0.18 });
+        }
+      }
+
+      // Light lens flares
+      this._flares = Array.from({ length: 5 }, (_, i) => ({
+        x: W * (0.12 + i * 0.19),
+        y: H * (0.08 + rng(0, 0.20)),
+        r: W * (0.012 + rng(0, 0.022)),
+        hue: [220, 280, 180, 320, 60][i],
+        phase: rng(0, Math.PI * 2),
+        spd: rng(0.012, 0.025),
+      }));
+
+      // Occasional speed-line burst events
+      this._speedBursts = [];
+      this._nextBurst = 200 + Math.floor(rng(0, 300));
+    },
+
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const blend = _getSmoothBlend();
+      const t = _frame * 0.013;
+
+      // ── 1. Anime sky ─────────────────────────────────────────────────────
+      const SKY = {
+        MORNING:   { t:[60,40,105], m:[130,80,170], b:[210,130,200] },
+        AFTERNOON: { t:[22,18,68],  m:[80, 45,145], b:[180,100,200] },
+        EVENING:   { t:[18,10,48],  m:[55, 22,100], b:[175,68, 145] },
+        NIGHT:     { t:[5, 3, 22],  m:[18, 8, 52],  b:[45, 22, 88]  },
+      };
+      const sk = _blendPeriodColors(SKY, blend);
+      const skyG = ctx.createLinearGradient(0, 0, 0, H);
+      skyG.addColorStop(0,   _rgb(sk.t));
+      skyG.addColorStop(0.45, _rgb(sk.m));
+      skyG.addColorStop(1,   _rgb(sk.b));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Stars ─────────────────────────────────────────────────────────
+      const starVis = period === 'NIGHT' ? 1.0 : period === 'EVENING' ? 0.50 : 0.15;
+      this._stars.forEach(s => {
+        s.phase += s.spd;
+        const a = s.alpha * starVis * (0.3 + 0.7 * Math.sin(s.phase));
+        if (a < 0.02) return;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgba(225,210,255,1)';
+        ctx.beginPath();
+        // Star cross shape
+        const sr = s.r;
+        ctx.moveTo(s.x - sr * 0.5, s.y); ctx.lineTo(s.x + sr * 0.5, s.y);
+        ctx.moveTo(s.x, s.y - sr * 0.5); ctx.lineTo(s.x, s.y + sr * 0.5);
+        ctx.strokeStyle = 'rgba(225,210,255,1)'; ctx.lineWidth = sr * 0.4; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,245,255,0.90)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, sr * 0.25, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 3. Halftone texture ──────────────────────────────────────────────
+      const htA = period === 'NIGHT' ? 0.055 : 0.035;
+      ctx.save(); ctx.globalAlpha = htA;
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(150,100,200,1)' : 'rgba(180,130,220,1)';
+      this._halftone.forEach(d => {
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.restore();
+
+      // ── 4. Anime clouds (chunky, cel-shaded style) ────────────────────────
+      if (period !== 'NIGHT') {
+        const cloudLight = period === 'MORNING' ? 85 : period === 'AFTERNOON' ? 92 : 75;
+        const cloudAlphaScale = period === 'MORNING' ? 0.7 : 1.0;
         this._clouds.forEach(c => {
           c.phase += c.spd;
-          const pulse = 0.75 + 0.25 * Math.sin(c.phase);
-          ctx.save(); ctx.globalAlpha = c.alpha * pulse;
-          const cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.w * 0.55);
-          cg.addColorStop(0,   `hsla(${c.hue}, 85%, 72%, 1)`);
-          cg.addColorStop(0.5, `hsla(${c.hue}, 78%, 58%, 0.5)`);
-          cg.addColorStop(1,   `hsla(${c.hue}, 70%, 45%, 0)`);
-          ctx.scale(1, c.h / (c.w * 0.55));
-          ctx.fillStyle = cg;
-          ctx.beginPath(); ctx.arc(c.x, c.y * (c.w * 0.55 / c.h), c.w * 0.55, 0, Math.PI * 2); ctx.fill();
+          const pulse = 0.88 + 0.12 * Math.sin(c.phase);
+          const puffR = c.w / (c.puffs * 0.65);
+          ctx.save(); ctx.globalAlpha = c.alpha * pulse * cloudAlphaScale;
+
+          // Shadow layer
+          ctx.fillStyle = `hsla(${c.hue + 20},55%,${cloudLight - 22}%,0.35)`;
+          for (let pi = 0; pi < c.puffs; pi++) {
+            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
+            const py = c.y + puffR * (0.22 + 0.10 * Math.sin(pi * 1.3));
+            ctx.beginPath(); ctx.arc(px + puffR * 0.15, py + puffR * 0.18, puffR * (0.78 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.fill();
+          }
+          // Main cloud body
+          ctx.fillStyle = `hsla(${c.hue},${45 + (period === 'EVENING' ? 20 : 0)}%,${cloudLight}%,1)`;
+          for (let pi = 0; pi < c.puffs; pi++) {
+            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
+            const py = c.y + puffR * (0.18 + 0.08 * Math.sin(pi * 1.3));
+            ctx.beginPath(); ctx.arc(px, py, puffR * (0.85 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.fill();
+          }
+          // Outline (manga style)
+          ctx.strokeStyle = `hsla(${c.hue},40%,${cloudLight - 30}%,0.30)`;
+          ctx.lineWidth = 1.5;
+          for (let pi = 0; pi < c.puffs; pi++) {
+            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
+            const py = c.y + puffR * (0.18 + 0.08 * Math.sin(pi * 1.3));
+            ctx.beginPath(); ctx.arc(px, py, puffR * (0.85 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.stroke();
+          }
           ctx.restore();
         });
+      }
 
-        // ── Silhouette horizon line ────────────────────────────────────
-        const hg = ctx.createLinearGradient(0, H * 0.82, 0, H);
-        hg.addColorStop(0, 'rgba(8, 4, 2, 0)');
-        hg.addColorStop(1, 'rgba(4, 2, 1, 0.78)');
-        ctx.fillStyle = hg; ctx.fillRect(0, H * 0.82, W, H * 0.18);
-      },
+      // ── 5. Lens flares ────────────────────────────────────────────────────
+      this._flares.forEach(fl => {
+        fl.phase += fl.spd;
+        const fa = (0.04 + 0.03 * Math.sin(fl.phase));
+        const fg = ctx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, fl.r * 3.5);
+        fg.addColorStop(0,    `hsla(${fl.hue},90%,82%,${fa * 3.5})`);
+        fg.addColorStop(0.35, `hsla(${fl.hue},82%,65%,${fa * 1.4})`);
+        fg.addColorStop(1,    `hsla(${fl.hue},72%,48%,0)`);
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r * 3.5, 0, Math.PI * 2); ctx.fill();
+        // Cross flare lines
+        ctx.save(); ctx.globalAlpha = fa * 2.5;
+        ctx.strokeStyle = `hsla(${fl.hue},88%,80%,1)`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(fl.x - fl.r * 5, fl.y); ctx.lineTo(fl.x + fl.r * 5, fl.y);
+        ctx.moveTo(fl.x, fl.y - fl.r * 5); ctx.lineTo(fl.x, fl.y + fl.r * 5);
+        ctx.stroke(); ctx.restore();
+      });
 
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.55) {
-          // Ember rising from horizon
-          return {
-            type: 'ember',
-            x: W * 0.15 + Math.random() * W * 0.70,
-            y: H * 0.62 + Math.random() * H * 0.35,
-            vx: (Math.random() - 0.5) * 1.2,
-            vy: -(0.55 + Math.random() * 1.35),
-            r: 1.2 + Math.random() * 3.0,
-            hue: 18 + Math.floor(Math.random() * 32),
-            alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
-            life: 0, fadeIn: 10, maxLife: 80 + Math.floor(Math.random() * 65),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.8 + Math.random() * 1.8, swSpd: 0.018 + Math.random() * 0.025,
-          };
-        } else if (r < 0.80) {
-          // Warm dust mote
-          return {
-            type: 'mote',
-            x: Math.random() * W, y: H * 0.30 + Math.random() * H * 0.55,
-            vx: (Math.random() - 0.5) * 0.42, vy: -(0.08 + Math.random() * 0.25),
-            r: 0.8 + Math.random() * 1.8,
-            alpha: 0, maxAlpha: 0.22 + Math.random() * 0.25,
-            life: 0, fadeIn: 22, maxLife: 180 + Math.floor(Math.random() * 110),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.5 + Math.random() * 1.0, swSpd: 0.010 + Math.random() * 0.015,
-          };
-        } else {
-          // Silhouette bird
-          return {
-            type: 'bird',
-            x: Math.random() < 0.5 ? -30 : W + 30,
-            y: H * 0.12 + Math.random() * H * 0.35,
-            vx: (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 1.4),
-            vy: (Math.random() - 0.5) * 0.2,
-            sz: 6 + Math.random() * 10,
-            flapPhase: Math.random() * Math.PI * 2,
-            alpha: 0, maxAlpha: 0.65 + Math.random() * 0.28,
-            life: 0, fadeIn: 18,
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'ember') {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8);
-          g.addColorStop(0,   `hsla(${p.hue + 20}, 100%, 88%, 1)`);
-          g.addColorStop(0.35,`hsla(${p.hue},      92%, 65%, 0.7)`);
-          g.addColorStop(1,   `hsla(${p.hue - 10}, 80%, 42%, 0)`);
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2); ctx.fill();
-        } else if (p.type === 'mote') {
-          ctx.fillStyle = 'rgba(255, 210, 145, 1)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        } else {
-          // Silhouette bird — W shape
-          const d = p.vx > 0 ? 1 : -1;
-          const f = Math.sin(p.flapPhase) * p.sz * 0.55;
-          ctx.fillStyle = 'rgba(8, 4, 2, 1)';
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.quadraticCurveTo(p.x - d * p.sz * 0.55, p.y - f, p.x - d * p.sz, p.y);
-          ctx.quadraticCurveTo(p.x - d * p.sz * 0.55, p.y + f * 0.6, p.x, p.y);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.quadraticCurveTo(p.x + d * p.sz * 0.55, p.y - f, p.x + d * p.sz, p.y);
-          ctx.quadraticCurveTo(p.x + d * p.sz * 0.55, p.y + f * 0.6, p.x, p.y);
-          ctx.fill();
-        }
-        ctx.restore();
-      },
-
-      update(p, W, H) {
-        p.life++;
-        if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
-        else p.x += p.vx;
-        p.y += p.vy;
-        if (p.flapPhase !== undefined) p.flapPhase += 0.14;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = (p.maxLife && p.life > p.maxLife - 18) ? Math.max(0, (p.maxLife - p.life) / 18) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        if (p.type === 'bird') return p.x > -80 && p.x < W + 80;
-        if (p.type === 'ember' || p.type === 'mote') return p.life < p.maxLife && p.y > -20;
-        return false;
-      },
-    },
-
-    // ── Anime / Manga — cinematic manga night world ──────────────────────────
-    anime: {
-      max: 30, rate: 0.055,
-      _stars: null,
-
-      init(W, H) {
-        // Soft purple stars
-        this._stars = Array.from({ length: 55 }, () => ({
-          x: Math.random() * W, y: Math.random() * H * 0.88,
-          r: 0.3 + Math.random() * 1.2,
-          alpha: 0.18 + Math.random() * 0.55,
-          twinklePhase: Math.random() * Math.PI * 2,
-          twinkleSpd:   0.012 + Math.random() * 0.022,
-        }));
-      },
-
-      drawBackground(ctx, W, H) {
-        // Twinkling purple-white stars
-        this._stars.forEach(s => {
-          s.twinklePhase += s.twinkleSpd;
-          const a = s.alpha * (0.18 + 0.32 * Math.sin(s.twinklePhase));
-          ctx.save(); ctx.globalAlpha = a;
-          ctx.fillStyle = 'rgba(220, 190, 255, 1)';
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.55, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
+      // ── 6. Speed line burst (occasional dramatic effect) ──────────────────
+      if (_frame >= this._nextBurst) {
+        this._speedBursts.push({
+          x: W * (0.28 + Math.random() * 0.44),
+          y: H * (0.22 + Math.random() * 0.45),
+          frame: 0, maxFrame: 35,
+          hue: [280, 320, 200, 45, 180][Math.floor(Math.random() * 5)],
+          lines: Math.floor(18 + Math.random() * 16),
+          maxR: Math.min(W, H) * (0.28 + Math.random() * 0.22),
         });
-      },
-
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.28) {
-          // Speed line from centre outward
-          const angle = Math.random() * Math.PI * 2;
-          const spd   = 7 + Math.random() * 14;
-          return {
-            type: 'line', angle,
-            x: W / 2, y: H / 2,
-            vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-            len: 45 + Math.random() * 95,
-            alpha: 0, maxAlpha: 0.28 + Math.random() * 0.32,
-            life: 0, maxLife: 22 + Math.floor(Math.random() * 18),
-          };
-        } else if (r < 0.58) {
-          // Manga flower (drifting upward)
-          return {
-            type: 'flower',
-            x: Math.random() * W, y: H + 22,
-            vx: (Math.random() - 0.5) * 0.68,
-            vy: -(0.38 + Math.random() * 0.88),
-            rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 0.038,
-            alpha: 0, maxAlpha: 0.52 + Math.random() * 0.32,
-            life: 0, maxLife: 95 + Math.floor(Math.random() * 75),
-            size: 11 + Math.floor(Math.random() * 12),
-            char: ['✿', '❀', '❃', '✾', '❁'][Math.floor(Math.random() * 5)],
-            sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.4, swSpd: 0.014 + Math.random() * 0.018,
-          };
-        } else if (r < 0.82) {
-          // Anime sparkle
-          return {
-            type: 'sparkle',
-            x: Math.random() * W, y: Math.random() * H,
-            vx: (Math.random() - 0.5) * 0.55, vy: -(0.22 + Math.random() * 0.62),
-            alpha: 0, maxAlpha: 0.48 + Math.random() * 0.38,
-            life: 0, maxLife: 65 + Math.floor(Math.random() * 55),
-            size: 9 + Math.floor(Math.random() * 9),
-            char: ['✦', '✧', '⭑', '✩'][Math.floor(Math.random() * 4)],
-          };
-        } else {
-          // Soft bokeh orb
-          return {
-            type: 'bokeh',
-            x: Math.random() * W, y: H * 0.5 + Math.random() * H * 0.55,
-            vx: (Math.random() - 0.5) * 0.30, vy: -(0.12 + Math.random() * 0.30),
-            r: 8 + Math.random() * 28,
-            alpha: 0, maxAlpha: 0.04 + Math.random() * 0.07,
-            life: 0, fadeIn: 30, maxLife: 150 + Math.floor(Math.random() * 100),
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'line') {
-          ctx.strokeStyle = `rgba(230, 200, 255, ${p.alpha})`;
-          ctx.lineWidth = 0.75; ctx.lineCap = 'round';
+        this._nextBurst = _frame + 240 + Math.floor(Math.random() * 360);
+      }
+      this._speedBursts = this._speedBursts.filter(sb => {
+        sb.frame++;
+        const prog = sb.frame / sb.maxFrame;
+        const a = prog < 0.3 ? prog / 0.3 : prog > 0.7 ? (1 - prog) / 0.3 : 1.0;
+        ctx.save(); ctx.globalAlpha = 0.18 * a;
+        for (let li = 0; li < sb.lines; li++) {
+          const ang = (li / sb.lines) * Math.PI * 2;
+          const r1 = sb.maxR * (0.32 + prog * 0.68) * (0.6 + Math.random() * 0.4);
+          const r2 = sb.maxR * (0.42 + prog * 0.58) * (0.7 + Math.random() * 0.3);
+          ctx.strokeStyle = `hsla(${sb.hue},88%,75%,1)`;
+          ctx.lineWidth = 0.8 + Math.random() * 1.2;
           ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x - Math.cos(p.angle) * p.len, p.y - Math.sin(p.angle) * p.len);
+          ctx.moveTo(sb.x + Math.cos(ang) * r1, sb.y + Math.sin(ang) * r1);
+          ctx.lineTo(sb.x + Math.cos(ang) * r2, sb.y + Math.sin(ang) * r2);
           ctx.stroke();
-        } else if (p.type === 'flower') {
-          ctx.fillStyle = 'rgba(255, 155, 205, 1)';
-          ctx.font = `${p.size}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillText(p.char, 0, 0);
-        } else if (p.type === 'sparkle') {
-          ctx.fillStyle = 'rgba(255, 210, 255, 1)';
-          ctx.font = `${p.size}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(p.char, p.x, p.y);
-        } else {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-          g.addColorStop(0,   'rgba(210, 170, 255, 1)');
-          g.addColorStop(0.45,'rgba(185, 130, 255, 0.5)');
-          g.addColorStop(1,   'rgba(155, 90, 240, 0)');
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
         }
         ctx.restore();
-      },
+        return sb.frame < sb.maxFrame;
+      });
 
-      update(p, W, H) {
-        p.life++;
-        if (p.type === 'line') {
-          p.x += p.vx; p.y += p.vy;
-          const fi = Math.min(1, p.life / 6);
-          const fo = p.life > p.maxLife - 10 ? Math.max(0, (p.maxLife - p.life) / 10) : 1;
-          p.alpha = p.maxAlpha * fi * fo;
-          return p.life < p.maxLife;
-        }
-        if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
-        else p.x += p.vx;
-        p.y += p.vy;
-        if (p.rot !== undefined) p.rot += p.rotV;
-        const fi = Math.min(1, p.life / 14);
-        const fo = p.life > p.maxLife - 18 ? Math.max(0, (p.maxLife - p.life) / 18) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        if (p.type === 'flower') return p.y > -55 && p.life < p.maxLife;
-        return p.life < p.maxLife;
-      },
+      // ── 7. Vignette ───────────────────────────────────────────────────────
+      const vg = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.25, W * 0.5, H * 0.5, W * 0.78);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(0.72, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     },
 
-    // ── Matrix — digital rain (all rendering via drawBackground, no particles)
-    matrix: {
-      max: 0, rate: 0,
-      _cols: null,
+    create(W, H) {
+      const period = _getCanvasPeriod();
+      const r = Math.random();
+      if (r < 0.50) {
+        // Anime energy petal / fragment
+        const hues = period === 'NIGHT' ? [260,295,315,200,170] : [310,330,50,200,270];
+        return {
+          type: 'petal',
+          x: Math.random() * W * 1.3 - W * 0.15,
+          y: -20 - Math.random() * 60,
+          vx: (Math.random() - 0.5) * 2.0,
+          vy: 0.8 + Math.random() * 1.8,
+          rot: Math.random() * Math.PI * 2,
+          rotV: (Math.random() - 0.5) * 0.12,
+          sz: 3 + Math.random() * 8,
+          hue: hues[Math.floor(Math.random() * hues.length)],
+          alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
+          life: 0, fadeIn: 10,
+          sw: Math.random() * Math.PI * 2,
+          swAmp: 1.2 + Math.random() * 2.8, swSpd: 0.014 + Math.random() * 0.022,
+        };
+      } else if (r < 0.78) {
+        // Sparkle burst
+        return {
+          type: 'sparkle',
+          x: Math.random() * W, y: Math.random() * H * 0.92,
+          r: 1.0 + Math.random() * 3.5,
+          hue: [220, 280, 320, 180, 55][Math.floor(Math.random() * 5)],
+          alpha: 0, maxAlpha: 0.62 + Math.random() * 0.32,
+          life: 0, fadeIn: 7, maxLife: 40 + Math.floor(Math.random() * 38),
+          vx: (Math.random() - 0.5) * 0.5, vy: -(0.08 + Math.random() * 0.35),
+        };
+      } else {
+        // Manga ink stroke (subtle)
+        return {
+          type: 'ink',
+          x: Math.random() * W, y: Math.random() * H * 0.85,
+          len: W * (0.03 + Math.random() * 0.07),
+          angle: (Math.random() - 0.5) * Math.PI * 0.4,
+          alpha: 0, maxAlpha: 0.12 + Math.random() * 0.14,
+          life: 0, fadeIn: 12, maxLife: 60 + Math.floor(Math.random() * 50),
+        };
+      }
+    },
 
-      _mc() {
-        return Math.random() < 0.55
-          ? (Math.random() > 0.5 ? '0' : '1')
-          : String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
-      },
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'petal') {
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        // Diamond / anime fragment shape
+        const s = p.sz;
+        ctx.fillStyle = `hsla(${p.hue},90%,72%,1)`;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 1.8); ctx.lineTo(s * 0.65, 0);
+        ctx.lineTo(0,  s * 1.8); ctx.lineTo(-s * 0.65, 0);
+        ctx.closePath(); ctx.fill();
+        // Inner highlight
+        ctx.fillStyle = `hsla(${p.hue + 20},95%,88%,0.55)`;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 1.0); ctx.lineTo(s * 0.28, -s * 0.2);
+        ctx.lineTo(0, s * 0.35); ctx.lineTo(-s * 0.28, -s * 0.2);
+        ctx.closePath(); ctx.fill();
+      } else if (p.type === 'sparkle') {
+        const s = p.r;
+        ctx.strokeStyle = `hsla(${p.hue},92%,80%,1)`; ctx.lineWidth = s * 0.45; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x - s * 2.8, p.y); ctx.lineTo(p.x + s * 2.8, p.y);
+        ctx.moveTo(p.x, p.y - s * 2.8); ctx.lineTo(p.x, p.y + s * 2.8);
+        ctx.moveTo(p.x - s * 1.8, p.y - s * 1.8); ctx.lineTo(p.x + s * 1.8, p.y + s * 1.8);
+        ctx.moveTo(p.x + s * 1.8, p.y - s * 1.8); ctx.lineTo(p.x - s * 1.8, p.y + s * 1.8);
+        ctx.stroke();
+      } else {
+        // Ink stroke
+        ctx.strokeStyle = 'rgba(180,140,210,1)';
+        ctx.lineWidth = 1.0; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x - Math.cos(p.angle) * p.len * 0.5, p.y - Math.sin(p.angle) * p.len * 0.5);
+        ctx.lineTo(p.x + Math.cos(p.angle) * p.len * 0.5, p.y + Math.sin(p.angle) * p.len * 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
 
-      init(W, H) {
-        _stars = [];
-        const n = Math.floor(W / 14);
-        const mc = this._mc.bind(this);
-        this._cols = Array.from({ length: n }, (_, i) => ({
-          x:       i * 14,
-          y:       -(Math.random() * H),
-          speed:    4 + Math.random() * 9,
-          len:     12 + Math.floor(Math.random() * 24),
-          chars:   Array.from({ length: 36 }, () => mc()),
-          opacity: 0.30 + Math.random() * 0.55,
-          active:  Math.random() > 0.38,
-        }));
-      },
+    update(p, W, H) {
+      p.life++;
+      if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
+      else { p.x += p.vx; }
+      p.y += p.vy || 0;
+      if (p.rot !== undefined) p.rot += p.rotV;
+      const fi = Math.min(1, p.life / p.fadeIn);
+      const fo = (p.maxLife && p.life > p.maxLife - 18) ? Math.max(0, (p.maxLife - p.life) / 18) : 1;
+      p.alpha = p.maxAlpha * fi * fo;
+      if (p.type === 'petal') return p.y < H + 40;
+      return p.life < p.maxLife;
+    },
+  },
 
-      drawBackground(ctx, W, H) {
-        // Subtle trail fade — not full clear, so trails persist
-        ctx.fillStyle = 'rgba(0, 6, 0, 0.14)';
-        ctx.fillRect(0, 0, W, H);
-        ctx.font = '12px "Courier New",monospace';
-        ctx.textAlign = 'center';
-        const mc = this._mc.bind(this);
+  // ── NEON CITY — Premium Cyberpunk City with Time-of-Day ─────────────────
+  // City skyline, neon signs, wet street reflections, moving traffic,
+  // rain streaks, moon/sun, animated billboard glow.
+  neon: {
+    max: 58, rate: 0.16,
+    _buildings: null, _signs: null, _cars: null, _rain: null, _stars: null, _moon: null,
 
-        this._cols.forEach(col => {
-          if (!col.active) return;
-          for (let i = 0; i < col.len; i++) {
-            const cy = col.y - i * 14;
-            if (cy < -14 || cy > H + 14) continue;
-            if (i === 0) {
-              // Lead char — bright white-green
-              ctx.fillStyle = `rgba(200, 255, 200, ${col.opacity})`;
-            } else {
-              const f = 1 - i / col.len;
-              ctx.fillStyle = `rgba(0, ${Math.round(160 * f + 30)}, 0, ${col.opacity * f * 0.85})`;
+    init(W, H) {
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      // City skyline: multiple building layers
+      this._buildings = Array.from({ length: 32 }, (_, i) => {
+        const layer = i < 10 ? 2 : i < 22 ? 1 : 0;
+        const bW = W * (rng(0.038, 0.085));
+        const bH = H * rng(0.18 + layer * 0.07, 0.52 + layer * 0.05);
+        return {
+          x: W * (i / 31) - bW * 0.4,
+          bW, bH,
+          baseY: H * (0.62 + layer * 0.02),
+          layer,
+          hue: rng(0, 1) < 0.5 ? rng(185, 220) : rng(270, 300),
+          windowsW: Math.floor(rng(2, 5)),
+          windowsH: Math.floor(rng(4, 10)),
+          phase: rng(0, Math.PI * 2),
+          antennaH: bH * rng(0, 0.18),
+        };
+      });
+
+      // Neon signs (animated glow elements on buildings)
+      this._signs = Array.from({ length: 12 }, (_, i) => ({
+        x: W * rng(0.05, 0.95),
+        y: H * rng(0.25, 0.60),
+        w: W * rng(0.03, 0.08),
+        h: H * rng(0.018, 0.040),
+        hue: [185, 280, 320, 55, 125, 0][i % 6],
+        phase: rng(0, Math.PI * 2),
+        spd: rng(0.03, 0.10),
+        on: Math.random() > 0.15, // some signs start flickering
+        flicker: Math.random() < 0.22,
+      }));
+
+      // Moving cars (light trails in street reflection zone)
+      this._cars = Array.from({ length: 7 }, (_, i) => ({
+        x: rng(-W * 0.3, W * 1.3),
+        y: H * (0.80 + rng(0, 0.06)),
+        speed: (rng(0, 1) < 0.5 ? 1 : -1) * rng(1.2, 3.5),
+        lane: i % 3,
+        hue: [185, 0, 55, 270, 120][i % 5],
+        sz: rng(W * 0.022, W * 0.040),
+        phase: rng(0, Math.PI * 2),
+      }));
+
+      this._stars = Array.from({ length: 55 }, () => ({
+        x: rng(0, W), y: rng(0, H * 0.62),
+        r: 0.4 + rng(0, 1.1), alpha: 0.15 + rng(0, 0.55),
+        phase: rng(0, Math.PI * 2), spd: 0.015 + rng(0, 0.025),
+      }));
+
+      this._moon = { x: W * 0.80, y: H * 0.12, r: Math.min(W, H) * 0.036, phase: 0 };
+    },
+
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const blend = _getSmoothBlend();
+      const t = _frame * 0.014;
+
+      // ── 1. Night sky gradient ─────────────────────────────────────────────
+      const SKY = {
+        MORNING:   { t:[22,12,52], m:[42,25,88], b:[65,38,88] },
+        AFTERNOON: { t:[28,18,65], m:[52,30,98], b:[75,45,95] },
+        EVENING:   { t:[8, 5, 28], m:[18,10,52], b:[32,18,72] },
+        NIGHT:     { t:[2, 1, 12], m:[6,  4, 28], b:[12, 8, 42] },
+      };
+      const sk = _blendPeriodColors(SKY, blend);
+      const skyG = ctx.createLinearGradient(0, 0, 0, H * 0.68);
+      skyG.addColorStop(0, _rgb(sk.t)); skyG.addColorStop(1, _rgb(sk.b));
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Stars ─────────────────────────────────────────────────────────
+      const starVis = period === 'NIGHT' ? 0.90 : period === 'EVENING' ? 0.45 : 0.12;
+      this._stars.forEach(s => {
+        s.phase += s.spd;
+        const a = s.alpha * starVis * (0.35 + 0.65 * Math.sin(s.phase));
+        if (a < 0.02) return;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgba(200,210,255,1)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 3. Moon ───────────────────────────────────────────────────────────
+      const moonVis = period === 'NIGHT' ? 1.0 : period === 'EVENING' ? 0.60 : 0;
+      if (moonVis > 0) {
+        this._moon.phase += 0.008;
+        const moonG = ctx.createRadialGradient(this._moon.x, this._moon.y, 0, this._moon.x, this._moon.y, this._moon.r * 4.5);
+        moonG.addColorStop(0, 'rgba(180,220,255,0.18)');
+        moonG.addColorStop(1, 'rgba(140,180,255,0)');
+        ctx.save(); ctx.globalAlpha = moonVis;
+        ctx.fillStyle = moonG; ctx.fillRect(this._moon.x - this._moon.r * 5, this._moon.y - this._moon.r * 5, this._moon.r * 10, this._moon.r * 10);
+        ctx.fillStyle = 'rgba(210,235,255,0.90)';
+        ctx.beginPath(); ctx.arc(this._moon.x, this._moon.y, this._moon.r, 0, Math.PI * 2); ctx.fill();
+        // Moon craters
+        ctx.fillStyle = 'rgba(170,200,240,0.30)';
+        [[this._moon.r * 0.28, -this._moon.r * 0.22, this._moon.r * 0.14],
+         [-this._moon.r * 0.18, this._moon.r * 0.20, this._moon.r * 0.10],
+         [this._moon.r * 0.08, this._moon.r * 0.32, this._moon.r * 0.07]].forEach(([ox,oy,cr]) => {
+          ctx.beginPath(); ctx.arc(this._moon.x + ox, this._moon.y + oy, cr, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      // ── 4. Day sun glow (morning/afternoon) ──────────────────────────────
+      if (period === 'MORNING' || period === 'AFTERNOON') {
+        const sunVis = period === 'MORNING' ? 0.45 : 0.35;
+        const sunX = W * 0.65, sunY = H * 0.08;
+        const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.28);
+        sg.addColorStop(0, `rgba(180,140,255,${sunVis * 0.8})`);
+        sg.addColorStop(0.35, `rgba(140,90,220,${sunVis * 0.3})`);
+        sg.addColorStop(1, 'rgba(90,50,160,0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.40);
+      }
+
+      // ── 5. Buildings ─────────────────────────────────────────────────────
+      this._buildings.sort((a, b) => b.layer - a.layer).forEach(bld => {
+        bld.phase += 0.012;
+        const byA = H * 0.02 * bld.layer;
+
+        // Building base color
+        const dark = period === 'NIGHT' ? 6 : period === 'EVENING' ? 10 : 14;
+        const bc = ctx.createLinearGradient(bld.x, bld.baseY - bld.bH, bld.x + bld.bW, bld.baseY);
+        bc.addColorStop(0, `hsl(${bld.hue},40%,${dark + bld.layer * 4}%)`);
+        bc.addColorStop(1, `hsl(${bld.hue},35%,${dark}%)`);
+        ctx.fillStyle = bc;
+        ctx.fillRect(bld.x, bld.baseY - bld.bH - byA, bld.bW, bld.bH + byA);
+
+        // Windows grid
+        const wW = bld.bW / (bld.windowsW + 1) * 0.72;
+        const wH = bld.bH / (bld.windowsH + 1) * 0.45;
+        for (let wr = 0; wr < bld.windowsH; wr++) {
+          for (let wc2 = 0; wc2 < bld.windowsW; wc2++) {
+            const wx = bld.x + (wc2 + 0.65) * bld.bW / (bld.windowsW + 0.5);
+            const wy = bld.baseY - bld.bH - byA + (wr + 0.8) * bld.bH / (bld.windowsH + 0.5);
+            const lit = Math.sin(bld.phase + wr * 0.8 + wc2 * 1.3) > 0.12;
+            if (lit || period === 'AFTERNOON') {
+              const wa = period === 'NIGHT' ? 0.82 : period === 'EVENING' ? 0.65 : 0.35;
+              const wHue = Math.sin(bld.phase * 0.5 + wr + wc2) > 0.5 ? bld.hue : bld.hue + 60;
+              ctx.fillStyle = `hsla(${wHue},${period==='AFTERNOON'?30:88}%,${period==='AFTERNOON'?55:68}%,${wa})`;
+              ctx.fillRect(wx - wW * 0.5, wy - wH * 0.5, wW, wH);
+              // Window glow
+              if (lit && period !== 'AFTERNOON') {
+                const wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, wW * 2.5);
+                wg.addColorStop(0, `hsla(${wHue},90%,72%,0.14)`);
+                wg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = wg; ctx.fillRect(wx - wW * 2.5, wy - wH * 2.5, wW * 5, wH * 5);
+              }
             }
-            if (Math.random() < 0.035) col.chars[i % col.chars.length] = mc();
-            ctx.fillText(col.chars[i % col.chars.length], col.x + 7, cy);
           }
-          col.y += col.speed;
-          if (col.y > H + col.len * 14) {
-            col.y       = -(col.len * 14 + Math.random() * H * 0.5);
-            col.speed   = 4 + Math.random() * 9;
-            col.len     = 12 + Math.floor(Math.random() * 24);
-            col.active  = Math.random() > 0.35;
-            col.opacity = 0.30 + Math.random() * 0.55;
-            col.chars   = Array.from({ length: 36 }, () => mc());
-          }
-        });
-      },
+        }
 
-      create()  { return null; },
-      draw()    {},
-      update()  { return false; },
+        // Antenna / spire
+        if (bld.antennaH > 10) {
+          const ax = bld.x + bld.bW * 0.5;
+          const ay = bld.baseY - bld.bH - byA;
+          ctx.strokeStyle = `hsl(${bld.hue},50%,${dark + 10}%)`;
+          ctx.lineWidth = 1.5; ctx.beginPath();
+          ctx.moveTo(ax, ay); ctx.lineTo(ax, ay - bld.antennaH); ctx.stroke();
+          // Beacon blink
+          const beacon = (Math.sin(_frame * 0.08 + bld.phase) > 0.6);
+          if (beacon) {
+            ctx.fillStyle = `hsla(${bld.hue},92%,72%,0.85)`;
+            ctx.beginPath(); ctx.arc(ax, ay - bld.antennaH, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      });
+
+      // ── 6. Neon signs ─────────────────────────────────────────────────────
+      this._signs.forEach(sg => {
+        sg.phase += sg.spd;
+        if (sg.flicker && Math.random() < 0.04) sg.on = !sg.on;
+        const svA = sg.on ? (period === 'NIGHT' ? 0.88 : period === 'EVENING' ? 0.70 : 0.40) : 0;
+        if (svA < 0.02) return;
+        const pulse = 0.78 + 0.22 * Math.sin(sg.phase);
+        // Glow behind sign
+        const gBig = ctx.createRadialGradient(sg.x, sg.y, 0, sg.x, sg.y, sg.w * 2.5);
+        gBig.addColorStop(0, `hsla(${sg.hue},92%,62%,${svA * pulse * 0.35})`);
+        gBig.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gBig; ctx.fillRect(sg.x - sg.w * 2.5, sg.y - sg.h * 2.5, sg.w * 5, sg.h * 5);
+        // Sign body
+        ctx.save(); ctx.globalAlpha = svA * pulse;
+        ctx.strokeStyle = `hsla(${sg.hue},95%,72%,1)`;
+        ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+        ctx.strokeRect(sg.x - sg.w * 0.5, sg.y - sg.h * 0.5, sg.w, sg.h);
+        ctx.restore();
+      });
+
+      // ── 7. Moving car light streaks ───────────────────────────────────────
+      const streetY = H * 0.82;
+      this._cars.forEach(car => {
+        car.x += car.speed;
+        if (car.speed > 0 && car.x > W + car.sz * 4) car.x = -car.sz * 4;
+        if (car.speed < 0 && car.x < -car.sz * 4) car.x = W + car.sz * 4;
+        const carY = streetY + car.lane * H * 0.028;
+        const dir = car.speed > 0 ? 1 : -1;
+        const trailLen = car.sz * (3.5 + Math.abs(car.speed) * 0.5);
+
+        // Headlights
+        const hue1 = car.speed > 0 ? car.hue : (car.hue + 180) % 360;
+        const cg = ctx.createLinearGradient(car.x, 0, car.x + dir * trailLen, 0);
+        cg.addColorStop(0, `hsla(${hue1},92%,75%,0.78)`);
+        cg.addColorStop(0.35, `hsla(${hue1},88%,62%,0.32)`);
+        cg.addColorStop(1, `hsla(${hue1},80%,48%,0)`);
+        ctx.fillStyle = cg;
+        ctx.fillRect(Math.min(car.x, car.x + dir * trailLen), carY - 2, trailLen, 4);
+
+        // Car reflection in wet street
+        const refA = 0.22;
+        const rg = ctx.createLinearGradient(car.x, carY, car.x, carY + H * 0.06);
+        rg.addColorStop(0, `hsla(${hue1},90%,68%,${refA})`);
+        rg.addColorStop(1, `hsla(${hue1},80%,50%,0)`);
+        ctx.fillStyle = rg; ctx.fillRect(car.x - car.sz * 0.3, carY, car.sz * 0.6, H * 0.06);
+      });
+
+      // ── 8. Wet street (reflective ground) ─────────────────────────────────
+      const stG = ctx.createLinearGradient(0, H * 0.75, 0, H);
+      const STREET = {
+        MORNING:   [8,5,22],  AFTERNOON: [12,8,30],
+        EVENING:   [5,3,15],  NIGHT:     [2,1,10],
+      };
+      const stc = STREET[period] || STREET.NIGHT;
+      stG.addColorStop(0, _rgb(stc, 0));
+      stG.addColorStop(0.3, _rgb(stc, 0.72));
+      stG.addColorStop(1, _rgb(stc, 0.92));
+      ctx.fillStyle = stG; ctx.fillRect(0, H * 0.75, W, H * 0.25);
+
+      // Street reflection glow from neon signs
+      ctx.save(); ctx.globalAlpha = period === 'NIGHT' ? 0.22 : 0.10;
+      this._signs.forEach(sg => {
+        if (!sg.on) return;
+        const rg2 = ctx.createRadialGradient(sg.x, H * 0.92, 0, sg.x, H * 0.92, sg.w * 4);
+        rg2.addColorStop(0, `hsla(${sg.hue},90%,65%,0.28)`);
+        rg2.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rg2; ctx.fillRect(sg.x - sg.w * 4, H * 0.80, sg.w * 8, H * 0.20);
+      });
+      ctx.restore();
+
+      // ── 9. Edge / sky vignette ────────────────────────────────────────────
+      const vigC = 'rgba(0,0,5,';
+      [ctx.createLinearGradient(0,0,W*0.15,0), ctx.createLinearGradient(W,0,W*0.85,0)].forEach((vg, i) => {
+        vg.addColorStop(0, vigC + '0.58)'); vg.addColorStop(1, vigC + '0)');
+        ctx.fillStyle = vg; ctx.fillRect(i===0?0:W*0.85, 0, W*0.15, H);
+      });
     },
 
-    // ── Neon — synthwave city nightscape ────────────────────────────────────
-    neon: {
-      max: 35, rate: 0.082,
-      _grid: null, _buildings: null,
+    create(W, H) {
+      const period = _getCanvasPeriod();
+      const r = Math.random();
+      if (r < 0.52) {
+        // Rain streak
+        return {
+          type: 'rain',
+          x: Math.random() * W * 1.2 - W * 0.10,
+          y: -20 - Math.random() * H * 0.35,
+          vx: -0.8 + Math.random() * 0.4, vy: 5.5 + Math.random() * 4.0,
+          len: 8 + Math.random() * 22,
+          alpha: 0.08 + Math.random() * 0.18,
+          hue: 185 + Math.floor(Math.random() * 80),
+        };
+      } else if (r < 0.78) {
+        // Neon particle / spark
+        return {
+          type: 'spark',
+          x: Math.random() * W, y: H * 0.20 + Math.random() * H * 0.65,
+          vx: (Math.random() - 0.5) * 1.8, vy: -(0.35 + Math.random() * 1.2),
+          r: 0.8 + Math.random() * 3.5,
+          hue: [185, 280, 320, 55, 125, 0][Math.floor(Math.random() * 6)],
+          alpha: 0, maxAlpha: 0.72 + Math.random() * 0.25,
+          life: 0, fadeIn: 6, maxLife: 38 + Math.floor(Math.random() * 42),
+          sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.4, swSpd: 0.022 + Math.random() * 0.030,
+        };
+      } else {
+        // Neon sign reflection ripple in street
+        return {
+          type: 'ripple',
+          x: Math.random() * W,
+          y: H * (0.82 + Math.random() * 0.12),
+          r: 0, maxR: 15 + Math.random() * 28,
+          alpha: 0.18 + Math.random() * 0.22,
+          hue: [185, 270, 320][Math.floor(Math.random() * 3)],
+          life: 0, maxLife: 40 + Math.floor(Math.random() * 30),
+        };
+      }
+    },
 
-      init(W, H) {
-        _stars = [];
-        // Perspective grid lines
-        this._grid = { W, H };
-        // Silhouette buildings
-        const n = 20 + Math.floor(Math.random() * 8);
-        this._buildings = Array.from({ length: n }, (_, i) => {
-          const bw = W * (0.035 + Math.random() * 0.055);
-          const bh = H * (0.08 + Math.random() * 0.26);
-          const bx = (i / n) * W * 1.04 - W * 0.02 + (Math.random() - 0.5) * (W / n) * 0.4;
-          return {
-            x: bx, y: H - bh, w: bw, h: bh,
-            winCols: Math.floor(bw / 8),
-            wins: [],
-          };
-        });
-        // Pre-generate window states
-        this._buildings.forEach(b => {
-          for (let c = 0; c < b.winCols; c++) {
-            const rows = Math.floor(b.h / 10);
-            b.wins.push(Array.from({ length: rows }, () => Math.random() < 0.28));
-          }
-        });
-      },
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'rain') {
+        ctx.strokeStyle = `hsla(${p.hue},70%,72%,1)`;
+        ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.vx * 2.5, p.y + p.len);
+        ctx.stroke();
+        // Street splash if near bottom
+      } else if (p.type === 'spark') {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8);
+        g.addColorStop(0,   `hsla(${p.hue},100%,88%,1)`);
+        g.addColorStop(0.40, `hsla(${p.hue},92%,68%,0.65)`);
+        g.addColorStop(1,   `hsla(${p.hue},80%,45%,0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'ripple') {
+        ctx.strokeStyle = `hsla(${p.hue},85%,65%,1)`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    },
 
-      drawBackground(ctx, W, H) {
-        const t = _frame;
-
-        // ── Perspective grid ───────────────────────────────────────────
-        const horizonY = H * 0.68;
-        const vanishX  = W * 0.50;
-        // Vertical grid lines converging to vanishing point
-        ctx.save(); ctx.strokeStyle = 'rgba(255, 0, 200, 0.09)'; ctx.lineWidth = 0.8;
-        for (let i = 0; i <= 14; i++) {
-          const bx = (i / 14) * W;
-          ctx.beginPath(); ctx.moveTo(bx, H); ctx.lineTo(vanishX, horizonY); ctx.stroke();
-        }
-        // Horizontal grid lines
-        for (let j = 1; j <= 6; j++) {
-          const py = horizonY + (H - horizonY) * (j / 6);
-          const progress = (py - horizonY) / (H - horizonY);
-          const lx = vanishX - (W * 0.5) * progress;
-          const rx = vanishX + (W * 0.5) * progress;
-          ctx.strokeStyle = j === 6 ? 'rgba(255, 0, 200, 0.14)' : 'rgba(255, 0, 200, 0.06)';
-          ctx.beginPath(); ctx.moveTo(lx, py); ctx.lineTo(rx, py); ctx.stroke();
-        }
-        // Cyan cross-lines
-        ctx.strokeStyle = 'rgba(0, 220, 255, 0.07)'; ctx.lineWidth = 0.7;
-        for (let i = 0; i <= 14; i++) {
-          const bx = (i / 14) * W;
-          ctx.beginPath(); ctx.moveTo(bx, H + 20); ctx.lineTo(vanishX, horizonY); ctx.stroke();
-        }
-        ctx.restore();
-
-        // ── Neon horizon glow ──────────────────────────────────────────
-        const hg = ctx.createLinearGradient(0, horizonY - 2, 0, horizonY + 18);
-        hg.addColorStop(0,   'rgba(255, 0, 200, 0)');
-        hg.addColorStop(0.45,'rgba(255, 0, 200, 0.16)');
-        hg.addColorStop(1,   'rgba(255, 0, 200, 0)');
-        ctx.fillStyle = hg; ctx.fillRect(0, horizonY - 2, W, 20);
-
-        // ── Building silhouettes ───────────────────────────────────────
-        ctx.save();
-        this._buildings.forEach(b => {
-          // Dark building mass
-          ctx.fillStyle = 'rgba(4, 2, 12, 0.92)';
-          ctx.fillRect(b.x, b.y, b.w, b.h);
-          // Neon outline edge glow
-          const edgeCol = Math.random() < 0.5 ? 'rgba(148, 0, 255, 0.45)' : 'rgba(0, 220, 255, 0.38)';
-          ctx.strokeStyle = edgeCol; ctx.lineWidth = 0.9;
-          ctx.strokeRect(b.x, b.y, b.w, b.h);
-          // Windows — blinking occasionally
-          b.wins.forEach((col, ci) => {
-            col.forEach((lit, ri) => {
-              if (!lit) return;
-              if (Math.random() < 0.0008) b.wins[ci][ri] = Math.random() < 0.6;
-              const wx = b.x + 3 + ci * 8;
-              const wy = b.y + 5 + ri * 10;
-              const wh = Math.random() < 0.5 ? 'rgba(0, 220, 255, 0.62)' : 'rgba(255, 110, 220, 0.55)';
-              ctx.fillStyle = wh; ctx.fillRect(wx, wy, 4, 5);
-            });
-          });
-        });
-        ctx.restore();
-
-        // ── Ground neon reflection strips ─────────────────────────────
-        const rg = ctx.createLinearGradient(0, H * 0.86, 0, H);
-        rg.addColorStop(0, 'rgba(120, 0, 200, 0)');
-        rg.addColorStop(0.5,'rgba(80, 0, 165, 0.18)');
-        rg.addColorStop(1, 'rgba(40, 0, 120, 0.32)');
-        ctx.fillStyle = rg; ctx.fillRect(0, H * 0.86, W, H * 0.14);
-      },
-
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.45) {
-          // Neon streak / particle
-          const goRight = Math.random() < 0.5;
-          const hue = Math.random() < 0.5 ? 300 : 188; // magenta or cyan
-          return {
-            type: 'streak',
-            x: goRight ? -20 : W + 20,
-            y: H * 0.04 + Math.random() * H * 0.62,
-            vx: (goRight ? 1 : -1) * (2.2 + Math.random() * 4.5),
-            vy: (Math.random() - 0.5) * 0.5,
-            len: 18 + Math.random() * 55,
-            hue, alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
-            life: 0, maxLife: 30 + Math.floor(Math.random() * 40),
-          };
-        } else if (r < 0.75) {
-          // Glitch spark
-          return {
-            type: 'spark',
-            x: Math.random() * W, y: H * 0.45 + Math.random() * H * 0.45,
-            vx: (Math.random() - 0.5) * 3.5, vy: -(0.5 + Math.random() * 2.5),
-            r: 1.2 + Math.random() * 2.5,
-            hue: Math.random() < 0.5 ? 300 : 188,
-            alpha: 0, maxAlpha: 0.75 + Math.random() * 0.22,
-            life: 0, maxLife: 18 + Math.floor(Math.random() * 22),
-          };
-        } else {
-          // Floating neon orb
-          return {
-            type: 'orb',
-            x: Math.random() * W, y: H * 0.10 + Math.random() * H * 0.60,
-            vx: (Math.random() - 0.5) * 0.38, vy: (Math.random() - 0.5) * 0.28,
-            r: 3 + Math.random() * 14,
-            hue: Math.random() < 0.5 ? 285 : 192,
-            alpha: 0, maxAlpha: 0.10 + Math.random() * 0.12,
-            life: 0, fadeIn: 22, maxLife: 120 + Math.floor(Math.random() * 90),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.5 + Math.random() * 1.0, swSpd: 0.012 + Math.random() * 0.018,
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'streak') {
-          const dir = p.vx > 0 ? -1 : 1;
-          const g = ctx.createLinearGradient(p.x, p.y, p.x + dir * p.len, p.y);
-          g.addColorStop(0,   `hsla(${p.hue}, 100%, 68%, 1)`);
-          g.addColorStop(0.4, `hsla(${p.hue}, 90%, 58%, 0.5)`);
-          g.addColorStop(1,   `hsla(${p.hue}, 80%, 48%, 0)`);
-          ctx.strokeStyle = g; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + dir * p.len, p.y); ctx.stroke();
-        } else if (p.type === 'spark') {
-          ctx.fillStyle = `hsla(${p.hue}, 100%, 78%, 1)`;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        } else {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-          g.addColorStop(0,   `hsla(${p.hue}, 100%, 72%, 1)`);
-          g.addColorStop(0.4, `hsla(${p.hue}, 88%, 58%, 0.55)`);
-          g.addColorStop(1,   `hsla(${p.hue}, 75%, 45%, 0)`);
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
-      },
-
-      update(p, W, H) {
-        p.life++;
-        if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
-        else p.x += p.vx;
-        p.y += p.vy;
-        const fi = Math.min(1, p.life / (p.fadeIn || 8));
-        const fo = p.life > p.maxLife - 12 ? Math.max(0, (p.maxLife - p.life) / 12) : 1;
+    update(p, W, H) {
+      if (p.type === 'rain') {
+        p.x += p.vx; p.y += p.vy;
+        return p.y < H + 20;
+      } else if (p.type === 'spark') {
+        p.life++; p.sw += p.swSpd;
+        p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
+        const fi = Math.min(1, p.life / p.fadeIn);
+        const fo = p.life > p.maxLife - 14 ? Math.max(0, (p.maxLife - p.life) / 14) : 1;
         p.alpha = p.maxAlpha * fi * fo;
-        if (p.type === 'streak') return p.life < p.maxLife && p.x > -100 && p.x < W + 100;
         return p.life < p.maxLife;
-      },
+      } else if (p.type === 'ripple') {
+        p.life++; p.r += p.maxR / p.maxLife;
+        p.alpha = (1 - p.life / p.maxLife) * (0.18 + Math.random() * 0.22);
+        return p.life < p.maxLife;
+      }
+      return false;
+    },
+  },
+
+  // ── COZY — Premium Cozy Interior Scene ───────────────────────────────────
+  // Indoor warmth: wooden floor, fireplace, rain on window, steam,
+  // bookshelf, candle flicker, soft lamplight. Pure cozy.
+  cozy: {
+    max: 28, rate: 0.065,
+    _fireParticles: null, _steam: null, _rainDrops: null, _books: null, _candles: null,
+
+    init(W, H) {
+      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      // Fireplace flame base
+      this._fireParticles = Array.from({ length: 18 }, (_, i) => ({
+        x: W * 0.5 + (i - 9) * W * 0.012,
+        y: H * 0.88,
+        vx: (rng(-1,1)) * 0.45,
+        vy: -(0.5 + rng(0, 0.8)),
+        r: rng(6, 20),
+        hue: rng(10, 40)|0,
+        life: rng(0, 40)|0, maxLife: 35 + rng(0, 25)|0,
+        alpha: 0,
+      }));
+
+      // Steam wisps from mug (bottom center-right)
+      this._steam = Array.from({ length: 5 }, (_, i) => ({
+        x: W * (0.65 + i * 0.008), y: H * 0.88,
+        vy: -(0.28 + rng(0, 0.25)),
+        vx: (rng(-1,1)) * 0.15,
+        r: 3 + rng(0, 4),
+        alpha: 0, maxAlpha: 0.22 + rng(0, 0.14),
+        life: rng(0, 30)|0, maxLife: 55 + rng(0, 35)|0,
+        sw: rng(0, Math.PI * 2), swAmp: rng(2, 6), swSpd: rng(0.012, 0.025),
+      }));
+
+      // Window rain streaks (outside the window)
+      this._rainDrops = Array.from({ length: 30 }, () => ({
+        x: W * (0.04 + rng(0, 0.22)),
+        y: H * rng(0.08, 0.55),
+        len: H * rng(0.03, 0.09),
+        speed: H * rng(0.003, 0.009),
+        alpha: rng(0.08, 0.25),
+        width: rng(0.6, 1.2),
+      }));
+
+      // Bookshelf items
+      this._books = Array.from({ length: 14 }, (_, i) => ({
+        x: W * (0.04 + i * (W * 0.22 / 14) / W),
+        w: W * rng(0.010, 0.018),
+        h: H * (0.065 + rng(0, 0.050)),
+        hue: [22, 42, 180, 350, 120, 60, 280, 18, 200, 320, 85, 38, 155, 240][i],
+        lean: rng(-0.12, 0.12),
+      }));
+
+      // Candles
+      this._candles = [
+        { x: W * 0.18, y: H * 0.74, phase: 0, spd: 0.08, h: H * 0.032, r: W * 0.008 },
+        { x: W * 0.82, y: H * 0.78, phase: 1.5, spd: 0.065, h: H * 0.025, r: W * 0.006 },
+      ];
     },
 
-    // ── Cozy — warm candlelight hearth ───────────────────────────────────────
-    cozy: {
-      max: 40, rate: 0.090,
-      _candles: null, _woodEmbers: null,
+    drawBackground(ctx, W, H) {
+      const period = _getCanvasPeriod();
+      const blend = _getSmoothBlend();
+      const t = _frame * 0.014;
 
-      init(W, H) {
-        _stars = [];
-        // Candle positions — soft warm lights around the scene
-        this._candles = Array.from({ length: 5 }, (_, i) => ({
-          x: W * (0.10 + i * 0.20),
-          y: H * (0.62 + Math.random() * 0.18),
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.055 + Math.random() * 0.055,
-          r: 28 + Math.random() * 22,
-        }));
-        // Static ember glow points along the base
-        this._woodEmbers = Array.from({ length: 12 }, () => ({
-          x: W * 0.25 + Math.random() * W * 0.50,
-          y: H * 0.88 + Math.random() * H * 0.10,
-          r: 3 + Math.random() * 8,
-          hue: 12 + Math.floor(Math.random() * 28),
-          phase: Math.random() * Math.PI * 2,
-          spd:   0.040 + Math.random() * 0.050,
-        }));
-      },
+      // ── 1. Room wall — warm plaster ───────────────────────────────────────
+      const WALL = {
+        MORNING:   { t:[165,125,88], b:[140,100,68] },
+        AFTERNOON: { t:[172,132,92], b:[148,108,72] },
+        EVENING:   { t:[155,105,65], b:[128,82,48] },
+        NIGHT:     { t:[82, 55,32],  b:[62, 40,22]  },
+      };
+      const wc = _blendPeriodColors(WALL, blend);
+      const wallG = ctx.createLinearGradient(0, 0, 0, H);
+      wallG.addColorStop(0, _rgb(wc.t)); wallG.addColorStop(1, _rgb(wc.b));
+      ctx.fillStyle = wallG; ctx.fillRect(0, 0, W, H);
 
-      drawBackground(ctx, W, H) {
-        const t = _frame;
+      // ── 2. Ambient fireplace glow on walls ────────────────────────────────
+      const fireA = period === 'NIGHT' ? 0.38 : period === 'EVENING' ? 0.28 : 0.15;
+      const fireFlicker = 0.82 + 0.18 * Math.sin(t * 5.5) + 0.08 * Math.sin(t * 11.2);
+      const fireGlow = ctx.createRadialGradient(W * 0.5, H * 0.90, 0, W * 0.5, H * 0.90, W * 0.62);
+      fireGlow.addColorStop(0,   `rgba(255,180,80,${fireA * fireFlicker * 0.80})`);
+      fireGlow.addColorStop(0.30, `rgba(245,140,45,${fireA * fireFlicker * 0.35})`);
+      fireGlow.addColorStop(0.65, `rgba(220,100,22,${fireA * fireFlicker * 0.10})`);
+      fireGlow.addColorStop(1,   'rgba(180,70,10,0)');
+      ctx.fillStyle = fireGlow; ctx.fillRect(0, 0, W, H);
 
-        // ── Central fire bloom ─────────────────────────────────────────
-        const firePhase = t * 0.05;
-        const fireFlicker = 0.82 + 0.18 * Math.sin(firePhase) + 0.08 * Math.sin(firePhase * 2.3);
-        const fg = ctx.createRadialGradient(W * 0.5, H * 0.92, 0, W * 0.5, H * 0.88, W * 0.42 * fireFlicker);
-        fg.addColorStop(0,    `rgba(255, 168, 42, ${0.52 * fireFlicker})`);
-        fg.addColorStop(0.22, `rgba(235, 98,  18, ${0.30 * fireFlicker})`);
-        fg.addColorStop(0.55, `rgba(188, 58,  8,  ${0.12 * fireFlicker})`);
-        fg.addColorStop(1,    'rgba(120, 28, 4, 0)');
-        ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+      // ── 3. Window (left side, rain outside) ──────────────────────────────
+      const winX = W * 0.04, winY = H * 0.12, winW = W * 0.24, winH = H * 0.45;
+      // Window frame (dark wood)
+      const frameW = W * 0.012;
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(32,20,10,0.95)' : 'rgba(52,32,14,0.92)';
+      ctx.fillRect(winX - frameW, winY - frameW, winW + frameW*2, winH + frameW*2);
+      // Window glass (slightly transparent, shows outside night/rain)
+      const outsideCol = period === 'NIGHT' ? [8, 10, 28] :
+        period === 'EVENING' ? [22, 18, 45] : [55, 75, 110];
+      const wg = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+      wg.addColorStop(0, _rgb(outsideCol, 0.88));
+      wg.addColorStop(1, _rgb(outsideCol, 0.95));
+      ctx.fillStyle = wg; ctx.fillRect(winX, winY, winW, winH);
+      // Window cross bar
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(32,20,10,0.92)' : 'rgba(52,32,14,0.88)';
+      ctx.fillRect(winX, winY + winH * 0.5 - frameW * 0.5, winW, frameW);
+      ctx.fillRect(winX + winW * 0.5 - frameW * 0.5, winY, frameW, winH);
 
-        // ── Candle warm glows ──────────────────────────────────────────
-        this._candles.forEach(c => {
-          c.phase += c.spd;
-          const flicker = 0.78 + 0.22 * Math.sin(c.phase) + 0.10 * Math.sin(c.phase * 2.7);
-          const a = (0.08 + 0.06 * flicker) * flicker;
-          const cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r * flicker);
-          cg.addColorStop(0,   `rgba(255, 218, 105, ${a * 3.5})`);
-          cg.addColorStop(0.35,`rgba(242, 158, 48,  ${a * 1.8})`);
-          cg.addColorStop(0.72,`rgba(200, 88,  18,  ${a * 0.6})`);
-          cg.addColorStop(1,   'rgba(160, 42, 8, 0)');
-          ctx.fillStyle = cg;
-          ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 2.0 * flicker, 0, Math.PI * 2); ctx.fill();
-        });
-
-        // ── Wood ember glow ────────────────────────────────────────────
-        this._woodEmbers.forEach(e => {
-          e.phase += e.spd;
-          const pulse = 0.55 + 0.45 * Math.sin(e.phase);
-          const a = 0.16 + 0.22 * pulse;
-          const eg = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 2.5);
-          eg.addColorStop(0,   `hsla(${e.hue + 8}, 100%, 72%, ${a * 2.8})`);
-          eg.addColorStop(0.45,`hsla(${e.hue},     88%,  55%, ${a * 1.0})`);
-          eg.addColorStop(1,   `hsla(${e.hue - 8}, 78%,  38%, 0)`);
-          ctx.fillStyle = eg;
-          ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 2.5, 0, Math.PI * 2); ctx.fill();
-        });
-
-        // ── Ambient ceiling warm scatter ───────────────────────────────
-        const cg = ctx.createLinearGradient(0, 0, 0, H * 0.45);
-        cg.addColorStop(0,   'rgba(160, 55, 8, 0.09)');
-        cg.addColorStop(0.5, 'rgba(130, 42, 5, 0.04)');
-        cg.addColorStop(1,   'rgba(100, 30, 4, 0)');
-        ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H * 0.45);
-      },
-
-      create(W, H) {
-        const r = Math.random();
-        if (r < 0.52) {
-          // Rising ember
-          return {
-            type: 'ember',
-            x: W * 0.22 + Math.random() * W * 0.56,
-            y: H * 0.78 + Math.random() * H * 0.20,
-            vx: (Math.random() - 0.5) * 1.5,
-            vy: -(0.55 + Math.random() * 1.45),
-            r: 1.0 + Math.random() * 2.8,
-            hue: 14 + Math.floor(Math.random() * 28),
-            alpha: 0, maxAlpha: 0.62 + Math.random() * 0.30,
-            life: 0, maxLife: 65 + Math.floor(Math.random() * 55),
-            sw: Math.random() * Math.PI * 2, swAmp: 1.0 + Math.random() * 2.2, swSpd: 0.020 + Math.random() * 0.030,
-          };
-        } else if (r < 0.82) {
-          // Warm dust mote
-          return {
-            type: 'mote',
-            x: Math.random() * W, y: H * 0.15 + Math.random() * H * 0.70,
-            vx: (Math.random() - 0.5) * 0.38, vy: -(0.06 + Math.random() * 0.22),
-            r: 0.7 + Math.random() * 1.5,
-            alpha: 0, maxAlpha: 0.18 + Math.random() * 0.22,
-            life: 0, fadeIn: 28, maxLife: 200 + Math.floor(Math.random() * 130),
-            sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9, swSpd: 0.008 + Math.random() * 0.012,
-          };
-        } else {
-          // Floating spark
-          return {
-            type: 'spark',
-            x: W * 0.28 + Math.random() * W * 0.44,
-            y: H * 0.78 + Math.random() * H * 0.18,
-            vx: (Math.random() - 0.5) * 2.0, vy: -(1.2 + Math.random() * 2.5),
-            r: 1.5 + Math.random() * 2.2,
-            alpha: 0, maxAlpha: 0.80 + Math.random() * 0.18,
-            life: 0, maxLife: 22 + Math.floor(Math.random() * 22),
-          };
-        }
-      },
-
-      draw(ctx, p) {
-        ctx.save(); ctx.globalAlpha = p.alpha;
-        if (p.type === 'ember') {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
-          g.addColorStop(0,   `hsla(${p.hue + 22}, 100%, 90%, 1)`);
-          g.addColorStop(0.38,`hsla(${p.hue},      95%,  68%, 0.65)`);
-          g.addColorStop(1,   `hsla(${p.hue - 12}, 82%,  45%, 0)`);
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2); ctx.fill();
-        } else if (p.type === 'mote') {
-          ctx.fillStyle = 'rgba(255, 215, 155, 1)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        } else {
-          ctx.fillStyle = 'rgba(255, 245, 160, 1)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        }
+      // Rain on window (clipped to window)
+      ctx.save(); ctx.beginPath(); ctx.rect(winX, winY, winW, winH); ctx.clip();
+      this._rainDrops.forEach(rd => {
+        rd.y += rd.speed;
+        if (rd.y > winY + winH) rd.y = winY - rd.len;
+        ctx.save(); ctx.globalAlpha = rd.alpha;
+        ctx.strokeStyle = 'rgba(165,195,230,1)';
+        ctx.lineWidth = rd.width; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(winX + rd.x, rd.y);
+        ctx.lineTo(winX + rd.x + rd.len * 0.08, rd.y + rd.len);
+        ctx.stroke();
         ctx.restore();
-      },
+      });
+      // Outside light blur
+      if (period !== 'NIGHT') {
+        const streetLamp = ctx.createRadialGradient(winX + winW * 0.7, winY + winH * 0.65, 0, winX + winW * 0.7, winY + winH * 0.65, winW * 0.45);
+        streetLamp.addColorStop(0, 'rgba(255,220,140,0.22)');
+        streetLamp.addColorStop(1, 'rgba(200,180,100,0)');
+        ctx.fillStyle = streetLamp; ctx.fillRect(winX, winY, winW, winH);
+      }
+      ctx.restore();
 
-      update(p, W, H) {
-        p.life++;
-        if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
-        else p.x += p.vx;
-        p.y += p.vy;
-        const fi = Math.min(1, p.life / (p.fadeIn || 10));
-        const fo = p.life > p.maxLife - 15 ? Math.max(0, (p.maxLife - p.life) / 15) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        return p.life < p.maxLife && p.y > -20;
-      },
+      // Window glass sheen
+      ctx.save(); ctx.globalAlpha = 0.06;
+      ctx.fillStyle = 'rgba(200,225,255,1)';
+      ctx.fillRect(winX, winY, winW * 0.15, winH);
+      ctx.restore();
+
+      // ── 4. Warm lamp (upper right) ────────────────────────────────────────
+      const lampX = W * 0.85, lampY = H * 0.18;
+      const lampA = period === 'NIGHT' ? 0.55 : period === 'EVENING' ? 0.40 : 0.22;
+      const lampG = ctx.createRadialGradient(lampX, lampY, 0, lampX, lampY, W * 0.38);
+      lampG.addColorStop(0,    `rgba(255,210,120,${lampA * 0.90})`);
+      lampG.addColorStop(0.22, `rgba(245,185,85,${lampA * 0.42})`);
+      lampG.addColorStop(0.55, `rgba(225,155,55,${lampA * 0.12})`);
+      lampG.addColorStop(1,    'rgba(200,130,40,0)');
+      ctx.fillStyle = lampG; ctx.fillRect(0, 0, W, H);
+      // Lamp shade silhouette
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(22,14,6,0.90)' : 'rgba(38,24,10,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(lampX - W * 0.045, lampY);
+      ctx.lineTo(lampX + W * 0.045, lampY);
+      ctx.lineTo(lampX + W * 0.025, lampY + H * 0.04);
+      ctx.lineTo(lampX - W * 0.025, lampY + H * 0.04);
+      ctx.closePath(); ctx.fill();
+      // Lamp pole
+      ctx.fillRect(lampX - W * 0.004, lampY + H * 0.04, W * 0.008, H * 0.10);
+
+      // ── 5. Bookshelf ──────────────────────────────────────────────────────
+      const shelfY = H * 0.70;
+      // Shelf board
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(38,24,10,0.92)' : 'rgba(72,45,18,0.88)';
+      ctx.fillRect(W * 0.04 - W * 0.01, shelfY, W * 0.25, H * 0.015);
+      // Books
+      this._books.forEach((bk, bi) => {
+        ctx.save();
+        ctx.translate(W * 0.04 + bi * (W * 0.23 / 14) + bk.w * 0.5, shelfY);
+        ctx.rotate(bk.lean);
+        const bookDark = period === 'NIGHT' ? 0.65 : 1.0;
+        ctx.fillStyle = `hsla(${bk.hue},${58}%,${28 + Math.sin(bi * 1.7) * 8}%,${bookDark})`;
+        ctx.fillRect(-bk.w * 0.5, -bk.h, bk.w, bk.h);
+        // Spine line
+        ctx.fillStyle = `hsla(${bk.hue + 25},70%,${48}%,${bookDark * 0.55})`;
+        ctx.fillRect(-bk.w * 0.5 + 1, -bk.h + bk.h * 0.12, bk.w - 2, bk.h * 0.05);
+        ctx.restore();
+      });
+
+      // ── 6. Fireplace ──────────────────────────────────────────────────────
+      const fpX = W * 0.5, fpW = W * 0.22, fpH = H * 0.22, fpY = H * 0.98;
+      // Mantle
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(28,18,8,0.98)' : 'rgba(55,35,14,0.95)';
+      ctx.fillRect(fpX - fpW * 0.6, fpY - fpH, fpW * 1.2, H * 0.015); // top mantle
+      ctx.fillRect(fpX - fpW * 0.55, fpY - fpH + H * 0.012, fpW * 0.06, fpH); // left pillar
+      ctx.fillRect(fpX + fpW * 0.49, fpY - fpH + H * 0.012, fpW * 0.06, fpH); // right pillar
+      // Firebox opening (dark)
+      ctx.fillStyle = 'rgba(8,4,2,0.95)';
+      ctx.beginPath();
+      ctx.roundRect(fpX - fpW * 0.40, fpY - fpH + H * 0.025, fpW * 0.80, fpH * 0.80, [H * 0.015, H * 0.015, 0, 0]);
+      ctx.fill();
+
+      // Animated fire inside firebox
+      this._fireParticles.forEach((fp, i) => {
+        fp.life++;
+        if (fp.life > fp.maxLife) {
+          fp.life = 0; fp.maxLife = 35 + Math.random() * 25|0;
+          fp.x = fpX + (Math.random() - 0.5) * fpW * 0.55;
+          fp.y = fpY - H * 0.05;
+          fp.vx = (Math.random() - 0.5) * 0.65;
+          fp.vy = -(0.55 + Math.random() * 1.0);
+          fp.r = 5 + Math.random() * 18;
+          fp.hue = 10 + Math.random() * 35|0;
+        }
+        fp.x += fp.vx + Math.sin(t * 2.2 + i) * 0.45;
+        fp.y += fp.vy;
+        fp.vy -= 0.012; // flame rises faster
+        const prog = fp.life / fp.maxLife;
+        fp.alpha = Math.sin(prog * Math.PI) * 0.82;
+        const flameHue = _lrp(fp.hue, fp.hue + 25, prog);
+        const flameLit = _lrp(70, 90, prog);
+        const fG = ctx.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, fp.r * (1.5 - prog * 0.6));
+        fG.addColorStop(0,   `hsla(${flameHue+15},100%,${flameLit}%,${fp.alpha * 1.2})`);
+        fG.addColorStop(0.38, `hsla(${flameHue},95%,${flameLit-10}%,${fp.alpha * 0.8})`);
+        fG.addColorStop(1,   `hsla(${fp.hue-8},88%,42%,0)`);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(fpX - fpW * 0.40, fpY - fpH + H * 0.025, fpW * 0.80, fpH * 0.80); ctx.clip();
+        ctx.fillStyle = fG; ctx.beginPath(); ctx.arc(fp.x, fp.y, fp.r * (1.5 - prog * 0.6), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 7. Candles ───────────────────────────────────────────────────────
+      this._candles.forEach(cd => {
+        cd.phase += cd.spd;
+        const flicker = 0.80 + 0.20 * Math.sin(cd.phase) + 0.08 * Math.sin(cd.phase * 2.7);
+        // Candle body
+        ctx.fillStyle = 'rgba(248,238,220,0.92)';
+        ctx.fillRect(cd.x - cd.r, cd.y - cd.h, cd.r * 2, cd.h);
+        // Flame
+        const flameFl = Math.sin(cd.phase * 1.8) * 2.5;
+        const fmG = ctx.createRadialGradient(cd.x + flameFl, cd.y - cd.h - cd.h * 0.5, 0, cd.x + flameFl, cd.y - cd.h, cd.r * 3.5);
+        fmG.addColorStop(0,   `rgba(255,248,188,${0.92 * flicker})`);
+        fmG.addColorStop(0.35, `rgba(255,200,80,${0.65 * flicker})`);
+        fmG.addColorStop(0.65, `rgba(240,140,30,${0.28 * flicker})`);
+        fmG.addColorStop(1,   'rgba(200,90,10,0)');
+        ctx.fillStyle = fmG; ctx.fillRect(cd.x - cd.r * 4, cd.y - cd.h - cd.h * 0.9, cd.r * 8, cd.h * 0.9);
+        // Flame shape
+        ctx.fillStyle = `rgba(255,240,150,${0.88 * flicker})`;
+        ctx.beginPath();
+        ctx.moveTo(cd.x + flameFl, cd.y - cd.h - cd.h * 0.65);
+        ctx.bezierCurveTo(cd.x + flameFl - cd.r, cd.y - cd.h - cd.h * 0.32, cd.x - cd.r, cd.y - cd.h + 2, cd.x, cd.y - cd.h);
+        ctx.bezierCurveTo(cd.x + cd.r, cd.y - cd.h + 2, cd.x + flameFl + cd.r, cd.y - cd.h - cd.h * 0.32, cd.x + flameFl, cd.y - cd.h - cd.h * 0.65);
+        ctx.fill();
+        // Candle glow on surrounding area
+        const cgG = ctx.createRadialGradient(cd.x, cd.y - cd.h, 0, cd.x, cd.y - cd.h, cd.r * 8 * flicker);
+        cgG.addColorStop(0, `rgba(255,200,90,${0.22 * flicker * (period === 'NIGHT' ? 1.4 : 0.8)})`);
+        cgG.addColorStop(1, 'rgba(240,160,50,0)');
+        ctx.fillStyle = cgG; ctx.fillRect(cd.x - cd.r * 9, cd.y - cd.h * 1.5 - cd.r * 8, cd.r * 18, cd.r * 16);
+      });
+
+      // ── 8. Hot mug (bottom right) ─────────────────────────────────────────
+      const mugX = W * 0.66, mugY = H * 0.90;
+      const mugW = W * 0.032, mugH = H * 0.038;
+      // Mug body
+      ctx.fillStyle = period === 'NIGHT' ? 'rgba(58,28,12,0.95)' : 'rgba(105,52,22,0.90)';
+      ctx.beginPath();
+      ctx.roundRect(mugX - mugW, mugY - mugH, mugW * 2, mugH, [mugW * 0.3, mugW * 0.3, mugW * 0.5, mugW * 0.5]);
+      ctx.fill();
+      // Mug handle
+      ctx.strokeStyle = period === 'NIGHT' ? 'rgba(48,22,8,0.95)' : 'rgba(88,42,14,0.90)';
+      ctx.lineWidth = W * 0.006; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(mugX + mugW, mugY - mugH * 0.42, mugW * 0.55, -0.5, 0.5, false);
+      ctx.stroke();
+      // Hot liquid surface
+      ctx.fillStyle = 'rgba(165,88,28,0.75)';
+      ctx.beginPath(); ctx.ellipse(mugX, mugY - mugH, mugW * 0.82, mugH * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Steam wisps
+      this._steam.forEach(st => {
+        st.life++;
+        if (st.life > st.maxLife) {
+          st.life = 0; st.maxLife = 55 + Math.random() * 35|0;
+          st.x = mugX + (Math.random() - 0.5) * mugW * 1.2;
+          st.y = mugY - mugH - 2;
+          st.vy = -(0.28 + Math.random() * 0.25);
+        }
+        st.sw += st.swSpd;
+        st.x += st.vx + Math.sin(st.sw) * st.swAmp * 0.4;
+        st.y += st.vy;
+        st.r += 0.04;
+        const prog = st.life / st.maxLife;
+        const stA = Math.sin(prog * Math.PI) * st.maxAlpha;
+        ctx.save(); ctx.globalAlpha = stA;
+        ctx.fillStyle = 'rgba(215,205,200,1)';
+        ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // ── 9. Wooden floor ───────────────────────────────────────────────────
+      const floorY = H * 0.88;
+      const floorG = ctx.createLinearGradient(0, floorY, 0, H);
+      const FLOOR = {
+        MORNING:   { t:[95,60,28], b:[72,44,18] },
+        AFTERNOON: { t:[100,65,30], b:[78,48,20] },
+        EVENING:   { t:[88,52,20], b:[65,38,12] },
+        NIGHT:     { t:[42,25,8], b:[28,15,4] },
+      };
+      const fc = _blendPeriodColors(FLOOR, blend);
+      floorG.addColorStop(0, _rgb(fc.t)); floorG.addColorStop(1, _rgb(fc.b));
+      ctx.fillStyle = floorG; ctx.fillRect(0, floorY, W, H - floorY);
+      // Floorboard lines
+      ctx.save(); ctx.globalAlpha = period === 'NIGHT' ? 0.12 : 0.18;
+      ctx.strokeStyle = 'rgba(35,15,4,1)'; ctx.lineWidth = 0.8;
+      for (let flb = 0; flb < 8; flb++) {
+        const fy = floorY + flb * (H - floorY) / 8;
+        ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(W, fy); ctx.stroke();
+      }
+      ctx.restore();
+
+      // Fireplace glow reflection on floor
+      const flRef = ctx.createLinearGradient(0, floorY, 0, H);
+      flRef.addColorStop(0, `rgba(255,160,60,${fireA * fireFlicker * 0.35})`);
+      flRef.addColorStop(1, `rgba(220,120,30,${fireA * fireFlicker * 0.10})`);
+      const refW = fpW * 1.8;
+      ctx.fillStyle = flRef; ctx.fillRect(fpX - refW, floorY, refW * 2, H - floorY);
+
+      // ── 10. Cozy vignette — warm dark corners ─────────────────────────────
+      const vigG = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.18, W * 0.5, H * 0.5, W * 0.72);
+      vigG.addColorStop(0, 'rgba(0,0,0,0)');
+      vigG.addColorStop(0.68, 'rgba(0,0,0,0)');
+      vigG.addColorStop(1, `rgba(${period === 'NIGHT' ? '2,1,0' : '8,4,1'},0.72)`);
+      ctx.fillStyle = vigG; ctx.fillRect(0, 0, W, H);
     },
+
+    create(W, H) {
+      const r = Math.random();
+      if (r < 0.55) {
+        // Floating dust mote in warm light
+        return {
+          type: 'dust',
+          x: Math.random() * W, y: H * 0.12 + Math.random() * H * 0.72,
+          vx: (Math.random() - 0.5) * 0.30, vy: -(0.04 + Math.random() * 0.15),
+          r: 0.7 + Math.random() * 2.0,
+          hue: 32 + Math.random() * 22|0,
+          alpha: 0, maxAlpha: 0.28 + Math.random() * 0.28,
+          life: 0, fadeIn: 25, maxLife: 200 + Math.floor(Math.random() * 120),
+          sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9, swSpd: 0.007 + Math.random() * 0.012,
+        };
+      } else if (r < 0.80) {
+        // Ember spark from fireplace
+        return {
+          type: 'ember',
+          x: W * 0.5 + (Math.random() - 0.5) * W * 0.12,
+          y: H * 0.88,
+          vx: (Math.random() - 0.5) * 1.8, vy: -(1.2 + Math.random() * 2.2),
+          r: 0.8 + Math.random() * 2.5,
+          hue: 15 + Math.random() * 28|0,
+          alpha: 0, maxAlpha: 0.75 + Math.random() * 0.22,
+          life: 0, fadeIn: 5, maxLife: 30 + Math.floor(Math.random() * 28),
+          gravity: 0.045 + Math.random() * 0.030,
+        };
+      } else {
+        // Rain droplet impact on window ledge
+        return {
+          type: 'drop',
+          x: W * (0.04 + Math.random() * 0.24),
+          y: H * (0.55 + Math.random() * 0.01),
+          r: 0, maxR: 3 + Math.random() * 5,
+          alpha: 0.20 + Math.random() * 0.22,
+          life: 0, maxLife: 20 + Math.floor(Math.random() * 18),
+        };
+      }
+    },
+
+    draw(ctx, p) {
+      ctx.save(); ctx.globalAlpha = p.alpha;
+      if (p.type === 'dust') {
+        const dG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2);
+        dG.addColorStop(0, `hsla(${p.hue},78%,82%,1)`);
+        dG.addColorStop(1, `hsla(${p.hue},60%,60%,0)`);
+        ctx.fillStyle = dG; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'ember') {
+        const eG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
+        eG.addColorStop(0,   `hsla(${p.hue + 20},100%,92%,1)`);
+        eG.addColorStop(0.4,  `hsla(${p.hue},95%,68%,0.75)`);
+        eG.addColorStop(1,   `hsla(${p.hue - 8},85%,42%,0)`);
+        ctx.fillStyle = eG; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'drop') {
+        ctx.strokeStyle = 'rgba(165,195,230,1)'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      p.life++;
+      if (p.type === 'dust') {
+        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
+        const fi = Math.min(1, p.life / p.fadeIn);
+        const fo = p.life > p.maxLife - 25 ? Math.max(0, (p.maxLife - p.life) / 25) : 1;
+        p.alpha = p.maxAlpha * fi * fo;
+        return p.life < p.maxLife && p.y > 0;
+      } else if (p.type === 'ember') {
+        p.vy += p.gravity; // gravity pulls it back down
+        p.vx *= 0.990;
+        p.x += p.vx; p.y += p.vy;
+        const fi = Math.min(1, p.life / p.fadeIn);
+        const fo = p.life > p.maxLife - 10 ? Math.max(0, (p.maxLife - p.life) / 10) : 1;
+        p.alpha = p.maxAlpha * fi * fo;
+        return p.life < p.maxLife && p.y < H;
+      } else if (p.type === 'drop') {
+        p.r = (p.life / p.maxLife) * p.maxR;
+        p.alpha = (1 - p.life / p.maxLife) * (0.20 + Math.random() * 0.22);
+        return p.life < p.maxLife;
+      }
+      return false;
+    },
+  },
+
+  // ── Matrix — keep pristine ────────────────────────────────────────────────
+  matrix: {
+    max: 0, rate: 0,
+    _cols: null,
+
+    _mc() {
+      return Math.random() < 0.55
+        ? (Math.random() > 0.5 ? '0' : '1')
+        : String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+    },
+
+    init(W, H) {
+      _stars = [];
+      const n = Math.floor(W / 14);
+      this._cols = Array.from({ length: n }, (_, i) => ({
+        x: i * 14 + 7,
+        y: -Math.random() * H * 2,
+        speed: 0.8 + Math.random() * 2.2,
+        chars: Array.from({ length: 32 }, () => ({ c: this._mc(), age: 0, maxAge: 6 + Math.floor(Math.random() * 12) })),
+        head: 0,
+        bright: Math.random() > 0.88,
+      }));
+    },
+
+    drawBackground(ctx, W, H) {
+      ctx.fillStyle = 'rgba(0, 2, 0, 0.18)';
+      ctx.fillRect(0, 0, W, H);
+      if (!this._cols) return;
+      this._cols.forEach(col => {
+        col.y += col.speed;
+        if (col.y > H + 280) {
+          col.y = -Math.random() * H * 0.6;
+          col.speed = 0.8 + Math.random() * 2.2;
+          col.bright = Math.random() > 0.88;
+        }
+        col.chars.forEach((ch, i) => {
+          ch.age++;
+          if (ch.age >= ch.maxAge) { ch.c = this._mc(); ch.age = 0; ch.maxAge = 6 + Math.floor(Math.random() * 12); }
+          const charY = col.y - i * 14;
+          if (charY < -14 || charY > H + 14) return;
+          const isHead = i === 0;
+          const distFromHead = i;
+          const fade = Math.max(0, 1 - distFromHead / 22);
+          if (fade < 0.02) return;
+          const alpha = isHead ? (col.bright ? 1.0 : 0.92) : fade * (col.bright ? 0.85 : 0.65);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.font = `${13}px monospace`;
+          ctx.fillStyle = isHead ? (col.bright ? '#e0ffe0' : '#c8ffc8') : `rgba(0,${Math.floor(140 + fade * 115)},0,1)`;
+          ctx.fillText(ch.c, col.x - 5, charY);
+          ctx.restore();
+        });
+      });
+    },
+
+    create() { return null; },
+    draw() {},
+    update() { return false; },
+  },
+
   };
 
   function _resize() {
@@ -1500,7 +3601,12 @@ const ThemeCanvas = (() => {
     }
   }
 
-  return { init, setTheme, setPaused, setEnabled };
+  // Expose ocean CFG so bubble-click handler in main() can reach it
+  function _afterInit() {
+    window._ThemeOceanCFG = CFG.ocean;
+  }
+
+  return { init: () => { init(); _afterInit(); }, setTheme, setPaused, setEnabled };
 })();
 
 
@@ -4716,10 +6822,12 @@ const ThemeCanvas = (() => {
     });
 
     // ── Time-of-day atmosphere ────────────────────────────────────────────
-    // Themes immune to time-of-day shifting
-    const TIME_IMMUNE = new Set(['galaxy','classic','anime','matrix','neon','cozy','snow']);
+    // Only galaxy, classic, matrix are fully immune (no time canvas logic).
+    // All scene themes (forest, cherry, ocean, snow, sunset, anime, neon, cozy)
+    // now implement full time-of-day in their drawBackground.
+    const TIME_IMMUNE = new Set(['galaxy', 'classic', 'matrix']);
 
-    function _getTimePeriod() {
+    function _getTimePeriodMain() {
       const h = new Date().getHours();
       if (h >= 5  && h < 11) return 'MORNING';
       if (h >= 11 && h < 17) return 'AFTERNOON';
@@ -4733,7 +6841,7 @@ const ThemeCanvas = (() => {
       document.body.removeAttribute('data-theme-period');
       if (!enabled || TIME_IMMUNE.has(theme)) return;
       const lock   = Settings.get('themeTimeLock') || 'auto';
-      const period = lock !== 'auto' ? lock : _getTimePeriod();
+      const period = lock !== 'auto' ? lock : _getTimePeriodMain();
       document.body.dataset.themePeriod = period;
     }
 
@@ -4758,14 +6866,64 @@ const ThemeCanvas = (() => {
       });
     }
 
-    // Re-apply when theme changes (immune themes will strip the attribute)
     Settings.onChange('fullTheme', () => _applyThemePeriod());
-    // Poll every minute so auto-mode keeps up with clock without page reload
+    // Poll every 30s so smooth blend transitions stay current without reload
     setInterval(() => {
       if (Settings.get('themeTimeAware') && Settings.get('themeTimeLock') === 'auto')
         _applyThemePeriod();
-    }, 60000);
+    }, 30000);
     _applyThemePeriod();
+
+    // ── SensaMode — soft solid-color theme for visual sensitivity ─────────
+    // Each theme gets a soft pastel solid that replaces the animated canvas.
+    const SENSA_COLORS = {
+      galaxy:    '#0d0820', classic:   '#111111', forest:    '#1a2e1a',
+      cherry:    '#2e1220', ocean:     '#0a1e2e',  snow:      '#1a1e2e',
+      sunset:    '#1a0a1e', anime:     '#150a20',  matrix:    '#000800',
+      neon:      '#08001e', cozy:      '#1e100a',
+    };
+    const SENSA_LABEL = 'SensaMode';
+
+    function _applySensaMode() {
+      const on = Settings.get('sensaMode') || false;
+      document.body.classList.toggle('sensa-mode', on);
+      const theme = Settings.get('fullTheme') || 'galaxy';
+      if (on) {
+        document.body.style.setProperty('--sensa-bg', SENSA_COLORS[theme] || '#0d0820');
+      } else {
+        document.body.style.removeProperty('--sensa-bg');
+      }
+    }
+
+    const sensaToggle = document.getElementById('sensa-mode-toggle');
+    if (sensaToggle) {
+      sensaToggle.checked = Settings.get('sensaMode') || false;
+      sensaToggle.addEventListener('change', () => {
+        Settings.set('sensaMode', sensaToggle.checked);
+        _applySensaMode();
+      });
+    }
+    Settings.onChange('fullTheme', () => _applySensaMode());
+    _applySensaMode();
+
+    // ── Ocean bubble click ────────────────────────────────────────────────
+    // Forward canvas clicks to ocean CFG for bubble-pop interaction
+    const _themeCanvas = document.getElementById('theme-canvas');
+    if (_themeCanvas) {
+      _themeCanvas.style.pointerEvents = 'auto';
+      _themeCanvas.addEventListener('click', (e) => {
+        const theme = Settings.get('fullTheme') || 'galaxy';
+        if (theme === 'ocean') {
+          const rect = _themeCanvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          // Access ocean CFG bubble store via ThemeCanvas exposed reference
+          if (window._ThemeOceanCFG && window._ThemeOceanCFG.handleClick) {
+            window._ThemeOceanCFG.handleClick(x, y);
+          }
+        }
+      });
+    }
 
     // ── PiP always-on-top ────────────────────────────────────────────────
     const pipAotToggle = document.getElementById('pip-always-on-top-toggle');
