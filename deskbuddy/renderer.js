@@ -5,6 +5,10 @@
  * classic has no particles.
  * The canvas sits at z-index 0, behind the companion.
  */
+
+// Default session duration in minutes (Pomodoro standard)
+const DEFAULT_SESSION_DURATION_MINUTES = 25;
+
 const ThemeCanvas = (() => {
   let _canvas = null, _ctx = null, _animId = null;
   let _particles = [], _active = false, _paused = false, _theme = 'galaxy';
@@ -7240,7 +7244,7 @@ const CFG = {
       
       item.addEventListener('click', () => {
         // Resume the session
-        const durationMins = session.durationMinutes || 25; // Default to 25m if undefined
+        const durationMins = session.durationMinutes || DEFAULT_SESSION_DURATION_MINUTES;
         _setDurationSeconds(durationMins * 60);
         const goalEl = document.getElementById('goal-input');
         if (goalEl) goalEl.value = session.goalText || '';

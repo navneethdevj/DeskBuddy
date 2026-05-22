@@ -212,12 +212,16 @@
       launch: function(idx) {
         if (idx < 0 || idx >= _pinned.length) return;
         const p = _pinned[idx];
-        withGlobal('Session', S => {
-          if (S.setGoal) S.setGoal(p.goal);
-          if (S.setCategory) S.setCategory(p.category);
-          if (S.setDuration) S.setDuration(p.durationMins * 60);
-          if (S.start) S.start();
-        });
+        try {
+          withGlobal('Session', S => {
+            if (S.setGoal && typeof S.setGoal === 'function') S.setGoal(p.goal);
+            if (S.setCategory && typeof S.setCategory === 'function') S.setCategory(p.category);
+            if (S.setDuration && typeof S.setDuration === 'function') S.setDuration(p.durationMins * 60);
+            if (S.start && typeof S.start === 'function') S.start();
+          });
+        } catch (err) {
+          console.error('Error launching pinned session:', err);
+        }
       },
       getAll: () => [..._pinned],
       render: function(container) {

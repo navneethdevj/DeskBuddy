@@ -9202,11 +9202,6 @@ body.full-mode #window-controls {
   pointer-events: auto;
 }
 
-body.pip-mode #window-controls:hover {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 /* Window control button styling */
 .wc-btn {
   width: 32px;

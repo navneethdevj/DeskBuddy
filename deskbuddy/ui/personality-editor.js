@@ -507,16 +507,24 @@ const PersonalityEditor = (() => {
     ctrl.className = 'pe-ctrl';
 
     if (dim.type === 's') {
+      // Escape HTML to prevent XSS
+      const escapeHtml = (str) => {
+        if (typeof str !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      };
+      
       ctrl.innerHTML = `
         <div class="pe-sw">
-          <span class="pe-el">${dim.ll || ''}</span>
+          <span class="pe-el">${escapeHtml(dim.ll || '')}</span>
           <div class="pe-sl-wrap">
             <input type="range" class="pe-sl" data-id="${dim.id}"
               min="${dim.min}" max="${dim.max}" step="1" value="${cur}">
             <div class="pe-sl-fill" style="width:${((cur-dim.min)/(dim.max-dim.min))*100}%"></div>
           </div>
           <span class="pe-val">${cur}</span>
-          <span class="pe-el pe-er">${dim.rl || ''}</span>
+          <span class="pe-el pe-er">${escapeHtml(dim.rl || '')}</span>
         </div>`;
 
       const sl   = ctrl.querySelector('.pe-sl');
