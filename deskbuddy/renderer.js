@@ -7223,8 +7223,15 @@ const CFG = {
       const durationSecs = (session.durationMinutes || 0) * 60;
       const focusPct = durationSecs > 0 ? Math.round((focusedSecs / durationSecs) * 100) : 0;
       
+      // Escape HTML to prevent XSS
+      const escapeHtml = (str) => {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      };
+      
       item.innerHTML = `
-        <div class="sp-recent-item-goal">${emoji} ${goal}</div>
+        <div class="sp-recent-item-goal">${emoji} ${escapeHtml(goal)}</div>
         <div class="sp-recent-item-meta">
           <span>${Math.floor(focusedSecs / 60)}m focus</span>
           <span>${focusPct}%</span>
@@ -7233,7 +7240,8 @@ const CFG = {
       
       item.addEventListener('click', () => {
         // Resume the session
-        _setDurationSeconds(session.durationMinutes * 60);
+        const durationMins = session.durationMinutes || 25; // Default to 25m if undefined
+        _setDurationSeconds(durationMins * 60);
         const goalEl = document.getElementById('goal-input');
         if (goalEl) goalEl.value = session.goalText || '';
         

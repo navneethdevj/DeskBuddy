@@ -470,12 +470,17 @@
         if (!dailyView || dailyView.querySelector('.hp-quality-metrics')) return;
 
         const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        
+        // Get today's date in a normalized format (YYYY-MM-DD)
         const today = new Date();
-        const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+        today.setHours(0, 0, 0, 0);
+        const todayMs = today.getTime();
+        
         const todaySessions = history.filter(s => {
           if (!s.date) return false;
           const d = new Date(s.date);
-          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayStr;
+          d.setHours(0, 0, 0, 0);
+          return d.getTime() === todayMs;
         });
 
         if (!todaySessions.length) return;
