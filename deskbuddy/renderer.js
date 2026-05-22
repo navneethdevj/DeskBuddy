@@ -3856,6 +3856,35 @@ const CFG = {
       });
     }
 
+    // Quick preset buttons — set duration and start session
+    document.querySelectorAll('.sp-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const minutes = parseInt(btn.dataset.minutes, 10);
+        if (!isNaN(minutes) && minutes > 0) {
+          _setDurationSeconds(minutes * 60);
+          // Auto-start the session with the preset
+          const stats = Session.getCurrentStats();
+          if (stats && stats.state !== 'IDLE') return;
+          const goalEl = document.getElementById('goal-input');
+          const goal   = goalEl?.value?.trim() || null;
+          const mins   = _getDurationMinutes();
+
+          // Sync break interval from session panel
+          BreakReminder.setInterval(_getBreakMinutes());
+
+          Timer.init(mins);
+          // Read currently selected category pill
+          const activeCatPill = document.querySelector('.sp-cat-pill.active');
+          const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
+          Settings.set('sessionCategory', category);
+          Session.startNew(mins, goal, category);
+          Timer.start();
+          const overlay = document.getElementById('goal-overlay');
+          if (overlay) overlay.style.display = 'none';
+        }
+      });
+    });
+
     _wireSteppers();
 
     // Pause / break button
@@ -4809,6 +4838,26 @@ const CFG = {
     const collapseBtn = document.getElementById('full-collapse-btn');
     if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
     if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullModeManual());
+
+    // New window control buttons — top-right corner
+    const pipToggleBtn = document.getElementById('window-pip-toggle-btn');
+    const closeBtn = document.getElementById('window-close-btn');
+    if (pipToggleBtn) {
+      pipToggleBtn.addEventListener('click', () => {
+        if (document.body.classList.contains('pip-mode')) {
+          _enterFullMode();
+        } else {
+          _exitFullModeManual();
+        }
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (window.electronAPI) {
+          window.electronAPI.closeApp();
+        }
+      });
+    }
 
     // WhatsApp-style PiP hover overlay: click the expand button to restore
     const pipExpandBtn = document.getElementById('pip-expand-btn');

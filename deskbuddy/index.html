@@ -35,6 +35,12 @@
   </div>
   <div id="status-bar"></div>
 
+  <!-- Window controls — top-right corner (close + PiP toggle) -->
+  <div id="window-controls" aria-hidden="true">
+    <button id="window-pip-toggle-btn" class="wc-btn" title="Toggle PiP mode (Ctrl+Shift+P)" aria-label="Toggle PiP mode">◻</button>
+    <button id="window-close-btn" class="wc-btn" title="Close DeskBuddy">✕</button>
+  </div>
+
   <!-- Compact mode: click to expand to full-screen -->
   <button id="compact-expand-btn" title="Full screen (Ctrl+Shift+P)">⛶</button>
   <!-- Full-screen mode: click to return to compact overlay -->
@@ -1269,6 +1275,16 @@
         </div>
         <span class="sp-mode-star">✦</span>
       </div>
+      
+      <!-- Quick preset buttons — fast-track common durations -->
+      <div class="sp-quick-presets" id="sp-quick-presets">
+        <button class="sp-preset-btn" data-minutes="15" title="Start a 15-minute focus session">15m</button>
+        <button class="sp-preset-btn" data-minutes="25" title="Start a 25-minute focus session">25m</button>
+        <button class="sp-preset-btn" data-minutes="45" title="Start a 45-minute focus session">45m</button>
+        <button class="sp-preset-btn" data-minutes="60" title="Start a 60-minute focus session">1h</button>
+        <button class="sp-preset-btn" data-minutes="90" title="Start a 90-minute focus session">1.5h</button>
+      </div>
+
       <div class="sp-setup">
         <!-- Duration HH:MM:SS stepper — enter hours, minutes and seconds together -->
         <div class="sp-row sp-row-hms">

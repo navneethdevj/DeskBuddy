@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enterFullMode: () => ipcRenderer.send('enter-full-mode'),
   exitFullMode:  () => ipcRenderer.send('exit-full-mode'),
 
+  closeApp: () => ipcRenderer.send('close-app'),
+
   setPipAlwaysOnTop: (flag)    => ipcRenderer.send('set-pip-always-on-top', flag),
   setPipSnapEnabled: (enabled) => ipcRenderer.send('set-pip-snap-enabled', enabled),
 

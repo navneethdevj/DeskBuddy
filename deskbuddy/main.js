@@ -353,6 +353,10 @@ ipcMain.on('set-pip-always-on-top', (_event, flag) => {
   mainWindow.setAlwaysOnTop(!!flag, flag ? 'floating' : undefined);
 });
 
+ipcMain.on('close-app', () => {
+  app.quit();
+});
+
 // ── Settings IPC ──────────────────────────────────────────────────────────────
 const SETTINGS_DEFAULTS = {
   mutePreset: 'ALL_ON', droneEnabled: true, brightness: 1.0,
