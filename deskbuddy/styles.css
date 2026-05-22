@@ -5848,6 +5848,64 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   color: rgba(255, 110, 110, 0.80);
 }
 
+/* ── Recent sessions display ────────────────────────────────────── */
+.sp-recent-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px;
+  background: rgba(100, 80, 160, 0.08);
+  border-radius: 9px;
+  border: 1px solid rgba(155, 135, 255, 0.12);
+}
+
+.sp-recent-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.55);
+  margin-bottom: 2px;
+}
+
+.sp-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sp-recent-item {
+  padding: 6px 8px;
+  background: rgba(120, 100, 180, 0.12);
+  border: 1px solid rgba(155, 135, 255, 0.18);
+  border-radius: 6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.sp-recent-item:hover {
+  background: rgba(155, 135, 255, 0.20);
+  border-color: rgba(155, 135, 255, 0.35);
+  transform: translateX(2px);
+}
+
+.sp-recent-item-goal {
+  color: rgba(210, 200, 255, 0.85);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.sp-recent-item-meta {
+  font-size: 9px;
+  color: rgba(175, 165, 255, 0.55);
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+
 /* Goal-achieved row */
 .sp-btn-yes {
   flex: 1;

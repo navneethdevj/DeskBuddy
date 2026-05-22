@@ -360,7 +360,7 @@
   const HistoryUpgrades = (() => {
     return {
       init: function() {
-        // Enhance stat cards
+        // Enhance stat cards with staggered animation
         const statCards = $qa('.hp-stat-card');
         statCards.forEach((card, idx) => {
           card.style.animationDelay = `${idx * 0.1}s`;
@@ -376,17 +376,160 @@
           });
         });
 
+        // Add category breakdown section
+        this._addCategoryBreakdown();
+
+        // Add focus quality indicators
+        this._addFocusQualityMetrics();
+
         // Add export/import buttons if they don't exist
         const historyHeader = $q('#history-card .hp-header');
         if (historyHeader && !historyHeader.querySelector('.hp-export-btn')) {
           const actionRow = document.createElement('div');
           actionRow.style.cssText = 'display:flex;gap:8px;margin:12px 0;';
           actionRow.innerHTML = `
-            <button class="sp-btn sp-btn-secondary" style="flex:1;">📥 Export</button>
-            <button class="sp-btn sp-btn-secondary" style="flex:1;">📤 Import</button>
+            <button class="sp-btn sp-btn-secondary" style="flex:1;font-size:10px;">📊 Export</button>
+            <button class="sp-btn sp-btn-secondary" style="flex:1;font-size:10px;">📥 Import</button>
           `;
           historyHeader.appendChild(actionRow);
         }
+      },
+
+      _addCategoryBreakdown: function() {
+        // Add category breakdown visualization to the lifetime view
+        const lifetimeView = $q('[data-view-panel="lifetime"]');
+        if (!lifetimeView || lifetimeView.querySelector('.hp-category-breakdown')) return;
+
+        const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        if (!history.length) return;
+
+        // Calculate category totals
+        const categoryTotals = {};
+        history.forEach(s => {
+          const cat = s.category || 'other';
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + (s.actualFocusedSeconds || 0);
+        });
+
+        // Find where to insert the breakdown (after stat cards)
+        const statCards = lifetimeView.querySelector('.hp-stat-cards');
+        if (!statCards) return;
+
+        const breakdownEl = document.createElement('div');
+        breakdownEl.className = 'hp-category-breakdown';
+        breakdownEl.style.cssText = `
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin: 12px 0;
+          padding: 12px;
+          background: rgba(100, 80, 160, 0.08);
+          border-radius: 10px;
+          border: 1px solid rgba(155, 135, 255, 0.15);
+        `;
+
+        const categoryEmojis = {
+          'study': '📚',
+          'work': '💼',
+          'creative': '🎨',
+          'reading': '📖',
+          'other': '⚙️'
+        };
+
+        const categoryColors = {
+          'study': '#a78bfa',
+          'work': '#38bdf8',
+          'creative': '#f87171',
+          'reading': '#fbbf24',
+          'other': '#6b7280'
+        };
+
+        let html = '<div style="grid-column:1/-1;font-size:10px;font-weight:600;color:rgba(210,200,255,0.6);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">Category Breakdown</div>';
+
+        Object.entries(categoryTotals)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([cat, secs]) => {
+            const fmtSecs = this._fmtSecs(secs);
+            const pct = Math.round((secs / Object.values(categoryTotals).reduce((a,b)=>a+b,0)) * 100);
+            const emoji = categoryEmojis[cat] || '⚙️';
+            const color = categoryColors[cat] || '#6b7280';
+            html += `
+              <div style="padding:8px;background:rgba(${this._hexToRgb(color).join(',')},0.12);border-radius:8px;border-left:2px solid ${color};">
+                <div style="font-weight:600;color:${color};font-size:11px;">${emoji} ${cat}</div>
+                <div style="font-size:9px;color:rgba(210,200,255,0.6);margin-top:2px;">${fmtSecs} (${pct}%)</div>
+              </div>
+            `;
+          });
+
+        breakdownEl.innerHTML = html;
+        statCards.insertAdjacentElement('afterend', breakdownEl);
+      },
+
+      _addFocusQualityMetrics: function() {
+        // Add focus quality and consistency metrics
+        const dailyView = $q('[data-view-panel="daily"]');
+        if (!dailyView || dailyView.querySelector('.hp-quality-metrics')) return;
+
+        const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+        const todaySessions = history.filter(s => {
+          if (!s.date) return false;
+          const d = new Date(s.date);
+          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayStr;
+        });
+
+        if (!todaySessions.length) return;
+
+        // Calculate metrics
+        const avgFocus = Math.round(
+          todaySessions.reduce((sum, s) => {
+            const total = (s.durationMinutes || 0) * 60;
+            return sum + (total > 0 ? (s.actualFocusedSeconds || 0) / total * 100 : 0);
+          }, 0) / todaySessions.length
+        );
+
+        const metricsEl = document.createElement('div');
+        metricsEl.className = 'hp-quality-metrics';
+        metricsEl.style.cssText = `
+          padding: 10px 12px;
+          background: rgba(100, 120, 160, 0.08);
+          border-radius: 9px;
+          border: 1px solid rgba(100, 120, 255, 0.15);
+          font-size: 9px;
+          color: rgba(210, 200, 255, 0.7);
+        `;
+
+        metricsEl.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div>⚡ Focus Quality: <strong style="color:rgba(100,220,160,0.9);">${avgFocus}%</strong></div>
+            <div>🎯 Sessions: <strong style="color:rgba(100,180,255,0.9);">${todaySessions.length}</strong></div>
+          </div>
+        `;
+
+        const view = dailyView.querySelector('.hp-view');
+        if (view) view.insertAdjacentElement('afterbegin', metricsEl);
+      },
+
+      _fmtSecs: function(totalSecs) {
+        totalSecs = Math.max(0, Math.floor(totalSecs));
+        if (totalSecs === 0) return '0s';
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        if (h === 0 && m === 0) return `${s}s`;
+        if (h === 0) return s === 0 ? `${m}m` : `${m}m ${s}s`;
+        if (m === 0 && s === 0) return `${h}h`;
+        if (s === 0) return `${h}h ${m}m`;
+        return `${h}h ${m}m ${s}s`;
+      },
+
+      _hexToRgb: function(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? [
+          parseInt(result[1], 16),
+          parseInt(result[2], 16),
+          parseInt(result[3], 16)
+        ] : [128, 128, 128];
       }
     };
   })();
