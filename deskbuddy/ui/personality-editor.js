@@ -25,6 +25,15 @@ const PersonalityEditor = (() => {
   let _saveTimers = {};          // per-key debounce for Settings.set
   const SAVE_DEBOUNCE = 280;     // ms — localStorage write debounce
 
+  // ── Utilities ─────────────────────────────────────────────────────────────
+  // Escape HTML to prevent XSS — defined once for reuse
+  const escapeHtml = (str) => {
+    if (typeof str !== 'string') return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  };
+
   // ── Personality Presets ──────────────────────────────────────────────────
   const PRESETS = {
     cozy: {
@@ -507,14 +516,6 @@ const PersonalityEditor = (() => {
     ctrl.className = 'pe-ctrl';
 
     if (dim.type === 's') {
-      // Escape HTML to prevent XSS
-      const escapeHtml = (str) => {
-        if (typeof str !== 'string') return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-      };
-      
       ctrl.innerHTML = `
         <div class="pe-sw">
           <span class="pe-el">${escapeHtml(dim.ll || '')}</span>

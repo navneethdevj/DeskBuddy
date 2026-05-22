@@ -213,14 +213,22 @@
         if (idx < 0 || idx >= _pinned.length) return;
         const p = _pinned[idx];
         try {
+          let launched = false;
           withGlobal('Session', S => {
             if (S.setGoal && typeof S.setGoal === 'function') S.setGoal(p.goal);
             if (S.setCategory && typeof S.setCategory === 'function') S.setCategory(p.category);
             if (S.setDuration && typeof S.setDuration === 'function') S.setDuration(p.durationMins * 60);
-            if (S.start && typeof S.start === 'function') S.start();
+            if (S.start && typeof S.start === 'function') {
+              S.start();
+              launched = true;
+            }
           });
+          if (!launched) {
+            Toast.show('Could not start session', 'warning');
+          }
         } catch (err) {
           console.error('Error launching pinned session:', err);
+          Toast.show('Failed to start session', 'warning');
         }
       },
       getAll: () => [..._pinned],
@@ -404,7 +412,12 @@
         const lifetimeView = $q('[data-view-panel="lifetime"]');
         if (!lifetimeView || lifetimeView.querySelector('.hp-category-breakdown')) return;
 
-        const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        let history = [];
+        withGlobal('Session', S => {
+          if (S.getHistory && typeof S.getHistory === 'function') {
+            history = S.getHistory();
+          }
+        });
         if (!history.length) return;
 
         // Calculate category totals
@@ -473,7 +486,12 @@
         const dailyView = $q('[data-view-panel="daily"]');
         if (!dailyView || dailyView.querySelector('.hp-quality-metrics')) return;
 
-        const history = (typeof Session !== 'undefined') ? Session.getHistory() : [];
+        let history = [];
+        withGlobal('Session', S => {
+          if (S.getHistory && typeof S.getHistory === 'function') {
+            history = S.getHistory();
+          }
+        });
         
         // Get today's date in a normalized format (YYYY-MM-DD)
         const today = new Date();
