@@ -140,14 +140,41 @@ const HistoryPanel = (() => {
     if (badge) badge.style.display = _isAntiCheatOn() ? '' : 'none';
   }
 
+  /**
+   * _fmtSecs(totalSecs)
+   *
+   * Smart duration formatter with three display tiers:
+   *   < 60 s  →  "42s"
+   *   < 3600 s →  "4m 32s"   (minutes + seconds, drops seconds if exactly 0)
+   *   ≥ 3600 s →  "1h 4m 32s" (hours + minutes + seconds, collapses zeroes)
+   *
+   * Stat cards (daily/weekly/monthly/lifetime totals) are almost always
+   * in the minutes-to-hours range, so this makes small sessions legible
+   * ("just did 48s" is now honest) while staying compact for long ones.
+   */
   function _fmtSecs(totalSecs) {
-    const m = Math.floor(totalSecs / 60);
-    if (m <= 0) return '0m';
-    const h = Math.floor(m / 60);
-    const rem = m % 60;
-    if (h === 0) return `${rem}m`;
-    if (rem === 0) return `${h}h`;
-    return `${h}h ${rem}m`;
+    totalSecs = Math.max(0, Math.floor(totalSecs));
+
+    if (totalSecs === 0) return '0s';
+
+    const h   = Math.floor(totalSecs / 3600);
+    const m   = Math.floor((totalSecs % 3600) / 60);
+    const s   = totalSecs % 60;
+
+    if (h === 0 && m === 0) {
+      // Pure seconds: "48s"
+      return `${s}s`;
+    }
+
+    if (h === 0) {
+      // Minutes [+ seconds]: "4m 32s" or just "4m" when s === 0
+      return s === 0 ? `${m}m` : `${m}m ${s}s`;
+    }
+
+    // Hours [+ minutes [+ seconds]]
+    if (m === 0 && s === 0) return `${h}h`;
+    if (s === 0)            return `${h}h ${m}m`;
+    return `${h}h ${m}m ${s}s`;
   }
 
   function _fmtMs(ms) { return _fmtSecs(Math.floor(ms / 1000)); }
@@ -228,7 +255,7 @@ const HistoryPanel = (() => {
     const lifetimeTotalSessions = ledger ? ledger.totalSessions : history.length;
 
     // Daily view
-    _setText('hsc-today-focused',  todaySecs > 0 ? _fmtSecs(todaySecs) : '0m');
+    _setText('hsc-today-focused',  _fmtSecs(todaySecs));
     _setText('hsc-today-sessions', String(todaySessions.length));
     const todayAvg = _avgFocusScore(todaySessions);
     _setText('hsc-today-avg',      todayAvg !== null ? `${todayAvg}%` : '—');
@@ -236,7 +263,7 @@ const HistoryPanel = (() => {
     _setText('hsc-today-longest',  todayLongest > 0 ? `${Math.round(todayLongest)}m` : '—');
 
     // Weekly view
-    _setText('hsc-week-focused',   weekSecs > 0 ? _fmtSecs(weekSecs) : '0m');
+    _setText('hsc-week-focused',   _fmtSecs(weekSecs));
     _setText('hsc-week-sessions',  String(weekSessions.length));
     const weekAvg = _avgFocusScore(weekSessions);
     _setText('hsc-week-avg',       weekAvg !== null ? `${weekAvg}%` : '—');
@@ -244,7 +271,7 @@ const HistoryPanel = (() => {
     _setText('hsc-week-best-day',  weekBest || '—');
 
     // Monthly view
-    _setText('hsc-month-focused',  monthSecs > 0 ? _fmtSecs(monthSecs) : '0m');
+    _setText('hsc-month-focused',  _fmtSecs(monthSecs));
     _setText('hsc-month-sessions', String(monthSessions.length));
     const monthAvg = _avgFocusScore(monthSessions);
     _setText('hsc-month-avg',      monthAvg !== null ? `${monthAvg}%` : '—');
@@ -252,7 +279,7 @@ const HistoryPanel = (() => {
     _setText('hsc-month-best',     monthBest || '—');
 
     // Lifetime view — ledger values are tamper-proof (deletions don't affect them)
-    _setText('hsc-lifetime-focused',  lifetimeFocusSecs > 0 ? _fmtSecs(lifetimeFocusSecs) : '0m');
+    _setText('hsc-lifetime-focused',  _fmtSecs(lifetimeFocusSecs));
     _setText('hsc-lifetime-sessions', String(lifetimeTotalSessions));
     const lifetimeBest = _bestDay(history);
     _setText('hsc-lifetime-best-day', lifetimeBest || '—');
@@ -559,9 +586,9 @@ const HistoryPanel = (() => {
       }
       if (isToday) cls += ' hp-day-today';
 
-      const fmtMins = info ? Math.round(info.focusedSecs / 60) : 0;
-      const titleStr = isToday ? 'Today' : `${MONTH_NAMES[month]} ${day}`;
-      const focusTitle = fmtMins > 0 ? ` · ${fmtMins}m focused` : '';
+      const titleStr   = isToday ? 'Today' : `${MONTH_NAMES[month]} ${day}`;
+      const focusFmt   = info ? _fmtSecs(info.focusedSecs) : '';
+      const focusTitle = focusFmt ? ` · ${focusFmt} focused` : '';
       html += `<td><div class="${cls}" ${style} title="${titleStr}${focusTitle}">${day}</div></td>`;
       col++;
     }
@@ -974,11 +1001,14 @@ const HistoryPanel = (() => {
       // Duration
       const durMins = Math.max(0, parseInt(s.durationMinutes, 10) || 0);
 
+      // Actual focused time (the key new display)
+      const focusedSecs = Math.max(0, parseInt(s.actualFocusedSeconds, 10) || 0);
+      const focusedTimeStr = focusedSecs > 0 ? _fmtSecs(focusedSecs) : '';
+
       // Focus score
       const scoreNum = (() => {
-        const total   = durMins * 60;
-        const focused = Math.max(0, parseInt(s.actualFocusedSeconds, 10) || 0);
-        return total > 0 ? Math.round((focused / total) * 100) : 0;
+        const total = durMins * 60;
+        return total > 0 ? Math.round((focusedSecs / total) * 100) : 0;
       })();
 
       // Focus rating
@@ -1035,7 +1065,8 @@ const HistoryPanel = (() => {
               ${timeStr ? `<span class="hp-rr-time">${_esc(timeStr)}</span>` : ''}
               <span class="hp-rr-sep">·</span>
               <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
-              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused">${scoreNum}%</span>` : ''}
+              ${focusedTimeStr ? `<span class="hp-rr-sep">·</span><span class="hp-rr-focused-time" title="Time spent focused: ${focusedTimeStr} out of ${durMins}m" style="color:${ratingColor};font-variant-numeric:tabular-nums">${focusedTimeStr}</span>` : ''}
+              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused" style="color:${ratingColor};opacity:0.70">${scoreNum}%</span>` : ''}
               ${outLabel}
             </div>
             <div class="hp-rr-right">
@@ -1284,9 +1315,10 @@ const HistoryPanel = (() => {
         const dateS = d && isFinite(d.getTime())
           ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
           : 'Unknown date';
-        const dur   = session.durationMinutes || 0;
+        const dur     = session.durationMinutes || 0;
         const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
-        const focus = dur > 0 ? Math.round((focused / (dur * 60)) * 100) : 0;
+        const focus   = dur > 0 ? Math.round((focused / (dur * 60)) * 100) : 0;
+        const focusedFmt = _fmtSecs(focused);
         const distracts = session.distractionCount || 0;
         const out   = String(session.outcome || 'ABANDONED');
         const cat   = session.category || '—';
@@ -1295,7 +1327,7 @@ const HistoryPanel = (() => {
         alert(
           `📅  ${dateS}\n` +
           `⏱  Duration: ${dur} min\n` +
-          `🎯  Focus: ${focused}s (${focus}%)\n` +
+          `🎯  Focused: ${focusedFmt} (${focus}%)\n` +
           `⚡  Distractions: ${distracts}\n` +
           `✅  Outcome: ${out}\n` +
           `🏷  Category: ${cat}\n` +
