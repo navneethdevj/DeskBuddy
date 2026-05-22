@@ -1831,6 +1831,20 @@
     window.ObjectDetector  = exports.ObjectDetector;
   </script>
 
+  <!-- Shared Utilities -->
+  <script>
+    /**
+     * Shared HTML escape utility to prevent XSS across modules
+     */
+    const escapeHtml = (str) => {
+      if (typeof str !== 'string') return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    };
+    window.escapeHtml = escapeHtml; // Make available globally
+  </script>
+
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
   <script src="components/spriteAnimator.js"></script>

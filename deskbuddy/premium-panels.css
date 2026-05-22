@@ -280,7 +280,7 @@
   background: rgba(248, 113, 113, 0.2);
   border-color: var(--db-rose);
   color: var(--db-rose);
-  box-shadow: 0 0 20px rgba(248, 113, 248, 0.4);
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.4);
 }
 
 .sp-cat-pill.active[data-cat="break"] {
