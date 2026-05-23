@@ -2408,15 +2408,29 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window drag — entire #world is drag surface when NOT locked.
+/* PiP window drag — entire #world and .companion are drag surface when NOT locked.
    Interactive children override with no-drag below.
    pip-locked class disables all dragging instantly. */
 body.pip-mode:not(.pip-locked) #world            { -webkit-app-region: drag; cursor: grab; }
-body.pip-mode:not(.pip-locked) #world:active      { cursor: grabbing; }
-body.pip-mode.pip-locked       #world             { -webkit-app-region: no-drag; cursor: default; }
-/* Companion still drag-capable for backwards compat */
-body.pip-mode:not(.pip-locked) .companion         { -webkit-app-region: drag; }
-body.pip-mode.pip-locked       .companion         { -webkit-app-region: no-drag !important; cursor: default !important; }
+body.pip-mode:not(.pip-locked) #world:active     { cursor: grabbing; }
+body.pip-mode.pip-locked       #world            { -webkit-app-region: no-drag; cursor: default; }
+
+/* CRITICAL: Companion fills the pip window (100% x 100%), so it MUST be draggable
+   when in pip-mode and not locked. This is the main drag surface for the window. */
+body.pip-mode .companion {
+  -webkit-app-region: drag !important;
+  cursor: grab;
+}
+body.pip-mode .companion:active {
+  cursor: grabbing;
+}
+
+/* When locked, companion cannot be dragged */
+body.pip-mode.pip-locked .companion {
+  -webkit-app-region: no-drag !important;
+  cursor: default !important;
+}
+
 /* All interactive elements must NOT be drag handles */
 body.pip-mode .eye-wrap,
 body.pip-mode #compact-expand-btn,
