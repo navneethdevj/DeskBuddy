@@ -1,0 +1,370 @@
+/* ============================================================
+   deskbuddy-improvements.css
+   All visual improvements: session panel, history panel,
+   emotion glow states, UI polish
+   ============================================================ */
+
+/* ── SESSION PANEL: Stack timers vertically ─────────────────── */
+
+/* Replace the side-by-side row with a vertical stack */
+.sp-steppers-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.sp-steppers-stack .sp-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sp-break-divider {
+  padding-top: 6px;
+  border-top: 1px solid rgba(155,135,255,0.12);
+  margin-top: 2px;
+}
+
+/* Hide old side-by-side row style when stack is present */
+.sp-steppers-row {
+  display: none !important;
+}
+
+/* Make stepper inputs scale to fill the row properly */
+.sp-steppers-stack .sp-stepper-hms {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Remove the mood/energy row entirely */
+.sp-mood-row {
+  display: none !important;
+}
+
+/* Tighten up session panel width and padding */
+#session-panel {
+  width: 290px !important;
+}
+
+.sp-setup {
+  padding: 0 12px 10px !important;
+}
+
+/* Make session panel content not overflow */
+#session-idle {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 120px);
+}
+
+/* ── HISTORY PANEL: Fix header layout ───────────────────────── */
+
+/* Header: title left, action buttons center, close right */
+.hp-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 14px 14px 10px !important;
+  flex-wrap: nowrap !important;
+  border-bottom: 1px solid rgba(155,135,255,0.10);
+}
+
+.hp-header-left {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hp-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  color: rgba(220,210,255,0.92) !important;
+}
+
+/* Action buttons row in history header */
+.hp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.hp-action-btn {
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  background: rgba(155,135,255,0.12);
+  border: 1px solid rgba(155,135,255,0.22);
+  color: rgba(190,175,255,0.80);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.hp-action-btn:hover {
+  background: rgba(155,135,255,0.22);
+  box-shadow: 0 0 10px rgba(155,135,255,0.20);
+  transform: translateY(-1px);
+  color: rgba(220,210,255,0.95);
+}
+
+/* Separate pills row below the header */
+.hp-pills-row {
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid rgba(155,135,255,0.08);
+}
+
+.hp-pills-row .hgraph-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+/* Fix close button position — always top-right, never wraps */
+#hp-close-btn {
+  flex-shrink: 0;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: rgba(200,190,255,0.65) !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0 !important;
+}
+
+#hp-close-btn:hover {
+  background: rgba(255,80,80,0.18) !important;
+  color: rgba(255,160,160,0.90) !important;
+  border-color: rgba(255,80,80,0.25) !important;
+}
+
+/* Fit history panel content — prevent overflow */
+#history-panel {
+  width: 470px !important;
+  max-height: calc(100vh - 70px) !important;
+}
+
+#history-card {
+  padding: 0 !important;
+}
+
+/* ── EMOTION GLOW STATES ─────────────────────────────────────── */
+
+/* Sad emotion — blue/grey tinted glow */
+.companion.emotion-glow-sad {
+  filter: drop-shadow(0 0 18px rgba(100,150,255,0.45))
+          drop-shadow(0 0 6px rgba(80,120,220,0.30)) !important;
+}
+
+/* Crying — stronger blue/teal glow, slight shimmer */
+.companion.emotion-glow-crying {
+  filter: drop-shadow(0 0 22px rgba(80,160,255,0.55))
+          drop-shadow(0 0 8px rgba(60,130,230,0.40)) !important;
+  animation: cry-glow-pulse 2.2s ease-in-out infinite !important;
+}
+
+@keyframes cry-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 22px rgba(80,160,255,0.55)) drop-shadow(0 0 8px rgba(60,130,230,0.40)); }
+  50%       { filter: drop-shadow(0 0 28px rgba(100,180,255,0.65)) drop-shadow(0 0 10px rgba(80,150,255,0.50)); }
+}
+
+/* Love/petting — warm pink glow */
+.companion.emotion-glow-love {
+  filter: drop-shadow(0 0 20px rgba(255,120,190,0.55))
+          drop-shadow(0 0 7px rgba(255,90,160,0.35)) !important;
+}
+
+/* Grumpy/angry — orange-red glow */
+.companion.emotion-glow-angry {
+  filter: drop-shadow(0 0 18px rgba(255,130,60,0.45))
+          drop-shadow(0 0 6px rgba(220,80,40,0.30)) !important;
+}
+
+/* Happy — warm golden glow */
+.companion.emotion-glow-happy {
+  filter: drop-shadow(0 0 16px rgba(255,220,100,0.40))
+          drop-shadow(0 0 5px rgba(255,200,60,0.25)) !important;
+}
+
+/* Overjoyed — bright golden burst */
+.companion.emotion-glow-overjoyed {
+  filter: drop-shadow(0 0 26px rgba(255,230,80,0.65))
+          drop-shadow(0 0 10px rgba(255,200,40,0.45)) !important;
+  animation: overjoyed-glow-pulse 0.8s ease-in-out infinite !important;
+}
+
+@keyframes overjoyed-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 26px rgba(255,230,80,0.65)) drop-shadow(0 0 10px rgba(255,200,40,0.45)); }
+  50%       { filter: drop-shadow(0 0 36px rgba(255,245,120,0.80)) drop-shadow(0 0 14px rgba(255,220,60,0.60)); }
+}
+
+/* ── EMOTIONAL RESISTANCE — visual feedback ──────────────────── */
+
+/* When resisting petting, slight "lean back" effect */
+.companion.resisting-pet {
+  animation: resist-lean 0.5s ease-out !important;
+}
+
+@keyframes resist-lean {
+  0%   { transform: translate(var(--companion-x, 0px), var(--companion-y, 0px)) rotate(0deg) scale(1); }
+  30%  { transform: translate(calc(var(--companion-x, 0px) - 8px), var(--companion-y, 0px)) rotate(-4deg) scale(0.97); }
+  60%  { transform: translate(calc(var(--companion-x, 0px) + 4px), var(--companion-y, 0px)) rotate(2deg) scale(0.99); }
+  100% { transform: translate(var(--companion-x, 0px), var(--companion-y, 0px)) rotate(0deg) scale(1); }
+}
+
+/* ── SESSION PANEL: Active state improvements ────────────────── */
+
+/* Make the active session state more compact and readable */
+#session-active {
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
+/* Break state */
+#session-paused {
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
+/* ── HISTORY PANEL: Recent sessions section ──────────────────── */
+
+/* Ensure the recent sessions list doesn't overflow */
+#hp-recent-list {
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── HISTORY PANEL: Make the whole card scroll cleanly ──────── */
+
+#history-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hp-view.hp-view-active {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+/* ── IMPROVED CLOSE BUTTONS ──────────────────────────────────── */
+
+/* Session panel close buttons — always visible, better hit target */
+.sp-close-btn {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: rgba(200,190,255,0.65) !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0 !important;
+}
+
+.sp-close-btn:hover {
+  background: rgba(255,80,80,0.18) !important;
+  color: rgba(255,160,160,0.90) !important;
+  border-color: rgba(255,80,80,0.25) !important;
+}
+
+/* ── HISTORY PANEL ICON: stat bars look ─────────────────────── */
+
+/* Make the new bar-chart icon look good */
+#hp-icon-chart rect {
+  transition: opacity 0.2s;
+}
+#hp-icon:hover #hp-icon-chart rect {
+  opacity: 1 !important;
+}
+
+/* ── RESPONSIVE FIT for narrow screens ──────────────────────── */
+@media (max-height: 700px) {
+  #session-idle {
+    max-height: calc(100vh - 90px);
+  }
+  #history-panel {
+    max-height: calc(100vh - 60px) !important;
+  }
+}
+
+/* ── SMALL QUALITY-OF-LIFE POLISH ───────────────────────────── */
+
+/* Smoother sp-icon appearance when panel closes */
+#sp-icon:not(.sp-icon-hidden) {
+  transition: opacity 0.22s ease, transform 0.22s ease !important;
+}
+
+/* Smoother hp-icon appearance when panel closes */
+#hp-icon:not(.hp-icon-hidden) {
+  transition: opacity 0.22s ease, transform 0.22s ease !important;
+}
+
+/* sp-icon: remove the translateY from hidden so the restore is seamless */
+#sp-icon.sp-icon-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-50%) scale(0.88) !important;
+}
+
+/* ============================================================
+   ICON VISIBILITY SAFETY NET
+   Ensure hidden classes NEVER use display:none — only opacity
+   + pointer-events so the icons are always recoverable by JS.
+   This overrides any display:none that might sneak in.
+   ============================================================ */
+
+#sp-icon.sp-icon-hidden,
+#hp-icon.hp-icon-hidden,
+#tasks-icon.tasks-icon-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  /* Explicitly NOT display:none — keeps the element in the DOM
+     so classList.remove() + style.removeProperty() always works */
+}
+
+/* When NOT hidden, icons must be fully visible regardless of any
+   residual inline style that might linger from a broken close */
+#sp-icon:not(.sp-icon-hidden),
+#hp-icon:not(.hp-icon-hidden),
+#tasks-icon:not(.tasks-icon-hidden) {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ── COMPANION SHIVER animation (used when resisting petting) ── */
+.companion.shiver {
+  animation: companion-shiver 0.4s ease-out !important;
+}
+
+@keyframes companion-shiver {
+  0%   { transform: translate(var(--x, 0px), var(--y, 0px)) rotate(0deg); }
+  15%  { transform: translate(calc(var(--x, 0px) - 5px), var(--y, 0px)) rotate(-3deg); }
+  35%  { transform: translate(calc(var(--x, 0px) + 5px), var(--y, 0px)) rotate(3deg); }
+  55%  { transform: translate(calc(var(--x, 0px) - 3px), var(--y, 0px)) rotate(-2deg); }
+  75%  { transform: translate(calc(var(--x, 0px) + 2px), var(--y, 0px)) rotate(1deg); }
+  100% { transform: translate(var(--x, 0px), var(--y, 0px)) rotate(0deg); }
+}
