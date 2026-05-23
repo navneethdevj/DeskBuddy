@@ -5585,12 +5585,12 @@ body.pip-mode  #history-panel { display: none !important; }
   transform: translateY(-50%) translateX(14px);
   opacity: 0;
   pointer-events: none;
-  width: 260px;
-  max-height: min(75vh, 560px);
+  width: 248px;
+  max-height: min(68vh, 520px);
   z-index: 2500;
   display: none;          /* shown only in full-mode */
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -5631,11 +5631,11 @@ body.pip-mode  #session-panel { display: none !important; }
   border-left: 1px solid rgba(255, 255, 255, 0.09);
   border-right: 1px solid rgba(0, 0, 0, 0.18);
   border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 20px;
-  padding: 12px 14px 14px;
+  border-radius: 18px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   /* Floating shadow + faint perimeter glow ring */
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
@@ -5667,10 +5667,10 @@ body.pip-mode  #session-panel { display: none !important; }
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.09);
   color: rgba(255, 255, 255, 0.35);
-  font-size: 9px;
+  font-size: 8.5px;
   line-height: 1;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 3px 5px;
   border-radius: 5px;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
   -webkit-app-region: no-drag;
@@ -5682,17 +5682,45 @@ body.pip-mode  #session-panel { display: none !important; }
 }
 
 .sp-mode-label {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(165, 145, 255, 0.60);
 }
 
 .sp-mode-star {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(175, 160, 255, 0.38);
   animation: spStarPulse 3.5s ease-in-out infinite;
+}
+
+/* ── Daily summary ─────────────────────────────────────────────── */
+.sp-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(120, 100, 160, 0.10);
+  border: 1px solid rgba(155, 135, 255, 0.16);
+}
+.sp-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+.sp-summary-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(225, 215, 255, 0.92);
+}
+.sp-summary-label {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(170, 155, 235, 0.55);
 }
 @keyframes spStarPulse {
   0%, 100% { opacity: 0.38; }
@@ -5722,20 +5750,20 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 /* ── Quick preset buttons ───────────────────────────────────────────── */
 .sp-quick-presets {
   display: flex;
-  gap: 5px;
-  margin-bottom: 2px;
+  gap: 4px;
+  margin-bottom: 1px;
   flex-wrap: wrap;
 }
 
 .sp-preset-btn {
   flex: 1;
-  min-width: 40px;
-  padding: 5px 7px;
+  min-width: 36px;
+  padding: 4px 6px;
   border: 1px solid rgba(155, 135, 255, 0.25);
   border-radius: 6px;
   background: rgba(120, 100, 180, 0.12);
   color: rgba(210, 200, 255, 0.75);
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 600;
   font-family: 'Segoe UI', system-ui, sans-serif;
   cursor: pointer;
@@ -5755,18 +5783,50 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   box-shadow: inset 0 2px 4px rgba(100, 80, 160, 0.3);
 }
 
+/* ── Smart start row ─────────────────────────────────────────────── */
+.sp-smart-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(155, 135, 255, 0.10);
+  border: 1px solid rgba(155, 135, 255, 0.18);
+}
+.sp-smart-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sp-smart-label {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(170, 155, 235, 0.55);
+}
+.sp-smart-desc {
+  font-size: 9px;
+  color: rgba(220, 210, 255, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Setup form rows ────────────────────────────────────────────── */
 .sp-setup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sp-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 5px;
 }
 
 /* Stacked variant — label above, stepper full-width (used for HH:MM:SS rows) */
@@ -5783,7 +5843,7 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 }
 
 .sp-label {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(210, 200, 255, 0.60);
   flex-shrink: 0;
   white-space: nowrap;
@@ -5827,9 +5887,9 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 8px;
   color: rgba(220, 212, 255, 0.82);
-  font-size: 10px;
+  font-size: 9px;
   font-family: inherit;
-  padding: 6px 8px;
+  padding: 5px 7px;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.18s, background 0.18s;
@@ -5844,10 +5904,10 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 /* ── Session panel buttons ──────────────────────────────────────── */
 .sp-btn {
   width: 100%;
-  padding: 7px 10px;
+  padding: 6px 9px;
   border-radius: 9px;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -5856,6 +5916,12 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   -webkit-app-region: no-drag;
 }
 .sp-btn:active { transform: scale(0.97); }
+.sp-btn-compact {
+  width: auto;
+  padding: 5px 8px;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+}
 
 /* Primary — periwinkle gradient (start / resume / new session) */
 .sp-btn-primary {

@@ -1275,10 +1275,25 @@
         </div>
         <div class="sp-header-right">
           <span class="sp-mode-star">✦</span>
-          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+          <button class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
         </div>
       </div>
-      
+
+      <div class="sp-summary" id="sp-summary">
+        <div class="sp-summary-item">
+          <div class="sp-summary-value" id="sp-summary-streak">0</div>
+          <div class="sp-summary-label">day streak</div>
+        </div>
+        <div class="sp-summary-item">
+          <div class="sp-summary-value" id="sp-summary-today">0m</div>
+          <div class="sp-summary-label">focused today</div>
+        </div>
+        <div class="sp-summary-item">
+          <div class="sp-summary-value" id="sp-summary-best">—</div>
+          <div class="sp-summary-label">best window</div>
+        </div>
+      </div>
+       
       <!-- Quick preset buttons — fast-track common durations -->
       <div class="sp-quick-presets" id="sp-quick-presets">
         <button class="sp-preset-btn" data-minutes="15" title="Start a 15-minute focus session">15m</button>
@@ -1286,6 +1301,14 @@
         <button class="sp-preset-btn" data-minutes="45" title="Start a 45-minute focus session">45m</button>
         <button class="sp-preset-btn" data-minutes="60" title="Start a 60-minute focus session">1h</button>
         <button class="sp-preset-btn" data-minutes="90" title="Start a 90-minute focus session">1.5h</button>
+      </div>
+
+      <div class="sp-smart-start" id="sp-smart-start" style="display:none">
+        <div class="sp-smart-info">
+          <div class="sp-smart-label">smart start</div>
+          <div class="sp-smart-desc" id="sp-smart-desc">—</div>
+        </div>
+        <button id="sp-smart-apply" class="sp-btn sp-btn-secondary sp-btn-compact" type="button">use plan</button>
       </div>
 
       <div class="sp-setup">
@@ -1362,18 +1385,18 @@
           </div>
         </div>
 
+        <!-- Daily tasks — encourage daily usage -->
+        <div class="sp-daily-tasks" id="sp-daily-tasks" style="display:none">
+          <div class="sp-daily-tasks-label">daily goals <span class="sp-daily-chip">adaptive</span></div>
+          <div class="sp-daily-tasks-list" id="sp-daily-tasks-list">
+            <!-- Tasks are dynamically generated -->
+          </div>
+        </div>
+
         <!-- Recent sessions — quick access to resume last sessions -->
         <div class="sp-recent-sessions" id="sp-recent-sessions" style="display:none">
           <div class="sp-recent-label">recent sessions</div>
           <div class="sp-recent-list" id="sp-recent-list"></div>
-        </div>
-
-        <!-- Daily tasks — encourage daily usage -->
-        <div class="sp-daily-tasks" id="sp-daily-tasks" style="display:none">
-          <div class="sp-daily-tasks-label">daily goals</div>
-          <div class="sp-daily-tasks-list" id="sp-daily-tasks-list">
-            <!-- Tasks are dynamically generated -->
-          </div>
         </div>
       </div>
     </div>
@@ -1384,7 +1407,7 @@
         <span class="sp-mode-label">in session</span>
         <div class="sp-header-right">
           <span id="sp-focus-dot" class="sp-focus-dot"></span>
-          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+          <button class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
         </div>
       </div>
 
@@ -1433,7 +1456,7 @@
         <span class="sp-mode-label">on break</span>
         <div class="sp-header-right">
           <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
-          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+          <button class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
         </div>
       </div>
       <div class="sp-break-body">
@@ -1460,17 +1483,42 @@
 
       <!-- ── HEADER with view pills ──────────────────────────────────── -->
       <div class="hp-header">
-        <div class="hp-header-left">
-          <span class="hp-title">Focus Stats</span>
-          <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
+        <div class="hp-header-row hp-header-row-top">
+          <div class="hp-header-left">
+            <span class="hp-title">Focus Stats</span>
+            <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
+          </div>
+          <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
         </div>
-        <div class="hgraph-pills">
-          <button class="hgraph-pill active" data-view="daily">Daily</button>
-          <button class="hgraph-pill" data-view="weekly">Weekly</button>
-          <button class="hgraph-pill" data-view="monthly">Monthly</button>
-          <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
+        <div class="hp-header-row hp-header-row-tabs">
+          <div class="hgraph-pills">
+            <button class="hgraph-pill active" data-view="daily">Daily</button>
+            <button class="hgraph-pill" data-view="weekly">Weekly</button>
+            <button class="hgraph-pill" data-view="monthly">Monthly</button>
+            <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
+          </div>
         </div>
-        <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
+      </div>
+
+      <div class="hp-insights">
+        <div class="hp-insight-card">
+          <div class="hp-insight-label">best focus window</div>
+          <div class="hp-insight-value" id="hp-insight-best-hour">—</div>
+        </div>
+        <div class="hp-insight-card">
+          <div class="hp-insight-label">top category</div>
+          <div class="hp-insight-value" id="hp-insight-top-category">—</div>
+        </div>
+        <div class="hp-insight-card">
+          <div class="hp-insight-label">consistency</div>
+          <div class="hp-insight-value" id="hp-insight-consistency">—</div>
+          <div class="hp-insight-sub">last 14 days</div>
+        </div>
+        <div class="hp-insight-card" data-insight="trend">
+          <div class="hp-insight-label">momentum</div>
+          <div class="hp-insight-value" id="hp-insight-trend">—</div>
+          <div class="hp-insight-sub" id="hp-insight-trend-sub">vs last week</div>
+        </div>
       </div>
 
       <!-- ── VIEW: DAILY ────────────────────────────────────────────── -->
