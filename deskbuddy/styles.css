@@ -9163,7 +9163,6 @@ body.pip-mode #world {
 }
 
 /* But interactive children must opt OUT of drag so clicks still work */
-body.pip-mode #world .companion,
 body.pip-mode #world .companion *,
 body.pip-mode #world button,
 body.pip-mode #world [role="button"],
