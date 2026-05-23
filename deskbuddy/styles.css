@@ -6080,16 +6080,16 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 .sp-controls {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
 }
 
 /* Goal display during active session */
 .sp-goal-display {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(210, 200, 255, 0.52);
-  line-height: 1.45;
+  line-height: 1.4;
   font-style: italic;
-  padding: 5px 8px;
+  padding: 4px 6px;
   border-left: 2px solid rgba(155, 135, 255, 0.30);
   border-radius: 2px;
 }
@@ -6172,11 +6172,11 @@ body[data-timer-state="CRITICAL"]   .sp-focus-stat-fill { background: rgba(255, 
 /* ── Break / paused state ───────────────────────────────────────── */
 .sp-break-body {
   text-align: center;
-  padding: 4px 0;
+  padding: 3px 0;
 }
 
 .sp-break-countdown {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 200;
   letter-spacing: 0.14em;
   color: rgba(80, 230, 175, 0.90);
@@ -6184,10 +6184,10 @@ body[data-timer-state="CRITICAL"]   .sp-focus-stat-fill { background: rgba(255, 
 }
 
 .sp-break-hint {
-  font-size: 9.5px;
+  font-size: 8px;
   color: rgba(175, 165, 255, 0.35);
   letter-spacing: 0.06em;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 /* ── Outcome screen ─────────────────────────────────────────────── */
@@ -6441,7 +6441,7 @@ body[data-timer-state="CRITICAL"]   .sp-ring-fill {
 }
 
 .sp-inline-timer {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 200;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
@@ -6453,7 +6453,7 @@ body[data-timer-state="CRITICAL"]   .sp-ring-fill {
 
 /* State label below the time — content set via CSS data-attr targeting */
 .sp-ring-state-label {
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
