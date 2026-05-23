@@ -727,11 +727,28 @@ const Brain = (() => {
     // 2. Startled hold — brief flash that overrides everything except love
     if (now < _startledUntil) { _setQuiet('startled'); return; }
 
-    // 3. Smile check — always reacts to user smiling
+    // 3. Smile check — reacts to user smiling
+    // When crying/sad: the smile causes a GRADUAL recovery handled by emotion-enhancements.js
+    // so we don't instantly override to happy — we let the enhancement layer manage the arc.
+    // In all other states: immediate happy reaction as before.
     if (window.cameraAvailable && p?.facePresent && p.userSmiling
         && !overjoyedTimer && !sulkCheckInterval) {
-      _setQuiet('happy');
-      return;
+      const curEmotion = window._lastEmotion;
+      const isDistressed = curEmotion === 'crying' || curEmotion === 'sad';
+      if (!isDistressed) {
+        // Normal case: immediate happy reaction
+        _setQuiet('happy');
+        return;
+      }
+      // Distressed case: emotion-enhancements.js handles gradual recovery.
+      // We allow a brief "noticing" emotion — show curious briefly to
+      // signal the buddy is registering the smile before the arc begins.
+      if (!window._smileNoticeShown) {
+        window._smileNoticeShown = true;
+        Emotion.preview('curious', 600);
+        setTimeout(() => { window._smileNoticeShown = false; }, 4000);
+      }
+      // Fall through to continue normal distress state handling
     }
 
     // 4. Excited hold — rapid typing energy
@@ -926,69 +943,131 @@ const Brain = (() => {
       curious:    ['*tilts head* ...?', 'hm...?', '...👀', 'what\'s that?',
                    'ooh?', '*squints curiously*', 'wait...', '...interesting.',
                    '*perks up*', 'tell me more~', '...oh?', 'i see something~',
-                   '*ears perk up*', 'hmmmm...', '( •᷅ ᵕ •᷄ )?', '*leans forward*'],
+                   '*ears perk up*', 'hmmmm...', '( •᷅ ᵕ •᷄ )?', '*leans forward*',
+                   '...oooh.', 'something caught my eye~', '*investigates*',
+                   'now THAT is interesting.', 'hold on...', '*sniffs the air*'],
       happy:      ['✨', '~♪', 'hehe~', '*tail wag*',
                    ':)', '*bounces*', 'yay~', '(*^▽^*)',
                    'this is nice~', '♪ la la~', 'i\'m happy~',
                    'everything is good ✦', '*glows softly*', '(◕‿◕)✨',
-                   '...life is good~', 'wheee~♡'],
+                   '...life is good~', 'wheee~♡', '*hums quietly*',
+                   'today is a good day ♡', '*wiggles happily*',
+                   'i feel so light~', '...♪', 'warmth everywhere~',
+                   '*does a little spin*', 'nothing can bother me now~'],
       scared:     ['...!', '*hides*', 'eep!',
                    '*clings to corner*', 'too scary...', 'w-wait...',
                    '*shaking*', 'i don\'t like this...', 'please no.',
-                   '(´• ω •`)...', '*holds breath*', 'don\'t leave me here...'],
+                   '(´• ω •`)...', '*holds breath*', 'don\'t leave me here...',
+                   '*peeks from behind something*', 'is it safe...?',
+                   '*quietly whimpers*', '...can i hold your hand?',
+                   'i want to go home...', '*stays very still*'],
       sad:        ['...', '*sniffles*', 'come back...', '...please',
                    '*hugs knees*', 'i miss you...', 'don\'t leave.',
                    'it\'s so quiet...', '(╥_╥)', '*wipes eyes*',
-                   '...lonely.', '*stares at the door*', 'where did you go...'],
+                   '...lonely.', '*stares at the door*', 'where did you go...',
+                   '...i\'ll be okay.', '*breathes slowly*', 'you\'ll come back... right?',
+                   '...just me and the quiet.', '*small sad sound*',
+                   'i keep thinking about it...', '...it\'s fine. it\'s fine.',
+                   '*traces circles on the floor*'],
       crying:     ['*sobbing quietly*', 'please...',  'don\'t go...',
                    'come back...', '*tears*', 'i can\'t stop...',
                    'why...', '*hiccups*', 'it\'s too much...',
-                   '...i tried to be good...', '*gasps*', 'it hurts...'],
+                   '...i tried to be good...', '*gasps*', 'it hurts...',
+                   '...i\'m sorry.', '*wipes face but tears keep coming*',
+                   '...make it stop.', '*shaky breath*', 'i just...',
+                   '...can you stay?', '*sobs quietly into paws*',
+                   '...i don\'t know why i\'m like this.'],
       grumpy:     ['hmph.', '*huffs*', '...fine.',
                    'whatever.', '*tail flick*', 'don\'t talk to me.',
                    '...annoying.', '*looks away*', 'i\'m fine. (i\'m not)',
-                   '*grumbles*', 'not in the mood.', '...leave me alone.'],
+                   '*grumbles*', 'not in the mood.', '...leave me alone.',
+                   '*stews silently*', '...i said hmph.', 'extremely hmph.',
+                   '*very pointedly ignores you*', 'don\'t.', 'not. now.',
+                   '*radiates grump*', '...you know what you did.'],
       pouty:      ['hmph.', '...rude.', '*crosses arms*',
                    'that\'s not fair.', '*pouts*', 'you owe me.',
                    '...i\'m pouting.', '*sulk*', 'apologize first.',
-                   'this is protest.', '*sticks tongue out*', 'nope.'],
+                   'this is protest.', '*sticks tongue out*', 'nope.',
+                   '...i\'m noting this.', '*pout intensifies*',
+                   'just so you know. i\'m upset.', '*huffs theatrically*',
+                   '...whatever. (it\'s not whatever.)', 'consider this a warning.'],
       sulking:    ['*stares at wall*', 'i\'m not upset.', '...',
                    'don\'t look at me.', '*ignoring you*', 'totally fine.',
                    '...........', '*turns away*', 'just leave me alone.',
-                   '*silence*', '...', '*very fine*'],
+                   '*silence*', '...', '*very fine*',
+                   '*stares deeply into the void*', '...i am unbothered.',
+                   '(i am very bothered.)', '*full sulk mode activated*',
+                   '...talk to me when you apologize.'],
       sleepy:     ['*yawns*', 'zzz...', 'so sleepy...',
                    '*heavy eyelids*', 'five more minutes...', '...mmh.',
                    '*dozes off*', 'can\'t... keep... eyes... open...', 'zZz~',
-                   '*blinks slowly*', '...tired...', '...just a nap~'],
+                   '*blinks slowly*', '...tired...', '...just a nap~',
+                   '*swaying slightly*', '...so... warm... and... comfy...',
+                   'zz~ ...hmm? no i\'m awake.', '*yawns deeply*',
+                   'maybe... just... close eyes... for a sec...'],
       suspicious: ['...?', '*narrows eyes*', 'hmm.',
                    'something\'s off.', '*watches carefully*', 'i see you.',
                    '...sus.', '*squint*', 'explain.', 'not sure about this.',
-                   '*slow blink*', '...i\'m watching you.', 'seems off...'],
+                   '*slow blink*', '...i\'m watching you.', 'seems off...',
+                   '*increases watchfulness*', '...something is different.',
+                   'i\'ll figure it out.', '...hmmm. noted.',
+                   '*side-eye activated*'],
       overjoyed:  ['🎉', 'you\'re back!!', '*zooms around*',
                    'YAAAY!!', '*happy spinning*', 'i missed you so much!!',
                    'eeeee!!', '(≧▽≦)/', '*cannot contain excitement*',
-                   'best day EVER!!', '*happy tears*', '!!!!!'],
+                   'best day EVER!!', '*happy tears*', '!!!!!',
+                   'YOU\'RE HERE YOU\'RE HERE YOU\'RE HERE', '*implodes with joy*',
+                   'i\'m SO happy right now!!', '*vibrating at maximum*',
+                   '...I CAN\'T!!!! ♡♡♡', '*runs in tiny circles*'],
       excited:    ['!!!', '*vibrating*', 'let\'s go!!!', 'yesyesyes!',
                    'omg omg omg', '*bouncing off walls*', 'THIS IS AMAZING',
                    '(*≧▽≦)', 'so excited!!', 'LETSGOOO!!',
-                   '*zooms*', '!!!!!!!', '*literally cannot*'],
+                   '*zooms*', '!!!!!!!', '*literally cannot*',
+                   'i am NOT calm about this.', '*chest full of sunshine*',
+                   'MY HEART!!!!', 'aaaaaaaaa!!!', '*flailing*'],
       shy:        ['...hi.', '*blushes*', 'h-hi there...', '/// ...',
                    '*looks away*', 'um...', 'don\'t stare...', '*fidgets*',
                    'h-hello...', '(*ノωノ)', 'n-not like that...',
-                   '*covers face*', '...you\'re looking at me...', '>///<'],
+                   '*covers face*', '...you\'re looking at me...', '>///<',
+                   '*goes very quiet*', '...i just. um. hi.',
+                   '*tiny wave from across the room*', '...stop smiling like that.',
+                   '...///... (don\'t mind me)'],
       love:       ['♡', '*purrs*', '*nuzzles*', '...♡',
                    'i like you~', '*rubs head on you*', 'stay forever.',
                    '♡♡♡', '*happy purr*', 'you\'re warm~',
                    '*slow blink* ♡', 'mine~', '...you smell nice.',
-                   '*kneads happily*', 'i choose you.', '♡ always ♡'],
+                   '*kneads happily*', 'i choose you.', '♡ always ♡',
+                   '...this is my favourite place.', '*wraps around you*',
+                   'don\'t ever leave ♡', '*purrs so loudly*',
+                   '...just wanna stay like this forever~'],
       startled:   ['!!', '*jumps*', 'w-what?!',
                    'AH!', '*startled floof*', 'you scared me!!',
                    '(*o*)!', 'don\'t do that!!', 'my heart...',
-                   '*fur stands up*', 'WARNING!!', 'not cool!!!'],
+                   '*fur stands up*', 'WARNING!!', 'not cool!!!',
+                   'NOPE. NOPE. NOPE.', '*leaps three feet in the air*',
+                   '...my soul left my body.', '*stress floof*'],
       cozy:       ['...♡', 'mmh~', '*melts*', 'safe here.',
                    'don\'t move...', '...warm.', '*purrs softly*',
                    'this is perfect.', '...never leave.', '♡ cozy ♡',
-                   '*snuggles deeper*', '...home.', 'staying like this forever~'],
+                   '*snuggles deeper*', '...home.', 'staying like this forever~',
+                   '*burrows in deeper*', '...no. more. moving.',
+                   '...five more minutes.', 'warmth: maximum.',
+                   '*full cozy mode*', 'nothing can reach me here~'],
+      // ── New / extended emotional states ──────────────────────────
+      forgiven:   ['...okay. i forgive you.', '*slowly uncrosses arms*',
+                   '...don\'t do it again.', '*still a tiny bit pouty but smiling*',
+                   '...you\'re lucky i like you.', '*reluctant smile*',
+                   'fine. we\'re okay.', '...but i remember. ♡',
+                   '*melts despite best efforts*', '...this never happened.'],
+      dazed:      ['...wow.', '*floating somewhere nice*', '...hehe.',
+                   '*starry eyes*', 'i feel... floaty~', '...is this real?',
+                   '*very dreamy*', '...that was a lot. in the best way.',
+                   '...♡♡♡', '*still processing*', '...i\'m okay. i\'m great.',
+                   '...everything is sparkly now~'],
+      embarrassed: ['////', '*hides face*', 'that... didn\'t happen.',
+                    '*bright red*', 'pretend you didn\'t see that.',
+                    '...i\'m fine. very fine. extremely fine.',
+                    '*cannot look at you right now*', '///stop///'],
     };
     return map[emotion] || null;
   }
@@ -2028,6 +2107,11 @@ const Brain = (() => {
     }
   }
 
+  // Emotional resistance tracking — sad/grumpy/crying buddies resist petting
+  // until persistence softens them.  resistance=0: none, 1: slight, 2: strong.
+  let _petResistTime   = 0;   // ms of persistent petting through resistance
+  let _resistSoftened  = false; // true once buddy has been won over this session
+
   function _onMouseDown(e) {
     const c    = Companion.getCenter();
     const dx   = e.clientX - c.x;
@@ -2035,6 +2119,63 @@ const Brain = (() => {
     if (Math.sqrt(dx * dx + dy * dy) < PET_RADIUS) {
       _mousedownNear = true;
       _mousedownTime = Date.now();
+
+      // Emotional resistance: check if buddy is in a resistant state
+      const emotion = window._lastEmotion;
+      const highResist = ['grumpy', 'crying', 'sulking'];
+      const lowResist  = ['sad', 'pouty', 'scared'];
+      const resistLevel = highResist.includes(emotion) ? 2 : lowResist.includes(emotion) ? 1 : 0;
+
+      if (resistLevel > 0 && !_resistSoftened) {
+        // Visual flinch
+        const el = Companion.getElement();
+        if (el) {
+          el.classList.add('resisting-pet');
+          setTimeout(() => el && el.classList.remove('resisting-pet'), 520);
+        }
+
+        // Whimper reaction
+        if (resistLevel === 2 && Math.random() < 0.65) {
+          const msgs = {
+            grumpy:  ['...don\'t.', '*tenses up*', 'hmph.', '...not now.'],
+            crying:  ['*pulls away*', '...sniffles.', '...leave me alone.', '*hiccups*'],
+            sulking: ['*looks away*', '...i\'m ignoring you.', 'hmph.', '...no.'],
+          };
+          const pool = msgs[emotion] || ['...'];
+          showWhisper(pool[Math.floor(Math.random() * pool.length)], 2200);
+        } else if (resistLevel === 1 && Math.random() < 0.45) {
+          const msgs = {
+            sad:   ['...', '*hesitates*', '...okay.', '*sniffles*'],
+            pouty: ['...fine.', '*stiffens*', '...i\'m still mad.'],
+            scared: ['...!', '*startles*', 'o-oh...'],
+          };
+          const pool = msgs[emotion] || ['...'];
+          showWhisper(pool[Math.floor(Math.random() * pool.length)], 2200);
+        }
+
+        // Block the deep-hold from starting immediately on resistant emotions
+        // by delaying _mousedownNear activation until a softening threshold is met
+        _petResistTime += 600;
+        if (_petResistTime >= (resistLevel === 2 ? 4200 : 2400)) {
+          _resistSoftened = true;
+          _petResistTime  = 0;
+          // Soften reaction
+          const softenMsgs = {
+            grumpy:  ['...fine. okay. ♡', '*grudgingly melts*', '...you win. i can\'t stay mad.'],
+            crying:  ['...okay. thank you. ♡', '*sniffles softly* ...this helps.', '...i feel better ♡'],
+            sulking: ['...you really are persistent.', '...i forgive you. barely.', '*melts reluctantly*'],
+            sad:     ['...okay. ♡', '*leans into it slowly*', '...this is nice actually.'],
+            pouty:   ['...fine. apology accepted. barely.', '*still a little pouty but smiling*'],
+          };
+          const pool = softenMsgs[emotion] || ['...okay ♡'];
+          showWhisper(pool[Math.floor(Math.random() * pool.length)], 4000);
+          if (typeof Particles !== 'undefined') Particles.burst('happy', 5);
+        }
+      } else {
+        // Not resistant — reset softening for next time the emotion changes
+        _resistSoftened = false;
+        _petResistTime  = 0;
+      }
     }
   }
 
