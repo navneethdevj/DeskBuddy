@@ -7584,7 +7584,13 @@ const CFG = {
         // (e.g. typing in the goal input — mouse may have drifted out)
         if (panel.contains(document.activeElement)) return;
         panel.classList.remove('sidebar-open');
-        if (icon) icon.classList.remove('sp-icon-hidden');
+        if (icon) {
+          icon.classList.remove('sp-icon-hidden');
+          // Belt-and-suspenders: clear any inline style overrides that could hide the icon
+          icon.style.removeProperty('opacity');
+          icon.style.removeProperty('pointer-events');
+          icon.style.removeProperty('display');
+        }
       }, 380);
     }
 
@@ -7628,6 +7634,11 @@ const CFG = {
     function _closeHistory() {
       panel.classList.remove('hp-panel-open');
       icon.classList.remove('hp-icon-hidden');
+      // Belt-and-suspenders: clear any inline style overrides
+      icon.style.removeProperty('opacity');
+      icon.style.removeProperty('pointer-events');
+      icon.style.removeProperty('display');
+      icon.style.removeProperty('visibility');
     }
 
     function _toggleHistory() {
@@ -7655,5 +7666,33 @@ const CFG = {
       }
     });
   }
+
+  // ── Ensure icons always come back — safety net for close button bug ───────
+  // If any panel close button is clicked anywhere in the app, guarantee the
+  // corresponding icon is visible.  This runs once at wire-time.
+  (function _guardPanelIcons() {
+    function _restoreIcon(iconId, hiddenClass) {
+      const icon = document.getElementById(iconId);
+      if (!icon) return;
+      if (hiddenClass) icon.classList.remove(hiddenClass);
+      // Force away any lingering inline style overrides that could hide the button
+      icon.style.removeProperty('opacity');
+      icon.style.removeProperty('pointer-events');
+      icon.style.removeProperty('display');
+      icon.style.removeProperty('visibility');
+    }
+
+    // Poll every second: if panel is closed but icon is invisible, restore it.
+    // This is the belt-and-suspenders fix for all panels.
+    setInterval(() => {
+      const sp    = document.getElementById('session-panel');
+      const hp    = document.getElementById('history-panel');
+      const tasks = document.getElementById('tasks-panel');
+
+      if (sp && !sp.classList.contains('sidebar-open'))   _restoreIcon('sp-icon',    'sp-icon-hidden');
+      if (hp && !hp.classList.contains('hp-panel-open'))  _restoreIcon('hp-icon',    'hp-icon-hidden');
+      if (tasks && !tasks.classList.contains('tasks-panel-open')) _restoreIcon('tasks-icon', 'tasks-icon-hidden');
+    }, 1000);
+  })();
 
 })();
