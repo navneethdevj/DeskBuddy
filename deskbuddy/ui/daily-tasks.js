@@ -336,7 +336,12 @@ const DailyTasks = (() => {
     const icon  = document.getElementById('tasks-icon');
     if (!panel) return;
     panel.classList.remove('tasks-panel-open');
-    if (icon) icon.classList.remove('tasks-icon-hidden');
+    if (icon) {
+      icon.classList.remove('tasks-icon-hidden');
+      icon.style.removeProperty('opacity');
+      icon.style.removeProperty('pointer-events');
+      icon.style.removeProperty('display');
+    }
     _isOpen = false;
   }
 
@@ -385,9 +390,10 @@ const DailyTasks = (() => {
     const icon = document.getElementById('tasks-icon');
     if (icon) icon.addEventListener('click', _toggle);
 
-    // Wire close button
+    // Wire close button — stopPropagation prevents the document click-outside
+    // handler from running on the same tick and fighting the close
     const closeBtn = document.getElementById('tasks-close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', _close);
+    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); _close(); });
 
     // Wire refresh button
     const refreshBtn = document.getElementById('tasks-refresh-btn');
@@ -399,27 +405,73 @@ const DailyTasks = (() => {
       if (quoteEl) quoteEl.textContent = _randomQuote();
     });
 
-    // Wire hp-close-btn (fix hidden button)
+    // Wire hp-close-btn — stop propagation so the document click-outside handler
+    // doesn't re-open or interfere; force icon back to visible with a small delay
+    // so CSS transitions complete cleanly before pointer-events are restored.
     const hpClose = document.getElementById('hp-close-btn');
     if (hpClose) {
       hpClose.style.display = 'flex';
-      hpClose.addEventListener('click', () => {
-        const hp = document.getElementById('history-panel');
+      hpClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const hp     = document.getElementById('history-panel');
         const hpIcon = document.getElementById('hp-icon');
-        if (hp) hp.classList.remove('hp-panel-open');
-        if (hpIcon) hpIcon.classList.remove('hp-icon-hidden');
+        if (hp)     hp.classList.remove('hp-panel-open');
+        if (hpIcon) {
+          hpIcon.classList.remove('hp-icon-hidden');
+          // Belt-and-suspenders: re-apply flex display in case CSS was overridden
+          hpIcon.style.removeProperty('display');
+          hpIcon.style.removeProperty('opacity');
+          hpIcon.style.removeProperty('pointer-events');
+        }
       });
     }
 
-    // Wire session panel close buttons
+    // Wire new hp-export-btn / hp-import-btn in the history panel header
+    const hpExportBtn = document.getElementById('hp-export-btn');
+    if (hpExportBtn) {
+      hpExportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Delegate to existing export logic in settings (export-history-btn)
+        const existing = document.getElementById('export-history-btn');
+        if (existing) { existing.click(); return; }
+        // Fallback: direct export
+        if (typeof Session === 'undefined') return;
+        const history = Session.getHistory ? Session.getHistory() : [];
+        const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(),
+          appVersion: 'DeskBuddy', sessionCount: history.length, sessions: history }, null, 2);
+        const blob = new Blob([payload], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = Object.assign(document.createElement('a'), {
+          href: url, download: `deskbuddy-history-${Date.now()}.json` });
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+      });
+    }
+    const hpImportBtn = document.getElementById('hp-import-btn');
+    if (hpImportBtn) {
+      hpImportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const existing = document.getElementById('import-history-btn');
+        if (existing) { existing.click(); return; }
+      });
+    }
+
+    // Wire session panel close buttons — stopPropagation prevents the auto-hide
+    // mouseleave timer from racing with the explicit close action
     ['sp-close-idle','sp-close-active','sp-close-paused'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const panel = document.getElementById('session-panel');
         const icon  = document.getElementById('sp-icon');
         if (panel) panel.classList.remove('sidebar-open');
-        if (icon)  icon.classList.remove('sp-icon-hidden');
+        if (icon) {
+          icon.classList.remove('sp-icon-hidden');
+          // Force visibility — clears any lingering inline style overrides
+          icon.style.removeProperty('opacity');
+          icon.style.removeProperty('pointer-events');
+        }
       });
     });
 
