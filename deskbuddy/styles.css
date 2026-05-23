@@ -4774,10 +4774,10 @@ body.pip-mode  #history-panel { display: none !important; }
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-top: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 18px;
-  padding: 16px 16px 20px;
+  padding: 14px 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.50),
     0 1px 0 rgba(255, 255, 255, 0.12) inset;
@@ -4849,15 +4849,15 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-stat-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  gap: 6px;
 }
 .hp-sc {
   position: relative;
-  border-radius: 14px;
-  padding: 12px 12px 10px;
+  border-radius: 12px;
+  padding: 10px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -4868,7 +4868,7 @@ body.pip-mode  #history-panel { display: none !important; }
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  border-radius: 14px 14px 0 0;
+  border-radius: 12px 12px 0 0;
 }
 .hp-sc:hover {
   background: rgba(139, 118, 255, 0.06);
@@ -4880,7 +4880,7 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-sc-lifetime::before { background: linear-gradient(90deg, rgba(251,191,36,0.70), transparent); }
 
 .hp-sc-val {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -4892,12 +4892,12 @@ body.pip-mode  #history-panel { display: none !important; }
 .hp-sc-lifetime .hp-sc-val { color: rgba(255, 210, 90,  0.96); }
 
 .hp-sc-lbl {
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(155, 140, 220, 0.50);
-  margin-top: 1px;
+  margin-top: 0;
 }
 
 /* ── 1b. Personal Bests Row ──────────────────────────────────────── */
@@ -5898,35 +5898,35 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 .sp-recent-sessions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 8px;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 6px;
   background: rgba(100, 80, 160, 0.08);
-  border-radius: 9px;
+  border-radius: 8px;
   border: 1px solid rgba(155, 135, 255, 0.12);
 }
 
 .sp-recent-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(165, 145, 255, 0.55);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .sp-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .sp-recent-item {
-  padding: 6px 8px;
+  padding: 5px 7px;
   background: rgba(120, 100, 180, 0.12);
   border: 1px solid rgba(155, 135, 255, 0.18);
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 9px;
   cursor: pointer;
   transition: all 0.15s ease;
   -webkit-app-region: no-drag;
@@ -6148,19 +6148,19 @@ body.pip-mode .milestone-badge { display: none; }
   align-items: stretch;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   -webkit-app-region: no-drag;
 }
 
 /* ── +/− buttons ────────────────────────────────────────────────── */
 .sp-step-btn {
-  width: 26px;
+  width: 24px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.04);
   border: none;
   color: rgba(190, 178, 255, 0.65);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   -webkit-app-region: no-drag;
@@ -6176,18 +6176,18 @@ body.pip-mode .milestone-badge { display: none; }
 
 /* ── Number input ───────────────────────────────────────────────── */
 .sp-step-input {
-  width: 34px;
+  width: 30px;
   text-align: center;
   background: transparent;
   border: none;
   border-left:  1px solid rgba(255, 255, 255, 0.07);
   border-right: 1px solid rgba(255, 255, 255, 0.07);
   color: rgba(225, 218, 255, 0.92);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
-  padding: 5px 0;
+  padding: 4px 0;
   outline: none;
   -webkit-app-region: no-drag;
   -moz-appearance: textfield;
@@ -6229,16 +6229,16 @@ body.pip-mode .milestone-badge { display: none; }
 }
 
 .sp-hms-input {
-  width: 24px;
+  width: 22px;
   text-align: center;
   background: transparent;
   border: none;
   color: rgba(225, 218, 255, 0.92);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
-  padding: 5px 0;
+  padding: 4px 0;
   outline: none;
   -webkit-app-region: no-drag;
   -moz-appearance: textfield;
