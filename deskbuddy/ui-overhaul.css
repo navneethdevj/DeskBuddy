@@ -1,0 +1,842 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DeskBuddy — UI Overhaul
+   Compact session panel · Redesigned history · Daily tasks · Close buttons
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 1. SESSION PANEL — COMPACT OVERHAUL ─────────────────────────────────
+   Reason: The original panel is too tall. Font sizes were large, padding
+   excessive, and the HH:MM:SS rows stacked vertically. We collapse spacing,
+   shrink fonts, and arrange the two time steppers side-by-side.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Narrower panel width, shorter max-height */
+#session-panel {
+  width: 256px !important;
+  max-height: min(75vh, 540px) !important;
+  gap: 8px !important;
+}
+
+/* Glass cards — tighter padding */
+#session-idle,
+#session-active,
+#session-paused {
+  padding: 12px 13px 13px !important;
+  gap: 8px !important;
+  border-radius: 18px !important;
+}
+
+/* Close button on every session state card */
+.sp-close-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(200,185,255,0.40);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  -webkit-app-region: no-drag;
+}
+.sp-close-btn:hover {
+  background: rgba(248,113,113,0.14);
+  color: rgba(248,113,113,0.88);
+  border-color: rgba(248,113,113,0.28);
+}
+
+/* Shrink mode label font */
+.sp-mode-label {
+  font-size: 8.5px !important;
+  letter-spacing: 0.11em !important;
+}
+
+/* Quick preset buttons — smaller */
+.sp-quick-presets {
+  gap: 4px !important;
+  margin-bottom: 0 !important;
+}
+.sp-preset-btn {
+  padding: 5px 5px !important;
+  font-size: 9.5px !important;
+  min-width: 38px !important;
+  border-radius: 6px !important;
+}
+.sp-preset-btn.sp-preset-active {
+  background: rgba(155,135,255,0.28) !important;
+  border-color: rgba(155,135,255,0.52) !important;
+  color: rgba(230,220,255,0.96) !important;
+}
+
+/* ── Two time steppers side-by-side ─────────────────────────────────── */
+.sp-steppers-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* Override stacked layout — now each HH:MM:SS row is inline */
+.sp-steppers-row .sp-row-hms {
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+.sp-steppers-row .sp-row-hms .sp-stepper { width: 100% !important; }
+
+.sp-label {
+  font-size: 9px !important;
+  color: rgba(175,160,255,0.50) !important;
+}
+
+/* Stepper itself — compact */
+.sp-stepper {
+  border: 1px solid rgba(155,135,255,0.18) !important;
+  border-radius: 8px !important;
+  padding: 4px 5px !important;
+  gap: 3px !important;
+}
+.sp-step-btn {
+  font-size: 12px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+.sp-hms-input {
+  font-size: 12px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  padding: 1px 2px !important;
+}
+.sp-hms-lbl {
+  font-size: 9px !important;
+}
+
+/* Category pills — tighter */
+.sp-category-row { margin: 0 !important; }
+.sp-category-pills {
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+}
+.sp-cat-pill {
+  padding: 4px 6px !important;
+  font-size: 9px !important;
+  border-radius: 6px !important;
+}
+
+/* Goal input */
+.sp-goal-input {
+  padding: 6px 9px !important;
+  font-size: 10.5px !important;
+  border-radius: 8px !important;
+}
+
+/* Setup gap tighter */
+.sp-setup { gap: 7px !important; }
+
+/* Start button */
+#start-session {
+  padding: 7px 12px !important;
+  font-size: 10.5px !important;
+  border-radius: 9px !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* ── Active session state — compact ring ─────────────────────────────── */
+.sp-timer-ring-wrap {
+  width: 88px !important;
+  height: 88px !important;
+  margin: 0 auto 2px !important;
+}
+.sp-inline-timer {
+  font-size: 20px !important;
+}
+.sp-ring-state-label {
+  font-size: 7.5px !important;
+}
+
+/* Focus stat bar compact */
+.sp-focus-stat-row {
+  gap: 6px !important;
+  padding: 5px 7px !important;
+  border-radius: 7px !important;
+}
+.sp-focus-stat-label {
+  font-size: 8.5px !important;
+  min-width: 28px !important;
+}
+.sp-focus-stat-pct { font-size: 9.5px !important; }
+
+/* Controls row */
+.sp-controls {
+  gap: 5px !important;
+}
+#pause-session, #resume-session,
+#abandon-session, #abandon-session-break,
+#new-session-btn {
+  padding: 7px 10px !important;
+  font-size: 10.5px !important;
+  border-radius: 8px !important;
+}
+
+/* Paused break countdown */
+.sp-break-countdown {
+  font-size: 26px !important;
+}
+.sp-break-hint {
+  font-size: 9px !important;
+}
+.sp-break-icon { font-size: 18px !important; margin-bottom: 2px !important; }
+
+/* Goal display */
+.sp-goal-display {
+  font-size: 10px !important;
+  padding: 5px 8px !important;
+  border-radius: 7px !important;
+}
+
+/* ── Mood selector row ──────────────────────────────────────────────── */
+.sp-mood-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sp-mood-label {
+  font-size: 9px;
+  color: rgba(175,160,255,0.48);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.sp-mood-options {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.sp-mood-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.14s ease;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+}
+.sp-mood-btn:hover {
+  background: rgba(155,135,255,0.16);
+  border-color: rgba(155,135,255,0.30);
+  transform: scale(1.12);
+}
+.sp-mood-btn.active {
+  background: rgba(155,135,255,0.22);
+  border-color: rgba(155,135,255,0.45);
+  box-shadow: 0 0 8px rgba(155,135,255,0.22);
+}
+
+/* ── Quick stats strip in idle ──────────────────────────────────────── */
+.sp-quick-stats {
+  display: flex;
+  gap: 5px;
+}
+.sp-qs-item {
+  flex: 1;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 7px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sp-qs-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(195,175,255,0.90);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.sp-qs-lbl {
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(155,135,220,0.45);
+}
+
+/* ── Daily goal row compact ─────────────────────────────────────────── */
+.sp-daily-goal-row {
+  gap: 8px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+}
+.sp-dg-svg { width: 32px !important; height: 32px !important; }
+.sp-dg-today { font-size: 10px !important; }
+.sp-dg-goal  { font-size: 9px !important; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   2. HISTORY PANEL — REDESIGN
+   Reason: The existing panel has the close button hidden. The stat cards
+   need a cleaner look. Recent sessions list needs more visual structure.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Always show the close button */
+#hp-close-btn {
+  display: flex !important;
+  opacity: 1 !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
+}
+
+/* History card — slightly darker, stronger blur */
+#history-card {
+  background: rgba(10, 8, 22, 0.55) !important;
+  backdrop-filter: blur(56px) saturate(2.0) brightness(1.14) !important;
+  -webkit-backdrop-filter: blur(56px) saturate(2.0) brightness(1.14) !important;
+  border-radius: 20px !important;
+  padding: 14px 14px 18px !important;
+  gap: 12px !important;
+  box-shadow:
+    0 20px 56px rgba(0,0,0,0.60),
+    0 4px 16px rgba(0,0,0,0.28),
+    0 0 0 0.5px rgba(255,255,255,0.09) inset,
+    0 1px 0 rgba(255,255,255,0.14) inset !important;
+}
+
+/* Header */
+.hp-header {
+  padding-bottom: 10px !important;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center !important;
+}
+.hp-title {
+  font-size: 10.5px !important;
+  letter-spacing: 0.14em !important;
+  color: rgba(215,205,255,0.80) !important;
+}
+
+/* Pills smaller */
+.hgraph-pills { gap: 3px !important; }
+.hgraph-pill {
+  font-size: 9px !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+}
+
+/* Stat cards — more airy with cleaner top accent */
+.hp-sc {
+  border-radius: 12px !important;
+  padding: 10px 10px 8px !important;
+  gap: 2px !important;
+}
+.hp-sc-val {
+  font-size: 19px !important;
+  letter-spacing: -0.05em !important;
+}
+.hp-sc-lbl {
+  font-size: 7.5px !important;
+  letter-spacing: 0.09em !important;
+}
+
+/* Chart label */
+.hp-chart-label {
+  font-size: 8.5px !important;
+  letter-spacing: 0.10em !important;
+  margin-bottom: 5px !important;
+}
+
+/* Streak section */
+.hp-sr-val {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+.hp-sr-lbl {
+  font-size: 8px !important;
+  letter-spacing: 0.07em !important;
+}
+.hp-slabel {
+  font-size: 8.5px !important;
+  letter-spacing: 0.12em !important;
+}
+
+/* Recent sessions list — better row styling */
+#hp-recent-list { gap: 4px !important; }
+
+.hp-recent-row {
+  border-radius: 9px !important;
+  padding: 7px 9px !important;
+  font-size: 10px !important;
+}
+.hp-recent-cat  { font-size: 9px !important; }
+.hp-recent-time { font-size: 9px !important; }
+.hp-recent-dur  { font-size: 9px !important; }
+
+/* Best row */
+.hp-best-val { font-size: 13px !important; }
+.hp-best-lbl { font-size: 7.5px !important; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   3. TASKS PANEL — DAILY PRODUCTIVITY SYSTEM
+   Purpose: A daily task list that adapts to the user's session patterns.
+   Opens from a new tasks icon beside the history icon.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Tasks icon button ─────────────────────────────────────────────── */
+#tasks-icon {
+  position: fixed;
+  left: 100px;
+  top: 14px;       /* Same row as settings gear + hp-icon */
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10,8,22,0.55);
+  backdrop-filter: blur(18px) saturate(1.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  color: rgba(175,160,255,0.65);
+  cursor: pointer;
+  display: none;   /* shown only in full-mode */
+  align-items: center;
+  justify-content: center;
+  z-index: 2495;
+  transition: all 0.18s ease;
+  -webkit-app-region: no-drag;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 1px rgba(155,135,255,0.06) inset;
+  border-color: rgba(155,135,255,0.18);
+}
+body.full-mode #tasks-icon  { display: flex; }
+body.pip-mode  #tasks-icon  { display: none !important; }
+
+#tasks-icon:hover {
+  background: rgba(120,100,200,0.22);
+  border-color: rgba(155,135,255,0.28);
+  color: rgba(210,200,255,0.90);
+  transform: scale(1.06);
+  box-shadow: 0 0 14px rgba(155,135,255,0.20), 0 4px 14px rgba(0,0,0,0.35);
+}
+#tasks-icon.tasks-icon-hidden { opacity: 0; pointer-events: none; }
+
+/* Completion badge on icon */
+#tasks-icon .tasks-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(80,220,150,0.88);
+  border: 1.5px solid rgba(10,8,22,0.90);
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(10,8,22,0.90);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+#tasks-icon .tasks-badge.visible { display: flex; }
+
+/* ── Tasks panel ───────────────────────────────────────────────────── */
+#tasks-panel {
+  position: fixed;
+  left: 4px;
+  top: 58px;
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
+  width: 300px;
+  max-height: calc(100vh - 78px);
+  z-index: 2489;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.30s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.24s ease;
+}
+body.full-mode #tasks-panel  { display: flex; }
+body.pip-mode  #tasks-panel  { display: none !important; }
+
+#tasks-panel.tasks-panel-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Tasks card ─────────────────────────────────────────────────────── */
+#tasks-card {
+  background: rgba(10, 8, 22, 0.55);
+  backdrop-filter: blur(56px) saturate(2.0) brightness(1.14);
+  -webkit-backdrop-filter: blur(56px) saturate(2.0) brightness(1.14);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-top: 1px solid rgba(255,255,255,0.20);
+  border-radius: 20px;
+  padding: 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow:
+    0 20px 56px rgba(0,0,0,0.60),
+    0 4px 16px rgba(0,0,0,0.28),
+    0 0 0 0.5px rgba(255,255,255,0.09) inset,
+    0 1px 0 rgba(255,255,255,0.14) inset;
+  overflow-y: auto;
+  max-height: calc(100vh - 90px);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+/* ── Tasks header ──────────────────────────────────────────────────── */
+.tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(139,118,255,0.12);
+}
+.tasks-header-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.tasks-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(215,205,255,0.80);
+}
+.tasks-date {
+  font-size: 8px;
+  color: rgba(155,135,220,0.45);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tasks-close-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: rgba(200,185,255,0.50);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  -webkit-app-region: no-drag;
+}
+.tasks-close-btn:hover {
+  background: rgba(248,113,113,0.15);
+  color: rgba(248,113,113,0.90);
+  border-color: rgba(248,113,113,0.30);
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────── */
+.tasks-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tasks-progress-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+.tasks-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(80,210,155,0.85), rgba(120,190,255,0.75));
+  transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 0%;
+}
+.tasks-progress-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(155,220,185,0.75);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+/* ── Quote / Motivation strip ──────────────────────────────────────── */
+.tasks-quote {
+  background: rgba(120,100,200,0.08);
+  border: 1px solid rgba(120,100,200,0.15);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: rgba(190,178,255,0.62);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+/* ── Task list ─────────────────────────────────────────────────────── */
+.tasks-section-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(155,135,220,0.45);
+  margin-bottom: 4px;
+}
+
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  -webkit-app-region: no-drag;
+  position: relative;
+  overflow: hidden;
+}
+.task-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  border-radius: 10px 0 0 10px;
+  transition: background 0.2s;
+}
+.task-item[data-type="focus"]::before    { background: rgba(130,195,255,0.70); }
+.task-item[data-type="streak"]::before   { background: rgba(255,165,68,0.70); }
+.task-item[data-type="quality"]::before  { background: rgba(167,139,250,0.70); }
+.task-item[data-type="movement"]::before { background: rgba(80,220,155,0.70); }
+.task-item[data-type="mindset"]::before  { background: rgba(251,191,36,0.70); }
+.task-item[data-type="review"]::before   { background: rgba(248,113,113,0.60); }
+.task-item[data-type="hydration"]::before{ background: rgba(100,200,240,0.70); }
+
+.task-item:hover {
+  background: rgba(155,135,255,0.07);
+  border-color: rgba(155,135,255,0.16);
+}
+
+.task-item.done {
+  opacity: 0.52;
+  border-color: rgba(255,255,255,0.05);
+}
+.task-item.done .task-text {
+  text-decoration: line-through;
+  color: rgba(175,162,255,0.38);
+}
+
+.task-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(155,135,255,0.32);
+  background: transparent;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+  font-size: 10px;
+  color: transparent;
+}
+.task-item:hover .task-check {
+  border-color: rgba(155,135,255,0.55);
+}
+.task-item.done .task-check {
+  background: rgba(80,210,155,0.22);
+  border-color: rgba(80,210,155,0.55);
+  color: rgba(80,210,155,0.90);
+}
+
+.task-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.task-text {
+  flex: 1;
+  font-size: 10.5px;
+  color: rgba(215,205,255,0.80);
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+/* Task completion animation */
+@keyframes taskDone {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 0.52; }
+}
+.task-item.just-done {
+  animation: taskDone 0.38s ease forwards;
+}
+
+/* ── Refresh and streak footer ─────────────────────────────────────── */
+.tasks-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(139,118,255,0.10);
+}
+.tasks-streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: rgba(255,165,68,0.75);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.tasks-refresh-btn {
+  font-size: 8.5px;
+  color: rgba(155,135,255,0.45);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  transition: color 0.15s;
+  -webkit-app-region: no-drag;
+  padding: 0;
+}
+.tasks-refresh-btn:hover { color: rgba(155,135,255,0.75); }
+
+/* ── All done celebration state ─────────────────────────────────────── */
+.tasks-all-done {
+  text-align: center;
+  padding: 18px 0 10px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.tasks-all-done.visible { display: flex; }
+.tasks-all-done-emoji { font-size: 28px; }
+.tasks-all-done-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(215,205,255,0.90);
+  letter-spacing: 0.04em;
+}
+.tasks-all-done-sub {
+  font-size: 9.5px;
+  color: rgba(155,135,220,0.50);
+  letter-spacing: 0.02em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   4. SETTINGS PANEL — already has close btn, ensure visible & styled
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Already handled by existing CSS — just ensure header doesn't clip */
+#settings-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   5. HEATMAP + MISC COMPACT FIXES
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Heatmap strip — slightly tighter */
+.focus-heatmap-strip {
+  height: 10px !important;
+  gap: 1.5px !important;
+  border-radius: 5px !important;
+}
+
+/* Budget dots row */
+.sp-budget-row {
+  padding: 4px 7px !important;
+  border-radius: 7px !important;
+  gap: 6px !important;
+}
+.sp-budget-label { font-size: 8.5px !important; }
+
+/* Recent sessions in idle panel */
+.sp-recent-label {
+  font-size: 8px !important;
+  letter-spacing: 0.10em !important;
+}
+
+/* History panel view pills height */
+.hp-chart-wrap canvas {
+  max-height: 90px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   6. OUTCOME SCREEN compact
+   ═══════════════════════════════════════════════════════════════════════ */
+#outcome-card {
+  padding: 18px 20px !important;
+  gap: 10px !important;
+  border-radius: 18px !important;
+}
+.sp-outcome-label {
+  font-size: 15px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   7. SCROLLBAR POLISH (all panels)
+   ═══════════════════════════════════════════════════════════════════════ */
+#tasks-card::-webkit-scrollbar,
+#history-card::-webkit-scrollbar,
+#session-panel::-webkit-scrollbar {
+  width: 3px;
+}
+#tasks-card::-webkit-scrollbar-track,
+#history-card::-webkit-scrollbar-track,
+#session-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+#tasks-card::-webkit-scrollbar-thumb,
+#history-card::-webkit-scrollbar-thumb,
+#session-panel::-webkit-scrollbar-thumb {
+  background: rgba(155,135,255,0.18);
+  border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   8. HISTORY PANEL — recent session rows redesign
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.hp-recent-row {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 9px !important;
+  transition: background 0.15s, border-color 0.15s !important;
+}
+.hp-recent-row:hover {
+  background: rgba(155,135,255,0.06) !important;
+  border-color: rgba(155,135,255,0.14) !important;
+}
+.hp-recent-row.hr-starred {
+  border-color: rgba(251,191,36,0.22) !important;
+}
+.hp-recent-row.hr-starred::before {
+  background: rgba(251,191,36,0.70) !important;
+}
