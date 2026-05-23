@@ -3983,6 +3983,14 @@ const CFG = {
       _updateDailyGoalArc();
       _updateRecentSessions();
     });
+
+    // ── Session panel close button ──────────────────────────────────────────
+    const spCloseBtn = document.getElementById('sp-close-btn');
+    const sessionPanel = document.getElementById('session-panel');
+    if (spCloseBtn) spCloseBtn.addEventListener('click', () => {
+      if (sessionPanel) sessionPanel.classList.remove('sidebar-open');
+      if (spIcon) spIcon.classList.remove('sp-icon-hidden');
+    });
   }
 
   // ── Stepper helpers ───────────────────────────────────────────────────────
@@ -7640,6 +7648,10 @@ const CFG = {
 
     // Click-to-toggle: open/close on icon click
     icon.addEventListener('click', _toggleHistory);
+
+    // Close on the close button
+    const closeBtn = document.getElementById('hp-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', _closeHistory);
 
     // Close when clicking outside the panel (but not the icon itself)
     document.addEventListener('click', (e) => {

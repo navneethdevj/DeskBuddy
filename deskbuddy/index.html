@@ -1273,7 +1273,10 @@
           <span class="sp-mode-label">focus session</span>
           <span class="sp-mode-desc">set your intention</span>
         </div>
-        <span class="sp-mode-star">✦</span>
+        <div class="sp-header-right">
+          <span class="sp-mode-star">✦</span>
+          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+        </div>
       </div>
       
       <!-- Quick preset buttons — fast-track common durations -->
@@ -1371,7 +1374,10 @@
     <div id="session-active" style="display:none">
       <div class="sp-header">
         <span class="sp-mode-label">in session</span>
-        <span id="sp-focus-dot" class="sp-focus-dot"></span>
+        <div class="sp-header-right">
+          <span id="sp-focus-dot" class="sp-focus-dot"></span>
+          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+        </div>
       </div>
 
       <!-- Progress ring + inline countdown -->
@@ -1417,7 +1423,10 @@
     <div id="session-paused" style="display:none">
       <div class="sp-header">
         <span class="sp-mode-label">on break</span>
-        <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
+        <div class="sp-header-right">
+          <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
+          <button id="sp-close-btn" class="sp-close-btn" title="Close session panel" aria-label="Close session panel">✕</button>
+        </div>
       </div>
       <div class="sp-break-body">
         <div class="sp-break-icon">☕</div>
@@ -1453,7 +1462,7 @@
           <button class="hgraph-pill" data-view="monthly">Monthly</button>
           <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
         </div>
-        <button id="hp-close-btn" class="hp-close-btn" aria-hidden="true" style="display:none" aria-label="Close history panel">✕</button>
+        <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
       </div>
 
       <!-- ── VIEW: DAILY ────────────────────────────────────────────── -->

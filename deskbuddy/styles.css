@@ -5585,12 +5585,12 @@ body.pip-mode  #history-panel { display: none !important; }
   transform: translateY(-50%) translateX(14px);
   opacity: 0;
   pointer-events: none;
-  width: 272px;
-  max-height: min(82vh, 620px);
+  width: 260px;
+  max-height: min(75vh, 560px);
   z-index: 2500;
   display: none;          /* shown only in full-mode */
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -5631,11 +5631,11 @@ body.pip-mode  #session-panel { display: none !important; }
   border-left: 1px solid rgba(255, 255, 255, 0.09);
   border-right: 1px solid rgba(0, 0, 0, 0.18);
   border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 22px;
-  padding: 16px 16px 18px;
+  border-radius: 20px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   /* Floating shadow + faint perimeter glow ring */
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
@@ -5649,6 +5649,36 @@ body.pip-mode  #session-panel { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.sp-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  -webkit-app-region: no-drag;
+}
+.sp-close-btn:hover {
+  color: rgba(255, 255, 255, 0.80);
+  background: rgba(255, 75, 75, 0.14);
+  border-color: rgba(255, 75, 75, 0.30);
 }
 
 .sp-mode-label {
@@ -5692,20 +5722,20 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 /* ── Quick preset buttons ───────────────────────────────────────────── */
 .sp-quick-presets {
   display: flex;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 5px;
+  margin-bottom: 2px;
   flex-wrap: wrap;
 }
 
 .sp-preset-btn {
   flex: 1;
-  min-width: 45px;
-  padding: 6px 8px;
+  min-width: 40px;
+  padding: 5px 7px;
   border: 1px solid rgba(155, 135, 255, 0.25);
-  border-radius: 7px;
+  border-radius: 6px;
   background: rgba(120, 100, 180, 0.12);
   color: rgba(210, 200, 255, 0.75);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   font-family: 'Segoe UI', system-ui, sans-serif;
   cursor: pointer;
@@ -5736,14 +5766,14 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* Stacked variant — label above, stepper full-width (used for HH:MM:SS rows) */
 .sp-row-hms {
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 3px;
 }
 .sp-row-hms .sp-stepper {
   width: 100%;
@@ -5753,21 +5783,23 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 }
 
 .sp-label {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(210, 200, 255, 0.60);
   flex-shrink: 0;
   white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* Re-use existing settings-select visual language */
 .sp-select {
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: 7px;
   color: rgba(215, 205, 255, 0.85);
-  font-size: 11px;
+  font-size: 10px;
   font-family: inherit;
-  padding: 4px 22px 4px 7px;
+  padding: 4px 20px 4px 7px;
   cursor: pointer;
   outline: none;
   appearance: none;
@@ -5793,11 +5825,11 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 9px;
+  border-radius: 8px;
   color: rgba(220, 212, 255, 0.82);
-  font-size: 11px;
+  font-size: 10px;
   font-family: inherit;
-  padding: 7px 10px;
+  padding: 6px 8px;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.18s, background 0.18s;
@@ -5812,10 +5844,10 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
 /* ── Session panel buttons ──────────────────────────────────────── */
 .sp-btn {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 7px 10px;
+  border-radius: 9px;
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
