@@ -4137,7 +4137,7 @@ body.pip-mode #settings-panel { display: none !important; }
 }
 /* position the bottom-row buttons so ↙ and ↘ span left / right */
 .pip-corner-picker .pip-corner-chip:nth-child(4) { grid-column: 1; }
-.pip-corner-picker .pip-corner-chip:nth-child(5) { grid-column: 3; }
+.pip-corner-picker .pip-corner-chip:nth-child(6) { grid-column: 3; }
 
 .pip-corner-chip {
   display: flex;
@@ -8985,6 +8985,9 @@ body.pip-mode.pip-locked #pip-lock-badge { display: flex; align-items: center; g
   gap: 5px;
   max-width: 148px;
 }
+/* position the bottom-row buttons so ↙ and ↘ span left / right */
+.pip-corner-picker .pip-corner-chip:nth-child(4) { grid-column: 1; }
+.pip-corner-picker .pip-corner-chip:nth-child(6) { grid-column: 3; }
 .pip-corner-chip {
   display: flex;
   align-items: center;
