@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction, ErrorRequestHandler } from 'expre
 import { HttpError } from '@api/utils/httpError';
 import { logger } from '@api/utils/logger';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler: ErrorRequestHandler = (
   err: unknown,
   _req: Request,

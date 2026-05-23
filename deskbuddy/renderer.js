@@ -5,6 +5,10 @@
  * classic has no particles.
  * The canvas sits at z-index 0, behind the companion.
  */
+
+// Default session duration in minutes (Pomodoro standard)
+const DEFAULT_SESSION_DURATION_MINUTES = 25;
+
 const ThemeCanvas = (() => {
   let _canvas = null, _ctx = null, _animId = null;
   let _particles = [], _active = false, _paused = false, _theme = 'galaxy';
@@ -3856,6 +3860,35 @@ const CFG = {
       });
     }
 
+    // Quick preset buttons — set duration and start session
+    document.querySelectorAll('.sp-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const minutes = parseInt(btn.dataset.minutes, 10);
+        if (!isNaN(minutes) && minutes > 0) {
+          _setDurationSeconds(minutes * 60);
+          // Auto-start the session with the preset
+          const stats = Session.getCurrentStats();
+          if (stats && stats.state !== 'IDLE') return;
+          const goalEl = document.getElementById('goal-input');
+          const goal   = goalEl?.value?.trim() || null;
+          const mins   = _getDurationMinutes();
+
+          // Sync break interval from session panel
+          BreakReminder.setInterval(_getBreakMinutes());
+
+          Timer.init(mins);
+          // Read currently selected category pill
+          const activeCatPill = document.querySelector('.sp-cat-pill.active');
+          const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
+          Settings.set('sessionCategory', category);
+          Session.startNew(mins, goal, category);
+          Timer.start();
+          const overlay = document.getElementById('goal-overlay');
+          if (overlay) overlay.style.display = 'none';
+        }
+      });
+    });
+
     _wireSteppers();
 
     // Pause / break button
@@ -3941,11 +3974,15 @@ const CFG = {
 
     // ── Daily goal arc — initial render ───────────────────────────────────
     _updateDailyGoalArc();
+    _updateRecentSessions();
 
     // ── Quick-preset duration pills (mouseenter on session icon triggers panel open)
-    // Re-render the daily goal whenever the panel becomes visible (via mouseover)
+    // Re-render the daily goal and recent sessions whenever the panel becomes visible (via mouseover)
     const spIcon = document.getElementById('sp-icon');
-    if (spIcon) spIcon.addEventListener('mouseenter', () => _updateDailyGoalArc());
+    if (spIcon) spIcon.addEventListener('mouseenter', () => {
+      _updateDailyGoalArc();
+      _updateRecentSessions();
+    });
   }
 
   // ── Stepper helpers ───────────────────────────────────────────────────────
@@ -4339,7 +4376,10 @@ const CFG = {
 
       // After any session end, refresh the daily goal arc and hide budget display
       if (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED') {
-        setTimeout(() => _updateDailyGoalArc(), 200);
+        setTimeout(() => {
+          _updateDailyGoalArc();
+          _updateRecentSessions();
+        }, 200);
         const budgetRow = document.getElementById('sp-budget-row');
         if (budgetRow) budgetRow.style.display = 'none';
         _heatmapStop();
@@ -4809,6 +4849,26 @@ const CFG = {
     const collapseBtn = document.getElementById('full-collapse-btn');
     if (expandBtn)   expandBtn.addEventListener('click', () => _enterFullMode());
     if (collapseBtn) collapseBtn.addEventListener('click', () => _exitFullModeManual());
+
+    // New window control buttons — top-right corner
+    const pipToggleBtn = document.getElementById('window-pip-toggle-btn');
+    const closeBtn = document.getElementById('window-close-btn');
+    if (pipToggleBtn) {
+      pipToggleBtn.addEventListener('click', () => {
+        if (document.body.classList.contains('pip-mode')) {
+          _enterFullMode();
+        } else {
+          _exitFullModeManual();
+        }
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (window.electronAPI) {
+          window.electronAPI.closeApp();
+        }
+      });
+    }
 
     // WhatsApp-style PiP hover overlay: click the expand button to restore
     const pipExpandBtn = document.getElementById('pip-expand-btn');
@@ -7128,6 +7188,81 @@ const CFG = {
       _dailyGoalCelebratedToday = true;
       _fireDailyGoalReached();
     }
+  }
+
+  function _updateRecentSessions() {
+    const container = document.getElementById('sp-recent-sessions');
+    const list = document.getElementById('sp-recent-list');
+    if (!container || !list) return;
+
+    const history = (typeof Session !== 'undefined' && Session.getHistory) ? Session.getHistory() : [];
+    
+    // Get last 3 completed sessions
+    const recent = history.filter(s => s.outcome === 'COMPLETED').slice(0, 3);
+    
+    if (recent.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+    
+    container.style.display = 'flex';
+    list.innerHTML = '';
+    
+    recent.forEach(session => {
+      const item = document.createElement('div');
+      item.className = 'sp-recent-item';
+      
+      const categoryEmojis = {
+        'study': '📚',
+        'work': '💼',
+        'creative': '🎨',
+        'reading': '📖',
+        'other': '⚙️'
+      };
+      
+      const cat = session.category || 'other';
+      const emoji = categoryEmojis[cat] || '⚙️';
+      const goal = session.goalText || `${session.durationMinutes}m ${cat}`;
+      const focusedSecs = session.actualFocusedSeconds || 0;
+      const durationSecs = (session.durationMinutes || 0) * 60;
+      const focusPct = durationSecs > 0 ? Math.round((focusedSecs / durationSecs) * 100) : 0;
+      
+      item.innerHTML = `
+        <div class="sp-recent-item-goal">${emoji} ${escapeHtml(goal)}</div>
+        <div class="sp-recent-item-meta">
+          <span>${Math.floor(focusedSecs / 60)}m focus</span>
+          <span>${focusPct}%</span>
+        </div>
+      `;
+      
+      item.addEventListener('click', () => {
+        // Resume the session
+        const durationMins = session.durationMinutes || DEFAULT_SESSION_DURATION_MINUTES;
+        _setDurationSeconds(durationMins * 60);
+        const goalEl = document.getElementById('goal-input');
+        if (goalEl) goalEl.value = session.goalText || '';
+        
+        // Set category
+        const catPills = document.querySelectorAll('.sp-cat-pill');
+        catPills.forEach(pill => {
+          pill.classList.toggle('active', pill.dataset.cat === cat);
+        });
+        
+        // Start the session
+        const stats = Session.getCurrentStats();
+        if (stats && stats.state !== 'IDLE') return;
+        
+        BreakReminder.setInterval(_getBreakMinutes());
+        Timer.init(_getDurationMinutes());
+        Settings.set('sessionCategory', cat);
+        Session.startNew(_getDurationMinutes(), session.goalText || null, cat);
+        Timer.start();
+        const overlay = document.getElementById('goal-overlay');
+        if (overlay) overlay.style.display = 'none';
+      });
+      
+      list.appendChild(item);
+    });
   }
 
   let _dailyGoalCelebratedToday = (() => {

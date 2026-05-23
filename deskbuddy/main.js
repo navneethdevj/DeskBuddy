@@ -41,11 +41,11 @@ function _positionIsOnScreen(x, y, dim) {
   });
 }
 
-function _clamp(x, y, dim) {
+function _clamp(x, y, w, h) {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
   return {
-    x: Math.max(0, Math.min(Math.round(x), sw - dim)),
-    y: Math.max(0, Math.min(Math.round(y), sh - dim)),
+    x: Math.max(0, Math.min(Math.round(x), sw - w)),
+    y: Math.max(0, Math.min(Math.round(y), sh - h)),
   };
 }
 
@@ -96,14 +96,14 @@ function _doSnapToNearestZone() {
 function _doSnapToCorner() {
   if (!mainWindow) return;
   const [curX, curY] = mainWindow.getPosition();
-  const [w]          = mainWindow.getSize();
+  const [w, h]       = mainWindow.getSize();
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
   const m = SNAP_MARGIN;
   const zones = [
     { x: m,           y: m          },
     { x: sw - w - m,  y: m          },
-    { x: m,           y: sh - w - m },
-    { x: sw - w - m,  y: sh - w - m },
+    { x: m,           y: sh - h - m },
+    { x: sw - w - m,  y: sh - h - m },
   ];
   const best = zones.reduce((nearest, c) => {
     const d = Math.hypot(c.x - curX, c.y - curY);
@@ -111,7 +111,7 @@ function _doSnapToCorner() {
     return nearest;
   }, null);
   const safeX = Math.max(0, Math.min(best.x, sw - w));
-  const safeY = Math.max(0, Math.min(best.y, sh - w));
+  const safeY = Math.max(0, Math.min(best.y, sh - h));
   mainWindow.setPosition(safeX, safeY, process.platform === 'darwin');
   store.set('windowPos', { x: safeX, y: safeY });
 }
@@ -142,7 +142,7 @@ function _doSnapWithMomentum() {
     { x: m,         y: vmid      },  // mid-left
     { x: sw-w-m,    y: vmid      },  // mid-right
     { x: m,         y: sh-h-m    },  // bottom-left
-    { x: half,      y: sh-h-m    },  // bottom-right (was bottom-center)
+    { x: half,      y: sh-h-m    },  // bottom-center
     { x: sw-w-m,    y: sh-h-m    },  // bottom-right
   ];
 
@@ -252,7 +252,7 @@ ipcMain.on('resize-window', (_event, preset) => {
   if (!SIZE_PRESETS[preset] || !mainWindow) return;
   const dim = SIZE_PRESETS[preset];
   const [curX, curY] = mainWindow.getPosition();
-  const clamped = _clamp(curX, curY, dim);
+  const clamped = _clamp(curX, curY, dim, dim);
   mainWindow.setBounds({ x: clamped.x, y: clamped.y, width: dim, height: dim }, process.platform === 'darwin');
   store.set('windowPreset', preset);
   store.set('windowPos', clamped);
@@ -333,7 +333,7 @@ function _snapToCorner(corner) {
   };
   const pos = positions[corner];
   if (!pos) return;
-  const safe = _clamp(pos.x, pos.y, w);
+  const safe = _clamp(pos.x, pos.y, w, h);
   mainWindow.setPosition(safe.x, safe.y, process.platform === 'darwin');
   store.set('windowPos', { x: safe.x, y: safe.y });
 }
@@ -351,6 +351,10 @@ ipcMain.on('set-pip-snap-enabled', (_event, enabled) => {
 ipcMain.on('set-pip-always-on-top', (_event, flag) => {
   if (!mainWindow || !_isPipMode) return;
   mainWindow.setAlwaysOnTop(!!flag, flag ? 'floating' : undefined);
+});
+
+ipcMain.on('close-app', () => {
+  app.quit();
 });
 
 // ── Settings IPC ──────────────────────────────────────────────────────────────

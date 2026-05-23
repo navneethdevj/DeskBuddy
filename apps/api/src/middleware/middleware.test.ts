@@ -8,7 +8,7 @@
  *   validateBody   (validate.ts)
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
@@ -68,7 +68,6 @@ function makeRes(): Response & { _status: number; _body: unknown } {
   return res as Response & { _status: number; _body: unknown };
 }
 
-const noop: NextFunction = jest.fn();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  requireAuth

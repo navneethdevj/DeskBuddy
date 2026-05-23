@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="deskbuddy-catmouth.css">
   <link rel="stylesheet" href="enhancements.css">
+  <link rel="stylesheet" href="premium-panels.css">
   <style>
     /* Personality Studio open button — settings panel */
     .settings-action-btn-primary {
@@ -33,6 +34,12 @@
     </div>
   </div>
   <div id="status-bar"></div>
+
+  <!-- Window controls — top-right corner (close + PiP toggle) -->
+  <div id="window-controls" aria-hidden="true">
+    <button id="window-pip-toggle-btn" class="wc-btn" title="Toggle PiP mode (Ctrl+Shift+P)" aria-label="Toggle PiP mode">◻</button>
+    <button id="window-close-btn" class="wc-btn" title="Close DeskBuddy" aria-label="Close DeskBuddy">✕</button>
+  </div>
 
   <!-- Compact mode: click to expand to full-screen -->
   <button id="compact-expand-btn" title="Full screen (Ctrl+Shift+P)">⛶</button>
@@ -1268,6 +1275,16 @@
         </div>
         <span class="sp-mode-star">✦</span>
       </div>
+      
+      <!-- Quick preset buttons — fast-track common durations -->
+      <div class="sp-quick-presets" id="sp-quick-presets">
+        <button class="sp-preset-btn" data-minutes="15" title="Start a 15-minute focus session">15m</button>
+        <button class="sp-preset-btn" data-minutes="25" title="Start a 25-minute focus session">25m</button>
+        <button class="sp-preset-btn" data-minutes="45" title="Start a 45-minute focus session">45m</button>
+        <button class="sp-preset-btn" data-minutes="60" title="Start a 60-minute focus session">1h</button>
+        <button class="sp-preset-btn" data-minutes="90" title="Start a 90-minute focus session">1.5h</button>
+      </div>
+
       <div class="sp-setup">
         <!-- Duration HH:MM:SS stepper — enter hours, minutes and seconds together -->
         <div class="sp-row sp-row-hms">
@@ -1340,6 +1357,12 @@
             <div id="sp-dg-today" class="sp-dg-today">0m today</div>
             <div id="sp-dg-goal"  class="sp-dg-goal">— goal</div>
           </div>
+        </div>
+
+        <!-- Recent sessions — quick access to resume last sessions -->
+        <div class="sp-recent-sessions" id="sp-recent-sessions" style="display:none">
+          <div class="sp-recent-label">recent sessions</div>
+          <div class="sp-recent-list" id="sp-recent-list"></div>
         </div>
       </div>
     </div>
@@ -1808,6 +1831,20 @@
     window.ObjectDetector  = exports.ObjectDetector;
   </script>
 
+  <!-- Shared Utilities -->
+  <script>
+    /**
+     * Shared HTML escape utility to prevent XSS across modules
+     */
+    const escapeHtml = (str) => {
+      if (typeof str !== 'string') return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    };
+    window.escapeHtml = escapeHtml; // Make available globally
+  </script>
+
   <script src="components/emotion.js"></script>
   <script src="components/companion.js"></script>
   <script src="components/spriteAnimator.js"></script>
@@ -1833,6 +1870,7 @@
   <script src="ui/personality-editor.js"></script>
   <script src="components/enhancements.js"></script>
   <script src="renderer.js"></script>
+  <script src="premium-panels.js"></script>
   <div id="pip-lock-badge" aria-hidden="true">🔒 locked</div>
 </body>
 </html>

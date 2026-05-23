@@ -2408,15 +2408,29 @@ body.pip-shape-square.pip-mode  #compact-expand-btn { display: none; }
   transform: scale(1.12);
 }
 
-/* PiP window drag — entire #world is drag surface when NOT locked.
+/* PiP window drag — entire #world and .companion are drag surface when NOT locked.
    Interactive children override with no-drag below.
    pip-locked class disables all dragging instantly. */
 body.pip-mode:not(.pip-locked) #world            { -webkit-app-region: drag; cursor: grab; }
-body.pip-mode:not(.pip-locked) #world:active      { cursor: grabbing; }
-body.pip-mode.pip-locked       #world             { -webkit-app-region: no-drag; cursor: default; }
-/* Companion still drag-capable for backwards compat */
-body.pip-mode:not(.pip-locked) .companion         { -webkit-app-region: drag; }
-body.pip-mode.pip-locked       .companion         { -webkit-app-region: no-drag !important; cursor: default !important; }
+body.pip-mode:not(.pip-locked) #world:active     { cursor: grabbing; }
+body.pip-mode.pip-locked       #world            { -webkit-app-region: no-drag; cursor: default; }
+
+/* CRITICAL: Companion fills the pip window (100% x 100%), so it MUST be draggable
+   when in pip-mode and not locked. This is the main drag surface for the window. */
+body.pip-mode .companion {
+  -webkit-app-region: drag !important;
+  cursor: grab;
+}
+body.pip-mode .companion:active {
+  cursor: grabbing;
+}
+
+/* When locked, companion cannot be dragged */
+body.pip-mode.pip-locked .companion {
+  -webkit-app-region: no-drag !important;
+  cursor: default !important;
+}
+
 /* All interactive elements must NOT be drag handles */
 body.pip-mode .eye-wrap,
 body.pip-mode #compact-expand-btn,
@@ -4123,7 +4137,7 @@ body.pip-mode #settings-panel { display: none !important; }
 }
 /* position the bottom-row buttons so ↙ and ↘ span left / right */
 .pip-corner-picker .pip-corner-chip:nth-child(4) { grid-column: 1; }
-.pip-corner-picker .pip-corner-chip:nth-child(5) { grid-column: 3; }
+.pip-corner-picker .pip-corner-chip:nth-child(6) { grid-column: 3; }
 
 .pip-corner-chip {
   display: flex;
@@ -5675,6 +5689,42 @@ body[data-timer-state="DRIFTING"]   .sp-focus-dot { background: rgba(255,185,68,
 body[data-timer-state="DISTRACTED"] .sp-focus-dot { background: rgba(255,80,80,0.85);  box-shadow: 0 0 6px rgba(255,60,60,0.45);  }
 body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1.00);  box-shadow: 0 0 8px rgba(255,60,60,0.65);  animation: spDotPulse 0.6s ease-in-out infinite; }
 
+/* ── Quick preset buttons ───────────────────────────────────────────── */
+.sp-quick-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.sp-preset-btn {
+  flex: 1;
+  min-width: 45px;
+  padding: 6px 8px;
+  border: 1px solid rgba(155, 135, 255, 0.25);
+  border-radius: 7px;
+  background: rgba(120, 100, 180, 0.12);
+  color: rgba(210, 200, 255, 0.75);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.sp-preset-btn:hover {
+  background: rgba(155, 135, 255, 0.20);
+  border-color: rgba(155, 135, 255, 0.40);
+  color: rgba(230, 220, 255, 0.90);
+  transform: translateY(-1px);
+}
+
+.sp-preset-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(100, 80, 160, 0.3);
+}
+
 /* ── Setup form rows ────────────────────────────────────────────── */
 .sp-setup {
   display: flex;
@@ -5810,6 +5860,64 @@ body[data-timer-state="CRITICAL"]   .sp-focus-dot { background: rgba(255,80,80,1
   background: rgba(255, 80, 80, 0.08);
   border-color: rgba(255, 80, 80, 0.22);
   color: rgba(255, 110, 110, 0.80);
+}
+
+/* ── Recent sessions display ────────────────────────────────────── */
+.sp-recent-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px;
+  background: rgba(100, 80, 160, 0.08);
+  border-radius: 9px;
+  border: 1px solid rgba(155, 135, 255, 0.12);
+}
+
+.sp-recent-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(165, 145, 255, 0.55);
+  margin-bottom: 2px;
+}
+
+.sp-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sp-recent-item {
+  padding: 6px 8px;
+  background: rgba(120, 100, 180, 0.12);
+  border: 1px solid rgba(155, 135, 255, 0.18);
+  border-radius: 6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.sp-recent-item:hover {
+  background: rgba(155, 135, 255, 0.20);
+  border-color: rgba(155, 135, 255, 0.35);
+  transform: translateX(2px);
+}
+
+.sp-recent-item-goal {
+  color: rgba(210, 200, 255, 0.85);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.sp-recent-item-meta {
+  font-size: 9px;
+  color: rgba(175, 165, 255, 0.55);
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
 }
 
 /* Goal-achieved row */
@@ -8877,6 +8985,9 @@ body.pip-mode.pip-locked #pip-lock-badge { display: flex; align-items: center; g
   gap: 5px;
   max-width: 148px;
 }
+/* position the bottom-row buttons so ↙ and ↘ span left / right */
+.pip-corner-picker .pip-corner-chip:nth-child(4) { grid-column: 1; }
+.pip-corner-picker .pip-corner-chip:nth-child(6) { grid-column: 3; }
 .pip-corner-chip {
   display: flex;
   align-items: center;
@@ -9055,8 +9166,6 @@ body.pip-mode #world {
 }
 
 /* But interactive children must opt OUT of drag so clicks still work */
-body.pip-mode #world .companion,
-body.pip-mode #world .companion *,
 body.pip-mode #world button,
 body.pip-mode #world [role="button"],
 body.pip-mode #pip-expand-btn,
@@ -9083,4 +9192,78 @@ body.pip-mode.pip-locked #world {
 }
 .whisper-bubble, #whisper-text {
   will-change: opacity, transform;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   WINDOW CONTROLS — Close + PiP Toggle (Top-Right Corner)
+   Glassmorphism design with premium appearance
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#window-controls {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Show on hover or always in full-mode */
+body.full-mode #window-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Window control button styling */
+.wc-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  font: 600 14px/1 'Segoe UI', system-ui, sans-serif;
+  color: rgba(210, 200, 255, 0.7);
+  background: rgba(100, 80, 180, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.wc-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(120, 100, 200, 0.25);
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.3);
+  transform: translateY(-1px);
+}
+
+.wc-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.2);
+}
+
+#window-close-btn:hover {
+  color: rgba(248, 113, 113, 0.9);
+  background: rgba(200, 80, 80, 0.2);
+  box-shadow: 0 6px 20px rgba(248, 113, 113, 0.25);
+}
+
+/* Hide window controls in PiP mode when not hovering */
+body.pip-mode #window-controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.pip-mode #window-controls:hover {
+  opacity: 1;
+  pointer-events: auto;
 }

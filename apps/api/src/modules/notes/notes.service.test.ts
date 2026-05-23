@@ -1,5 +1,4 @@
 import { NotesService } from './notes.service';
-import { HttpError } from '@api/utils/httpError';
 import type { PrismaClient } from '@prisma/client';
 
 // ── module mocks ──────────────────────────────────────────────────────────────
