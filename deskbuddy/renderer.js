@@ -3975,6 +3975,7 @@ const CFG = {
     // ── Daily goal arc — initial render ───────────────────────────────────
     _updateDailyGoalArc();
     _updateRecentSessions();
+    _updateDailyTasks();
 
     // ── Quick-preset duration pills (mouseenter on session icon triggers panel open)
     // Re-render the daily goal and recent sessions whenever the panel becomes visible (via mouseover)
@@ -3982,6 +3983,7 @@ const CFG = {
     if (spIcon) spIcon.addEventListener('mouseenter', () => {
       _updateDailyGoalArc();
       _updateRecentSessions();
+      _updateDailyTasks();
     });
 
     // ── Session panel close button ──────────────────────────────────────────
@@ -4352,6 +4354,11 @@ const CFG = {
         const lastSession = Session.getHistory()[0];
         const emotion     = (typeof Emotion !== 'undefined' && Emotion.getState?.()) || 'happy';
 
+        // Update daily tasks based on session completion
+        if (typeof DailyTasks !== 'undefined') {
+          _updateDailyTasks();
+        }
+
         // Confetti celebration
         setTimeout(() => _fireCelebration('complete'), 400);
 
@@ -4387,6 +4394,7 @@ const CFG = {
         setTimeout(() => {
           _updateDailyGoalArc();
           _updateRecentSessions();
+          _updateDailyTasks();
         }, 200);
         const budgetRow = document.getElementById('sp-budget-row');
         if (budgetRow) budgetRow.style.display = 'none';
@@ -7267,6 +7275,53 @@ const CFG = {
         Timer.start();
         const overlay = document.getElementById('goal-overlay');
         if (overlay) overlay.style.display = 'none';
+      });
+      
+      list.appendChild(item);
+    });
+  }
+
+  function _updateDailyTasks() {
+    const container = document.getElementById('sp-daily-tasks');
+    const list = document.getElementById('sp-daily-tasks-list');
+    if (!container || !list) return;
+
+    if (typeof DailyTasks === 'undefined') {
+      container.style.display = 'none';
+      return;
+    }
+
+    const tasks = DailyTasks.getTasks();
+    if (!tasks || tasks.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    // Show daily tasks
+    container.style.display = 'flex';
+    list.innerHTML = '';
+
+    tasks.forEach(task => {
+      const item = document.createElement('div');
+      item.className = 'sp-daily-task-item' + (task.completed ? ' completed' : '');
+      
+      // Format progress display
+      let progressText = '';
+      if (task.target > 1) {
+        progressText = ` ${task.progress}/${task.target}`;
+      } else if (task.progress > 0) {
+        progressText = ` ${Math.round(task.progress * 10) / 10}/${task.target}`;
+      }
+      
+      item.innerHTML = `
+        <div class="sp-daily-task-checkbox"></div>
+        <div class="sp-daily-task-text">${escapeHtml(task.label)}</div>
+        <div class="sp-daily-task-progress">${progressText}</div>
+      `;
+      
+      item.addEventListener('click', () => {
+        DailyTasks.toggleTask(task.id);
+        item.classList.toggle('completed');
       });
       
       list.appendChild(item);
