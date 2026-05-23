@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="enhancements.css">
   <link rel="stylesheet" href="premium-panels.css">
   <link rel="stylesheet" href="ui-overhaul.css">
+  <link rel="stylesheet" href="deskbuddy-improvements.css">
   <style>
     /* Personality Studio open button — settings panel */
     .settings-action-btn-primary {
@@ -1248,19 +1249,24 @@
 
   <!-- History sidebar icon — floating glass icon next to the settings gear.
        Click it to open the history/stats panel. -->
-  <button id="hp-icon" title="Session history" aria-label="Open history panel">
+  <button id="hp-icon" title="Focus Stats &amp; History" aria-label="Open focus stats panel">
     <svg id="hp-icon-chart" viewBox="0 0 22 22" fill="none"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- Counterclockwise arc (from 3 o'clock CCW to 12 o'clock, 270°) -->
-      <path d="M18 11 A7 7 0 1 0 11 4"
-            stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-      <!-- Arrow head at 12 o'clock pointing counterclockwise (left) -->
-      <polyline points="13.5,2 11,4 13.5,6"
-                stroke="currentColor" stroke-width="1.4"
-                stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- Click cursor pointer in center -->
-      <path d="M9.5 7.5 L9.5 14 L11 12.5 L12 15 L12.7 14.7 L11.7 12.5 L13.5 12.5 Z"
-            fill="currentColor" opacity="0.88"/>
+      <!-- Bar chart: 3 bars of different heights -->
+      <rect x="2.5" y="13" width="3.5" height="6.5" rx="1"
+            fill="currentColor" opacity="0.70"/>
+      <rect x="7.5" y="8" width="3.5" height="11.5" rx="1"
+            fill="currentColor" opacity="0.85"/>
+      <rect x="12.5" y="5" width="3.5" height="14.5" rx="1"
+            fill="currentColor"/>
+      <!-- Trend line with upward arrow -->
+      <polyline points="4.25,15 9.25,10.5 14.25,7"
+                stroke="currentColor" stroke-width="1.1"
+                stroke-linecap="round" stroke-linejoin="round"
+                opacity="0.60"/>
+      <!-- Sparkle star top right -->
+      <text x="17.5" y="5.5" font-size="4.2" text-anchor="middle"
+            fill="currentColor" opacity="0.75">✦</text>
     </svg>
   </button>
 
@@ -1324,8 +1330,8 @@
       </div>
 
       <div class="sp-setup">
-        <!-- Duration + Break steppers side by side -->
-        <div class="sp-steppers-row">
+        <!-- Duration stepper — stacked vertically above break timer -->
+        <div class="sp-steppers-stack">
           <div class="sp-row sp-row-hms">
             <label class="sp-label">study for</label>
             <div class="sp-stepper sp-stepper-hms">
@@ -1344,7 +1350,7 @@
               <button class="sp-step-btn" id="duration-inc" aria-label="increase duration">+</button>
             </div>
           </div>
-          <div class="sp-row sp-row-hms" id="sp-break-row">
+          <div class="sp-row sp-row-hms sp-break-divider" id="sp-break-row">
             <label class="sp-label">break every</label>
             <div class="sp-stepper sp-stepper-hms">
               <button class="sp-step-btn" id="break-dec" aria-label="decrease break">−</button>
@@ -1373,17 +1379,6 @@
             <button class="sp-cat-pill"        data-cat="creative" title="Creative">🎨 create</button>
             <button class="sp-cat-pill"        data-cat="reading"  title="Reading">📖 read</button>
             <button class="sp-cat-pill"        data-cat="other"    title="Other">⚙️ other</button>
-          </div>
-        </div>
-
-        <!-- Mood / energy selector -->
-        <div class="sp-mood-row">
-          <span class="sp-mood-label">energy</span>
-          <div class="sp-mood-options">
-            <button class="sp-mood-btn" data-mood="1" title="Low energy">😴</button>
-            <button class="sp-mood-btn" data-mood="2" title="Okay">😐</button>
-            <button class="sp-mood-btn" data-mood="3" title="Good">🙂</button>
-            <button class="sp-mood-btn" data-mood="4" title="High energy">⚡</button>
           </div>
         </div>
 
@@ -1539,19 +1534,26 @@
   <div id="history-panel">
   <div id="history-card">
 
-      <!-- ── HEADER with view pills ──────────────────────────────────── -->
+      <!-- ── HEADER with title, action buttons, close ──────────────────── -->
       <div class="hp-header">
         <div class="hp-header-left">
           <span class="hp-title">Focus Stats</span>
           <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
         </div>
+        <div class="hp-header-actions">
+          <button id="hp-export-btn" class="hp-action-btn" title="Export session history">↑ export</button>
+          <button id="hp-import-btn" class="hp-action-btn" title="Import session history">↓ import</button>
+        </div>
+        <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
+      </div>
+      <!-- View pills row -->
+      <div class="hp-pills-row">
         <div class="hgraph-pills">
           <button class="hgraph-pill active" data-view="daily">Daily</button>
           <button class="hgraph-pill" data-view="weekly">Weekly</button>
           <button class="hgraph-pill" data-view="monthly">Monthly</button>
           <button class="hgraph-pill" data-view="lifetime">Lifetime</button>
         </div>
-        <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
       </div>
 
       <!-- ── VIEW: DAILY ────────────────────────────────────────────── -->
@@ -1967,6 +1969,7 @@
   <script src="components/iris-color.js"></script>
   <script src="ui/personality-editor.js"></script>
   <script src="components/enhancements.js"></script>
+  <script src="components/emotion-enhancements.js"></script>
   <script src="renderer.js"></script>
   <script src="premium-panels.js"></script>
   <script src="ui/daily-tasks.js"></script>
