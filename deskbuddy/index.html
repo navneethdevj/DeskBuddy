@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="premium-panels.css">
   <link rel="stylesheet" href="ui-overhaul.css">
   <link rel="stylesheet" href="deskbuddy-improvements.css">
+  <link rel="stylesheet" href="panels-redesign.css">
   <style>
     /* Personality Studio open button — settings panel */
     .settings-action-btn-primary {
@@ -1337,7 +1338,7 @@
           <div class="sp-qs-lbl">focused</div>
         </div>
         <div class="sp-qs-item">
-          <div class="sp-qs-val" id="sp-qs-streak">0🔥</div>
+          <div class="sp-qs-val" id="sp-qs-streak">0</div>
           <div class="sp-qs-lbl">streak</div>
         </div>
       </div>
@@ -1396,11 +1397,11 @@
         <div class="sp-category-row">
           <label class="sp-label">category</label>
           <div class="sp-category-pills" id="sp-category-pills">
-            <button class="sp-cat-pill active" data-cat="study"    title="Study">📚 study</button>
-            <button class="sp-cat-pill"        data-cat="work"     title="Work">💼 work</button>
-            <button class="sp-cat-pill"        data-cat="creative" title="Creative">🎨 create</button>
-            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">📖 read</button>
-            <button class="sp-cat-pill"        data-cat="other"    title="Other">⚙️ other</button>
+            <button class="sp-cat-pill active" data-cat="study"    title="Study">Study</button>
+            <button class="sp-cat-pill"        data-cat="work"     title="Work">Work</button>
+            <button class="sp-cat-pill"        data-cat="creative" title="Creative">Create</button>
+            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">Read</button>
+            <button class="sp-cat-pill"        data-cat="other"    title="Other">Other</button>
           </div>
         </div>
 
@@ -1562,10 +1563,9 @@
           <span class="hp-title">Focus Stats</span>
           <span id="hp-anticheat-badge" class="hp-anticheat-badge" title="Stats protection is ON — sessions cannot be deleted to preserve accurate stats" style="display:none">🛡</span>
         </div>
-        <div class="hp-header-actions">
-          <button id="hp-export-btn" class="hp-action-btn" title="Export session history">↑ export</button>
-          <button id="hp-import-btn" class="hp-action-btn" title="Import session history">↓ import</button>
-        </div>
+        <!-- Export/Import kept for JS but hidden — available in Settings → Backup & Presets -->
+        <button id="hp-export-btn" class="hp-action-btn" style="display:none" title="Export session history">↑ export</button>
+        <button id="hp-import-btn" class="hp-action-btn" style="display:none" title="Import session history">↓ import</button>
         <button id="hp-close-btn" class="hp-close-btn" aria-label="Close history panel">✕</button>
       </div>
       <!-- View pills row -->
@@ -1711,13 +1711,11 @@
       <div class="hp-section hp-streak-section">
         <div class="hp-streak-row">
           <div class="hp-sr-item">
-            <div class="hp-sr-fires" id="hsr-fires" title="Current streak fire emojis"></div>
             <div class="hp-sr-val" id="hsr-current-streak">0</div>
             <div class="hp-sr-lbl">day streak 🔥</div>
           </div>
           <div class="hp-sr-div"></div>
           <div class="hp-sr-item">
-            <div class="hp-sr-fires hp-sr-fires-dim" id="hsr-fires-longest"></div>
             <div class="hp-sr-val" id="hsr-longest-streak">0</div>
             <div class="hp-sr-lbl">longest 🏆</div>
           </div>
@@ -1761,7 +1759,6 @@
       <div class="hp-section">
         <div class="hp-section-head">
           <span class="hp-slabel">recent sessions</span>
-          <span id="hp-recent-hint" style="font-size:8px;color:rgba(155,140,220,0.35);letter-spacing:0.04em">right-click for options</span>
         </div>
         <div id="hp-recent-list" class="hp-recent-list"></div>
         <!-- Multi-select toolbar (hidden until rows are selected) -->
