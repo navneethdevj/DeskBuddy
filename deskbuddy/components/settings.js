@@ -122,6 +122,11 @@ const Settings = (() => {
     themeTimeAware:  false,
     themeTimeLock:   'auto',  // 'auto' | 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT'
     // ── Custom colours ─────────────────────────────────────────────────
+    // ── Custom theme ──────────────────────────────────────────────────────
+    customBg1:       '#07041a',
+    customBg2:       '#1a0a3a',
+    customParticle:  'stars',
+    // ── Custom colour iris ─────────────────────────────────────────────────
     customIrisHex:   '',
     customIrisCenterHex: '',
     customIrisMidHex:    '',
@@ -164,8 +169,7 @@ const Settings = (() => {
     } catch (e) {}
 
     // Theme validation — migrate removed themes to galaxy
-    const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','ocean',
-                                   'snow','anime','matrix','sunset','neon','cozy']);
+    const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','matrix','cozy','custom']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
     // Mouth migration
