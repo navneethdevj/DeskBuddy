@@ -1,7 +1,8 @@
 /**
  * ThemeCanvas — canvas-based particle effects for animated full-screen themes.
  * Themes: galaxy (meteors), forest (leaves), cherry/sakura (petals),
- *         ocean (bubbles), rain (streaks/ripples), dreamscape (orbs/sparkles), aurora (glows), midnight (snow).
+ *         ocean (bubbles), dreamscape (orbs/sparkles).
+ * classic and matrix have no particles.
  * classic has no particles.
  * The canvas sits at z-index 0, behind the companion.
  */
@@ -1011,6 +1012,163 @@ const CFG = {
     },
   },
 
+  // ── Ocean — deep underwater world with floating bubbles ─────────────────
+  ocean: {
+    max: 28, rate: 0.018,
+    _kelp: null, _caustics: null,
+
+    init(W, H) {
+      // Generate kelp/seaweed structures along the bottom
+      this._kelp = Array.from({ length: 8 }, (_, i) => ({
+        x: W * (0.04 + i * 0.135),
+        segments: 10 + Math.floor(Math.random() * 6),
+        phase: Math.random() * Math.PI * 2,
+        spd:   0.012 + Math.random() * 0.010,
+        h:     H * (0.22 + Math.random() * 0.16),
+        hue:   155 + Math.floor(Math.random() * 30),
+      }));
+      // Caustic light patches near surface
+      this._caustics = Array.from({ length: 12 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.35,
+        r: W * (0.04 + Math.random() * 0.06),
+        phase: Math.random() * Math.PI * 2,
+        spd:   0.020 + Math.random() * 0.018,
+        alpha: 0.04 + Math.random() * 0.06,
+      }));
+    },
+
+    drawBackground(ctx, W, H) {
+      // ── 1. Deep ocean gradient ─────────────────────────────────────────
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0,    'rgba(0, 28, 62, 1)');
+      bg.addColorStop(0.22, 'rgba(0, 18, 46, 1)');
+      bg.addColorStop(0.52, 'rgba(0, 10, 30, 1)');
+      bg.addColorStop(0.80, 'rgba(0, 5, 18, 1)');
+      bg.addColorStop(1,    'rgba(0, 2, 8, 1)');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+      // ── 2. Surface caustic shafts ──────────────────────────────────────
+      if (this._caustics) {
+        this._caustics.forEach(c => {
+          c.phase += c.spd;
+          const a = c.alpha * (0.55 + 0.45 * Math.sin(c.phase));
+          const px = c.x + Math.sin(c.phase * 0.7) * W * 0.015;
+          const py = c.y + Math.cos(c.phase * 0.5) * H * 0.018;
+          const g = ctx.createRadialGradient(px, py, 0, px, py + H * 0.12, c.r * 2.5);
+          g.addColorStop(0,   `rgba(0, 220, 255, ${a * 1.4})`);
+          g.addColorStop(0.4, `rgba(0, 180, 235, ${a * 0.6})`);
+          g.addColorStop(1,   'rgba(0, 140, 210, 0)');
+          ctx.save();
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(px, py + H * 0.06, c.r, c.r * 2.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // ── 3. Kelp waving at bottom ───────────────────────────────────────
+      if (this._kelp) {
+        this._kelp.forEach(k => {
+          k.phase += k.spd;
+          ctx.save();
+          const segH = k.h / k.segments;
+          for (let i = k.segments; i >= 0; i--) {
+            const t  = i / k.segments;
+            const sway = Math.sin(k.phase + t * 2.5) * W * 0.012 * (1 - t * 0.6);
+            const sy = H - i * segH;
+            const sx = k.x + sway;
+            const alpha = 0.22 + 0.18 * t;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2.5 + t * 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${k.hue}, 68%, ${28 + t * 22}%, ${alpha})`;
+            ctx.fill();
+          }
+          ctx.restore();
+        });
+      }
+
+      // ── 4. Depth vignette ─────────────────────────────────────────────
+      const vig = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.28, W * 0.5, H * 0.5, W * 0.88);
+      vig.addColorStop(0,   'rgba(0,0,0,0)');
+      vig.addColorStop(0.50,'rgba(0,0,0,0)');
+      vig.addColorStop(1,   'rgba(0, 1, 8, 0.92)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    },
+
+    create(W, H) {
+      const r  = 3 + Math.random() * 11;
+      const rng = (a, b) => a + Math.random() * (b - a);
+      return {
+        type:    'bubble',
+        x:       rng(r, W - r),
+        y:       H + r,
+        r,
+        vx:      (Math.random() - 0.5) * 0.55,
+        vy:      -(0.50 + Math.random() * 1.05),
+        wobble:  Math.random() * Math.PI * 2,
+        wSpd:    0.040 + Math.random() * 0.040,
+        wAmp:    1.2 + Math.random() * 2.2,
+        alpha:   0,
+        maxAlpha: 0.28 + Math.random() * 0.32,
+        life:    0,
+        maxLife: 200 + Math.floor(Math.random() * 180),
+        hue:     188 + Math.floor(Math.random() * 28),
+      };
+    },
+
+    draw(ctx, p) {
+      if (p.type !== 'bubble') return;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+
+      // Bubble body — transparent with thin rim
+      ctx.strokeStyle = `hsla(${p.hue}, 88%, 78%, ${p.alpha * 1.8})`;
+      ctx.lineWidth   = 0.8 + p.r * 0.065;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner fill — very transparent teal
+      const ig = ctx.createRadialGradient(
+        p.x - p.r * 0.28, p.y - p.r * 0.28, 0,
+        p.x, p.y, p.r
+      );
+      ig.addColorStop(0,   `hsla(${p.hue}, 80%, 90%, ${p.alpha * 0.30})`);
+      ig.addColorStop(0.6, `hsla(${p.hue}, 72%, 72%, ${p.alpha * 0.10})`);
+      ig.addColorStop(1,   `hsla(${p.hue}, 65%, 60%, 0)`);
+      ctx.fillStyle = ig;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular highlight — top-left white glint
+      ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 1.1})`;
+      ctx.beginPath();
+      ctx.arc(p.x - p.r * 0.32, p.y - p.r * 0.30, p.r * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    },
+
+    update(p, W, H) {
+      if (p.type !== 'bubble') return false;
+      p.life++;
+      p.wobble += p.wSpd;
+      p.x     += p.vx + Math.sin(p.wobble) * p.wAmp;
+      p.y     += p.vy;
+      p.vx    *= 0.998;
+
+      const fadeIn  = Math.min(1, p.life / 18);
+      const fadeOut = p.y < H * 0.12 ? Math.max(0, p.y / (H * 0.12)) : 1;
+      p.alpha = p.maxAlpha * fadeIn * fadeOut;
+
+      return p.life < p.maxLife && p.y > -p.r * 2 && p.x > -p.r && p.x < W + p.r;
+    },
+  },
+
+
   // ── Matrix — premium digital rain per matrix.md ──────────────────────────
   // Full-width katakana + 0/1 columns, shadow glow on head char,
   // scanline overlay, radial vignette, ResizeObserver-aware sizing.
@@ -1356,7 +1514,8 @@ const CFG = {
 
   // Expose ocean CFG so bubble-click handler in main() can reach it
   function _afterInit() {
-    // ocean theme removed
+    // Expose ocean CFG for bubble-click pop interaction in main()
+    if (CFG.ocean) window._ThemeOceanCFG = CFG.ocean;
   }
 
   return {
@@ -3989,7 +4148,7 @@ const CFG = {
     }
 
     // ── Full-screen theme picker ─────────────────────────────────────────
-    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-cherry','theme-matrix','theme-cozy','theme-custom'];
+    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-cherry','theme-ocean','theme-dreamscape','theme-matrix','theme-cozy','theme-custom'];
 
     function _applyFullTheme(theme) {
       document.body.classList.remove(...THEME_CLASSES);
@@ -4783,13 +4942,15 @@ const CFG = {
     // ── SensaMode — soft solid-color theme for visual sensitivity ─────────
     // Each theme gets a soft pastel solid that replaces the animated canvas.
     const SENSA_COLORS = {
-      galaxy:  '#050014',  // deep cosmic indigo-black
-      classic: '#0f0f0f',  // neutral near-black
-      forest:  '#01100a',  // deep emerald-void
-      cherry:  '#1a020e',  // midnight rose-black
-      matrix:  '#000601',  // phosphor green-void
-      cozy:    '#120400',  // deep hearth ember-black
-      custom:  '#07041a',  // user-defined — fallback
+      galaxy:     '#050014',  // deep cosmic indigo-black
+      classic:    '#0f0f0f',  // neutral near-black
+      forest:     '#01100a',  // deep emerald-void
+      cherry:     '#1a020e',  // midnight rose-black
+      ocean:      '#00060e',  // deep abyss teal-black
+      dreamscape: '#060210',  // surreal violet-void
+      matrix:     '#000601',  // phosphor green-void
+      cozy:       '#120400',  // deep hearth ember-black
+      custom:     '#07041a',  // user-defined — fallback
     };
     const SENSA_LABEL = 'SensaMode';
 
