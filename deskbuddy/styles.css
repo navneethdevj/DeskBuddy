@@ -3002,78 +3002,120 @@ body[data-theme-period] #world {
    Base (no period) rules apply always; period overrides add/sharpen.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ── SAKURA — peach-rose bloom, warm pink halo ──────────────────────── */
+/* ── SAKURA — Multi-layer petal glow + eye tint + aura ──────────────────
+   Eye:    rose-pink iris, slightly brighter + warmer
+   Glow:   3-layer drop-shadow in petal hues
+   Aura:   hue-rotate into pink/violet; brightness tracks period
+   Shadow: deep magenta base shadow
+   ─────────────────────────────────────────────────────────────────────── */
 body.buddy-adapt.theme-cherry .companion {
-  filter: drop-shadow(0 0 5vmin rgba(255,110,165,0.52))
-          drop-shadow(0 0 16vmin rgba(238,62,128,0.22))
-          drop-shadow(0 0 42vmin rgba(205,32,105,0.08))
-          hue-rotate(12deg) saturate(1.22) brightness(1.06);
+  filter: drop-shadow(0 0 5vmin rgba(255,108,162,0.56))
+          drop-shadow(0 0 18vmin rgba(235,58,125,0.24))
+          drop-shadow(0 0 46vmin rgba(195,28,102,0.09))
+          hue-rotate(14deg) saturate(1.28) brightness(1.08);
 }
-body.buddy-adapt.theme-cherry .eye { filter: brightness(1.10) saturate(1.28) hue-rotate(14deg); }
+body.buddy-adapt.theme-cherry .eye {
+  filter: brightness(1.12) saturate(1.35) hue-rotate(16deg);
+}
 body.buddy-adapt.theme-cherry .companion-inner { opacity: 0.97; }
 
-/* Sakura MORNING — soft warm rose dawn light */
+/* ── Sakura MORNING — soft rose-peach dawn: warm bright wash ────────── */
 body[data-theme-period="MORNING"].buddy-adapt.theme-cherry .companion {
-  filter: drop-shadow(0 0 6vmin rgba(255,175,210,0.55))
-          drop-shadow(0 0 22vmin rgba(255,120,175,0.24))
-          drop-shadow(0 0 48vmin rgba(225,72,145,0.09))
-          hue-rotate(16deg) saturate(1.28) brightness(1.18) contrast(0.96);
+  filter: drop-shadow(0 0 6vmin rgba(255,185,215,0.62))
+          drop-shadow(0 0 24vmin rgba(255,130,185,0.28))
+          drop-shadow(0 0 52vmin rgba(225,78,152,0.10))
+          hue-rotate(20deg) saturate(1.32) brightness(1.24) contrast(0.94);
 }
-/* Sakura AFTERNOON — vivid saturated noon bloom */
+body[data-theme-period="MORNING"].buddy-adapt.theme-cherry .eye {
+  filter: brightness(1.22) saturate(1.28) hue-rotate(22deg);
+}
+/* ── Sakura AFTERNOON — vivid full bloom: deep crimson-pink ─────────── */
 body[data-theme-period="AFTERNOON"].buddy-adapt.theme-cherry .companion {
-  filter: drop-shadow(0 0 5vmin rgba(255,65,118,0.60))
-          drop-shadow(0 0 18vmin rgba(235,28,92,0.26))
-          drop-shadow(0 0 44vmin rgba(195,10,72,0.10))
-          hue-rotate(6deg) saturate(1.40) brightness(1.04) contrast(1.06);
+  filter: drop-shadow(0 0 5vmin rgba(255,58,112,0.68))
+          drop-shadow(0 0 18vmin rgba(232,22,88,0.30))
+          drop-shadow(0 0 46vmin rgba(188,6,68,0.12))
+          hue-rotate(8deg) saturate(1.48) brightness(1.06) contrast(1.08);
 }
-/* Sakura EVENING — warm golden-rose dusk */
+body[data-theme-period="AFTERNOON"].buddy-adapt.theme-cherry .eye {
+  filter: brightness(1.08) saturate(1.45) hue-rotate(10deg);
+}
+/* ── Sakura EVENING — amber-rose dusk: warm golden glow ─────────────── */
 body[data-theme-period="EVENING"].buddy-adapt.theme-cherry .companion {
-  filter: drop-shadow(0 0 6vmin rgba(255,135,45,0.52))
-          drop-shadow(0 0 22vmin rgba(235,78,15,0.20))
-          drop-shadow(0 0 44vmin rgba(195,35,5,0.08))
-          hue-rotate(-8deg) saturate(1.35) brightness(0.90) contrast(1.08);
+  filter: drop-shadow(0 0 6vmin rgba(255,140,48,0.58))
+          drop-shadow(0 0 24vmin rgba(232,82,16,0.24))
+          drop-shadow(0 0 48vmin rgba(188,38,6,0.09))
+          hue-rotate(-10deg) saturate(1.38) brightness(0.92) contrast(1.10);
 }
-/* Sakura NIGHT — deep indigo moonlit petals */
+body[data-theme-period="EVENING"].buddy-adapt.theme-cherry .eye {
+  filter: brightness(0.94) saturate(1.32) hue-rotate(-12deg);
+}
+/* ── Sakura NIGHT — moonlit violet: deep indigo reflection ───────────── */
 body[data-theme-period="NIGHT"].buddy-adapt.theme-cherry .companion {
-  filter: drop-shadow(0 0 7vmin rgba(145,65,215,0.45))
-          drop-shadow(0 0 22vmin rgba(95,28,175,0.18))
-          drop-shadow(0 0 44vmin rgba(55,8,125,0.07))
-          hue-rotate(-32deg) saturate(1.08) brightness(0.80) contrast(1.08);
+  filter: drop-shadow(0 0 8vmin rgba(148,68,220,0.50))
+          drop-shadow(0 0 26vmin rgba(98,30,182,0.22))
+          drop-shadow(0 0 50vmin rgba(58,10,132,0.08))
+          hue-rotate(-34deg) saturate(1.12) brightness(0.78) contrast(1.10);
+}
+body[data-theme-period="NIGHT"].buddy-adapt.theme-cherry .eye {
+  filter: brightness(0.82) saturate(1.18) hue-rotate(-38deg);
 }
 
-/* ── FOREST — emerald deep glow, canopy green ───────────────────────── */
+/* ── FOREST — Deep canopy glow + eye adaptation + aura sync ─────────────
+   Eye:    green-shifted iris, cooler in shade, warmer in morning sun
+   Glow:   3-layer emerald/amber shadow — period-matched
+   Aura:   hue-rotate into green spectrum; brightness tracks light level
+   Reflect: undersaturated night, vivid noon
+   ─────────────────────────────────────────────────────────────────────── */
 body.buddy-adapt.theme-forest .companion {
-  filter: drop-shadow(0 0 6vmin rgba(38,205,55,0.42))
-          drop-shadow(0 0 22vmin rgba(16,155,35,0.16))
-          drop-shadow(0 0 48vmin rgba(6,112,20,0.06))
-          hue-rotate(-30deg) saturate(1.18) brightness(0.96);
+  filter: drop-shadow(0 0 6vmin rgba(42,210,58,0.46))
+          drop-shadow(0 0 24vmin rgba(18,158,38,0.18))
+          drop-shadow(0 0 52vmin rgba(6,115,22,0.07))
+          hue-rotate(-32deg) saturate(1.22) brightness(0.97);
 }
-body.buddy-adapt.theme-forest .eye { filter: brightness(0.94) saturate(1.22) hue-rotate(-32deg); }
+body.buddy-adapt.theme-forest .eye {
+  filter: brightness(0.94) saturate(1.28) hue-rotate(-34deg);
+}
 body.buddy-adapt.theme-forest .companion-inner { opacity: 0.96; }
 
+/* ── Forest MORNING — lime-gold canopy burst: bright warm-green wash ─── */
 body[data-theme-period="MORNING"].buddy-adapt.theme-forest .companion {
-  filter: drop-shadow(0 0 7vmin rgba(180,255,80,0.52))
-          drop-shadow(0 0 24vmin rgba(100,235,30,0.22))
-          drop-shadow(0 0 50vmin rgba(38,185,10,0.08))
-          hue-rotate(-18deg) saturate(1.38) brightness(1.22) contrast(0.94);
+  filter: drop-shadow(0 0 7vmin rgba(188,255,82,0.58))
+          drop-shadow(0 0 26vmin rgba(105,240,32,0.26))
+          drop-shadow(0 0 54vmin rgba(40,188,12,0.09))
+          hue-rotate(-16deg) saturate(1.42) brightness(1.26) contrast(0.93);
 }
+body[data-theme-period="MORNING"].buddy-adapt.theme-forest .eye {
+  filter: brightness(1.24) saturate(1.38) hue-rotate(-14deg);
+}
+/* ── Forest AFTERNOON — rich emerald noon: deep vivid green ──────────── */
 body[data-theme-period="AFTERNOON"].buddy-adapt.theme-forest .companion {
-  filter: drop-shadow(0 0 6vmin rgba(55,215,45,0.48))
-          drop-shadow(0 0 22vmin rgba(22,168,28,0.20))
-          drop-shadow(0 0 48vmin rgba(8,125,15,0.07))
-          hue-rotate(-28deg) saturate(1.28) brightness(1.04) contrast(1.06);
+  filter: drop-shadow(0 0 6vmin rgba(58,218,48,0.52))
+          drop-shadow(0 0 24vmin rgba(24,172,30,0.22))
+          drop-shadow(0 0 50vmin rgba(8,128,18,0.08))
+          hue-rotate(-28deg) saturate(1.32) brightness(1.06) contrast(1.08);
 }
+body[data-theme-period="AFTERNOON"].buddy-adapt.theme-forest .eye {
+  filter: brightness(1.04) saturate(1.30) hue-rotate(-30deg);
+}
+/* ── Forest EVENING — amber-teal dusk: golden warmth through leaves ──── */
 body[data-theme-period="EVENING"].buddy-adapt.theme-forest .companion {
-  filter: drop-shadow(0 0 6vmin rgba(205,110,18,0.50))
-          drop-shadow(0 0 22vmin rgba(155,62,5,0.20))
-          drop-shadow(0 0 44vmin rgba(95,28,2,0.08))
-          hue-rotate(-45deg) saturate(1.30) brightness(0.82) contrast(1.08);
+  filter: drop-shadow(0 0 6vmin rgba(208,115,20,0.56))
+          drop-shadow(0 0 24vmin rgba(158,66,6,0.24))
+          drop-shadow(0 0 48vmin rgba(98,30,2,0.09))
+          hue-rotate(-48deg) saturate(1.35) brightness(0.84) contrast(1.10);
 }
+body[data-theme-period="EVENING"].buddy-adapt.theme-forest .eye {
+  filter: brightness(0.88) saturate(1.22) hue-rotate(-50deg);
+}
+/* ── Forest NIGHT — moonlit jade: cool bioluminescent deep dark ──────── */
 body[data-theme-period="NIGHT"].buddy-adapt.theme-forest .companion {
-  filter: drop-shadow(0 0 8vmin rgba(32,185,68,0.38))
-          drop-shadow(0 0 28vmin rgba(12,128,38,0.14))
-          drop-shadow(0 0 52vmin rgba(4,82,18,0.05))
-          hue-rotate(-42deg) saturate(0.88) brightness(0.68) contrast(1.10);
+  filter: drop-shadow(0 0 9vmin rgba(34,190,72,0.42))
+          drop-shadow(0 0 30vmin rgba(14,132,42,0.16))
+          drop-shadow(0 0 58vmin rgba(4,85,20,0.06))
+          hue-rotate(-44deg) saturate(0.90) brightness(0.70) contrast(1.12);
+}
+body[data-theme-period="NIGHT"].buddy-adapt.theme-forest .eye {
+  filter: brightness(0.72) saturate(0.95) hue-rotate(-46deg);
 }
 
 /* ── OCEAN — deep underwater: teal-cyan, bioluminescent ─────────────── */
@@ -3271,39 +3313,62 @@ body[data-theme-period="NIGHT"].buddy-adapt.theme-neon .companion {
           hue-rotate(-28deg) saturate(1.42) brightness(0.85) contrast(1.16);
 }
 
-/* ── COZY — warm amber candle + fireplace glow ───────────────────────── */
+/* ── COZY — Fireplace amber glow + eye warmth + emotional aura ───────────
+   Eye:    warm amber-honey tint — like candlelight on eyes
+   Glow:   flickery amber-orange drop-shadow, period-tuned intensity
+   Aura:   hue into warm spectrum; vivid evening, soft morning
+   Shadow: deep hearth ember at feet
+   ─────────────────────────────────────────────────────────────────────── */
 body.buddy-adapt.theme-cozy .companion {
-  filter: drop-shadow(0 0 8vmin rgba(255,155,38,0.50))
-          drop-shadow(0 0 26vmin rgba(238,108,18,0.20))
-          drop-shadow(0 0 50vmin rgba(215,72,6,0.07))
-          hue-rotate(26deg) saturate(1.22) brightness(1.10);
+  filter: drop-shadow(0 0 7vmin rgba(255,158,42,0.56))
+          drop-shadow(0 0 26vmin rgba(238,112,20,0.22))
+          drop-shadow(0 0 52vmin rgba(212,72,6,0.08))
+          hue-rotate(28deg) saturate(1.26) brightness(1.12);
 }
-body.buddy-adapt.theme-cozy .eye { filter: brightness(1.12) saturate(1.22) hue-rotate(30deg); }
+body.buddy-adapt.theme-cozy .eye {
+  filter: brightness(1.14) saturate(1.28) hue-rotate(32deg);
+}
 body.buddy-adapt.theme-cozy .companion-inner { opacity: 0.98; }
 
+/* ── Cozy MORNING — golden window light bars: warm bright honey glow ─── */
 body[data-theme-period="MORNING"].buddy-adapt.theme-cozy .companion {
-  filter: drop-shadow(0 0 9vmin rgba(255,218,128,0.58))
-          drop-shadow(0 0 30vmin rgba(248,172,55,0.25))
-          drop-shadow(0 0 58vmin rgba(225,118,15,0.09))
-          hue-rotate(32deg) saturate(1.32) brightness(1.28) contrast(0.94);
+  filter: drop-shadow(0 0 9vmin rgba(255,225,132,0.65))
+          drop-shadow(0 0 32vmin rgba(248,178,58,0.28))
+          drop-shadow(0 0 62vmin rgba(225,122,18,0.10))
+          hue-rotate(36deg) saturate(1.36) brightness(1.32) contrast(0.93);
 }
+body[data-theme-period="MORNING"].buddy-adapt.theme-cozy .eye {
+  filter: brightness(1.28) saturate(1.32) hue-rotate(38deg);
+}
+/* ── Cozy AFTERNOON — rich amber room: warm saturated orange ─────────── */
 body[data-theme-period="AFTERNOON"].buddy-adapt.theme-cozy .companion {
-  filter: drop-shadow(0 0 9vmin rgba(255,128,18,0.58))
-          drop-shadow(0 0 30vmin rgba(238,82,5,0.24))
-          drop-shadow(0 0 58vmin rgba(205,45,2,0.09))
-          hue-rotate(20deg) saturate(1.30) brightness(1.08) contrast(1.06);
+  filter: drop-shadow(0 0 8vmin rgba(255,132,20,0.62))
+          drop-shadow(0 0 28vmin rgba(238,85,6,0.26))
+          drop-shadow(0 0 58vmin rgba(202,48,2,0.10))
+          hue-rotate(22deg) saturate(1.34) brightness(1.10) contrast(1.08);
 }
+body[data-theme-period="AFTERNOON"].buddy-adapt.theme-cozy .eye {
+  filter: brightness(1.12) saturate(1.30) hue-rotate(24deg);
+}
+/* ── Cozy EVENING — fireplace rules: deep red-orange cinematic fire ──── */
 body[data-theme-period="EVENING"].buddy-adapt.theme-cozy .companion {
-  filter: drop-shadow(0 0 10vmin rgba(255,85,8,0.65))
-          drop-shadow(0 0 32vmin rgba(235,45,2,0.28))
-          drop-shadow(0 0 62vmin rgba(198,18,0,0.10))
-          hue-rotate(10deg) saturate(1.42) brightness(0.90) contrast(1.10);
+  filter: drop-shadow(0 0 10vmin rgba(255,88,10,0.72))
+          drop-shadow(0 0 34vmin rgba(235,48,3,0.32))
+          drop-shadow(0 0 66vmin rgba(195,20,0,0.12))
+          hue-rotate(12deg) saturate(1.48) brightness(0.92) contrast(1.12);
 }
+body[data-theme-period="EVENING"].buddy-adapt.theme-cozy .eye {
+  filter: brightness(0.96) saturate(1.42) hue-rotate(14deg);
+}
+/* ── Cozy NIGHT — candlelight intimacy: warm amber in deep dark ──────── */
 body[data-theme-period="NIGHT"].buddy-adapt.theme-cozy .companion {
-  filter: drop-shadow(0 0 8vmin rgba(255,162,42,0.52))
-          drop-shadow(0 0 28vmin rgba(235,108,12,0.22))
-          drop-shadow(0 0 55vmin rgba(195,62,2,0.08))
-          hue-rotate(14deg) saturate(1.18) brightness(0.72) contrast(1.12);
+  filter: drop-shadow(0 0 8vmin rgba(255,168,46,0.58))
+          drop-shadow(0 0 30vmin rgba(232,112,14,0.26))
+          drop-shadow(0 0 58vmin rgba(192,65,2,0.09))
+          hue-rotate(16deg) saturate(1.22) brightness(0.74) contrast(1.14);
+}
+body[data-theme-period="NIGHT"].buddy-adapt.theme-cozy .eye {
+  filter: brightness(0.78) saturate(1.25) hue-rotate(18deg);
 }
 
 /* ── GALAXY — keep default nebula glow ───────────────────────────────── */
@@ -3320,11 +3385,117 @@ body.buddy-adapt.theme-classic .companion {
           brightness(0.97) saturate(0.82);
 }
 
-/* Smooth transition for all buddy adaptation */
+
+/* ── THEME: Custom — user-defined gradient background ───────────────────── */
+/* Colors set via CSS vars updated by JS when settings change */
+body.full-mode.theme-custom {
+  background:
+    radial-gradient(ellipse 60% 60% at 50% 50%, rgba(var(--custom-mix-rgb, 80,60,140), 0.15) 0%, transparent 70%),
+    linear-gradient(160deg, var(--custom-bg1, #07041a) 0%, var(--custom-bg2, #1a0a3a) 100%);
+  background-size: auto;
+}
+body.full-mode.theme-custom::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 84% 84% at 50% 50%, transparent 52%, rgba(0,0,0,0.70) 100%);
+}
+
+/* ── Custom theme editor UI ──────────────────────────────────────────────── */
+#custom-theme-editor {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#custom-theme-editor .custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#custom-theme-editor .custom-label {
+  font: 600 11px/1 'Segoe UI', sans-serif;
+  color: rgba(210,200,255,0.78);
+  flex: 1;
+  min-width: 0;
+}
+#custom-theme-editor .custom-color-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#custom-theme-editor input[type="color"] {
+  width: 36px; height: 26px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  padding: 2px;
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+#custom-theme-editor input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 4px; }
+#custom-theme-editor input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+.custom-particle-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.custom-particle-chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: rgba(210,200,255,0.72);
+  font: 500 10px/1 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
+}
+.custom-particle-chip:hover {
+  background: rgba(155,135,255,0.18);
+  border-color: rgba(155,135,255,0.36);
+  color: rgba(220,210,255,0.95);
+}
+.custom-particle-chip.active {
+  background: rgba(155,135,255,0.28);
+  border-color: rgba(155,135,255,0.55);
+  color: rgba(235,225,255,1);
+  font-weight: 700;
+}
+
+/* ── Sensa-mode custom ────────────────────────────────────────────────────── */
+body.sensa-mode.theme-custom { --sensa-bg: #07041a; }
+
+/* ── Time-of-day: custom is TIME_IMMUNE, no period filters ───────────────── */
+
+/* ── Particles-off fallback for custom ──────────────────────────────────── */
+body.theme-particles-off.theme-custom #world::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 84% 84% at 50% 50%, transparent 50%, rgba(0,0,0,0.60) 100%);
+}
+
+/* ── Buddy adapt — custom theme: neutral-tinted glow follows bg1 hue ─────── */
+body.buddy-adapt.theme-custom .companion {
+  filter: drop-shadow(0 0 6vmin rgba(138,118,255,0.38))
+          drop-shadow(0 0 20vmin rgba(105,85,225,0.15))
+          drop-shadow(0 0 42vmin rgba(75,55,192,0.06))
+          saturate(1.10) brightness(0.98);
+}
+body.buddy-adapt.theme-custom .eye { filter: brightness(1.02) saturate(1.14); }
+body.buddy-adapt.theme-custom .companion-inner { opacity: 0.97; }
+
+/* Smooth transition for all buddy adaptation — covers companion, eyes, inner */
 body.buddy-adapt .companion,
 body.buddy-adapt .companion-inner,
-body.buddy-adapt .eye {
-  transition: filter 4s ease, opacity 3s ease;
+body.buddy-adapt .eye,
+body.buddy-adapt .pupil,
+body.buddy-adapt .iris {
+  transition: filter 5s ease, opacity 3.5s ease;
 }
 
 /* ── SENSAMODE — soft solid-colour backgrounds ────────────────────────
