@@ -394,17 +394,7 @@
         // Add focus quality indicators
         this._addFocusQualityMetrics();
 
-        // Add export/import buttons if they don't exist
-        const historyHeader = $q('#history-card .hp-header');
-        if (historyHeader && !historyHeader.querySelector('.hp-export-btn')) {
-          const actionRow = document.createElement('div');
-          actionRow.style.cssText = 'display:flex;gap:8px;margin:12px 0;';
-          actionRow.innerHTML = `
-            <button class="sp-btn sp-btn-secondary" style="flex:1;font-size:10px;">📊 Export</button>
-            <button class="sp-btn sp-btn-secondary" style="flex:1;font-size:10px;">📥 Import</button>
-          `;
-          historyHeader.appendChild(actionRow);
-        }
+
       },
 
       _addCategoryBreakdown: function() {
