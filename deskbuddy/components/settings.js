@@ -169,7 +169,7 @@ const Settings = (() => {
     } catch (e) {}
 
     // Theme validation — migrate removed themes to galaxy
-    const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','matrix','cozy','custom']);
+    const VALID_THEMES = new Set(['galaxy','classic','forest','cherry','ocean','dreamscape','matrix','cozy','custom']);
     if (!VALID_THEMES.has(_current.fullTheme)) _current.fullTheme = 'galaxy';
 
     // Mouth migration
