@@ -172,7 +172,13 @@ const ThemeCanvas = (() => {
 // Returns object { period, rawH } where period ∈ MORNING/AFTERNOON/EVENING/NIGHT.
 //
 function _getCanvasPeriod() {
-  return document.body.dataset.themePeriod || 'AFTERNOON';
+  // Respects locked/auto period when time-aware is on, else reads real clock.
+  if (document.body.dataset.themePeriod) return document.body.dataset.themePeriod;
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'MORNING';
+  if (h >= 11 && h < 17) return 'AFTERNOON';
+  if (h >= 17 && h < 21) return 'EVENING';
+  return 'NIGHT';
 }
 
 // Lerp helper for smooth color blending
@@ -245,9 +251,8 @@ const CFG = {
     },
   },
 
-  // ── FOREST — Premium Enchanted Forest Scene ───────────────────────────────
-  // Inspired by Ghibli forest tunnel: ancient arching trees, twisting roots,
-  // hanging vines, a forest path, time-of-day sky, fireflies at dusk/night.
+
+  // ── FOREST — Redesigned: Deep Gradient Forest + Falling Leaves ─────────────
   forest: {
     max: 55, rate: 0.14,
     _trunks: null, _vines: null, _groundFlora: null,
@@ -256,8 +261,6 @@ const CFG = {
     init(W, H) {
       _stars = [];
       const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-
-      // Left trunk system: 2 large trunks from bottom-left edge
       this._trunks = {
         L: [
           { bx: W*0.02, by: H, tx: W*0.08, ty: H*0.02, cp1x: W*0.04, cp1y: H*0.55, cp2x: W*0.06, cp2y: H*0.28, w1: W*0.10, w2: W*0.030 },
@@ -268,52 +271,28 @@ const CFG = {
           { bx: W*0.86, by: H, tx: W*0.84, ty: H*0.05, cp1x: W*0.87, cp1y: H*0.55, cp2x: W*0.83, cp2y: H*0.28, w1: W*0.07, w2: W*0.022 },
         ],
       };
-
-      // Vine tendrils
       this._vines = Array.from({ length: 12 }, (_, i) => {
         const side = i < 6 ? 'L' : 'R';
-        const sx = side === 'L' ? W*rng(0.04,0.22) : W*rng(0.78,0.96);
-        return {
-          sx, sy: H*rng(0.0, 0.25),
-          length: H*rng(0.18, 0.48),
-          sway: rng(0, Math.PI*2),
-          swSpd: rng(0.006, 0.014),
-          swAmp: rng(8, 22),
-          col: `hsl(${110+rng(0,40)|0},${60+rng(0,20)|0}%,${22+rng(0,14)|0}%)`,
-          w: rng(1.5, 3.5),
-          segs: Math.floor(rng(6, 14)),
-        };
+        const sx = side==='L' ? W*rng(0.04,0.22) : W*rng(0.78,0.96);
+        return { sx, sy:H*rng(0.0,0.25), length:H*rng(0.18,0.48), sway:rng(0,Math.PI*2),
+          swSpd:rng(0.006,0.014), swAmp:rng(8,22),
+          col:`hsl(${110+rng(0,40)|0},${60+rng(0,20)|0}%,${22+rng(0,14)|0}%)`, w:rng(1.5,3.5), segs:Math.floor(rng(6,14)) };
       });
-
-      // Ground flora: small plants, flowers, rocks along the path edges
       this._groundFlora = Array.from({ length: 28 }, (_, i) => {
-        const side = i % 2 === 0 ? -1 : 1;
-        const xBase = W*0.5 + side * W*rng(0.08, 0.42);
-        return {
-          x: xBase + rng(-W*0.04, W*0.04),
-          y: H*rng(0.72, 0.98),
-          type: Math.random() < 0.6 ? 'leaf' : Math.random() < 0.5 ? 'flower' : 'fern',
-          hue: 95 + rng(0, 55)|0,
-          sz: rng(0.015, 0.040) * Math.min(W, H),
-          rot: rng(-0.5, 0.5),
-          phase: rng(0, Math.PI*2),
-          spd: rng(0.008, 0.018),
-        };
+        const side = i%2===0 ? -1 : 1;
+        const xBase = W*0.5 + side*W*rng(0.08,0.42);
+        return { x:xBase+rng(-W*0.04,W*0.04), y:H*rng(0.72,0.98),
+          type:Math.random()<0.6?'leaf':Math.random()<0.5?'flower':'fern',
+          hue:95+rng(0,55)|0, sz:rng(0.015,0.040)*Math.min(W,H), rot:rng(-0.5,0.5),
+          phase:rng(0,Math.PI*2), spd:rng(0.008,0.018) };
       });
-
-      // Canopy arch points (top of screen, connecting both tree groups)
       this._canopyPoints = Array.from({ length: 20 }, (_, i) => ({
-        x: W * i/19,
-        y: H * (0.0 + 0.22 * Math.pow(Math.abs(i/19 - 0.5)*2, 1.6)),
-        phase: rng(0, Math.PI*2),
-        spd: rng(0.004, 0.01),
+        x:W*i/19, y:H*(0.0+0.22*Math.pow(Math.abs(i/19-0.5)*2,1.6)),
+        phase:rng(0,Math.PI*2), spd:rng(0.004,0.01),
       }));
-
-      // Bioluminescent spores for evening
       this._spores = Array.from({ length: 22 }, () => ({
-        x: W*rng(0.1, 0.9), y: H*rng(0.38, 0.92),
-        r: rng(2, 5), hue: rng(0,1) < 0.5 ? 165 : 280,
-        phase: rng(0, Math.PI*2), spd: rng(0.02, 0.04),
+        x:W*rng(0.1,0.9), y:H*rng(0.38,0.92),
+        r:rng(2,5), hue:rng(0,1)<0.5?165:280, phase:rng(0,Math.PI*2), spd:rng(0.02,0.04),
       }));
     },
 
@@ -322,314 +301,232 @@ const CFG = {
       const blend  = _getSmoothBlend();
       const t = _frame * 0.012;
 
-      // ── 1. Deep forest base gradient — atmospheric, no scenery ─────────
-      // Reference: MORNING=bright yellow-green radial burst center on dark green
-      // AFTERNOON=golden center glow on rich deep green
-      // EVENING=teal-green dark with cyan horizon glow (right edge)
-      // NIGHT=near-black mossy dark with subtle moonlit cyan
+      // ── 1. Deep forest gradient base ─────────────────────────────────────
       const SKY = {
-        MORNING:   { t:[ 8, 28,  6], m:[14, 52, 12], b:[22, 72, 16] },
-        AFTERNOON: { t:[ 2, 14,  3], m:[ 5, 28,  7], b:[ 9, 42, 11] },
-        EVENING:   { t:[ 2,  8, 10], m:[ 4, 18, 22], b:[ 6, 28, 34] },
-        NIGHT:     { t:[ 1,  5,  2], m:[ 2, 10,  4], b:[ 3, 14,  5] },
+        MORNING:   { t:[ 6, 24,  4], m:[10, 46,  8], b:[18, 66, 12] },
+        AFTERNOON: { t:[ 2, 12,  3], m:[ 4, 24,  6], b:[ 8, 38, 10] },
+        EVENING:   { t:[ 3, 10,  8], m:[ 5, 20, 18], b:[ 8, 30, 28] },
+        NIGHT:     { t:[ 1,  6,  4], m:[ 2,  9,  6], b:[ 4, 14,  8] },
       };
       const sk = _blendPeriodColors(SKY, blend);
       const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.48, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
+      skyG.addColorStop(0,   _rgb(sk.t));
+      skyG.addColorStop(0.48,_rgb(sk.m));
+      skyG.addColorStop(1,   _rgb(sk.b));
       ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
 
-      // ── 2. Signature period light source — the identity of each time ────
-      // MORNING: brilliant yellow-green canopy light burst from center-top
+      // ── 2. Period gradient overlays ──────────────────────────────────────
       if (period === 'MORNING') {
-        // Primary canopy burst — dominant center-top
-        const mg = ctx.createRadialGradient(W*0.50, H*0.04, 0, W*0.50, H*0.04, W*0.72);
-        mg.addColorStop(0,    'rgba(255,248,140,0.95)');
-        mg.addColorStop(0.06, 'rgba(210,255,80,0.72)');
-        mg.addColorStop(0.20, 'rgba(140,240,42,0.40)');
-        mg.addColorStop(0.48, 'rgba(52,195,18,0.15)');
-        mg.addColorStop(1,    'rgba(10,88,4,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H*0.78);
-        // Warm golden fill — dappled sun penetrating canopy
-        const mg2 = ctx.createRadialGradient(W*0.50, H*0.32, 0, W*0.50, H*0.32, W*0.52);
-        mg2.addColorStop(0,    'rgba(255,255,200,0.48)');
-        mg2.addColorStop(0.18, 'rgba(228,255,120,0.22)');
-        mg2.addColorStop(0.50, 'rgba(130,228,45,0.08)');
-        mg2.addColorStop(1,    'rgba(22,108,6,0)');
-        ctx.fillStyle = mg2; ctx.fillRect(0, 0, W, H);
-        // Light shafts — diagonal golden rays
-        for (let i = 0; i < 6; i++) {
-          const shx = W * (0.28 + i * 0.082) + Math.sin(t*0.4+i) * W*0.018;
-          const sha = 0.05 + 0.04 * Math.abs(Math.sin(t*0.6+i*1.4));
-          const sg = ctx.createLinearGradient(shx, 0, shx + W*0.028, H*0.75);
-          sg.addColorStop(0,   `rgba(200,255,100,${sha*2.2})`);
-          sg.addColorStop(0.4, `rgba(170,245,80,${sha*0.9})`);
-          sg.addColorStop(1,   'rgba(90,195,30,0)');
-          ctx.fillStyle = sg;
-          ctx.beginPath();
-          ctx.moveTo(shx - W*0.008, 0); ctx.lineTo(shx + W*0.025, 0);
-          ctx.lineTo(shx + W*0.058, H*0.80); ctx.lineTo(shx + W*0.018, H*0.80);
-          ctx.closePath(); ctx.fill();
+        const mg = ctx.createRadialGradient(W*0.50,H*0.02,0,W*0.50,H*0.02,W*0.75);
+        mg.addColorStop(0,'rgba(225,255,108,0.95)'); mg.addColorStop(0.05,'rgba(182,255,58,0.75)');
+        mg.addColorStop(0.22,'rgba(112,228,28,0.42)'); mg.addColorStop(0.52,'rgba(40,172,10,0.14)');
+        mg.addColorStop(1,'rgba(8,70,2,0)');
+        ctx.fillStyle=mg; ctx.fillRect(0,0,W,H*0.80);
+        const mg2 = ctx.createRadialGradient(W*0.50,H*0.35,0,W*0.50,H*0.35,W*0.55);
+        mg2.addColorStop(0,'rgba(255,252,182,0.52)'); mg2.addColorStop(0.20,'rgba(212,252,98,0.22)');
+        mg2.addColorStop(0.55,'rgba(112,212,32,0.07)'); mg2.addColorStop(1,'rgba(18,92,4,0)');
+        ctx.fillStyle=mg2; ctx.fillRect(0,0,W,H);
+        for (let i=0;i<7;i++) {
+          const shx=W*(0.25+i*0.09)+Math.sin(t*0.38+i)*W*0.016;
+          const sha=0.055+0.038*Math.abs(Math.sin(t*0.55+i*1.35));
+          const sg=ctx.createLinearGradient(shx,0,shx+W*0.030,H*0.78);
+          sg.addColorStop(0,`rgba(192,250,88,${sha*2.5})`); sg.addColorStop(0.38,`rgba(152,232,58,${sha})`);
+          sg.addColorStop(1,'rgba(70,175,16,0)');
+          ctx.fillStyle=sg; ctx.beginPath();
+          ctx.moveTo(shx-W*0.009,0); ctx.lineTo(shx+W*0.026,0);
+          ctx.lineTo(shx+W*0.062,H*0.82); ctx.lineTo(shx+W*0.020,H*0.82); ctx.closePath(); ctx.fill();
         }
+        const lC=ctx.createLinearGradient(0,0,W*0.28,0);
+        lC.addColorStop(0,'rgba(6,50,4,0.75)'); lC.addColorStop(0.55,'rgba(6,50,4,0.20)'); lC.addColorStop(1,'rgba(6,50,4,0)');
+        ctx.fillStyle=lC; ctx.fillRect(0,0,W*0.30,H);
+        const rC=ctx.createLinearGradient(W,0,W*0.72,0);
+        rC.addColorStop(0,'rgba(6,50,4,0.75)'); rC.addColorStop(0.55,'rgba(6,50,4,0.20)'); rC.addColorStop(1,'rgba(6,50,4,0)');
+        ctx.fillStyle=rC; ctx.fillRect(W*0.70,0,W*0.30,H);
       }
-      // AFTERNOON: golden-white center sunlight through canopy gap
       if (period === 'AFTERNOON') {
-        const pulse = 0.90 + 0.10 * Math.sin(t * 0.9);
-        // Overhead sun disc — harsh noon through canopy gap
-        const ag = ctx.createRadialGradient(W*0.50, H*0.28, 0, W*0.50, H*0.28, W*0.62);
-        ag.addColorStop(0,    `rgba(255,255,230,${0.70 * pulse})`);
-        ag.addColorStop(0.08, `rgba(240,255,160,${0.48 * pulse})`);
-        ag.addColorStop(0.26, `rgba(172,240,52,${0.24 * pulse})`);
-        ag.addColorStop(0.52, `rgba(68,188,14,${0.09 * pulse})`);
-        ag.addColorStop(1,    'rgba(16,92,4,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H*0.82);
-        // Lush saturated green overhead canopy
-        const ag2 = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.82);
-        ag2.addColorStop(0,    `rgba(72,198,18,${0.26 * pulse})`);
-        ag2.addColorStop(0.52, 'rgba(34,140,8,0.10)');
-        ag2.addColorStop(1,    'rgba(10,65,3,0)');
-        ctx.fillStyle = ag2; ctx.fillRect(0, 0, W, H*0.65);
+        const pulse=0.90+0.10*Math.sin(t*0.9);
+        const ag=ctx.createLinearGradient(0,0,W,H);
+        ag.addColorStop(0,`rgba(42,172,22,${0.22*pulse})`); ag.addColorStop(0.35,`rgba(26,138,12,${0.12*pulse})`);
+        ag.addColorStop(0.65,`rgba(10,92,6,${0.05*pulse})`); ag.addColorStop(1,'rgba(3,50,2,0)');
+        ctx.fillStyle=ag; ctx.fillRect(0,0,W,H);
+        const ag2=ctx.createRadialGradient(W*0.50,H*0.25,0,W*0.50,H*0.25,W*0.65);
+        ag2.addColorStop(0,`rgba(245,255,218,${0.65*pulse})`); ag2.addColorStop(0.09,`rgba(218,255,138,${0.45*pulse})`);
+        ag2.addColorStop(0.28,`rgba(142,225,40,${0.20*pulse})`); ag2.addColorStop(0.55,`rgba(50,162,8,${0.07*pulse})`);
+        ag2.addColorStop(1,'rgba(10,70,2,0)');
+        ctx.fillStyle=ag2; ctx.fillRect(0,0,W,H*0.85);
+        const topG=ctx.createLinearGradient(0,0,0,H*0.40);
+        topG.addColorStop(0,`rgba(30,165,10,${0.32*pulse})`); topG.addColorStop(0.60,'rgba(16,112,6,0.12)'); topG.addColorStop(1,'rgba(5,52,2,0)');
+        ctx.fillStyle=topG; ctx.fillRect(0,0,W,H*0.42);
       }
-      // EVENING: teal/cyan horizon glow from right side (reference shows right-edge cyan)
       if (period === 'EVENING') {
-        // Amber-gold horizon glow — last light through the canopy
-        const eg = ctx.createRadialGradient(W*0.50, H*0.82, 0, W*0.50, H*0.82, W*0.80);
-        eg.addColorStop(0,    'rgba(255,165,42,0.58)');
-        eg.addColorStop(0.14, 'rgba(228,112,18,0.34)');
-        eg.addColorStop(0.38, 'rgba(165,68,6,0.15)');
-        eg.addColorStop(0.68, 'rgba(88,32,2,0.06)');
-        eg.addColorStop(1,    'rgba(28,10,0,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, H*0.42, W, H*0.58);
-        // Cooling teal-indigo upper sky
-        const ev = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.65);
-        ev.addColorStop(0,    'rgba(4,28,22,0.38)');
-        ev.addColorStop(0.52, 'rgba(2,18,14,0.15)');
-        ev.addColorStop(1,    'rgba(0,8,5,0)');
-        ctx.fillStyle = ev; ctx.fillRect(0, 0, W, H*0.74);
-        // Left edge warm amber bleed
-        const ew = ctx.createRadialGradient(0, H*0.70, 0, 0, H*0.70, W*0.48);
-        ew.addColorStop(0,    'rgba(200,88,12,0.22)');
-        ew.addColorStop(0.52, 'rgba(120,42,4,0.08)');
-        ew.addColorStop(1,    'rgba(40,10,0,0)');
-        ctx.fillStyle = ew; ctx.fillRect(0, 0, W*0.62, H);
+        const eg=ctx.createRadialGradient(W*0.50,H*0.85,0,W*0.50,H*0.85,W*0.85);
+        eg.addColorStop(0,'rgba(255,170,36,0.62)'); eg.addColorStop(0.15,'rgba(230,116,14,0.36)');
+        eg.addColorStop(0.42,'rgba(165,62,4,0.15)'); eg.addColorStop(0.72,'rgba(80,26,1,0.05)'); eg.addColorStop(1,'rgba(20,6,0,0)');
+        ctx.fillStyle=eg; ctx.fillRect(0,H*0.38,W,H*0.62);
+        const ev=ctx.createLinearGradient(0,0,0,H*0.55);
+        ev.addColorStop(0,'rgba(2,20,16,0.52)'); ev.addColorStop(0.42,'rgba(3,30,24,0.28)'); ev.addColorStop(1,'rgba(4,38,28,0)');
+        ctx.fillStyle=ev; ctx.fillRect(0,0,W,H*0.58);
+        const dg=ctx.createLinearGradient(0,H*0.3,W,H*0.8);
+        dg.addColorStop(0,'rgba(0,172,118,0.18)'); dg.addColorStop(0.5,'rgba(0,102,72,0.08)'); dg.addColorStop(1,'rgba(200,112,16,0.22)');
+        ctx.fillStyle=dg; ctx.fillRect(0,0,W,H);
       }
-      // NIGHT: moonlit blue-green glow
       if (period === 'NIGHT') {
-        const ng = ctx.createRadialGradient(W*0.28, H*0.08, 0, W*0.28, H*0.08, W*0.52);
-        ng.addColorStop(0,    'rgba(75,195,118,0.22)');
-        ng.addColorStop(0.45, 'rgba(35,138,72,0.09)');
-        ng.addColorStop(1,    'rgba(8,68,28,0)');
-        ctx.fillStyle = ng; ctx.fillRect(0, 0, W, H*0.55);
-        // Bioluminescent ground glow
-        const nb = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.72);
-        nb.addColorStop(0,    'rgba(18,155,72,0.22)');
-        nb.addColorStop(0.45, 'rgba(8,88,35,0.09)');
-        nb.addColorStop(1,    'rgba(2,28,8,0)');
-        ctx.fillStyle = nb; ctx.fillRect(0, H*0.48, W, H*0.52);
+        const ng=ctx.createLinearGradient(0,0,0,H);
+        ng.addColorStop(0,'rgba(20,60,50,0.48)'); ng.addColorStop(0.38,'rgba(6,36,26,0.38)'); ng.addColorStop(1,'rgba(1,10,5,0.22)');
+        ctx.fillStyle=ng; ctx.fillRect(0,0,W,H);
+        const moonG=ctx.createRadialGradient(W*0.28,H*0.08,0,W*0.28,H*0.08,W*0.48);
+        moonG.addColorStop(0,'rgba(172,225,195,0.28)'); moonG.addColorStop(0.38,'rgba(92,165,122,0.12)'); moonG.addColorStop(1,'rgba(10,60,36,0)');
+        ctx.fillStyle=moonG; ctx.fillRect(0,0,W,H*0.52);
       }
 
-      // ── 3. Atmospheric layered forest depth fog ──────────────────────────
-      const fogVis = { MORNING:0.55, AFTERNOON:0.38, EVENING:0.65, NIGHT:0.42 }[period] || 0.5;
-      const [fogR,fogGc,fogB] = period === 'EVENING' ? [0,185,140] : period === 'NIGHT' ? [28,105,52] : period === 'MORNING' ? [165,255,100] : [120,220,55];
-      for (let fi = 0; fi < 5; fi++) {
-        const fy = H * (0.22 + fi * 0.15);
-        const fw = W * (1.2 + fi * 0.18);
-        const fh = H * (0.06 + fi * 0.012);
-        const fAlpha = (0.018 + fi*0.012) * fogVis * (0.65 + 0.35 * Math.sin(t*0.6 + fi*1.1));
-        const fX = (t * (0.08 + fi*0.02) * W * 0.1) % (fw * 0.5) - fw * 0.25;
-        const fg = ctx.createLinearGradient(fX, fy, fX + fw, fy);
-        fg.addColorStop(0,    `rgba(${fogR},${fogGc},${fogB},0)`);
-        fg.addColorStop(0.22, `rgba(${fogR},${fogGc},${fogB},${fAlpha})`);
-        fg.addColorStop(0.78, `rgba(${fogR},${fogGc},${fogB},${fAlpha * 0.80})`);
-        fg.addColorStop(1,    `rgba(${fogR},${fogGc},${fogB},0)`);
-        ctx.save();
-        ctx.fillStyle = fg;
-        ctx.beginPath(); ctx.ellipse(fX + fw*0.5, fy, fw*0.5, fh, 0, 0, Math.PI*2);
-        ctx.fill(); ctx.restore();
+      // ── 3. Fog layers ─────────────────────────────────────────────────────
+      const fogVis={MORNING:0.52,AFTERNOON:0.35,EVENING:0.68,NIGHT:0.40}[period]||0.5;
+      const [fogR,fogGc,fogB]=period==='EVENING'?[0,172,118]:period==='NIGHT'?[18,92,46]:period==='MORNING'?[152,245,88]:[102,208,42];
+      for (let fi=0;fi<5;fi++) {
+        const fy=H*(0.22+fi*0.15),fw=W*(1.2+fi*0.18),fh=H*(0.06+fi*0.012);
+        const fAlpha=(0.016+fi*0.011)*fogVis*(0.62+0.38*Math.sin(t*0.58+fi*1.1));
+        const fX=(t*(0.08+fi*0.02)*W*0.1)%(fw*0.5)-fw*0.25;
+        const fg=ctx.createLinearGradient(fX,fy,fX+fw,fy);
+        fg.addColorStop(0,`rgba(${fogR},${fogGc},${fogB},0)`); fg.addColorStop(0.22,`rgba(${fogR},${fogGc},${fogB},${fAlpha})`);
+        fg.addColorStop(0.78,`rgba(${fogR},${fogGc},${fogB},${fAlpha*0.80})`); fg.addColorStop(1,`rgba(${fogR},${fogGc},${fogB},0)`);
+        ctx.save(); ctx.fillStyle=fg; ctx.beginPath(); ctx.ellipse(fX+fw*0.5,fy,fw*0.5,fh,0,0,Math.PI*2); ctx.fill(); ctx.restore();
       }
 
-      // ── 4. Fireflies / bioluminescent spores (evening + night) ──────────
-      if (period === 'EVENING' || period === 'NIGHT') {
-        const ffCount = period === 'NIGHT' ? 32 : 18;
-        const ffHue = period === 'EVENING' ? 158 : 128;
-        for (let ff = 0; ff < ffCount; ff++) {
-          const ffx = W * ((ff * 0.137 + Math.sin(t*0.55+ff*1.3)*0.06 + 1.0) % 1.0);
-          const ffy = H * (0.25 + 0.68 * ((ff * 0.211 + Math.cos(t*0.48+ff*0.88)*0.05 + 1.0) % 1.0));
-          const ffa = Math.max(0, 0.06 + 0.32 * Math.sin(t*1.8+ff*2.3));
-          const ffG = ctx.createRadialGradient(ffx, ffy, 0, ffx, ffy, 9);
-          ffG.addColorStop(0, `hsla(${ffHue+ff%3*18},92%,78%,${ffa*3.2})`);
-          ffG.addColorStop(0.45, `hsla(${ffHue+ff%3*12},82%,58%,${ffa*1.4})`);
-          ffG.addColorStop(1,    'rgba(8,120,32,0)');
-          ctx.fillStyle = ffG; ctx.beginPath(); ctx.arc(ffx, ffy, 9, 0, Math.PI*2); ctx.fill();
+      // ── 4. Fireflies ─────────────────────────────────────────────────────
+      if (period==='EVENING'||period==='NIGHT') {
+        const ffCount=period==='NIGHT'?35:20, ffHue=period==='EVENING'?152:122;
+        for (let ff=0;ff<ffCount;ff++) {
+          const ffx=W*((ff*0.137+Math.sin(t*0.52+ff*1.28)*0.06+1.0)%1.0);
+          const ffy=H*(0.22+0.70*((ff*0.211+Math.cos(t*0.45+ff*0.88)*0.05+1.0)%1.0));
+          const ffa=Math.max(0,0.055+0.32*Math.sin(t*1.75+ff*2.25));
+          const ffG=ctx.createRadialGradient(ffx,ffy,0,ffx,ffy,10);
+          ffG.addColorStop(0,`hsla(${ffHue+ff%4*20},94%,80%,${ffa*3.5})`);
+          ffG.addColorStop(0.45,`hsla(${ffHue+ff%3*14},84%,58%,${ffa*1.5})`);
+          ffG.addColorStop(1,'rgba(6,112,26,0)');
+          ctx.fillStyle=ffG; ctx.beginPath(); ctx.arc(ffx,ffy,10,0,Math.PI*2); ctx.fill();
         }
       }
 
-      // ── 5. Ground atmospheric depth — dense lower shadow ────────────────
-      const groundG = ctx.createLinearGradient(0, H*0.60, 0, H);
-      const [gR,gGc,gB] = period === 'EVENING' ? [0,22,18] : period === 'NIGHT' ? [0,8,3] : period === 'MORNING' ? [2,22,5] : [1,16,3];
-      groundG.addColorStop(0,    `rgba(${gR},${gGc},${gB},0)`);
-      groundG.addColorStop(0.38, `rgba(${gR},${gGc},${gB},0.62)`);
-      groundG.addColorStop(1,    `rgba(${gR},${gGc},${gB},0.92)`);
-      ctx.fillStyle = groundG; ctx.fillRect(0, H*0.60, W, H*0.40);
+      // ── 5. Ground depth ──────────────────────────────────────────────────
+      const groundG=ctx.createLinearGradient(0,H*0.58,0,H);
+      const [gR,gGc,gB]=period==='EVENING'?[0,16,12]:period==='NIGHT'?[0,5,2]:period==='MORNING'?[1,16,3]:[1,12,2];
+      groundG.addColorStop(0,`rgba(${gR},${gGc},${gB},0)`); groundG.addColorStop(0.40,`rgba(${gR},${gGc},${gB},0.65)`);
+      groundG.addColorStop(1,`rgba(${gR},${gGc},${gB},0.95)`);
+      ctx.fillStyle=groundG; ctx.fillRect(0,H*0.58,W,H*0.42);
 
-      // ── 6. Cinematic edge vignette — darkness at both sides ──────────────
-      const vigA = period === 'NIGHT' ? 0.95 : period === 'EVENING' ? 0.88 : 0.82;
-      const [vR,vGc,vB] = period === 'EVENING' ? [0,4,4] : period === 'NIGHT' ? [0,2,0] : [0,4,1];
-      // Left dark edge
-      const vigL = ctx.createLinearGradient(0, 0, W*0.30, 0);
-      vigL.addColorStop(0,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      vigL.addColorStop(0.55, `rgba(${vR},${vGc},${vB},${vigA*0.22})`);
-      vigL.addColorStop(1,    `rgba(${vR},${vGc},${vB},0)`);
-      ctx.fillStyle = vigL; ctx.fillRect(0, 0, W*0.32, H);
-      // Right dark edge
-      const vigR = ctx.createLinearGradient(W, 0, W*0.70, 0);
-      vigR.addColorStop(0,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      vigR.addColorStop(0.55, `rgba(${vR},${vGc},${vB},${vigA*0.22})`);
-      vigR.addColorStop(1,    `rgba(${vR},${vGc},${vB},0)`);
-      ctx.fillStyle = vigR; ctx.fillRect(W*0.68, 0, W*0.32, H);
-      // Radial center-depth vignette
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.15, W*0.5, H*0.5, W*0.80);
-      vigRad.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(0.62, `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA*0.45})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
+      // ── 6. Edge gradient vignette ────────────────────────────────────────
+      const vigA=period==='NIGHT'?0.96:period==='EVENING'?0.90:0.85;
+      const [vR,vGc,vB]=period==='EVENING'?[0,4,4]:period==='NIGHT'?[0,2,0]:[0,4,1];
+      const vigL=ctx.createLinearGradient(0,0,W*0.32,0);
+      vigL.addColorStop(0,`rgba(${vR},${vGc},${vB},${vigA})`); vigL.addColorStop(0.60,`rgba(${vR},${vGc},${vB},${vigA*0.18})`); vigL.addColorStop(1,`rgba(${vR},${vGc},${vB},0)`);
+      ctx.fillStyle=vigL; ctx.fillRect(0,0,W*0.34,H);
+      const vigR=ctx.createLinearGradient(W,0,W*0.68,0);
+      vigR.addColorStop(0,`rgba(${vR},${vGc},${vB},${vigA})`); vigR.addColorStop(0.60,`rgba(${vR},${vGc},${vB},${vigA*0.18})`); vigR.addColorStop(1,`rgba(${vR},${vGc},${vB},0)`);
+      ctx.fillStyle=vigR; ctx.fillRect(W*0.66,0,W*0.34,H);
+      const vigRad=ctx.createRadialGradient(W*0.5,H*0.5,W*0.12,W*0.5,H*0.5,W*0.82);
+      vigRad.addColorStop(0,`rgba(${vR},${vGc},${vB},0)`); vigRad.addColorStop(0.65,`rgba(${vR},${vGc},${vB},0)`); vigRad.addColorStop(1,`rgba(${vR},${vGc},${vB},${vigA*0.42})`);
+      ctx.fillStyle=vigRad; ctx.fillRect(0,0,W,H);
     },
 
     create(W, H) {
       const period = _getCanvasPeriod();
       const r = Math.random();
       if (r < 0.42) {
-        // Falling leaf — real tumbling physics
-        return {
-          type: 'leaf',
-          x: Math.random()*W*1.3 - W*0.15, y: -18 - Math.random()*50,
-          vx: (Math.random()-0.5)*0.80,
-          vy:  1.0 + Math.random()*1.8,   // real leaf speed
-          rot: Math.random()*Math.PI*2,
-          rotV: (Math.random()-0.5)*0.055,
-          sz: 5 + Math.random()*9,
-          hue: (period==='EVENING'||period==='NIGHT') ? 120+Math.random()*45|0 : 88+Math.random()*55|0,
-          sat: 55+Math.random()*25|0,
-          alpha: 0, maxAlpha: 0.60+Math.random()*0.30,
-          life: 0, fadeIn: 10,
-          sw: Math.random()*Math.PI*2, swAmp: 1.0+Math.random()*1.8, swSpd: 0.016+Math.random()*0.020,
-        };
+        const isNE=(period==='EVENING'||period==='NIGHT');
+        return { type:'leaf', x:Math.random()*W*1.3-W*0.15, y:-18-Math.random()*50,
+          vx:(Math.random()-0.5)*0.80, vy:1.0+Math.random()*1.8,
+          rot:Math.random()*Math.PI*2, rotV:(Math.random()-0.5)*0.055,
+          sz:5+Math.random()*9, hue:isNE?120+Math.random()*45|0:85+Math.random()*60|0,
+          sat:isNE?52+Math.random()*22|0:60+Math.random()*28|0, lum:isNE?25+Math.random()*15|0:30+Math.random()*18|0,
+          alpha:0, maxAlpha:0.65+Math.random()*0.28, life:0, fadeIn:10,
+          sw:Math.random()*Math.PI*2, swAmp:1.0+Math.random()*1.8, swSpd:0.016+Math.random()*0.020 };
       } else if (r < 0.72) {
-        // Bioluminescent spore (evening/night) or dust mote (day)
-        return {
-          type: period==='EVENING'||period==='NIGHT' ? 'spore' : 'dust',
-          x: Math.random()*W*1.1-W*0.05, y: H+15,
-          vx: (Math.random()-0.5)*0.5,
-          vy: -(0.30+Math.random()*0.60),
-          r: 1.5+Math.random()*3,
-          hue: period==='EVENING'||period==='NIGHT' ? (Math.random()<0.5?168:285) : 105+Math.random()*60|0,
-          alpha: 0, maxAlpha: period==='EVENING'||period==='NIGHT' ? 0.60+Math.random()*0.30 : 0.22+Math.random()*0.22,
-          life: 0, fadeIn: 20, maxLife: 140+Math.random()*100|0,
-          sw: Math.random()*Math.PI*2, swAmp: 0.5+Math.random()*1.0, swSpd: 0.010+Math.random()*0.015,
-        };
+        const isN=(period==='EVENING'||period==='NIGHT');
+        return { type:isN?'spore':'dust', x:Math.random()*W*1.1-W*0.05, y:H+15,
+          vx:(Math.random()-0.5)*0.5, vy:-(0.30+Math.random()*0.60),
+          r:1.5+Math.random()*3, hue:isN?(Math.random()<0.5?162:278):108+Math.random()*62|0,
+          alpha:0, maxAlpha:isN?0.62+Math.random()*0.28:0.22+Math.random()*0.22,
+          life:0, fadeIn:20, maxLife:140+Math.random()*100|0,
+          sw:Math.random()*Math.PI*2, swAmp:0.5+Math.random()*1.0, swSpd:0.010+Math.random()*0.015 };
       } else {
-        // Forest mote — drifting upward
-        return {
-          type: 'mote',
-          x: Math.random()*W, y: H*0.2+Math.random()*H*0.75,
-          vx: (Math.random()-0.5)*0.28,
-          vy: -(0.08+Math.random()*0.25),
-          r: 0.8+Math.random()*1.5,
-          alpha: 0, maxAlpha: 0.18+Math.random()*0.22,
-          life: 0, fadeIn: 28, maxLife: 220+Math.random()*130|0,
-          sw: Math.random()*Math.PI*2, swAmp: 0.35+Math.random()*0.75, swSpd: 0.007+Math.random()*0.011,
-        };
+        return { type:'mote', x:Math.random()*W, y:H*0.2+Math.random()*H*0.75,
+          vx:(Math.random()-0.5)*0.28, vy:-(0.08+Math.random()*0.25),
+          r:0.8+Math.random()*1.5, alpha:0, maxAlpha:0.16+Math.random()*0.20,
+          life:0, fadeIn:28, maxLife:220+Math.random()*130|0,
+          sw:Math.random()*Math.PI*2, swAmp:0.35+Math.random()*0.75, swSpd:0.007+Math.random()*0.011 };
       }
     },
 
     draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'leaf') {
-        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-        ctx.fillStyle = `hsl(${p.hue},${p.sat}%,32%)`;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-p.sz*0.55, -p.sz*0.38, -p.sz*0.55, -p.sz*2.5, 0, -p.sz*3.0);
-        ctx.bezierCurveTo( p.sz*0.55, -p.sz*2.5,  p.sz*0.55, -p.sz*0.38, 0, 0);
-        ctx.fill();
-        ctx.strokeStyle = `hsl(${p.hue+15},${p.sat-10}%,42%)`;
-        ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-p.sz*3.0); ctx.stroke();
-      } else if (p.type === 'spore') {
-        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.5);
-        g.addColorStop(0, `hsla(${p.hue},90%,72%,1)`);
-        g.addColorStop(0.4, `hsla(${p.hue},78%,55%,0.5)`);
-        g.addColorStop(1, `hsla(${p.hue},65%,38%,0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*3.5,0,Math.PI*2); ctx.fill();
-      } else if (p.type === 'dust') {
-        ctx.fillStyle = 'rgba(195,240,195,1)';
+      ctx.save(); ctx.globalAlpha=p.alpha;
+      if (p.type==='leaf') {
+        ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.fillStyle=`hsl(${p.hue},${p.sat}%,${p.lum}%)`;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.bezierCurveTo(-p.sz*0.55,-p.sz*0.38,-p.sz*0.55,-p.sz*2.5,0,-p.sz*3.0);
+        ctx.bezierCurveTo(p.sz*0.55,-p.sz*2.5,p.sz*0.55,-p.sz*0.38,0,0); ctx.fill();
+        ctx.fillStyle=`hsl(${p.hue+12},${p.sat-8}%,${p.lum+18}%)`; ctx.globalAlpha=p.alpha*0.36;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.bezierCurveTo(0,-p.sz*0.36,p.sz*0.28,-p.sz*1.78,0,-p.sz*3.0);
+        ctx.bezierCurveTo(-p.sz*0.20,-p.sz*1.48,-p.sz*0.08,-p.sz*0.26,0,0); ctx.fill();
+        ctx.globalAlpha=p.alpha;
+        ctx.strokeStyle=`hsl(${p.hue+18},${p.sat-14}%,${p.lum+12}%)`; ctx.lineWidth=0.55;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-p.sz*3.0); ctx.stroke();
+      } else if (p.type==='spore') {
+        const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.5);
+        g.addColorStop(0,`hsla(${p.hue},92%,78%,1)`); g.addColorStop(0.4,`hsla(${p.hue},80%,56%,0.5)`); g.addColorStop(1,`hsla(${p.hue},65%,36%,0)`);
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*3.5,0,Math.PI*2); ctx.fill();
+      } else if (p.type==='dust') {
+        ctx.fillStyle=`hsla(${p.hue},65%,72%,1)`;
         ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
       } else {
-        ctx.fillStyle = 'rgba(220,230,210,0.8)';
+        ctx.fillStyle='rgba(210,230,202,0.8)';
         ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
       }
       ctx.restore();
     },
 
-    update(p, W, H) {
+    update(p,W,H) {
       p.life++;
-      if (p.sw !== undefined) { p.sw+=p.swSpd; p.x+=p.vx+Math.sin(p.sw)*p.swAmp; } else p.x+=p.vx;
-      p.y += p.vy;
-      if (p.rot !== undefined) p.rot += p.rotV;
-      const fi = Math.min(1, p.life/p.fadeIn);
-      const fo = (p.maxLife && p.life>p.maxLife-22) ? Math.max(0,(p.maxLife-p.life)/22) : 1;
-      p.alpha = p.maxAlpha*fi*fo;
-      if (p.type==='leaf') return p.y < H+35;
-      if (p.type==='spore'||p.type==='dust'||p.type==='mote') return p.life<(p.maxLife||280) && p.y>-50 && p.y<H+40;
-      return p.y < H+30;
+      if (p.sw!==undefined){p.sw+=p.swSpd;p.x+=p.vx+Math.sin(p.sw)*p.swAmp;}else p.x+=p.vx;
+      p.y+=p.vy; if(p.rot!==undefined) p.rot+=p.rotV;
+      const fi=Math.min(1,p.life/p.fadeIn);
+      const fo=(p.maxLife&&p.life>p.maxLife-22)?Math.max(0,(p.maxLife-p.life)/22):1;
+      p.alpha=p.maxAlpha*fi*fo;
+      if(p.type==='leaf') return p.y<H+35;
+      if(p.type==='spore'||p.type==='dust'||p.type==='mote') return p.life<(p.maxLife||280)&&p.y>-50&&p.y<H+40;
+      return p.y<H+30;
     },
   },
 
-  // ── SAKURA (cherry) — Premium Japanese Garden Scene ──────────────────────
-  // Reference: garden with stone path, reflective pond, red bridge, pagoda,
-  // cherry tree trunks framing left+right, rolling blossoms hills.
-  // Time-of-day: MORNING (pink/peach dawn), AFTERNOON (blue sky vivid),
-  //              EVENING (dusk purple, lanterns), NIGHT (deep indigo, stars).
+  // ── SAKURA (cherry) — Redesigned: Gradient Pink Sky + Petal Storm ──────────
   cherry: {
-    max: 70, rate: 0.20,
+    max: 72, rate: 0.22,
     _bokeh: null, _lanterns: null, _stars: null, _clouds: null,
 
     init(W, H) {
       _stars = [];
-      // Background bokeh orbs
-      this._bokeh = Array.from({ length: 24 }, (_, i) => ({
-        x: (i%2===0 ? Math.random()*W*0.45 : W*0.55+Math.random()*W*0.45),
-        y: H*0.42+Math.random()*H*0.62,
-        r: 24+Math.random()*68,
-        hue: 326+Math.floor(Math.random()*30),
-        alpha: 0.04+Math.random()*0.08,
-        phase: Math.random()*Math.PI*2,
-        spd: 0.006+Math.random()*0.010,
-        driftX: (Math.random()-0.5)*0.16,
-        driftY: -(0.035+Math.random()*0.09),
+      this._bokeh = Array.from({length:24},(_,i)=>({
+        x:(i%2===0?Math.random()*W*0.45:W*0.55+Math.random()*W*0.45),
+        y:H*0.42+Math.random()*H*0.62, r:22+Math.random()*72,
+        hue:322+Math.floor(Math.random()*34), alpha:0.04+Math.random()*0.08,
+        phase:Math.random()*Math.PI*2, spd:0.006+Math.random()*0.010,
+        driftX:(Math.random()-0.5)*0.16, driftY:-(0.035+Math.random()*0.09),
       }));
-      // Lanterns for evening
-      this._lanterns = [
-        { x: W*0.22, y: H*0.72, r: W*0.018, phase: 0, spd: 0.055 },
-        { x: W*0.31, y: H*0.68, r: W*0.015, phase: 1.2, spd: 0.048 },
-        { x: W*0.68, y: H*0.71, r: W*0.016, phase: 0.7, spd: 0.062 },
-        { x: W*0.78, y: H*0.69, r: W*0.014, phase: 2.1, spd: 0.052 },
-        // Bridge lanterns
-        { x: W*0.58, y: H*0.60, r: W*0.012, phase: 0.3, spd: 0.070 },
-        { x: W*0.72, y: H*0.58, r: W*0.011, phase: 1.5, spd: 0.058 },
+      this._lanterns=[
+        {x:W*0.22,y:H*0.72,r:W*0.018,phase:0,spd:0.055},{x:W*0.31,y:H*0.68,r:W*0.015,phase:1.2,spd:0.048},
+        {x:W*0.68,y:H*0.71,r:W*0.016,phase:0.7,spd:0.062},{x:W*0.78,y:H*0.69,r:W*0.014,phase:2.1,spd:0.052},
+        {x:W*0.58,y:H*0.60,r:W*0.012,phase:0.3,spd:0.070},{x:W*0.72,y:H*0.58,r:W*0.011,phase:1.5,spd:0.058},
       ];
-      // Soft clouds
-      this._clouds = Array.from({ length: 8 }, (_, i) => ({
-        x: W*(0.05+i*0.12)+Math.random()*W*0.08, y: H*(0.04+Math.random()*0.18),
-        w: W*(0.08+Math.random()*0.12), h: H*(0.028+Math.random()*0.04),
-        phase: Math.random()*Math.PI*2, spd: 0.003+Math.random()*0.004,
-        alpha: 0.45+Math.random()*0.35,
+      this._clouds=Array.from({length:8},(_,i)=>({
+        x:W*(0.05+i*0.12)+Math.random()*W*0.08, y:H*(0.04+Math.random()*0.18),
+        w:W*(0.08+Math.random()*0.12), h:H*(0.028+Math.random()*0.04),
+        phase:Math.random()*Math.PI*2, spd:0.003+Math.random()*0.004, alpha:0.45+Math.random()*0.35,
       }));
-      // Night stars
-      this._stars = Array.from({ length: 60 }, () => ({
-        x: Math.random()*W, y: Math.random()*H*0.55,
-        r: 0.4+Math.random()*1.2, alpha: 0.2+Math.random()*0.65,
-        phase: Math.random()*Math.PI*2, spd: 0.015+Math.random()*0.025,
+      this._stars=Array.from({length:62},()=>({
+        x:Math.random()*W, y:Math.random()*H*0.55,
+        r:0.4+Math.random()*1.2, alpha:0.18+Math.random()*0.68,
+        phase:Math.random()*Math.PI*2, spd:0.014+Math.random()*0.024,
       }));
     },
 
@@ -638,212 +535,149 @@ const CFG = {
       const blend  = _getSmoothBlend();
       const t = _frame * 0.010;
 
-      // ── 1. Sky gradient — atmospheric sakura emotional palette ──────────
-      // Reference: warm saturated rose-pink from bottom, violet depth at top
-      // MORNING: medium pink with brighter center warmth
-      // AFTERNOON: deeper saturated crimson-red-pink
-      // EVENING: warm pink with golden orange low glow
-      // NIGHT: deep indigo-violet with subtle moonlit rose
+      // ── 1. Gradient base ─────────────────────────────────────────────────
       const SKY = {
-        MORNING:   { t:[ 72, 22, 88], m:[148, 52,118], b:[210, 95,140] },
-        AFTERNOON: { t:[ 52,  8, 48], m:[118, 24, 78], b:[188, 52, 98] },
-        EVENING:   { t:[ 48, 14, 55], m:[130, 42, 95], b:[215, 88,118] },
-        NIGHT:     { t:[  8,  4, 22], m:[ 22, 8,  44], b:[ 48, 18, 72] },
+        MORNING:   { t:[68,18,82],  m:[145,48,112], b:[208,90,135] },
+        AFTERNOON: { t:[48, 6,44],  m:[112,20, 72], b:[182,48, 92] },
+        EVENING:   { t:[44,12,50],  m:[122,38, 88], b:[210,82,112] },
+        NIGHT:     { t:[ 6, 3,20],  m:[ 20, 6, 40], b:[ 44,14, 68] },
       };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.46, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+      const sk=_blendPeriodColors(SKY,blend);
+      const skyG=ctx.createLinearGradient(0,0,0,H);
+      skyG.addColorStop(0,_rgb(sk.t)); skyG.addColorStop(0.46,_rgb(sk.m)); skyG.addColorStop(1,_rgb(sk.b));
+      ctx.fillStyle=skyG; ctx.fillRect(0,0,W,H);
 
-      // ── 2. Signature period glow ─────────────────────────────────────────
-      // MORNING: soft pink-white center bloom (filtered sun through petals)
-      if (period === 'MORNING') {
-        // Peach-gold sunrise horizon bloom
-        const mg = ctx.createRadialGradient(W*0.50, H*0.88, 0, W*0.50, H*0.88, W*0.82);
-        mg.addColorStop(0,    'rgba(255,200,160,0.65)');
-        mg.addColorStop(0.14, 'rgba(255,168,188,0.40)');
-        mg.addColorStop(0.38, 'rgba(235,120,165,0.18)');
-        mg.addColorStop(1,    'rgba(175,62,120,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, H*0.30, W, H*0.70);
-        // Top sky soft pink-white wash
-        const mg2 = ctx.createRadialGradient(W*0.50, H*0.38, 0, W*0.50, H*0.38, W*0.58);
-        mg2.addColorStop(0,    'rgba(255,238,248,0.45)');
-        mg2.addColorStop(0.22, 'rgba(255,200,228,0.22)');
-        mg2.addColorStop(0.55, 'rgba(220,140,185,0.08)');
-        mg2.addColorStop(1,    'rgba(168,78,130,0)');
-        ctx.fillStyle = mg2; ctx.fillRect(0, 0, W, H*0.72);
+      // ── 2. Period overlays ───────────────────────────────────────────────
+      if (period==='MORNING') {
+        const mg=ctx.createRadialGradient(W*0.50,H*0.90,0,W*0.50,H*0.90,W*0.85);
+        mg.addColorStop(0,'rgba(255,202,165,0.68)'); mg.addColorStop(0.14,'rgba(255,170,192,0.42)');
+        mg.addColorStop(0.40,'rgba(236,122,168,0.18)'); mg.addColorStop(1,'rgba(175,62,122,0)');
+        ctx.fillStyle=mg; ctx.fillRect(0,H*0.28,W,H*0.72);
+        const mg2=ctx.createRadialGradient(W*0.50,H*0.38,0,W*0.50,H*0.38,W*0.60);
+        mg2.addColorStop(0,'rgba(255,240,252,0.48)'); mg2.addColorStop(0.22,'rgba(255,202,230,0.24)');
+        mg2.addColorStop(0.58,'rgba(222,142,188,0.08)'); mg2.addColorStop(1,'rgba(170,80,132,0)');
+        ctx.fillStyle=mg2; ctx.fillRect(0,0,W,H*0.75);
+        for (let i=0;i<5;i++) {
+          const shx=W*(0.30+i*0.10)+Math.sin(t*0.35+i)*W*0.012;
+          const sha=0.045+0.032*Math.abs(Math.sin(t*0.48+i*1.25));
+          const sg=ctx.createLinearGradient(shx,0,shx+W*0.022,H*0.70);
+          sg.addColorStop(0,`rgba(255,212,240,${sha*2.2})`); sg.addColorStop(0.40,`rgba(245,172,215,${sha*0.85})`); sg.addColorStop(1,'rgba(202,92,155,0)');
+          ctx.fillStyle=sg; ctx.beginPath();
+          ctx.moveTo(shx-W*0.006,0); ctx.lineTo(shx+W*0.018,0);
+          ctx.lineTo(shx+W*0.048,H*0.75); ctx.lineTo(shx+W*0.012,H*0.75); ctx.closePath(); ctx.fill();
+        }
+        const lE=ctx.createLinearGradient(0,0,W*0.30,0);
+        lE.addColorStop(0,'rgba(182,42,102,0.45)'); lE.addColorStop(0.55,'rgba(182,42,102,0.12)'); lE.addColorStop(1,'rgba(182,42,102,0)');
+        ctx.fillStyle=lE; ctx.fillRect(0,0,W*0.32,H);
+        const rE=ctx.createLinearGradient(W,0,W*0.70,0);
+        rE.addColorStop(0,'rgba(182,42,102,0.42)'); rE.addColorStop(0.55,'rgba(182,42,102,0.10)'); rE.addColorStop(1,'rgba(182,42,102,0)');
+        ctx.fillStyle=rE; ctx.fillRect(W*0.68,0,W*0.32,H);
       }
-      // AFTERNOON: deeper bottom warmth + upper violet depth
-      if (period === 'AFTERNOON') {
-        const pulse = 0.88 + 0.12 * Math.sin(t * 1.0);
-        // Deep petal-bloom from bottom — rich saturated crimson
-        const ag = ctx.createRadialGradient(W*0.50, H*0.92, 0, W*0.50, H*0.92, W*0.75);
-        ag.addColorStop(0,    `rgba(255,55,108,${0.58 * pulse})`);
-        ag.addColorStop(0.24, `rgba(222,32,82,${0.28 * pulse})`);
-        ag.addColorStop(0.56, `rgba(178,14,60,${0.11 * pulse})`);
-        ag.addColorStop(1,    'rgba(115,4,38,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, H*0.18, W, H*0.82);
-        // Violet-indigo atmospheric ceiling
-        const av = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.65);
-        av.addColorStop(0,    `rgba(88,10,68,${0.35 * pulse})`);
-        av.addColorStop(0.52, 'rgba(58,5,45,0.14)');
-        av.addColorStop(1,    'rgba(32,2,28,0)');
-        ctx.fillStyle = av; ctx.fillRect(0, 0, W, H*0.68);
+      if (period==='AFTERNOON') {
+        const pulse=0.88+0.12*Math.sin(t*1.0);
+        const ag=ctx.createRadialGradient(W*0.50,H*0.94,0,W*0.50,H*0.94,W*0.78);
+        ag.addColorStop(0,`rgba(255,50,100,${0.60*pulse})`); ag.addColorStop(0.24,`rgba(222,26,76,${0.28*pulse})`);
+        ag.addColorStop(0.58,`rgba(178,10,54,${0.11*pulse})`); ag.addColorStop(1,'rgba(115,3,32,0)');
+        ctx.fillStyle=ag; ctx.fillRect(0,H*0.15,W,H*0.85);
+        const dg=ctx.createLinearGradient(0,0,W,H);
+        dg.addColorStop(0,`rgba(255,78,142,${0.18*pulse})`); dg.addColorStop(0.45,`rgba(215,26,86,${0.08*pulse})`); dg.addColorStop(1,`rgba(255,50,100,${0.22*pulse})`);
+        ctx.fillStyle=dg; ctx.fillRect(0,0,W,H);
+        const av=ctx.createRadialGradient(W*0.50,0,0,W*0.50,0,W*0.68);
+        av.addColorStop(0,`rgba(80,6,60,${0.38*pulse})`); av.addColorStop(0.52,'rgba(52,3,40,0.14)'); av.addColorStop(1,'rgba(28,1,22,0)');
+        ctx.fillStyle=av; ctx.fillRect(0,0,W,H*0.70);
       }
-      // EVENING: warm orange-gold glow from lower right
-      if (period === 'EVENING') {
-        // Golden-apricot sunset bloom — wide horizon
-        const eg = ctx.createRadialGradient(W*0.50, H*0.88, 0, W*0.50, H*0.88, W*0.78);
-        eg.addColorStop(0,    'rgba(255,138,42,0.62)');
-        eg.addColorStop(0.16, 'rgba(245,85,28,0.34)');
-        eg.addColorStop(0.40, 'rgba(195,38,15,0.14)');
-        eg.addColorStop(1,    'rgba(108,8,6,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, H*0.36, W, H*0.64);
-        // Deep purple sky pressing down from top
-        const ev = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.62);
-        ev.addColorStop(0,    'rgba(105,18,95,0.32)');
-        ev.addColorStop(0.52, 'rgba(65,8,62,0.13)');
-        ev.addColorStop(1,    'rgba(38,3,36,0)');
-        ctx.fillStyle = ev; ctx.fillRect(0, 0, W, H*0.65);
-        // Rose-pink mid-field transition
-        const er = ctx.createRadialGradient(W*0.50, H*0.52, 0, W*0.50, H*0.52, W*0.62);
-        er.addColorStop(0,    'rgba(248,88,138,0.22)');
-        er.addColorStop(0.55, 'rgba(195,42,95,0.08)');
-        er.addColorStop(1,    'rgba(110,10,52,0)');
-        ctx.fillStyle = er; ctx.fillRect(0, 0, W, H);
+      if (period==='EVENING') {
+        const eg=ctx.createRadialGradient(W*0.50,H*0.90,0,W*0.50,H*0.90,W*0.80);
+        eg.addColorStop(0,'rgba(255,142,46,0.65)'); eg.addColorStop(0.16,'rgba(245,86,26,0.36)');
+        eg.addColorStop(0.42,'rgba(195,38,10,0.15)'); eg.addColorStop(1,'rgba(110,6,4,0)');
+        ctx.fillStyle=eg; ctx.fillRect(0,H*0.34,W,H*0.66);
+        const dE=ctx.createLinearGradient(W*0.2,H*0.1,W*0.8,H*0.9);
+        dE.addColorStop(0,'rgba(255,118,172,0.20)'); dE.addColorStop(0.5,'rgba(212,52,102,0.10)'); dE.addColorStop(1,'rgba(162,22,62,0.18)');
+        ctx.fillStyle=dE; ctx.fillRect(0,0,W,H);
+        const ev=ctx.createRadialGradient(W*0.50,0,0,W*0.50,0,W*0.65);
+        ev.addColorStop(0,'rgba(95,12,85,0.35)'); ev.addColorStop(0.52,'rgba(60,4,55,0.14)'); ev.addColorStop(1,'rgba(34,1,32,0)');
+        ctx.fillStyle=ev; ctx.fillRect(0,0,W,H*0.68);
       }
-      // NIGHT: moonlit rose glow — subtle
-      if (period === 'NIGHT') {
-        const ng = ctx.createRadialGradient(W*0.32, H*0.12, 0, W*0.32, H*0.12, W*0.42);
-        ng.addColorStop(0,    'rgba(215,175,245,0.22)');
-        ng.addColorStop(0.45, 'rgba(158,105,210,0.09)');
-        ng.addColorStop(1,    'rgba(88,42,130,0)');
-        ctx.fillStyle = ng; ctx.fillRect(0, 0, W, H*0.48);
+      if (period==='NIGHT') {
+        const dN=ctx.createLinearGradient(0,0,W,H);
+        dN.addColorStop(0,'rgba(46,10,85,0.42)'); dN.addColorStop(0.5,'rgba(20,3,46,0.28)'); dN.addColorStop(1,'rgba(60,6,102,0.38)');
+        ctx.fillStyle=dN; ctx.fillRect(0,0,W,H);
+        const ng=ctx.createRadialGradient(W*0.30,H*0.11,0,W*0.30,H*0.11,W*0.45);
+        ng.addColorStop(0,'rgba(215,175,245,0.24)'); ng.addColorStop(0.45,'rgba(158,104,212,0.10)'); ng.addColorStop(1,'rgba(85,40,130,0)');
+        ctx.fillStyle=ng; ctx.fillRect(0,0,W,H*0.50);
+        if (this._stars) {
+          this._stars.forEach(s=>{ s.phase+=s.spd; const sa=s.alpha*(0.40+0.60*Math.sin(s.phase));
+            ctx.save(); ctx.globalAlpha=sa; ctx.fillStyle='rgba(228,212,252,1)';
+            ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); ctx.restore(); });
+        }
       }
 
-      // ── 3. Full-screen warm atmospheric bloom — the signature atmosphere
-      // This creates the characteristic "glowing petal air" of sakura season
-      const abloom = { MORNING:0.25, AFTERNOON:0.32, EVENING:0.28, NIGHT:0.14 }[period] || 0.22;
-      const [aR,aGc,aB] = period === 'NIGHT' ? [130,60,148] : period === 'EVENING' ? [245,115,145] : [255,140,185];
-      // Left atmospheric edge warmth
-      const albL = ctx.createRadialGradient(0, H*0.52, 0, 0, H*0.52, W*0.52);
-      albL.addColorStop(0,    `rgba(${aR},${aGc},${aB},${abloom})`);
-      albL.addColorStop(0.55, `rgba(${aR},${aGc},${aB},${abloom*0.45})`);
-      albL.addColorStop(1,    `rgba(${aR},${aGc},${aB},0)`);
-      ctx.fillStyle = albL; ctx.fillRect(0, 0, W*0.60, H);
-      // Right atmospheric edge warmth
-      const albR = ctx.createRadialGradient(W, H*0.50, 0, W, H*0.50, W*0.52);
-      albR.addColorStop(0,    `rgba(${aR},${aGc},${aB},${abloom * 0.85})`);
-      albR.addColorStop(0.55, `rgba(${aR},${aGc},${aB},${abloom*0.38})`);
-      albR.addColorStop(1,    `rgba(${aR},${aGc},${aB},0)`);
-      ctx.fillStyle = albR; ctx.fillRect(W*0.40, 0, W*0.60, H);
-      // Bottom warmth (the "petal carpet" atmospheric glow)
-      const albBtm = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.80);
-      albBtm.addColorStop(0,    `rgba(${aR+10},${Math.max(0,aGc-30)},${aB-20},${abloom*1.28})`);
-      albBtm.addColorStop(0.45, `rgba(${aR},${aGc},${aB},${abloom*0.52})`);
-      albBtm.addColorStop(1,    `rgba(${aR},${aGc},${aB},0)`);
-      ctx.fillStyle = albBtm; ctx.fillRect(0, H*0.38, W, H*0.62);
+      // ── 3. Petal-air bloom ───────────────────────────────────────────────
+      const abloom={MORNING:0.24,AFTERNOON:0.30,EVENING:0.26,NIGHT:0.13}[period]||0.20;
+      const [aR,aGc,aB]=period==='NIGHT'?[126,56,142]:period==='EVENING'?[245,115,142]:[255,142,185];
+      const albL=ctx.createLinearGradient(0,0,W*0.32,0);
+      albL.addColorStop(0,`rgba(${aR},${aGc},${aB},${abloom})`); albL.addColorStop(0.60,`rgba(${aR},${aGc},${aB},${abloom*0.38})`); albL.addColorStop(1,`rgba(${aR},${aGc},${aB},0)`);
+      ctx.fillStyle=albL; ctx.fillRect(0,0,W*0.34,H);
+      const albR=ctx.createLinearGradient(W,0,W*0.68,0);
+      albR.addColorStop(0,`rgba(${aR},${aGc},${aB},${abloom*0.88})`); albR.addColorStop(0.60,`rgba(${aR},${aGc},${aB},${abloom*0.32})`); albR.addColorStop(1,`rgba(${aR},${aGc},${aB},0)`);
+      ctx.fillStyle=albR; ctx.fillRect(W*0.66,0,W*0.34,H);
+      const albBtm=ctx.createRadialGradient(W*0.50,H,0,W*0.50,H,W*0.82);
+      albBtm.addColorStop(0,`rgba(${aR+8},${Math.max(0,aGc-28)},${aB-18},${abloom*1.30})`);
+      albBtm.addColorStop(0.48,`rgba(${aR},${aGc},${aB},${abloom*0.50})`); albBtm.addColorStop(1,`rgba(${aR},${aGc},${aB},0)`);
+      ctx.fillStyle=albBtm; ctx.fillRect(0,H*0.36,W,H*0.64);
 
-      // ── 4. Bokeh depth field — background petal-light orbs ──────────────
-      // These simulate the out-of-focus petal glow visible in reference image
-      const bokehVis = { MORNING:1.0, AFTERNOON:0.88, EVENING:0.78, NIGHT:0.48 }[period] || 0.8;
-      const bR = period === 'NIGHT' ? 175 : period === 'EVENING' ? 255 : 255;
-      const bGc = period === 'NIGHT' ? 110 : period === 'EVENING' ? 148 : 168;
-      const bB = period === 'NIGHT' ? 205 : period === 'EVENING' ? 175 : 215;
-      const numBokeh = 18;
-      for (let bi = 0; bi < numBokeh; bi++) {
-        const bx = W * ((bi * 0.0618 + Math.sin(t*0.22 + bi*0.75)*0.012 + 1.0) % 1.0);
-        const by = H * (0.12 + ((bi*0.1618 + Math.sin(t*0.18 + bi)*0.02) % 0.88));
-        const br = W * (0.025 + 0.045 * ((bi*0.382) % 1.0));
-        const ba = 0.04 + 0.07 * ((bi * 0.618 + Math.sin(t*0.30 + bi*0.42)) % 1.0);
-        const bg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
-        bg.addColorStop(0,    `rgba(${bR},${bGc},${bB},${Math.abs(ba) * bokehVis})`);
-        bg.addColorStop(0.55, `rgba(${bR},${bGc},${bB},${Math.abs(ba)*0.42 * bokehVis})`);
-        bg.addColorStop(1,    `rgba(${bR},${bGc},${bB},0)`);
-        ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
-      }
-
-      // ── 5. Horizon atmospheric line ─────────────────────────────────────
-      const horizY = H * 0.72;
-      const hGlow = ctx.createLinearGradient(0, horizY - 5, 0, horizY + 5);
-      hGlow.addColorStop(0,   `rgba(${aR},${aGc},${aB},0)`);
-      hGlow.addColorStop(0.5, `rgba(${aR},${aGc},${aB},0.38)`);
-      hGlow.addColorStop(1,   `rgba(${aR},${aGc},${aB},0)`);
-      ctx.fillStyle = hGlow; ctx.fillRect(0, horizY - 8, W, 16);
-
-      // ── 6. Cinematic edge + radial vignette ─────────────────────────────
-      const [vR,vGc,vB] = period === 'NIGHT' ? [4,2,12] : period === 'EVENING' ? [8,4,18] : [6,2,14];
-      const vigA = period === 'NIGHT' ? 0.80 : 0.62;
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.20, W*0.5, H*0.5, W*0.88);
-      vigRad.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(0.58, `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
+      // ── 4. Vignette ──────────────────────────────────────────────────────
+      const [vR,vGc,vB]=period==='NIGHT'?[3,1,10]:period==='EVENING'?[6,3,15]:[5,1,12];
+      const vigA=period==='NIGHT'?0.82:0.64;
+      const vigRad=ctx.createRadialGradient(W*0.5,H*0.5,W*0.18,W*0.5,H*0.5,W*0.90);
+      vigRad.addColorStop(0,`rgba(${vR},${vGc},${vB},0)`); vigRad.addColorStop(0.60,`rgba(${vR},${vGc},${vB},0)`); vigRad.addColorStop(1,`rgba(${vR},${vGc},${vB},${vigA})`);
+      ctx.fillStyle=vigRad; ctx.fillRect(0,0,W,H);
     },
 
     create(W, H) {
-      const r = Math.random();
-      if (r < 0.68) {
-        // Cherry petal — real tumbling fall speed (2.5x faster)
-        return {
-          type: 'petal',
-          x: Math.random()*W*1.40-W*0.20,
-          y: -22-Math.random()*80,
-          vx: (Math.random()-0.5)*1.80,
-          vy:  2.8+Math.random()*2.8,  // real petal speed — faster tumble
-          rot: Math.random()*Math.PI*2,
-          rotV: (Math.random()-0.5)*0.18,
-          sz: 3.5+Math.random()*7.5,
-          alpha: 0, maxAlpha: 0.60+Math.random()*0.35,
-          life: 0, fadeIn: 8,
-          sw: Math.random()*Math.PI*2,
-          swAmp: 1.8+Math.random()*3.2, swSpd: 0.018+Math.random()*0.028,
-          col: `hsl(${328+Math.random()*32|0},${65+Math.random()*22|0}%,${70+Math.random()*18|0}%)`,
-        };
-      } else if (r < 0.88) {
-        return {
-          type: 'bokeh',
-          x: Math.random()*W, y: H*0.55+Math.random()*H*0.5,
-          vx: (Math.random()-0.5)*0.35, vy: -(0.12+Math.random()*0.35),
-          r: 5+Math.random()*20, hue: 323+Math.floor(Math.random()*38),
-          alpha: 0, maxAlpha: 0.07+Math.random()*0.12,
-          life: 0, fadeIn: 28, maxLife: 140+Math.floor(Math.random()*90),
-          sw: Math.random()*Math.PI*2, swAmp: 0.4+Math.random()*0.9, swSpd: 0.009+Math.random()*0.012,
-        };
+      const r=Math.random();
+      if (r<0.68) {
+        const period=_getCanvasPeriod();
+        const baseHue=period==='NIGHT'?302:period==='EVENING'?336:period==='MORNING'?330:324;
+        return { type:'petal', x:Math.random()*W*1.42-W*0.21, y:-24-Math.random()*85,
+          vx:(Math.random()-0.5)*1.85, vy:2.8+Math.random()*2.8,
+          rot:Math.random()*Math.PI*2, rotV:(Math.random()-0.5)*0.18,
+          sz:3.5+Math.random()*7.5, alpha:0, maxAlpha:0.58+Math.random()*0.35,
+          life:0, fadeIn:8, sw:Math.random()*Math.PI*2,
+          swAmp:1.8+Math.random()*3.2, swSpd:0.018+Math.random()*0.028,
+          col:`hsl(${baseHue+Math.random()*28|0},${62+Math.random()*24|0}%,${68+Math.random()*20|0}%)` };
+      } else if (r<0.88) {
+        return { type:'bokeh', x:Math.random()*W, y:H*0.55+Math.random()*H*0.5,
+          vx:(Math.random()-0.5)*0.35, vy:-(0.12+Math.random()*0.35),
+          r:5+Math.random()*20, hue:318+Math.floor(Math.random()*42),
+          alpha:0, maxAlpha:0.07+Math.random()*0.12, life:0, fadeIn:28, maxLife:140+Math.floor(Math.random()*90),
+          sw:Math.random()*Math.PI*2, swAmp:0.4+Math.random()*0.9, swSpd:0.009+Math.random()*0.012 };
       } else {
-        return {
-          type: 'sparkle',
-          x: Math.random()*W, y: Math.random()*H,
-          vx: (Math.random()-0.5)*0.42, vy: -(0.12+Math.random()*0.32),
-          r: 0.7+Math.random()*1.6,
-          alpha: 0, maxAlpha: 0.50+Math.random()*0.35,
-          life: 0, fadeIn: 9, maxLife: 50+Math.floor(Math.random()*42),
-        };
+        return { type:'sparkle', x:Math.random()*W, y:Math.random()*H,
+          vx:(Math.random()-0.5)*0.42, vy:-(0.12+Math.random()*0.32),
+          r:0.7+Math.random()*1.6, alpha:0, maxAlpha:0.52+Math.random()*0.35,
+          life:0, fadeIn:9, maxLife:50+Math.floor(Math.random()*42) };
       }
     },
 
     draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'petal') {
+      ctx.save(); ctx.globalAlpha=p.alpha;
+      if (p.type==='petal') {
         ctx.translate(p.x,p.y); ctx.rotate(p.rot);
-        ctx.fillStyle = p.col;
-        // Realistic oval petal shape
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-p.sz*0.58, -p.sz*0.42, -p.sz*0.55, -p.sz*2.55, 0, -p.sz*3.05);
-        ctx.bezierCurveTo( p.sz*0.55, -p.sz*2.55,  p.sz*0.58, -p.sz*0.42, 0, 0);
-        ctx.fill();
-        // Petal vein
-        ctx.strokeStyle = `rgba(255,255,255,0.28)`;
-        ctx.lineWidth = 0.5;
+        ctx.fillStyle=p.col;
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.bezierCurveTo(-p.sz*0.58,-p.sz*0.42,-p.sz*0.55,-p.sz*2.55,0,-p.sz*3.05);
+        ctx.bezierCurveTo(p.sz*0.55,-p.sz*2.55,p.sz*0.58,-p.sz*0.42,0,0); ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.20)';
+        ctx.beginPath(); ctx.moveTo(0,0);
+        ctx.bezierCurveTo(0,-p.sz*0.32,p.sz*0.28,-p.sz*1.62,0,-p.sz*3.05);
+        ctx.bezierCurveTo(-p.sz*0.20,-p.sz*1.42,-p.sz*0.08,-p.sz*0.20,0,0); ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.24)'; ctx.lineWidth=0.5;
         ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-p.sz*3.0); ctx.stroke();
-      } else if (p.type === 'bokeh') {
-        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
-        g.addColorStop(0,`hsla(${p.hue},92%,82%,1)`); g.addColorStop(0.45,`hsla(${p.hue},82%,65%,0.5)`);
-        g.addColorStop(1,`hsla(${p.hue},72%,50%,0)`); ctx.fillStyle=g;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      } else if (p.type==='bokeh') {
+        const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+        g.addColorStop(0,`hsla(${p.hue},94%,84%,1)`); g.addColorStop(0.45,`hsla(${p.hue},84%,66%,0.5)`); g.addColorStop(1,`hsla(${p.hue},72%,50%,0)`);
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
       } else {
         ctx.strokeStyle='rgba(255,215,252,1)'; ctx.lineWidth=p.r; ctx.lineCap='round';
         const s=p.r*4;
@@ -853,1570 +687,93 @@ const CFG = {
       ctx.restore();
     },
 
-    update(p, W, H) {
-      p.life++; p.sw += p.swSpd;
-      p.x += p.vx + Math.sin(p.sw)*p.swAmp; p.y += p.vy;
-      if (p.rot !== undefined) p.rot += p.rotV;
-      const fi = Math.min(1, p.life/p.fadeIn);
-      const fo = (p.maxLife && p.life>p.maxLife-18) ? Math.max(0,(p.maxLife-p.life)/18) : 1;
-      p.alpha = p.maxAlpha*fi*fo;
-      if (p.type==='petal') return p.y < H+45;
-      if (p.type==='bokeh') return p.life<p.maxLife && p.y>-45;
+    update(p,W,H) {
+      p.life++; p.sw+=p.swSpd; p.x+=p.vx+Math.sin(p.sw)*p.swAmp; p.y+=p.vy;
+      if(p.rot!==undefined) p.rot+=p.rotV;
+      const fi=Math.min(1,p.life/p.fadeIn);
+      const fo=(p.maxLife&&p.life>p.maxLife-18)?Math.max(0,(p.maxLife-p.life)/18):1;
+      p.alpha=p.maxAlpha*fi*fo;
+      if(p.type==='petal') return p.y<H+48;
+      if(p.type==='bokeh') return p.life<p.maxLife&&p.y>-48;
       return p.life<p.maxLife;
     },
   },
 
 
-  // ── OCEAN — Deep Sea Premium Rework ─────────────────────────────────────────
-  // Layered underwater world: caustic light, real kelp, clickable bubbles,
-  // realistic fish schools, coral reef, time-of-day depth lighting.
-  ocean: {
-    max: 45, rate: 0.14,
-    _caustics: null, _kelp: null, _coral: null, _fishSchools: null,
-    _bubblesStore: [],  // permanent bubble store for click detection
-    _pops: [],          // pop animations
-
-    init(W, H) {
-      _stars = [];
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-
-      // Animated caustic light patches — organic shifting ellipses from surface
-      this._caustics = Array.from({ length: 22 }, () => ({
-        x: rng(0, W), y: rng(H * 0.0, H * 0.55),
-        rx: rng(18, 72), ry: rng(6, 20),
-        rot: rng(0, Math.PI),
-        phase: rng(0, Math.PI * 2),
-        spd:   rng(0.012, 0.030),
-        driftX: rng(-0.18, 0.18),
-      }));
-
-      // Sea grass — wide flat leaves dense at seafloor
-      this._seaGrass = Array.from({ length: 42 }, (_, i) => ({
-        x: W * 0.005 + (i / 41) * W * 0.99 + rng(-W * 0.012, W * 0.012),
-        baseY: H,
-        height: H * rng(0.038, 0.11),
-        blades: Math.floor(rng(3, 7)),
-        phase: rng(0, Math.PI * 2),
-        swSpd: rng(0.010, 0.022),
-        swAmp: rng(8, 22),
-        hue: 130 + rng(0, 40)|0,
-        sat: 62 + rng(0, 25)|0,
-      }));
-
-      // Kelp forest: tall swaying seaweed along sides + scattered mid
-      this._kelp = Array.from({ length: 18 }, (_, i) => {
-        const side = i < 7 ? 'L' : i < 14 ? 'R' : 'M';
-        const x = side === 'L' ? rng(W * 0.0, W * 0.28)
-                : side === 'R' ? rng(W * 0.72, W * 1.0)
-                : rng(W * 0.30, W * 0.70);
-        return {
-          x, baseY: H,
-          height: H * rng(0.30, 0.72),
-          segs: Math.floor(rng(7, 13)),
-          hue: 128 + rng(0, 30)|0,
-          sat: 58 + rng(0, 22)|0,
-          w: rng(3.5, 8.0),
-          phase: rng(0, Math.PI * 2),
-          swSpd: rng(0.008, 0.018),
-          swAmp: rng(12, 36),
-          sub: Math.floor(rng(0, 3)), // sub-fronds count
-        };
-      });
-
-      // Coral formations: fan coral, brain coral, branch coral, anemone
-      this._coral = Array.from({ length: 20 }, (_, i) => {
-        const types = ['fan', 'branch', 'anemone', 'brain', 'tube'];
-        return {
-          x: W * 0.02 + (i / 19) * W * 0.96,
-          h: H * rng(0.06, 0.20),
-          type: types[i % types.length],
-          hue: [0, 22, 280, 185, 320, 45, 350, 60, 200][i % 9],
-          w: rng(6, 20),
-          phase: rng(0, Math.PI * 2),
-          swSpd: rng(0.010, 0.022),
-          sub: Math.floor(rng(2, 6)),
-        };
-      });
-
-      // Fish schools: vibrant tropical colors, varied sizes and behaviors
-      this._fishSchools = [
-        // Tropical school - small, fast, vivid colorful
-        { fish: Array.from({ length: 7 }, (_, i) => ({
-          x: rng(-200, W + 200), y: H * rng(0.12, 0.55),
-          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.8, 1.6),
-          vy: (rng(-1,1)) * 0.2,
-          sz: rng(8, 14), phase: i * 0.7,
-          hue: [18, 44, 185, 330, 55, 280, 12][i % 7],
-          sat: 92, col2: [355, 55, 210, 280, 90, 320, 42][i % 7],
-          bodyRatio: 0.35, finH: 0.55,
-        })), type: 'tropical', offsetSpread: 28 },
-        // Deep fish - larger, slower, jewel tones
-        { fish: Array.from({ length: 4 }, (_, i) => ({
-          x: rng(-300, W + 300), y: H * rng(0.50, 0.80),
-          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.3, 0.65),
-          vy: (rng(-1,1)) * 0.12,
-          sz: rng(22, 42), phase: i * 1.1,
-          hue: [195, 225, 185, 215][i % 4], sat: 72, col2: [240, 260, 200, 185][i % 4],
-          bodyRatio: 0.30, finH: 0.48,
-        })), type: 'deep', offsetSpread: 45 },
-        // Clownfish school - iconic orange+white stripe
-        { fish: Array.from({ length: 5 }, (_, i) => ({
-          x: rng(-150, W + 150), y: H * rng(0.30, 0.68),
-          vx: (rng(0,1) < 0.5 ? -1 : 1) * rng(0.5, 1.0),
-          vy: (rng(-1,1)) * 0.15,
-          sz: rng(15, 25), phase: i * 0.9,
-          hue: 22, sat: 95, col2: 0, // orange with white-ish stripe
-          bodyRatio: 0.40, finH: 0.65,
-        })), type: 'clown', offsetSpread: 18 },
-      ];
-
-      this._bubblesStore = [];
-      this._pops = [];
-    },
-
-    _drawKelp(ctx, k, t, period) {
-      const segLen = k.height / k.segs;
-      const sway = Math.sin(k.phase + t) * k.swAmp;
-      const kLight = period === 'NIGHT' ? 18 : period === 'EVENING' ? 22 : 32;
-      ctx.save();
-      ctx.strokeStyle = `hsl(${k.hue},${k.sat}%,${kLight}%)`;
-      ctx.lineWidth = k.w;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      let px = k.x, py = k.baseY;
-      const pts = [[px, py]];
-      for (let s = 0; s < k.segs; s++) {
-        const prog = s / k.segs;
-        const sw = sway * prog * prog; // more sway at tip
-        const nx = k.x + sw;
-        const ny = k.baseY - (s + 1) * segLen;
-        pts.push([nx, ny]);
-      }
-
-      // Draw main stalk as smooth bezier chain
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length - 1; i++) {
-        const mx = (pts[i][0] + pts[i+1][0]) * 0.5;
-        const my = (pts[i][1] + pts[i+1][1]) * 0.5;
-        ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
-      }
-      ctx.lineTo(pts[pts.length-1][0], pts[pts.length-1][1]);
-      ctx.stroke();
-
-      // Sub-fronds every few segments
-      if (k.sub > 0) {
-        ctx.lineWidth = k.w * 0.42;
-        for (let sf = 0; sf < k.sub; sf++) {
-          const si = Math.floor((sf + 1) * k.segs / (k.sub + 1));
-          if (si >= pts.length) continue;
-          const [fx, fy] = pts[si];
-          const flen = segLen * 1.2;
-          const fdir = sf % 2 === 0 ? 1 : -1;
-          const fsway = sw * (si / k.segs);
-          ctx.beginPath();
-          ctx.moveTo(fx, fy);
-          ctx.quadraticCurveTo(
-            fx + fdir * flen * 0.55 + fsway * 0.4, fy - flen * 0.45,
-            fx + fdir * flen * 0.85 + fsway, fy - flen * 0.92
-          );
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    },
-
-    _drawFish(ctx, f, t, period) {
-      const dir = f.vx >= 0 ? 1 : -1;
-      f.phase += 0.055;
-      const tailWag = Math.sin(f.phase * 2.2) * f.sz * 0.25;
-      const bodyWobble = Math.sin(f.phase) * f.sz * 0.03;
-
-      const alpha = period === 'NIGHT' ? 0.65 : 0.90;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(f.x, f.y + bodyWobble);
-      ctx.scale(dir, 1);
-
-      // Vibrant body gradient
-      const bg = ctx.createLinearGradient(-f.sz, 0, f.sz, 0);
-      bg.addColorStop(0,    `hsl(${f.hue},${f.sat}%,30%)`);
-      bg.addColorStop(0.35, `hsl(${f.hue},${f.sat}%,58%)`);
-      bg.addColorStop(0.65, `hsl(${f.hue},${f.sat}%,62%)`);
-      bg.addColorStop(1,    `hsl(${f.hue},${f.sat - 8}%,38%)`);
-
-      // Fish body
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.ellipse(f.sz * 0.10, 0, f.sz * 0.82, f.sz * f.bodyRatio, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Belly highlight shimmer
-      ctx.save(); ctx.globalAlpha = 0.28;
-      const belly = ctx.createLinearGradient(0, -f.sz * f.bodyRatio, 0, f.sz * f.bodyRatio);
-      belly.addColorStop(0,   `hsl(${f.hue},${f.sat}%,85%)`);
-      belly.addColorStop(0.5, `hsl(${f.hue},${f.sat - 5}%,75%)`);
-      belly.addColorStop(1,   `hsl(${f.hue},${f.sat}%,50%)`);
-      ctx.fillStyle = belly;
-      ctx.beginPath();
-      ctx.ellipse(f.sz * 0.10, f.sz * f.bodyRatio * 0.20, f.sz * 0.55, f.sz * f.bodyRatio * 0.50, 0, 0, Math.PI * 2);
-      ctx.fill(); ctx.restore();
-
-      // Caudal fin (tail)
-      ctx.fillStyle = `hsl(${f.hue - 12},${f.sat}%,45%)`;
-      ctx.beginPath();
-      ctx.moveTo(-f.sz * 0.70, 0);
-      ctx.lineTo(-f.sz * 1.45, -f.sz * f.finH * 0.65 + tailWag);
-      ctx.lineTo(-f.sz * 1.48, 0);
-      ctx.lineTo(-f.sz * 1.45,  f.sz * f.finH * 0.65 - tailWag);
-      ctx.closePath(); ctx.fill();
-
-      // Dorsal fin
-      ctx.beginPath();
-      ctx.moveTo(-f.sz * 0.10, -f.sz * f.bodyRatio);
-      ctx.quadraticCurveTo(f.sz * 0.15, -f.sz * f.bodyRatio * 1.65, f.sz * 0.55, -f.sz * f.bodyRatio);
-      ctx.closePath();
-      ctx.fillStyle = `hsl(${f.hue + 5},${f.sat}%,42%)`; ctx.fill();
-
-      // Pectoral fin (tall-body fish)
-      if (f.bodyRatio > 0.38) {
-        ctx.beginPath();
-        ctx.moveTo(f.sz * 0.10, f.sz * 0.10);
-        ctx.quadraticCurveTo(-f.sz * 0.15, f.sz * 0.68, f.sz * 0.30, f.sz * f.bodyRatio * 0.90);
-        ctx.quadraticCurveTo(f.sz * 0.50, f.sz * 0.42, f.sz * 0.10, f.sz * 0.10);
-        ctx.fillStyle = `hsl(${f.hue + 14},${f.sat - 5}%,50%)`; ctx.fill();
-      }
-
-      // Vivid contrast stripe
-      ctx.save(); ctx.globalAlpha *= 0.60;
-      ctx.fillStyle = `hsl(${f.col2},92%,78%)`;
-      ctx.beginPath();
-      ctx.ellipse(f.sz * 0.20, 0, f.sz * 0.21, f.sz * f.bodyRatio * 0.65, 0, 0, Math.PI * 2);
-      ctx.fill(); ctx.restore();
-
-      // Eye
-      const eyeX = f.sz * 0.52, eyeY = -f.sz * 0.08;
-      ctx.fillStyle = 'rgba(5,3,1,0.95)';
-      ctx.beginPath(); ctx.arc(eyeX, eyeY, f.sz * 0.100, 0, Math.PI * 2); ctx.fill();
-      // Iris ring
-      ctx.fillStyle = `hsl(${f.hue + 25},72%,55%)`;
-      ctx.beginPath(); ctx.arc(eyeX + f.sz * 0.018, eyeY - f.sz * 0.016, f.sz * 0.056, 0, Math.PI * 2); ctx.fill();
-      // Pupil
-      ctx.fillStyle = 'rgba(0,0,0,0.92)';
-      ctx.beginPath(); ctx.arc(eyeX + f.sz * 0.022, eyeY - f.sz * 0.018, f.sz * 0.034, 0, Math.PI * 2); ctx.fill();
-      // Highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.90)';
-      ctx.beginPath(); ctx.arc(eyeX + f.sz * 0.040, eyeY - f.sz * 0.040, f.sz * 0.030, 0, Math.PI * 2); ctx.fill();
-
-      ctx.restore();
-    },
-
-    drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend  = _getSmoothBlend();
-      const t = _frame * 0.016;
-
-      // ── 1. Water column gradient — the infinite ocean depth ──────────────
-      // MORNING: lighter teal-blue near surface, dark abyss below
-      // AFTERNOON: vivid cyan-blue mid-water, radiant caustic light
-      // EVENING: cooler teal shifting toward twilight-deep
-      // NIGHT: near-black abyss with bioluminescent hints
-      const WATER = {
-        MORNING:   { t:[ 0,128,195], m:[  0, 72,135], b:[  0, 32, 82] },
-        AFTERNOON: { t:[ 0,168,238], m:[  0,115,188], b:[  0, 58,128] },
-        EVENING:   { t:[ 0, 72,132], m:[  0, 42, 98], b:[  0, 20, 58] },
-        NIGHT:     { t:[ 0, 22, 58], m:[  0, 10, 32], b:[  0,  4, 16] },
-      };
-      const wc = _blendPeriodColors(WATER, blend);
-      const wg = ctx.createLinearGradient(0, 0, 0, H);
-      wg.addColorStop(0,    _rgb(wc.t));
-      wg.addColorStop(0.42, _rgb(wc.m));
-      wg.addColorStop(1,    _rgb(wc.b));
-      ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
-
-      // ── 2. Surface caustic light — light refracting through water ────────
-      // This is the signature effect: rippling light from above
-      const causticAmt = { MORNING:1.0, AFTERNOON:1.35, EVENING:0.55, NIGHT:0.0 }[period] || 0.5;
-      if (causticAmt > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'screen';
-        this._caustics.forEach(c => {
-          c.phase += c.spd; c.x += c.driftX;
-          if (c.x < -80) c.x = W + 80;
-          if (c.x > W + 80) c.x = -80;
-          const pulse = 0.42 + 0.58 * Math.abs(Math.sin(c.phase));
-          const a = causticAmt * 0.045 * pulse;
-          const cy = c.y + Math.sin(c.phase * 0.72) * 16;
-          ctx.save();
-          ctx.translate(c.x, cy); ctx.rotate(c.rot + c.phase * 0.06);
-          ctx.scale(1, c.ry / c.rx);
-          const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, c.rx);
-          cg.addColorStop(0,    `rgba(140,255,255,${a * 4.2})`);
-          cg.addColorStop(0.35, `rgba(62,228,255,${a * 1.8})`);
-          cg.addColorStop(1,    'rgba(10,178,240,0)');
-          ctx.fillStyle = cg;
-          ctx.beginPath(); ctx.arc(0, 0, c.rx, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        });
-        ctx.restore();
-      }
-
-      // ── 3. Volumetric light shafts from surface ───────────────────────────
-      // Diagonal shafts of sunlight piercing down through water
-      const shaftAmt = { MORNING:0.65, AFTERNOON:0.88, EVENING:0.28, NIGHT:0.0 }[period] || 0.5;
-      if (shaftAmt > 0.05) {
-        for (let si = 0; si < 6; si++) {
-          const sx = W * (0.08 + si * 0.16) + Math.sin(t * 0.25 + si * 1.1) * W * 0.025;
-          const sw2 = W * (0.055 + 0.025 * Math.sin(t * 0.3 + si));
-          const sa = shaftAmt * (0.05 + 0.028 * Math.abs(Math.sin(t * 0.55 + si * 1.4)));
-          const shG = ctx.createLinearGradient(sx, 0, sx + sw2 * 0.5, H * 0.72);
-          shG.addColorStop(0,    `rgba(180,255,255,${sa * 3.2})`);
-          shG.addColorStop(0.28, `rgba(88,232,255,${sa * 1.4})`);
-          shG.addColorStop(0.62, `rgba(28,182,235,${sa * 0.45})`);
-          shG.addColorStop(1,    'rgba(0,115,195,0)');
-          ctx.fillStyle = shG;
-          ctx.beginPath();
-          ctx.moveTo(sx, 0); ctx.lineTo(sx + sw2, 0);
-          ctx.lineTo(sx + sw2 * 2.2, H * 0.72); ctx.lineTo(sx - sw2 * 0.8, H * 0.72);
-          ctx.closePath(); ctx.fill();
-        }
-      }
-
-      // ── 4. Ocean surface shimmer — top gradient band ──────────────────────
-      const surfAmt = { MORNING:0.35, AFTERNOON:0.48, EVENING:0.18, NIGHT:0.0 }[period] || 0.2;
-      if (surfAmt > 0) {
-        const sfG = ctx.createLinearGradient(0, 0, 0, H * 0.28);
-        sfG.addColorStop(0,   `rgba(58,228,255,${surfAmt * 0.82})`);
-        sfG.addColorStop(0.28, `rgba(22,188,245,${surfAmt * 0.38})`);
-        sfG.addColorStop(1,   'rgba(0,125,210,0)');
-        ctx.fillStyle = sfG; ctx.fillRect(0, 0, W, H * 0.28);
-      }
-
-      // ── 4b. Period-specific dominant light ──────────────────────────────────
-      if (period === 'MORNING') {
-        // Pale blue-gold dawn filtering down — the water is lit from a low angle
-        const dg = ctx.createRadialGradient(W*0.72, 0, 0, W*0.72, 0, W*0.82);
-        dg.addColorStop(0,    'rgba(168,245,255,0.42)');
-        dg.addColorStop(0.28, 'rgba(72,205,248,0.18)');
-        dg.addColorStop(0.62, 'rgba(18,145,220,0.07)');
-        dg.addColorStop(1,    'rgba(0,75,168,0)');
-        ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H*0.70);
-      }
-      if (period === 'AFTERNOON') {
-        // Overhead blazing sun — strong overhead caustic column
-        const pulse = 0.88 + 0.12 * Math.sin(t * 0.85);
-        const dg = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.65);
-        dg.addColorStop(0,    `rgba(200,255,255,${0.52 * pulse})`);
-        dg.addColorStop(0.20, `rgba(88,225,255,${0.28 * pulse})`);
-        dg.addColorStop(0.50, `rgba(22,172,235,${0.10 * pulse})`);
-        dg.addColorStop(1,    'rgba(0,88,180,0)');
-        ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H*0.75);
-        // Sun column beam — straight down from directly above
-        const sc = ctx.createLinearGradient(W*0.42, 0, W*0.58, 0);
-        sc.addColorStop(0,    'rgba(145,248,255,0)');
-        sc.addColorStop(0.50, `rgba(195,255,255,${0.18 * pulse})`);
-        sc.addColorStop(1,    'rgba(145,248,255,0)');
-        ctx.fillStyle = sc; ctx.fillRect(W*0.35, 0, W*0.30, H*0.68);
-      }
-      if (period === 'EVENING') {
-        // Deep dusk — water turns indigo-teal, last light fades fast
-        const dg = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.72);
-        dg.addColorStop(0,    'rgba(22,88,158,0.42)');
-        dg.addColorStop(0.45, 'rgba(8,48,105,0.16)');
-        dg.addColorStop(1,    'rgba(2,15,52,0)');
-        ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H*0.72);
-        // Teal-indigo edge columns — deep water closing in
-        const el = ctx.createRadialGradient(0, H*0.48, 0, 0, H*0.48, W*0.45);
-        el.addColorStop(0,    'rgba(0,52,108,0.38)');
-        el.addColorStop(0.50, 'rgba(0,28,72,0.14)');
-        el.addColorStop(1,    'rgba(0,8,32,0)');
-        ctx.fillStyle = el; ctx.fillRect(0, 0, W*0.52, H);
-        const er = ctx.createRadialGradient(W, H*0.48, 0, W, H*0.48, W*0.45);
-        er.addColorStop(0,    'rgba(0,48,105,0.36)');
-        er.addColorStop(0.50, 'rgba(0,25,68,0.13)');
-        er.addColorStop(1,    'rgba(0,6,28,0)');
-        ctx.fillStyle = er; ctx.fillRect(W*0.48, 0, W*0.52, H);
-      }
-      if (period === 'NIGHT') {
-        // Full deep abyss — only bioluminescence exists, pure darkness
-        const dg = ctx.createRadialGradient(W*0.50, H*0.30, 0, W*0.50, H*0.30, W*0.72);
-        dg.addColorStop(0,    'rgba(0,12,38,0.55)');
-        dg.addColorStop(0.50, 'rgba(0,5,20,0.22)');
-        dg.addColorStop(1,    'rgba(0,2,8,0)');
-        ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H);
-      }
-
-      // ── 5. Bioluminescent ambient glow (evening + night) ──────────────────
-      const bioAmt = { MORNING:0.0, AFTERNOON:0.0, EVENING:0.45, NIGHT:1.0 }[period] || 0;
-      if (bioAmt > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'screen';
-        for (let bi = 0; bi < 22; bi++) {
-          const bx = W * ((bi * 0.0809 + Math.sin(t*0.38+bi*1.22)*0.04 + 1.0) % 1.0);
-          const by = H * (0.18 + 0.75 * ((bi * 0.1618 + Math.cos(t*0.28+bi*0.88)*0.03 + 1.0) % 1.0));
-          const ba = bioAmt * 0.058 * (0.42 + 0.58 * Math.abs(Math.sin(t * 2.0 + bi * 1.6)));
-          const br = 22 + 28 * ((bi * 0.382) % 1.0);
-          const hue = 158 + (bi % 5) * 20;
-          const bg2 = ctx.createRadialGradient(bx, by, 0, bx, by, br);
-          bg2.addColorStop(0,   `hsla(${hue},98%,82%,${ba * 5.5})`);
-          bg2.addColorStop(0.42, `hsla(${hue},88%,62%,${ba * 2.2})`);
-          bg2.addColorStop(1,   `hsla(${hue},75%,42%,0)`);
-          ctx.fillStyle = bg2; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      // ── 6. Atmospheric depth fog layers — mid-water haze ─────────────────
-      const [fogR,fogGc,fogB] = period === 'NIGHT' ? [0,28,62] : period === 'EVENING' ? [0,42,88] : [0,88,155];
-      for (let fi = 0; fi < 4; fi++) {
-        const fy = H * (0.25 + fi * 0.18);
-        const fw = W * (1.5 + fi * 0.2);
-        const fA = (0.025 + fi * 0.012) * (period === 'NIGHT' ? 0.65 : 0.95)
-                   * (0.55 + 0.45 * Math.sin(t * 0.45 + fi * 1.3));
-        const fX = ((t * (0.06 + fi * 0.015) * W * 0.08) % (fw * 0.4)) - fw * 0.2;
-        const fgr = ctx.createLinearGradient(fX, fy, fX + fw, fy);
-        fgr.addColorStop(0,    `rgba(${fogR},${fogGc},${fogB},0)`);
-        fgr.addColorStop(0.25, `rgba(${fogR},${fogGc},${fogB},${fA})`);
-        fgr.addColorStop(0.75, `rgba(${fogR},${fogGc},${fogB},${fA * 0.78})`);
-        fgr.addColorStop(1,    `rgba(${fogR},${fogGc},${fogB},0)`);
-        ctx.save(); ctx.fillStyle = fgr;
-        ctx.beginPath(); ctx.ellipse(fX + fw * 0.5, fy, fw * 0.5, H * 0.055, 0, 0, Math.PI*2);
-        ctx.fill(); ctx.restore();
-      }
-
-      // ── 7. Pop animations ─────────────────────────────────────────────────
-      this._pops = this._pops.filter(pop => {
-        pop.frame++;
-        const prog = pop.frame / pop.maxFrame;
-        ctx.save();
-        ctx.globalAlpha = (1 - prog) * 0.85;
-        ctx.strokeStyle = 'rgba(180,240,255,1)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(pop.x, pop.y, pop.r * (1 + prog * 2.5), 0, Math.PI * 2); ctx.stroke();
-        for (let di = 0; di < 6; di++) {
-          const da = (di / 6) * Math.PI * 2;
-          const dr = pop.r * (1.8 + prog * 3.5);
-          ctx.fillStyle = 'rgba(150,235,255,1)';
-          ctx.beginPath(); ctx.arc(pop.x + Math.cos(da)*dr, pop.y + Math.sin(da)*dr, 1.5*(1-prog), 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-        return pop.frame < pop.maxFrame;
-      });
-
-      // ── 8. Cinematic depth vignette ───────────────────────────────────────
-      // Edges are very dark — the abyss closes in
-      const [vR,vGc,vB] = period === 'NIGHT' ? [0,0,5] : period === 'EVENING' ? [0,2,10] : [0,3,14];
-      const vigA = period === 'NIGHT' ? 0.95 : period === 'EVENING' ? 0.82 : 0.65;
-      const dv = ctx.createRadialGradient(W*0.5, H*0.46, W*0.18, W*0.5, H*0.46, W*0.88);
-      dv.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      dv.addColorStop(0.58, `rgba(${vR},${vGc},${vB},0)`);
-      dv.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      ctx.fillStyle = dv; ctx.fillRect(0, 0, W, H);
-
-      // Sea floor dark band
-      const sfG = ctx.createLinearGradient(0, H * 0.82, 0, H);
-      sfG.addColorStop(0,   `rgba(${vR},${vGc},${vB},0)`);
-      sfG.addColorStop(0.5, `rgba(${vR},${vGc},${vB},${vigA * 0.62})`);
-      sfG.addColorStop(1,   `rgba(${vR},${vGc},${vB},${vigA * 0.95})`);
-      ctx.fillStyle = sfG; ctx.fillRect(0, H * 0.82, W, H * 0.18);
-    },
-
-
-    // Bubble click detection
-    handleClick(x, y) {
-      let popped = false;
-      this._bubblesStore = this._bubblesStore.filter(b => {
-        const dist = Math.hypot(b.x - x, b.y - y);
-        if (dist <= b.r + 8) {
-          this._pops.push({ x: b.x, y: b.y, r: b.r, frame: 0, maxFrame: 22 });
-          popped = true;
-          return false; // remove bubble
-        }
-        return true;
-      });
-      return popped;
-    },
-
-    create(W, H) {
-      const b = {
-        type: 'bubble',
-        x: W * 0.04 + Math.random() * W * 0.92,
-        y: H + 18 + Math.random() * 60, // start below screen
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: -(0.40 + Math.random() * 1.10),
-        r: 2.5 + Math.random() * 11,
-        alpha: 0, maxAlpha: 0.12 + Math.random() * 0.22,
-        sw: Math.random() * Math.PI * 2,
-        swAmp: 0.6 + Math.random() * 1.4,
-        swSpd: 0.015 + Math.random() * 0.022,
-        life: 0,
-        popped: false,
-      };
-      this._bubblesStore.push(b);
-      return b;
-    },
-
-    draw(ctx, p) {
-      if (p.popped) return;
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      // Main bubble
-      ctx.strokeStyle = 'rgba(160, 240, 255, 0.90)';
-      ctx.lineWidth = Math.max(0.6, p.r * 0.08);
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-      // Inner shimmer fill
-      const bg = ctx.createRadialGradient(p.x - p.r * 0.3, p.y - p.r * 0.3, 0, p.x, p.y, p.r);
-      bg.addColorStop(0, 'rgba(255,255,255,0.14)');
-      bg.addColorStop(0.6, 'rgba(180,245,255,0.06)');
-      bg.addColorStop(1, 'rgba(80,195,240,0)');
-      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      // Highlight specular
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.beginPath(); ctx.arc(p.x - p.r * 0.30, p.y - p.r * 0.32, p.r * 0.22, 0, Math.PI * 2); ctx.fill();
-      if (p.r > 6) {
-        ctx.fillStyle = 'rgba(200,245,255,0.28)';
-        ctx.beginPath(); ctx.arc(p.x + p.r * 0.18, p.y + p.r * 0.22, p.r * 0.10, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-    },
-
-    update(p, W, H) {
-      if (p.popped) return false;
-      p.life++; p.sw += p.swSpd;
-      p.x += p.vx + Math.sin(p.sw) * p.swAmp;
-      p.y += p.vy;
-      // Gentle x clamp
-      if (p.x < p.r) p.x = p.r;
-      if (p.x > W - p.r) p.x = W - p.r;
-      // Fade in at bottom, fade out at top
-      const fadeIn = Math.min(1, p.life / 15);
-      const fadeOut = p.y < H * 0.08 ? Math.max(0, (p.y - (-p.r)) / (H * 0.08)) : 1;
-      p.alpha = p.maxAlpha * fadeIn * fadeOut;
-      const alive = p.y > -p.r - 10;
-      if (!alive) this._bubblesStore = this._bubblesStore.filter(b => b !== p);
-      return alive;
-    },
-  },
-
-  classic: null,
-
-  // ── SNOW — Complete Rework: Premium Winter Scene ─────────────────────────
-  // Time-aware: MORNING (blue-grey dawn, light purple aurora hints),
-  //             AFTERNOON (crisp bright white, blue sky),
-  //             EVENING (golden hour on snow, warm edges),
-  //             NIGHT (deep navy, full aurora, frozen silence).
-  // ── SNOW — Cinematic atmospheric winter ───────────────────────────────────
-  // Reference: MORNING=icy pale blue + diffused cloud haze + sparkles,
-  // AFTERNOON=saturated blue + volumetric cloud formations + dense snow,
-  // EVENING=deep violet-purple + warm aurora hint.
-  snow: {
-    max: 90, rate: 0.28,
-    _clouds: null, _sparkles: null, _aurora: null,
-
-    init(W, H) {
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-      _stars = []; _initStars(W, H, 75);
-      _stars.forEach(s => { s.y *= 0.58; });
-
-      // Volumetric cloud formations — soft drifting cloud masses
-      this._clouds = Array.from({ length: 10 }, (_, i) => ({
-        x: W * (i / 10) + rng(-W*0.05, W*0.05),
-        y: H * rng(0.08, 0.68),
-        rx: W * rng(0.12, 0.32),
-        ry: H * rng(0.06, 0.16),
-        alpha: rng(0.06, 0.22),
-        phase: rng(0, Math.PI * 2),
-        spd: rng(0.003, 0.008),
-        drift: rng(0.04, 0.14),
-      }));
-
-      // Sparkle/ice-crystal shimmer field
-      this._sparkles = Array.from({ length: 110 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H * 0.90,
-        r: 0.28 + Math.random() * 1.65,
-        baseAlpha: 0.06 + Math.random() * 0.50,
-        phase: Math.random() * Math.PI * 2,
-        spd: 0.015 + Math.random() * 0.038,
-      }));
-
-      // Aurora ribbons for evening/night
-      this._aurora = Array.from({ length: 4 }, (_, i) => ({
-        phase: i * 1.6, spd: 0.005 + i * 0.003,
-        hue: 200 + i * 40,
-        y: H * (0.05 + i * 0.07),
-        amp: H * (0.04 + i * 0.01),
-        alpha: 0,
-      }));
-    },
-
-    drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend = _getSmoothBlend();
-      const t = _frame * 0.010;
-
-      // ── 1. Sky gradient — precisely matched to reference ─────────────────
-      // MORNING: icy pale blue (top=cool blue, bottom=near-white)
-      // AFTERNOON: saturated medium-blue cinematic sky
-      // EVENING: deep violet-purple (reference is clearly purple not orange)
-      // NIGHT: near-black with moonlit blue hints
-      const SKY = {
-        MORNING:   { t:[ 88,128,185], m:[135,178,222], b:[182,212,242] },
-        AFTERNOON: { t:[ 12, 35, 98], m:[ 28, 65,148], b:[ 55,105,198] },
-        EVENING:   { t:[ 14,  6, 48], m:[ 32, 10, 82], b:[ 62, 18,132] },
-        NIGHT:     { t:[  3,  5, 18], m:[  7, 10, 32], b:[ 12, 17, 50] },
-      };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.48, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
-
-      // ── 2. Stars (night + faint morning) ────────────────────────────────
-      if (period === 'NIGHT' || period === 'MORNING') {
-        const sA = period === 'NIGHT' ? 1.0 : 0.32;
-        _stars.forEach(s => {
-          s.twinklePhase += s.twinkleSpd;
-          const a = s.alpha * sA * (0.35 + 0.65 * Math.abs(Math.sin(s.twinklePhase)));
-          ctx.save(); ctx.globalAlpha = a;
-          ctx.fillStyle = 'rgba(215,228,255,1)';
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.80, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        });
-      }
-
-      // ── 3. Signature period glow ─────────────────────────────────────────
-      // MORNING: diffused white-silver center glow (sun behind cloud)
-      if (period === 'MORNING') {
-        // Crisp winter dawn — pale golden east horizon, icy blue overhead
-        const mg = ctx.createRadialGradient(W*0.75, H*0.75, 0, W*0.75, H*0.75, W*0.80);
-        mg.addColorStop(0,    'rgba(255,228,208,0.58)');
-        mg.addColorStop(0.12, 'rgba(215,195,238,0.35)');
-        mg.addColorStop(0.36, 'rgba(162,175,225,0.15)');
-        mg.addColorStop(1,    'rgba(95,118,198,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
-        // Blue-white icy sky diffusion from above
-        const ms = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.82);
-        ms.addColorStop(0,    'rgba(158,202,252,0.45)');
-        ms.addColorStop(0.42, 'rgba(122,168,235,0.18)');
-        ms.addColorStop(1,    'rgba(68,112,202,0)');
-        ctx.fillStyle = ms; ctx.fillRect(0, 0, W, H*0.70);
-        // Snow field luminance rising from below
-        const mf = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.75);
-        mf.addColorStop(0,    'rgba(230,240,255,0.58)');
-        mf.addColorStop(0.40, 'rgba(195,215,250,0.24)');
-        mf.addColorStop(1,    'rgba(132,165,225,0)');
-        ctx.fillStyle = mf; ctx.fillRect(0, H*0.52, W, H*0.48);
-      }
-      // AFTERNOON: blazing winter noon — brilliant ice-blue sky, dazzling sun
-      if (period === 'AFTERNOON') {
-        const pulse = 0.88 + 0.12 * Math.sin(t * 0.80);
-        // Sun disc — sharp, high in sky
-        const ag = ctx.createRadialGradient(W*0.62, H*0.08, 0, W*0.62, H*0.08, W*0.42);
-        ag.addColorStop(0,    `rgba(255,255,240,${0.88 * pulse})`);
-        ag.addColorStop(0.05, `rgba(240,252,255,${0.60 * pulse})`);
-        ag.addColorStop(0.18, `rgba(185,215,252,${0.28 * pulse})`);
-        ag.addColorStop(0.42, `rgba(105,158,235,${0.10 * pulse})`);
-        ag.addColorStop(1,    'rgba(30,72,175,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H*0.50);
-        // Rich cobalt-blue sky ceiling
-        const ag2 = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.85);
-        ag2.addColorStop(0,    `rgba(12,58,162,${0.38 * pulse})`);
-        ag2.addColorStop(0.52, 'rgba(8,35,118,0.12)');
-        ag2.addColorStop(1,    'rgba(3,12,62,0)');
-        ctx.fillStyle = ag2; ctx.fillRect(0, 0, W, H*0.65);
-        // Blinding white snow field reflection
-        const ab = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.82);
-        ab.addColorStop(0,    `rgba(248,252,255,${0.60 * pulse})`);
-        ab.addColorStop(0.38, `rgba(210,228,255,${0.24 * pulse})`);
-        ab.addColorStop(1,    'rgba(128,172,235,0)');
-        ctx.fillStyle = ab; ctx.fillRect(0, H*0.48, W, H*0.52);
-      }
-      // EVENING: violet-aurora twilight — sky turns lilac, cold wind, deep dusk
-      if (period === 'EVENING') {
-        // Deep indigo-violet upper sky — the signature aurora press
-        const eg = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.70);
-        eg.addColorStop(0,    'rgba(128,48,205,0.45)');
-        eg.addColorStop(0.42, 'rgba(75,18,145,0.18)');
-        eg.addColorStop(1,    'rgba(38,4,82,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, 0, W, H*0.75);
-        // Purple-rose lower bloom — snow catching last light
-        const ep = ctx.createRadialGradient(W*0.50, H*0.82, 0, W*0.50, H*0.82, W*0.72);
-        ep.addColorStop(0,    'rgba(208,112,235,0.52)');
-        ep.addColorStop(0.22, 'rgba(168,58,205,0.28)');
-        ep.addColorStop(0.50, 'rgba(118,22,158,0.12)');
-        ep.addColorStop(1,    'rgba(58,4,92,0)');
-        ctx.fillStyle = ep; ctx.fillRect(0, H*0.35, W, H*0.65);
-        // Rose-pink warm horizon line on snow
-        const eh = ctx.createRadialGradient(W*0.50, H*0.90, 0, W*0.50, H*0.90, W*0.55);
-        eh.addColorStop(0,    'rgba(255,138,195,0.42)');
-        eh.addColorStop(0.30, 'rgba(218,72,158,0.18)');
-        eh.addColorStop(1,    'rgba(128,15,95,0)');
-        ctx.fillStyle = eh; ctx.fillRect(0, H*0.58, W, H*0.42);
-      }
-      // NIGHT: moonlit glow
-      if (period === 'NIGHT') {
-        const mx = W*0.72, my = H*0.08;
-        const ng = ctx.createRadialGradient(mx, my, 0, mx, my, W*0.32);
-        ng.addColorStop(0,  'rgba(230,242,255,0.28)');
-        ng.addColorStop(0.4,'rgba(175,208,252,0.11)');
-        ng.addColorStop(1,  'rgba(120,168,235,0)');
-        ctx.fillStyle = ng; ctx.fillRect(0, 0, W, H*0.45);
-        // Moon disc
-        ctx.fillStyle = 'rgba(242,248,255,0.88)';
-        ctx.beginPath(); ctx.arc(mx, my, Math.min(W,H)*0.032, 0, Math.PI*2); ctx.fill();
-        // Crescent cutout
-        ctx.fillStyle = `rgba(${8+4},${12+10},${38+20},1)`;
-        ctx.beginPath(); ctx.arc(mx + Math.min(W,H)*0.016, my - Math.min(W,H)*0.005, Math.min(W,H)*0.028, 0, Math.PI*2); ctx.fill();
-      }
-
-      // ── 4. Aurora Borealis (evening + night) ────────────────────────────
-      const auroraVis = period === 'NIGHT' ? 0.85 : period === 'EVENING' ? 0.55 : 0;
-      if (auroraVis > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'screen';
-        this._aurora.forEach(au => {
-          au.phase += au.spd;
-          au.alpha = auroraVis * (0.055 + 0.04 * Math.sin(au.phase * 0.65));
-          const pts = [];
-          for (let xi = 0; xi <= W; xi += W / 32)
-            pts.push({ x: xi, y: au.y + Math.sin(xi/W*Math.PI*3.2 + au.phase)*au.amp + Math.sin(xi/W*Math.PI*5.8 + au.phase*1.4)*au.amp*0.35 });
-          const auH = H * 0.088;
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, pts[0].y);
-          pts.forEach((p,i) => { if (i > 0) ctx.lineTo(p.x, p.y); });
-          ctx.lineTo(W, pts[pts.length-1].y + auH); ctx.lineTo(0, pts[0].y + auH); ctx.closePath();
-          const ag = ctx.createLinearGradient(0, au.y - au.amp, 0, au.y + au.amp + auH);
-          ag.addColorStop(0,    `hsla(${au.hue},88%,68%,0)`);
-          ag.addColorStop(0.35, `hsla(${au.hue},88%,68%,${au.alpha * 2.2})`);
-          ag.addColorStop(0.65, `hsla(${au.hue+35},85%,62%,${au.alpha * 1.5})`);
-          ag.addColorStop(1,    `hsla(${au.hue},80%,58%,0)`);
-          ctx.fillStyle = ag; ctx.fill();
-        });
-        ctx.restore();
-      }
-
-      // ── 5. Volumetric cloud formations ────────────────────────────────────
-      // Reference shows billowing cloud masses especially in MORNING/AFTERNOON
-      const cloudVis = { MORNING:1.2, AFTERNOON:0.90, EVENING:0.50, NIGHT:0.25 }[period] || 0.8;
-      const [cR,cGc,cB] = period === 'EVENING' ? [200,160,240] : period === 'NIGHT' ? [120,148,210] : [245,250,255];
-      this._clouds.forEach(cl => {
-        cl.x += cl.drift;
-        cl.phase += cl.spd;
-        if (cl.x > W + cl.rx * 2) cl.x = -cl.rx * 2;
-        const pulse = 0.70 + 0.30 * Math.sin(cl.phase);
-        const ca = cl.alpha * pulse * cloudVis;
-        if (ca < 0.01) return;
-        const cg = ctx.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, Math.max(cl.rx, cl.ry));
-        cg.addColorStop(0,    `rgba(${cR},${cGc},${cB},${ca})`);
-        cg.addColorStop(0.55, `rgba(${cR},${cGc},${cB},${ca * 0.55})`);
-        cg.addColorStop(1,    `rgba(${cR},${cGc},${cB},0)`);
-        ctx.save();
-        ctx.scale(1, cl.ry / cl.rx);
-        ctx.fillStyle = cg;
-        ctx.beginPath(); ctx.arc(cl.x, cl.y * (cl.rx / cl.ry), cl.rx, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-      });
-
-      // ── 6. Sparkle / ice-crystal shimmer ────────────────────────────────
-      const sparkVis = { MORNING:0.50, AFTERNOON:0.88, EVENING:0.30, NIGHT:0.22 }[period] || 0.5;
-      const [spR,spGc,spB] = period === 'EVENING' ? [212,168,255] : period === 'NIGHT' ? [175,205,255] : [222,238,255];
-      this._sparkles.forEach(s => {
-        s.phase += s.spd;
-        const sa = s.baseAlpha * sparkVis * (0.28 + 0.72 * Math.abs(Math.sin(s.phase)));
-        if (sa < 0.012) return;
-        ctx.save(); ctx.globalAlpha = sa;
-        if (s.r > 1.1) {
-          ctx.strokeStyle = `rgba(${spR},${spGc},${spB},1)`;
-          ctx.lineWidth = s.r * 0.36; ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(s.x - s.r*2.6, s.y); ctx.lineTo(s.x + s.r*2.6, s.y);
-          ctx.moveTo(s.x, s.y - s.r*2.6); ctx.lineTo(s.x, s.y + s.r*2.6);
-          ctx.stroke();
-        }
-        ctx.fillStyle = `rgba(${spR},${spGc},${spB},1)`;
-        ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(0.3, s.r * 0.50), 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      });
-
-      // ── 7. Snow ground plane — atmospheric, horizon-based ───────────────
-      const groundY = H * 0.78;
-      const [gR,gGc,gB] = period === 'EVENING' ? [65,28,105] : period === 'NIGHT' ? [22,32,72] : [215,228,248];
-      const gAlpha = period === 'EVENING' ? 0.85 : period === 'NIGHT' ? 0.90 : 0.92;
-      const gndG = ctx.createLinearGradient(0, groundY, 0, H);
-      gndG.addColorStop(0,    `rgba(${gR},${gGc},${gB},${gAlpha})`);
-      gndG.addColorStop(0.45, `rgba(${gR},${gGc},${gB},${Math.min(1,gAlpha+0.05)})`);
-      gndG.addColorStop(1,    `rgba(${Math.max(0,gR-10)},${Math.max(0,gGc-8)},${Math.max(0,gB-5)},${Math.min(1,gAlpha+0.08)})`);
-      ctx.fillStyle = gndG; ctx.fillRect(0, groundY, W, H - groundY);
-
-      // Horizon glow line
-      const [hR,hGc,hB] = period === 'EVENING' ? [165,88,235] : period === 'NIGHT' ? [88,125,215] : [198,225,255];
-      const hGlow = ctx.createLinearGradient(0, groundY-6, 0, groundY+6);
-      hGlow.addColorStop(0,   `rgba(${hR},${hGc},${hB},0)`);
-      hGlow.addColorStop(0.5, `rgba(${hR},${hGc},${hB},0.45)`);
-      hGlow.addColorStop(1,   `rgba(${hR},${hGc},${hB},0)`);
-      ctx.fillStyle = hGlow; ctx.fillRect(0, groundY-10, W, 20);
-
-      // ── 8. Cinematic edge vignette ────────────────────────────────────────
-      const [vR,vGc,vB] = period === 'EVENING' ? [6,2,18] : period === 'NIGHT' ? [2,3,12] : [4,8,22];
-      const vigA = period === 'NIGHT' ? 0.75 : period === 'EVENING' ? 0.68 : 0.50;
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.28, W*0.5, H*0.5, W*0.88);
-      vigRad.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(0.62, `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
-    },
-
-    create(W) {
-      const big = Math.random() < 0.14;
-      return {
-        x: Math.random() * W * 1.35 - W * 0.17,
-        y: -18 - Math.random() * 45,
-        vx: -0.35 + Math.random() * 0.70,
-        vy: big ? (0.28 + Math.random() * 0.42) : (0.48 + Math.random() * 0.90),
-        r:  big ? (4.0  + Math.random() * 5.5)  : (0.9  + Math.random() * 3.0),
-        alpha: big ? (0.30 + Math.random() * 0.22) : (0.52 + Math.random() * 0.38),
-        rot: Math.random() * Math.PI * 2,
-        rotV: (Math.random() - 0.5) * 0.028,
-        sw: Math.random() * Math.PI * 2,
-        swAmp: 0.45 + Math.random() * 1.40, swSpd: 0.008 + Math.random() * 0.016,
-        windResp: 0.35 + Math.random() * 1.1,
-        isBig: big,
-      };
-    },
-
-    draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.isBig) {
-        // 6-arm snowflake
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-        ctx.strokeStyle = 'rgba(218,232,255,0.92)';
-        ctx.lineWidth = Math.max(0.5, p.r * 0.14); ctx.lineCap = 'round';
-        for (let i = 0; i < 6; i++) {
-          ctx.save(); ctx.rotate(i * Math.PI / 3);
-          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -p.r);
-          ctx.moveTo(0, -p.r * 0.40); ctx.lineTo(-p.r * 0.24, -p.r * 0.60);
-          ctx.moveTo(0, -p.r * 0.40); ctx.lineTo( p.r * 0.24, -p.r * 0.60);
-          ctx.moveTo(0, -p.r * 0.70); ctx.lineTo(-p.r * 0.20, -p.r * 0.88);
-          ctx.moveTo(0, -p.r * 0.70); ctx.lineTo( p.r * 0.20, -p.r * 0.88);
-          ctx.stroke(); ctx.restore();
-        }
-        ctx.restore();
-      } else {
-        // Small snowflake circle with cross
-        ctx.strokeStyle = 'rgba(215,228,255,0.85)';
-        ctx.lineWidth = Math.max(0.4, p.r * 0.18); ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.42, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(p.x - p.r, p.y); ctx.lineTo(p.x + p.r, p.y);
-        ctx.moveTo(p.x, p.y - p.r); ctx.lineTo(p.x, p.y + p.r);
-        ctx.stroke();
-      }
-      ctx.restore();
-    },
-
-    update(p, W, H) {
-      const wind = Math.sin(_frame * 0.004) * 1.2 + Math.sin(_frame * 0.019) * 0.48;
-      p.sw += p.swSpd; p.rot += p.rotV;
-      p.x += p.vx + Math.sin(p.sw) * p.swAmp + wind * p.windResp;
-      p.y += p.vy;
-      if (p.x < -35) p.x = W + 22;
-      if (p.x > W + 35) p.x = -22;
-      return p.y < H + 25;
-    },
-  },
-
-  // ── SUNSET → "CHROMAWAVE" — Retro Drive / Vaporwave Scene ───────────────
-  // Renamed. Premium retro-wave aesthetic: perspective grid, neon horizon,
-  // palm silhouettes, scanlines, time-of-day sky.
-  // ── SUNSET REMOVED — replaced by Rain + Dreamscape ──────────────────────
-
-  // ── ANIME — Premium Manga × Anime Scene ─────────────────────────────────
-  // Stylized: anime sky with painterly clouds, manga speed-line bursts,
-  // floating sakura/energy petals, halftone texture, light flares.
-  // Time-of-day: day/evening/night anime atmosphere.
-  anime: {
-    max: 35, rate: 0.085,
-    _stars: null, _clouds: null, _halftone: null, _flares: null, _speedBursts: null,
-
-    init(W, H) {
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-
-      this._stars = Array.from({ length: 65 }, () => ({
-        x: rng(0, W), y: rng(0, H * 0.88),
-        r: 0.5 + rng(0, 1.5), alpha: 0.20 + rng(0, 0.70),
-        phase: rng(0, Math.PI * 2), spd: 0.015 + rng(0, 0.030),
-      }));
-
-      // Anime-style chunky clouds
-      this._clouds = Array.from({ length: 6 }, (_, i) => ({
-        x: W * (0.06 + i * 0.16) + rng(-W * 0.06, W * 0.06),
-        y: H * (0.08 + rng(0, 0.25)),
-        w: W * (0.09 + rng(0, 0.12)),
-        phase: rng(0, Math.PI * 2),
-        spd: 0.004 + rng(0, 0.004),
-        alpha: 0.60 + rng(0, 0.32),
-        hue: 220 + rng(0, 80)|0,
-        puffs: Math.floor(rng(3, 7)),
-      }));
-
-      // Halftone dot grid (pre-computed positions)
-      this._halftone = [];
-      const dot_spacing = Math.max(10, Math.min(W, H) * 0.022);
-      for (let hx = dot_spacing; hx < W; hx += dot_spacing) {
-        for (let hy = dot_spacing; hy < H; hy += dot_spacing) {
-          this._halftone.push({ x: hx, y: hy, r: dot_spacing * 0.18 });
-        }
-      }
-
-      // Light lens flares
-      this._flares = Array.from({ length: 5 }, (_, i) => ({
-        x: W * (0.12 + i * 0.19),
-        y: H * (0.08 + rng(0, 0.20)),
-        r: W * (0.012 + rng(0, 0.022)),
-        hue: [220, 280, 180, 320, 60][i],
-        phase: rng(0, Math.PI * 2),
-        spd: rng(0.012, 0.025),
-      }));
-
-      // Occasional speed-line burst events
-      this._speedBursts = [];
-      this._nextBurst = 200 + Math.floor(rng(0, 300));
-    },
-
-    drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend = _getSmoothBlend();
-      const t = _frame * 0.013;
-
-      // ── 1. Anime sky ─────────────────────────────────────────────────────
-      const SKY = {
-        MORNING:   { t:[60,40,105], m:[130,80,170], b:[210,130,200] },
-        AFTERNOON: { t:[22,18,68],  m:[80, 45,145], b:[180,100,200] },
-        EVENING:   { t:[18,10,48],  m:[55, 22,100], b:[175,68, 145] },
-        NIGHT:     { t:[5, 3, 22],  m:[18, 8, 52],  b:[45, 22, 88]  },
-      };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,   _rgb(sk.t));
-      skyG.addColorStop(0.45, _rgb(sk.m));
-      skyG.addColorStop(1,   _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
-
-      // ── 2. Stars ─────────────────────────────────────────────────────────
-      const starVis = period === 'NIGHT' ? 1.0 : period === 'EVENING' ? 0.50 : 0.15;
-      this._stars.forEach(s => {
-        s.phase += s.spd;
-        const a = s.alpha * starVis * (0.3 + 0.7 * Math.sin(s.phase));
-        if (a < 0.02) return;
-        ctx.save(); ctx.globalAlpha = a;
-        ctx.fillStyle = 'rgba(225,210,255,1)';
-        ctx.beginPath();
-        // Star cross shape
-        const sr = s.r;
-        ctx.moveTo(s.x - sr * 0.5, s.y); ctx.lineTo(s.x + sr * 0.5, s.y);
-        ctx.moveTo(s.x, s.y - sr * 0.5); ctx.lineTo(s.x, s.y + sr * 0.5);
-        ctx.strokeStyle = 'rgba(225,210,255,1)'; ctx.lineWidth = sr * 0.4; ctx.stroke();
-        ctx.fillStyle = 'rgba(255,245,255,0.90)';
-        ctx.beginPath(); ctx.arc(s.x, s.y, sr * 0.25, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-      });
-
-      // ── 3. Halftone texture ──────────────────────────────────────────────
-      const htA = period === 'NIGHT' ? 0.055 : 0.035;
-      ctx.save(); ctx.globalAlpha = htA;
-      ctx.fillStyle = period === 'NIGHT' ? 'rgba(150,100,200,1)' : 'rgba(180,130,220,1)';
-      this._halftone.forEach(d => {
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
-      });
-      ctx.restore();
-
-      // ── 4. Anime clouds (chunky, cel-shaded style) ────────────────────────
-      if (period !== 'NIGHT') {
-        const cloudLight = period === 'MORNING' ? 85 : period === 'AFTERNOON' ? 92 : 75;
-        const cloudAlphaScale = period === 'MORNING' ? 0.7 : 1.0;
-        this._clouds.forEach(c => {
-          c.phase += c.spd;
-          const pulse = 0.88 + 0.12 * Math.sin(c.phase);
-          const puffR = c.w / (c.puffs * 0.65);
-          ctx.save(); ctx.globalAlpha = c.alpha * pulse * cloudAlphaScale;
-
-          // Shadow layer
-          ctx.fillStyle = `hsla(${c.hue + 20},55%,${cloudLight - 22}%,0.35)`;
-          for (let pi = 0; pi < c.puffs; pi++) {
-            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
-            const py = c.y + puffR * (0.22 + 0.10 * Math.sin(pi * 1.3));
-            ctx.beginPath(); ctx.arc(px + puffR * 0.15, py + puffR * 0.18, puffR * (0.78 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.fill();
-          }
-          // Main cloud body
-          ctx.fillStyle = `hsla(${c.hue},${45 + (period === 'EVENING' ? 20 : 0)}%,${cloudLight}%,1)`;
-          for (let pi = 0; pi < c.puffs; pi++) {
-            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
-            const py = c.y + puffR * (0.18 + 0.08 * Math.sin(pi * 1.3));
-            ctx.beginPath(); ctx.arc(px, py, puffR * (0.85 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.fill();
-          }
-          // Outline (manga style)
-          ctx.strokeStyle = `hsla(${c.hue},40%,${cloudLight - 30}%,0.30)`;
-          ctx.lineWidth = 1.5;
-          for (let pi = 0; pi < c.puffs; pi++) {
-            const px = c.x + (pi - c.puffs * 0.5) * puffR * 1.15;
-            const py = c.y + puffR * (0.18 + 0.08 * Math.sin(pi * 1.3));
-            ctx.beginPath(); ctx.arc(px, py, puffR * (0.85 - pi * 0.04 + 0.04), 0, Math.PI * 2); ctx.stroke();
-          }
-          ctx.restore();
-        });
-      }
-
-      // ── 5. Lens flares ────────────────────────────────────────────────────
-      this._flares.forEach(fl => {
-        fl.phase += fl.spd;
-        const fa = (0.04 + 0.03 * Math.sin(fl.phase));
-        const fg = ctx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, fl.r * 3.5);
-        fg.addColorStop(0,    `hsla(${fl.hue},90%,82%,${fa * 3.5})`);
-        fg.addColorStop(0.35, `hsla(${fl.hue},82%,65%,${fa * 1.4})`);
-        fg.addColorStop(1,    `hsla(${fl.hue},72%,48%,0)`);
-        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r * 3.5, 0, Math.PI * 2); ctx.fill();
-        // Cross flare lines
-        ctx.save(); ctx.globalAlpha = fa * 2.5;
-        ctx.strokeStyle = `hsla(${fl.hue},88%,80%,1)`;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(fl.x - fl.r * 5, fl.y); ctx.lineTo(fl.x + fl.r * 5, fl.y);
-        ctx.moveTo(fl.x, fl.y - fl.r * 5); ctx.lineTo(fl.x, fl.y + fl.r * 5);
-        ctx.stroke(); ctx.restore();
-      });
-
-      // ── 6. Speed line burst (occasional dramatic effect) ──────────────────
-      if (_frame >= this._nextBurst) {
-        this._speedBursts.push({
-          x: W * (0.28 + Math.random() * 0.44),
-          y: H * (0.22 + Math.random() * 0.45),
-          frame: 0, maxFrame: 35,
-          hue: [280, 320, 200, 45, 180][Math.floor(Math.random() * 5)],
-          lines: Math.floor(18 + Math.random() * 16),
-          maxR: Math.min(W, H) * (0.28 + Math.random() * 0.22),
-        });
-        this._nextBurst = _frame + 240 + Math.floor(Math.random() * 360);
-      }
-      this._speedBursts = this._speedBursts.filter(sb => {
-        sb.frame++;
-        const prog = sb.frame / sb.maxFrame;
-        const a = prog < 0.3 ? prog / 0.3 : prog > 0.7 ? (1 - prog) / 0.3 : 1.0;
-        ctx.save(); ctx.globalAlpha = 0.18 * a;
-        for (let li = 0; li < sb.lines; li++) {
-          const ang = (li / sb.lines) * Math.PI * 2;
-          const r1 = sb.maxR * (0.32 + prog * 0.68) * (0.6 + Math.random() * 0.4);
-          const r2 = sb.maxR * (0.42 + prog * 0.58) * (0.7 + Math.random() * 0.3);
-          ctx.strokeStyle = `hsla(${sb.hue},88%,75%,1)`;
-          ctx.lineWidth = 0.8 + Math.random() * 1.2;
-          ctx.beginPath();
-          ctx.moveTo(sb.x + Math.cos(ang) * r1, sb.y + Math.sin(ang) * r1);
-          ctx.lineTo(sb.x + Math.cos(ang) * r2, sb.y + Math.sin(ang) * r2);
-          ctx.stroke();
-        }
-        ctx.restore();
-        return sb.frame < sb.maxFrame;
-      });
-
-      // ── 7. Vignette ───────────────────────────────────────────────────────
-      const vg = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.25, W * 0.5, H * 0.5, W * 0.78);
-      vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(0.72, 'rgba(0,0,0,0)');
-      vg.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-    },
-
-    create(W, H) {
-      const period = _getCanvasPeriod();
-      const r = Math.random();
-      if (r < 0.50) {
-        // Anime energy petal / fragment
-        const hues = period === 'NIGHT' ? [260,295,315,200,170] : [310,330,50,200,270];
-        return {
-          type: 'petal',
-          x: Math.random() * W * 1.3 - W * 0.15,
-          y: -20 - Math.random() * 60,
-          vx: (Math.random() - 0.5) * 2.0,
-          vy: 0.8 + Math.random() * 1.8,
-          rot: Math.random() * Math.PI * 2,
-          rotV: (Math.random() - 0.5) * 0.12,
-          sz: 3 + Math.random() * 8,
-          hue: hues[Math.floor(Math.random() * hues.length)],
-          alpha: 0, maxAlpha: 0.55 + Math.random() * 0.35,
-          life: 0, fadeIn: 10,
-          sw: Math.random() * Math.PI * 2,
-          swAmp: 1.2 + Math.random() * 2.8, swSpd: 0.014 + Math.random() * 0.022,
-        };
-      } else if (r < 0.78) {
-        // Sparkle burst
-        return {
-          type: 'sparkle',
-          x: Math.random() * W, y: Math.random() * H * 0.92,
-          r: 1.0 + Math.random() * 3.5,
-          hue: [220, 280, 320, 180, 55][Math.floor(Math.random() * 5)],
-          alpha: 0, maxAlpha: 0.62 + Math.random() * 0.32,
-          life: 0, fadeIn: 7, maxLife: 40 + Math.floor(Math.random() * 38),
-          vx: (Math.random() - 0.5) * 0.5, vy: -(0.08 + Math.random() * 0.35),
-        };
-      } else {
-        // Manga ink stroke (subtle)
-        return {
-          type: 'ink',
-          x: Math.random() * W, y: Math.random() * H * 0.85,
-          len: W * (0.03 + Math.random() * 0.07),
-          angle: (Math.random() - 0.5) * Math.PI * 0.4,
-          alpha: 0, maxAlpha: 0.12 + Math.random() * 0.14,
-          life: 0, fadeIn: 12, maxLife: 60 + Math.floor(Math.random() * 50),
-        };
-      }
-    },
-
-    draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'petal') {
-        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-        // Diamond / anime fragment shape
-        const s = p.sz;
-        ctx.fillStyle = `hsla(${p.hue},90%,72%,1)`;
-        ctx.beginPath();
-        ctx.moveTo(0, -s * 1.8); ctx.lineTo(s * 0.65, 0);
-        ctx.lineTo(0,  s * 1.8); ctx.lineTo(-s * 0.65, 0);
-        ctx.closePath(); ctx.fill();
-        // Inner highlight
-        ctx.fillStyle = `hsla(${p.hue + 20},95%,88%,0.55)`;
-        ctx.beginPath();
-        ctx.moveTo(0, -s * 1.0); ctx.lineTo(s * 0.28, -s * 0.2);
-        ctx.lineTo(0, s * 0.35); ctx.lineTo(-s * 0.28, -s * 0.2);
-        ctx.closePath(); ctx.fill();
-      } else if (p.type === 'sparkle') {
-        const s = p.r;
-        ctx.strokeStyle = `hsla(${p.hue},92%,80%,1)`; ctx.lineWidth = s * 0.45; ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.x - s * 2.8, p.y); ctx.lineTo(p.x + s * 2.8, p.y);
-        ctx.moveTo(p.x, p.y - s * 2.8); ctx.lineTo(p.x, p.y + s * 2.8);
-        ctx.moveTo(p.x - s * 1.8, p.y - s * 1.8); ctx.lineTo(p.x + s * 1.8, p.y + s * 1.8);
-        ctx.moveTo(p.x + s * 1.8, p.y - s * 1.8); ctx.lineTo(p.x - s * 1.8, p.y + s * 1.8);
-        ctx.stroke();
-      } else {
-        // Ink stroke
-        ctx.strokeStyle = 'rgba(180,140,210,1)';
-        ctx.lineWidth = 1.0; ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.x - Math.cos(p.angle) * p.len * 0.5, p.y - Math.sin(p.angle) * p.len * 0.5);
-        ctx.lineTo(p.x + Math.cos(p.angle) * p.len * 0.5, p.y + Math.sin(p.angle) * p.len * 0.5);
-        ctx.stroke();
-      }
-      ctx.restore();
-    },
-
-    update(p, W, H) {
-      p.life++;
-      if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; }
-      else { p.x += p.vx; }
-      p.y += p.vy || 0;
-      if (p.rot !== undefined) p.rot += p.rotV;
-      const fi = Math.min(1, p.life / p.fadeIn);
-      const fo = (p.maxLife && p.life > p.maxLife - 18) ? Math.max(0, (p.maxLife - p.life) / 18) : 1;
-      p.alpha = p.maxAlpha * fi * fo;
-      if (p.type === 'petal') return p.y < H + 40;
-      return p.life < p.maxLife;
-    },
-  },
-
-  // ── NEON CITY — Premium Cyberpunk City with Time-of-Day ─────────────────
-  // City skyline, neon signs, wet street reflections, moving traffic,
-  // rain streaks, moon/sun, animated billboard glow.
-  neon: {
-    max: 58, rate: 0.16,
-    _buildings: null, _signs: null, _cars: null, _rain: null, _stars: null, _moon: null,
-
-    init(W, H) {
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-
-      // City skyline: multiple building layers
-      this._buildings = Array.from({ length: 32 }, (_, i) => {
-        const layer = i < 10 ? 2 : i < 22 ? 1 : 0;
-        const bW = W * (rng(0.038, 0.085));
-        const bH = H * rng(0.18 + layer * 0.07, 0.52 + layer * 0.05);
-        return {
-          x: W * (i / 31) - bW * 0.4,
-          bW, bH,
-          baseY: H * (0.62 + layer * 0.02),
-          layer,
-          hue: rng(0, 1) < 0.5 ? rng(185, 220) : rng(270, 300),
-          windowsW: Math.floor(rng(2, 5)),
-          windowsH: Math.floor(rng(4, 10)),
-          phase: rng(0, Math.PI * 2),
-          antennaH: bH * rng(0, 0.18),
-        };
-      });
-
-      // Neon signs (animated glow elements on buildings)
-      this._signs = Array.from({ length: 12 }, (_, i) => ({
-        x: W * rng(0.05, 0.95),
-        y: H * rng(0.25, 0.60),
-        w: W * rng(0.03, 0.08),
-        h: H * rng(0.018, 0.040),
-        hue: [185, 280, 320, 55, 125, 0][i % 6],
-        phase: rng(0, Math.PI * 2),
-        spd: rng(0.03, 0.10),
-        on: Math.random() > 0.15, // some signs start flickering
-        flicker: Math.random() < 0.22,
-      }));
-
-      // Moving cars (light trails in street reflection zone)
-      this._cars = Array.from({ length: 7 }, (_, i) => ({
-        x: rng(-W * 0.3, W * 1.3),
-        y: H * (0.80 + rng(0, 0.06)),
-        speed: (rng(0, 1) < 0.5 ? 1 : -1) * rng(1.2, 3.5),
-        lane: i % 3,
-        hue: [185, 0, 55, 270, 120][i % 5],
-        sz: rng(W * 0.022, W * 0.040),
-        phase: rng(0, Math.PI * 2),
-      }));
-
-      this._stars = Array.from({ length: 55 }, () => ({
-        x: rng(0, W), y: rng(0, H * 0.62),
-        r: 0.4 + rng(0, 1.1), alpha: 0.15 + rng(0, 0.55),
-        phase: rng(0, Math.PI * 2), spd: 0.015 + rng(0, 0.025),
-      }));
-
-      this._moon = { x: W * 0.80, y: H * 0.12, r: Math.min(W, H) * 0.036, phase: 0 };
-    },
-
-    drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend = _getSmoothBlend();
-      const t = _frame * 0.014;
-
-      // ── 1. Base gradient — precisely matched to reference ───────────────
-      // MORNING: soft blue atmospheric (reference: cool pale blue, subtle)
-      // AFTERNOON: deep cold navy (reference: very dark midnight with neon points)
-      // EVENING: ultra-deep purple-black + hot magenta right corner
-      // NIGHT: pure near-black with deep indigo
-      const SKY = {
-        MORNING:   { t:[ 18, 32, 98],  m:[ 32, 55,138],   b:[ 48, 78,168] },
-        AFTERNOON: { t:[  2,  3, 18],  m:[  3,  6, 36],   b:[  6, 12, 58] },
-        EVENING:   { t:[  1,  0,  6],  m:[  3,  1, 15],   b:[  6,  2, 24] },
-        NIGHT:     { t:[  0,  0,  4],  m:[  1,  0,  9],   b:[  3,  1, 18] },
-      };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.48, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
-
-      // ── 2. Signature period glow ─────────────────────────────────────────
-      // MORNING: pre-dawn cold blue — city sleeping, cyan horizon glow rising
-      if (period === 'MORNING') {
-        const pulse = 0.86 + 0.14 * Math.sin(t * 1.2);
-        // Cyan horizon dawn line — city neon mixes with dawn
-        const mg = ctx.createRadialGradient(W*0.50, H*0.82, 0, W*0.50, H*0.82, W*0.88);
-        mg.addColorStop(0,    `rgba(48,215,255,${0.55 * pulse})`);
-        mg.addColorStop(0.18, `rgba(22,165,245,${0.30 * pulse})`);
-        mg.addColorStop(0.42, `rgba(8,105,210,${0.12 * pulse})`);
-        mg.addColorStop(1,    'rgba(2,38,145,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, H*0.28, W, H*0.72);
-        // Cold steel-blue upper atmosphere
-        const ms = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.78);
-        ms.addColorStop(0,    `rgba(22,55,168,${0.38 * pulse})`);
-        ms.addColorStop(0.48, 'rgba(10,28,108,0.14)');
-        ms.addColorStop(1,    'rgba(4,10,55,0)');
-        ctx.fillStyle = ms; ctx.fillRect(0, 0, W, H*0.65);
-        // Faint left-edge neon bleed — city still on
-        const ml = ctx.createRadialGradient(W*0.08, H*0.52, 0, W*0.08, H*0.52, W*0.38);
-        ml.addColorStop(0,    `rgba(0,198,255,${0.22 * pulse})`);
-        ml.addColorStop(0.45, 'rgba(0,128,215,0.08)');
-        ml.addColorStop(1,    'rgba(0,48,145,0)');
-        ctx.fillStyle = ml; ctx.fillRect(0, 0, W*0.48, H);
-      }
-      // AFTERNOON: neon city at its coldest — full dark sky, electric sign field
-      if (period === 'AFTERNOON') {
-        const pulse = 0.82 + 0.18 * Math.sin(t * 1.8);
-        // Center billboard cyan star — the dominant sign
-        const ap1 = ctx.createRadialGradient(W*0.50, H*0.46, 0, W*0.50, H*0.46, W*0.42);
-        ap1.addColorStop(0,    `rgba(255,255,255,${0.88 * pulse})`);
-        ap1.addColorStop(0.05, `rgba(128,252,255,${0.68 * pulse})`);
-        ap1.addColorStop(0.18, `rgba(48,205,255,${0.30 * pulse})`);
-        ap1.addColorStop(0.48, `rgba(12,118,215,${0.11 * pulse})`);
-        ap1.addColorStop(1,    'rgba(2,38,112,0)');
-        ctx.fillStyle = ap1; ctx.fillRect(0, 0, W, H);
-        // Left magenta sign burst
-        const ap2 = ctx.createRadialGradient(W*0.22, H*0.58, 0, W*0.22, H*0.58, W*0.32);
-        ap2.addColorStop(0,    `rgba(255,255,255,${0.70 * pulse})`);
-        ap2.addColorStop(0.05, `rgba(255,42,225,${0.58 * pulse})`);
-        ap2.addColorStop(0.20, `rgba(215,8,195,${0.25 * pulse})`);
-        ap2.addColorStop(1,    'rgba(82,0,82,0)');
-        ctx.fillStyle = ap2; ctx.fillRect(0, 0, W*0.56, H);
-        // Right hot-pink sign burst
-        const ap3 = ctx.createRadialGradient(W*0.80, H*0.55, 0, W*0.80, H*0.55, W*0.32);
-        ap3.addColorStop(0,    `rgba(255,255,255,${0.68 * pulse})`);
-        ap3.addColorStop(0.05, `rgba(255,18,208,${0.55 * pulse})`);
-        ap3.addColorStop(0.20, `rgba(210,4,185,${0.23 * pulse})`);
-        ap3.addColorStop(1,    'rgba(78,0,75,0)');
-        ctx.fillStyle = ap3; ctx.fillRect(W*0.44, 0, W*0.56, H);
-        // Deep indigo-black crushing from top
-        const aph = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.75);
-        aph.addColorStop(0,    `rgba(28,18,138,${0.38 * pulse})`);
-        aph.addColorStop(0.52, 'rgba(15,8,88,0.14)');
-        aph.addColorStop(1,    'rgba(5,2,35,0)');
-        ctx.fillStyle = aph; ctx.fillRect(0, 0, W, H*0.68);
-      }
-      // EVENING: neon city blazing — hot magenta & cyan war across the sky
-      if (period === 'EVENING') {
-        const pulse = 0.84 + 0.16 * Math.sin(t * 1.4);
-        // Dominant hot-magenta upper right (the signature neon sunset)
-        const eg = ctx.createRadialGradient(W*0.88, H*0.06, 0, W*0.88, H*0.06, W*0.72);
-        eg.addColorStop(0,    `rgba(255,18,175,${0.88 * pulse})`);
-        eg.addColorStop(0.07, `rgba(245,6,145,${0.65 * pulse})`);
-        eg.addColorStop(0.20, `rgba(205,2,115,${0.35 * pulse})`);
-        eg.addColorStop(0.44, `rgba(145,0,85,${0.15 * pulse})`);
-        eg.addColorStop(1,    'rgba(45,0,30,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, 0, W, H);
-        // Counter cyan-blue lower-left — wet reflections
-        const ep = ctx.createRadialGradient(0, H*0.90, 0, 0, H*0.90, W*0.62);
-        ep.addColorStop(0,    `rgba(0,185,255,${0.38 * pulse})`);
-        ep.addColorStop(0.40, 'rgba(0,95,215,0.14)');
-        ep.addColorStop(1,    'rgba(0,28,105,0)');
-        ctx.fillStyle = ep; ctx.fillRect(0, H*0.38, W*0.58, H*0.62);
-        // Deep indigo from top — sky pressing dark between signs
-        const et = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.68);
-        et.addColorStop(0,    'rgba(4,2,22,0.58)');
-        et.addColorStop(0.48, 'rgba(2,1,12,0.20)');
-        et.addColorStop(1,    'rgba(0,0,4,0)');
-        ctx.fillStyle = et; ctx.fillRect(0, 0, W, H*0.68);
-      }
-      // NIGHT: pure neon city dark — sign bleeds paint the sky
-      if (period === 'NIGHT') {
-        const pulse = 0.78 + 0.22 * Math.sin(t * 1.6);
-        // Left cyan edge bleed
-        const ncL = ctx.createRadialGradient(0, H*0.52, 0, 0, H*0.52, W*0.52);
-        ncL.addColorStop(0,    `rgba(0,215,255,${0.32 * pulse})`);
-        ncL.addColorStop(0.38, 'rgba(0,145,222,0.12)');
-        ncL.addColorStop(1,    'rgba(0,52,148,0)');
-        ctx.fillStyle = ncL; ctx.fillRect(0, 0, W*0.55, H);
-        // Right magenta edge bleed
-        const ncR = ctx.createRadialGradient(W, H*0.50, 0, W, H*0.50, W*0.52);
-        ncR.addColorStop(0,    `rgba(228,0,205,${0.28 * pulse})`);
-        ncR.addColorStop(0.38, 'rgba(175,0,162,0.10)');
-        ncR.addColorStop(1,    'rgba(65,0,58,0)');
-        ctx.fillStyle = ncR; ctx.fillRect(W*0.45, 0, W*0.55, H);
-        // Subtle center bottom green sign
-        const ncC = ctx.createRadialGradient(W*0.50, H*0.88, 0, W*0.50, H*0.88, W*0.38);
-        ncC.addColorStop(0,    `rgba(0,255,128,${0.18 * pulse})`);
-        ncC.addColorStop(0.42, 'rgba(0,185,88,0.06)');
-        ncC.addColorStop(1,    'rgba(0,62,28,0)');
-        ctx.fillStyle = ncC; ctx.fillRect(W*0.18, H*0.52, W*0.64, H*0.48);
-      }
-
-      // ── 3. Sparkle / star field — matches reference density ─────────────
-      const sparkVis = { MORNING:0.42, AFTERNOON:1.0, EVENING:0.25, NIGHT:0.62 }[period] || 0.5;
-      const [spR,spGc,spB] = period === 'AFTERNOON' ? [158,248,255] : period === 'EVENING' ? [255,48,212] : [165,205,255];
-      for (let si = 0; si < 120; si++) {
-        const sx = W * ((si * 0.0809 + Math.sin(t*0.18 + si*0.42)*0.008 + 1.0) % 1.0);
-        const sy = H * ((si * 0.1618 + Math.cos(t*0.14 + si*0.55)*0.006 + 1.0) % 1.0);
-        const sr = 0.25 + 1.55 * ((si*0.382) % 1.0);
-        const phase = t * 1.8 + si * 2.42;
-        const sa = (0.05 + 0.60 * ((si*0.618) % 1.0)) * sparkVis * (0.28 + 0.72 * Math.abs(Math.sin(phase)));
-        if (sa < 0.015) continue;
-        ctx.save(); ctx.globalAlpha = sa;
-        if (sr > 1.0) {
-          // Star cross sparkle
-          ctx.strokeStyle = `rgba(${spR},${spGc},${spB},1)`;
-          ctx.lineWidth = sr * 0.38; ctx.lineCap = 'round';
-          const sl = sr * 2.8;
-          ctx.beginPath();
-          ctx.moveTo(sx - sl, sy); ctx.lineTo(sx + sl, sy);
-          ctx.moveTo(sx, sy - sl); ctx.lineTo(sx, sy + sl);
-          ctx.stroke();
-        }
-        ctx.fillStyle = `rgba(${spR},${spGc},${spB},1)`;
-        ctx.beginPath(); ctx.arc(sx, sy, Math.max(0.28, sr * 0.48), 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      }
-
-      // ── 4. Reflective ground plane ───────────────────────────────────────
-      const horizY = H * 0.74;
-      const [gR,gGc,gB] = period === 'EVENING' ? [35,2,25] : period === 'MORNING' ? [12,22,65] : [4,6,28];
-      const gndG = ctx.createLinearGradient(0, horizY, 0, H);
-      gndG.addColorStop(0,    `rgba(${gR},${gGc},${gB},0.88)`);
-      gndG.addColorStop(0.40, `rgba(${gR},${gGc},${gB},0.95)`);
-      gndG.addColorStop(1,    `rgba(${Math.max(0,gR-4)},${Math.max(0,gGc-2)},${Math.max(0,gB-4)},0.99)`);
-      ctx.fillStyle = gndG; ctx.fillRect(0, horizY, W, H - horizY);
-
-      // Horizontal neon shimmer strips (the "reflective street" in reference)
-      const [hR,hGc,hB] = period === 'EVENING' ? [255,28,178] : period === 'MORNING' ? [88,205,255] : [98,215,255];
-      for (let ri = 0; ri < 8; ri++) {
-        const ry = horizY + (H - horizY) * (0.04 + ri * 0.13);
-        const rw = W * (0.08 + 0.05 * Math.sin(t*0.22 + ri * 1.38));
-        const rx = W * (0.20 + ri * 0.076) + Math.cos(t*0.15 + ri*0.85) * W * 0.045;
-        const rAlpha = (0.18 + 0.08 * Math.abs(Math.sin(t*0.65 + ri))) * (period === 'NIGHT' ? 1.65 : period === 'AFTERNOON' ? 1.45 : 0.85);
-        ctx.globalAlpha = rAlpha;
-        const rG = ctx.createLinearGradient(rx - rw, ry, rx + rw, ry);
-        rG.addColorStop(0,   `rgba(${hR},${hGc},${hB},0)`);
-        rG.addColorStop(0.5, `rgba(${hR},${hGc},${hB},1)`);
-        rG.addColorStop(1,   `rgba(${hR},${hGc},${hB},0)`);
-        ctx.fillStyle = rG; ctx.fillRect(rx - rw, ry - 1.2, rw*2, 2.6);
-      }
-      ctx.globalAlpha = 1;
-
-      // Horizon luminance band
-      const hGlow = ctx.createLinearGradient(0, horizY - 6, 0, horizY + 6);
-      hGlow.addColorStop(0,   `rgba(${hR},${hGc},${hB},0)`);
-      hGlow.addColorStop(0.5, `rgba(${hR},${hGc},${hB},0.48)`);
-      hGlow.addColorStop(1,   `rgba(${hR},${hGc},${hB},0)`);
-      ctx.fillStyle = hGlow; ctx.fillRect(0, horizY - 10, W, 20);
-
-      // ── 5. Edge cinematic vignette ───────────────────────────────────────
-      const vigA = period === 'NIGHT' ? 0.88 : 0.72;
-      const [vR,vGc,vB] = period === 'EVENING' ? [4,0,4] : period === 'MORNING' ? [2,3,14] : [1,1,8];
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.22, W*0.5, H*0.5, W*0.92);
-      vigRad.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(0.62, `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
-    },
-
-
-    create(W, H) {
-      const period = _getCanvasPeriod();
-      const r = Math.random();
-      if (r < 0.52) {
-        // Rain streak
-        return {
-          type: 'rain',
-          x: Math.random() * W * 1.2 - W * 0.10,
-          y: -20 - Math.random() * H * 0.35,
-          vx: -0.8 + Math.random() * 0.4, vy: 5.5 + Math.random() * 4.0,
-          len: 8 + Math.random() * 22,
-          alpha: 0.08 + Math.random() * 0.18,
-          hue: 185 + Math.floor(Math.random() * 80),
-        };
-      } else if (r < 0.78) {
-        // Neon particle / spark
-        return {
-          type: 'spark',
-          x: Math.random() * W, y: H * 0.20 + Math.random() * H * 0.65,
-          vx: (Math.random() - 0.5) * 1.8, vy: -(0.35 + Math.random() * 1.2),
-          r: 0.8 + Math.random() * 3.5,
-          hue: [185, 280, 320, 55, 125, 0][Math.floor(Math.random() * 6)],
-          alpha: 0, maxAlpha: 0.72 + Math.random() * 0.25,
-          life: 0, fadeIn: 6, maxLife: 38 + Math.floor(Math.random() * 42),
-          sw: Math.random() * Math.PI * 2, swAmp: 0.6 + Math.random() * 1.4, swSpd: 0.022 + Math.random() * 0.030,
-        };
-      } else {
-        // Neon sign reflection ripple in street
-        return {
-          type: 'ripple',
-          x: Math.random() * W,
-          y: H * (0.82 + Math.random() * 0.12),
-          r: 0, maxR: 15 + Math.random() * 28,
-          alpha: 0.18 + Math.random() * 0.22,
-          hue: [185, 270, 320][Math.floor(Math.random() * 3)],
-          life: 0, maxLife: 40 + Math.floor(Math.random() * 30),
-        };
-      }
-    },
-
-    draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'rain') {
-        ctx.strokeStyle = `hsla(${p.hue},70%,72%,1)`;
-        ctx.lineWidth = 0.7; ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + p.vx * 2.5, p.y + p.len);
-        ctx.stroke();
-        // Street splash if near bottom
-      } else if (p.type === 'spark') {
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8);
-        g.addColorStop(0,   `hsla(${p.hue},100%,88%,1)`);
-        g.addColorStop(0.40, `hsla(${p.hue},92%,68%,0.65)`);
-        g.addColorStop(1,   `hsla(${p.hue},80%,45%,0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2); ctx.fill();
-      } else if (p.type === 'ripple') {
-        ctx.strokeStyle = `hsla(${p.hue},85%,65%,1)`;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
-    },
-
-    update(p, W, H) {
-      if (p.type === 'rain') {
-        p.x += p.vx; p.y += p.vy;
-        return p.y < H + 20;
-      } else if (p.type === 'spark') {
-        p.life++; p.sw += p.swSpd;
-        p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = p.life > p.maxLife - 14 ? Math.max(0, (p.maxLife - p.life) / 14) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        return p.life < p.maxLife;
-      } else if (p.type === 'ripple') {
-        p.life++; p.r += p.maxR / p.maxLife;
-        p.alpha = (1 - p.life / p.maxLife) * (0.18 + Math.random() * 0.22);
-        return p.life < p.maxLife;
-      }
-      return false;
-    },
-  },
-
-  // ── COZY — Premium Cozy Interior Scene ───────────────────────────────────
-  // Indoor warmth: wooden floor, fireplace, rain on window, steam,
-  // bookshelf, candle flicker, soft lamplight. Pure cozy.
+  // ── COZY — Rebuilt: Amber warmth + fireplace + soft rain + wool textures ────
+  // The most soul-forward theme. Feels like a safe, warm room on a grey day.
+  // Every detail reinforces the cozy feeling: soft candlelight, drifting dust,
+  // the sound-you-can-almost-hear of rain streaking cold glass on the left.
+  // Morning: fresh golden light bars from a left window. Afternoon: rich amber
+  // room light. Evening: fireplace dominates, orange-red. Night: candlelight
+  // only — intimate, still, a few last embers.
   cozy: {
     max: 28, rate: 0.065,
     _fireParticles: null, _steam: null, _rainDrops: null, _books: null, _candles: null,
+    // Extra: floating wool/yarn particles and slow rising heat shimmer points
+    _woolDrifts: null,
 
     init(W, H) {
       const rng = (lo, hi) => lo + Math.random() * (hi - lo);
 
       // Fireplace flame base
-      this._fireParticles = Array.from({ length: 18 }, (_, i) => ({
-        x: W * 0.5 + (i - 9) * W * 0.012,
-        y: H * 0.88,
-        vx: (rng(-1,1)) * 0.45,
-        vy: -(0.5 + rng(0, 0.8)),
-        r: rng(6, 20),
-        hue: rng(10, 40)|0,
-        life: rng(0, 40)|0, maxLife: 35 + rng(0, 25)|0,
+      this._fireParticles = Array.from({ length: 22 }, (_, i) => ({
+        x: W*0.5 + (i-11)*W*0.011,
+        y: H*0.88,
+        vx: (rng(-1,1))*0.45,
+        vy: -(0.5 + rng(0,0.8)),
+        r: rng(6,20)|0,
+        hue: rng(10,42)|0,
+        life: rng(0,40)|0, maxLife: 35+rng(0,25)|0,
         alpha: 0,
       }));
 
-      // Steam wisps from mug (bottom center-right)
+      // Steam wisps from mug
       this._steam = Array.from({ length: 5 }, (_, i) => ({
-        x: W * (0.65 + i * 0.008), y: H * 0.88,
-        vy: -(0.28 + rng(0, 0.25)),
-        vx: (rng(-1,1)) * 0.15,
-        r: 3 + rng(0, 4),
-        alpha: 0, maxAlpha: 0.22 + rng(0, 0.14),
-        life: rng(0, 30)|0, maxLife: 55 + rng(0, 35)|0,
-        sw: rng(0, Math.PI * 2), swAmp: rng(2, 6), swSpd: rng(0.012, 0.025),
+        x: W*(0.65+i*0.007), y: H*0.88,
+        vy: -(0.28+rng(0,0.25)), vx: (rng(-1,1))*0.14,
+        r: 3+rng(0,4), alpha: 0, maxAlpha: 0.22+rng(0,0.13),
+        life: rng(0,30)|0, maxLife: 55+rng(0,35)|0,
+        sw: rng(0,Math.PI*2), swAmp: rng(2,6), swSpd: rng(0.012,0.025),
       }));
 
-      // Window rain streaks (outside the window)
-      this._rainDrops = Array.from({ length: 30 }, () => ({
-        x: W * (0.04 + rng(0, 0.22)),
-        y: H * rng(0.08, 0.55),
-        len: H * rng(0.03, 0.09),
-        speed: H * rng(0.003, 0.009),
-        alpha: rng(0.08, 0.25),
-        width: rng(0.6, 1.2),
+      // Window rain streaks (outside left window)
+      this._rainDrops = Array.from({ length: 38 }, () => ({
+        x: W*(0.02 + rng(0,0.26)),
+        y: H*rng(0.06,0.58),
+        len: H*rng(0.028,0.095),
+        speed: H*rng(0.003,0.009),
+        alpha: rng(0.07,0.24),
+        width: rng(0.5,1.2),
+        // Slight diagonal
+        dx: rng(0.02,0.06),
       }));
 
       // Bookshelf items
       this._books = Array.from({ length: 14 }, (_, i) => ({
-        x: W * (0.04 + i * (W * 0.22 / 14) / W),
-        w: W * rng(0.010, 0.018),
-        h: H * (0.065 + rng(0, 0.050)),
-        hue: [22, 42, 180, 350, 120, 60, 280, 18, 200, 320, 85, 38, 155, 240][i],
-        lean: rng(-0.12, 0.12),
+        x: W*(0.04 + i*(W*0.22/14)/W),
+        w: W*rng(0.010,0.018),
+        h: H*(0.065+rng(0,0.050)),
+        hue: [22,42,180,350,120,60,280,18,200,320,85,38,155,240][i],
+        lean: rng(-0.12,0.12),
       }));
 
       // Candles
       this._candles = [
-        { x: W * 0.18, y: H * 0.74, phase: 0, spd: 0.08, h: H * 0.032, r: W * 0.008 },
-        { x: W * 0.82, y: H * 0.78, phase: 1.5, spd: 0.065, h: H * 0.025, r: W * 0.006 },
+        { x:W*0.18, y:H*0.74, phase:0,   spd:0.080, h:H*0.032, r:W*0.008 },
+        { x:W*0.82, y:H*0.78, phase:1.5, spd:0.065, h:H*0.025, r:W*0.006 },
       ];
+
+      // Wool/fluff drifts — slow-floating warm dust motes with fuzzy edges
+      this._woolDrifts = Array.from({ length: 20 }, () => ({
+        x: Math.random()*W, y: H*(0.15+Math.random()*0.70),
+        vx: (Math.random()-0.5)*0.12, vy: -(0.02+Math.random()*0.08),
+        r: 1.2+Math.random()*3.5,
+        hue: 28+Math.random()*22|0,
+        alpha: 0, maxAlpha: 0.18+Math.random()*0.24,
+        life: Math.random()*180|0, maxLife: 260+Math.random()*180|0,
+        sw: Math.random()*Math.PI*2, swAmp: 0.3+Math.random()*0.8, swSpd: 0.005+Math.random()*0.009,
+      }));
     },
 
     drawBackground(ctx, W, H) {
@@ -2424,16 +781,12 @@ const CFG = {
       const blend = _getSmoothBlend();
       const t = _frame * 0.014;
 
-      // ── 1. Base warm gradient — matched to reference ─────────────────────
-      // MORNING: warm golden amber (light through warm room)
-      // AFTERNOON: saturated deep orange (rich warm interior light)
-      // EVENING: rich flaming orange-ember tones (fireplace dominant)
-      // NIGHT: very dark warm brown with ember glow
+      // ── 1. Base warm gradient ─────────────────────────────────────────────
       const SKY = {
-        MORNING:   { t:[62, 38, 12],  m:[95, 58, 18],  b:[132, 82, 24] },
-        AFTERNOON: { t:[48, 22,  4],  m:[ 82, 38,  8],  b:[122, 55, 10] },
-        EVENING:   { t:[38, 12,  2],  m:[ 68, 22,  3],  b:[108, 35,  4] },
-        NIGHT:     { t:[18,  6,  0],  m:[ 32, 10,  1],  b:[ 52, 16,  2] },
+        MORNING:   { t:[58,34,10],  m:[92,54,16],  b:[128,78,22] },
+        AFTERNOON: { t:[45,20, 3],  m:[78,35, 7],  b:[118,52, 9] },
+        EVENING:   { t:[36,10, 2],  m:[65,19, 2],  b:[105,32, 3] },
+        NIGHT:     { t:[15, 5, 0],  m:[28, 8, 1],  b:[ 48,14, 1] },
       };
       const sk = _blendPeriodColors(SKY, blend);
       const skyG = ctx.createLinearGradient(0, 0, 0, H);
@@ -2442,258 +795,217 @@ const CFG = {
       skyG.addColorStop(1,    _rgb(sk.b));
       ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
 
-      // ── 2. Fireplace / hearth dominant glow — the emotional core ─────────
-      const fireFlicker = 0.82 + 0.18 * Math.sin(t * 5.8) + 0.08 * Math.sin(t * 11.5);
-      const fireAmt = { MORNING:0.52, AFTERNOON:0.65, EVENING:0.82, NIGHT:0.72 }[period] || 0.6;
-      // Bottom central fire bloom
-      const fg = ctx.createRadialGradient(W*0.50, H*1.05, 0, W*0.50, H*1.05, W*0.78);
-      fg.addColorStop(0,    `rgba(255,175,42,${fireAmt * fireFlicker * 1.10})`);
-      fg.addColorStop(0.12, `rgba(248,115,18,${fireAmt * fireFlicker * 0.75})`);
-      fg.addColorStop(0.30, `rgba(215,68,8,${fireAmt * fireFlicker * 0.38})`);
-      fg.addColorStop(0.55, `rgba(160,35,4,${fireAmt * fireFlicker * 0.15})`);
-      fg.addColorStop(1,    'rgba(62,8,0,0)');
-      ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+      // ── 2. Fireplace / hearth glow — the emotional core ──────────────────
+      const fireFlicker = 0.82 + 0.18*Math.sin(t*5.8) + 0.08*Math.sin(t*11.5);
+      const fireAmt = {MORNING:0.50,AFTERNOON:0.62,EVENING:0.85,NIGHT:0.70}[period]||0.6;
+      const fg = ctx.createRadialGradient(W*0.50, H*1.06, 0, W*0.50, H*1.06, W*0.80);
+      fg.addColorStop(0,    `rgba(255,172,40,${fireAmt*fireFlicker*1.12})`);
+      fg.addColorStop(0.12, `rgba(248,112,16,${fireAmt*fireFlicker*0.75})`);
+      fg.addColorStop(0.30, `rgba(212,65,7,${fireAmt*fireFlicker*0.38})`);
+      fg.addColorStop(0.56, `rgba(158,32,3,${fireAmt*fireFlicker*0.15})`);
+      fg.addColorStop(1,    'rgba(60,7,0,0)');
+      ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
 
-      // ── 3. Left amber warmth edge — lamp / side window light ─────────────
-      const lampAmt = { MORNING:0.55, AFTERNOON:0.42, EVENING:0.35, NIGHT:0.45 }[period] || 0.4;
-      const lg = ctx.createRadialGradient(0, H*0.38, 0, 0, H*0.38, W*0.65);
-      lg.addColorStop(0,    `rgba(255,192,65,${lampAmt * fireFlicker})`);
-      lg.addColorStop(0.18, `rgba(235,145,35,${lampAmt * 0.48 * fireFlicker})`);
-      lg.addColorStop(0.45, `rgba(195,88,12,${lampAmt * 0.18 * fireFlicker})`);
-      lg.addColorStop(1,    'rgba(80,22,2,0)');
-      ctx.fillStyle = lg; ctx.fillRect(0, 0, W*0.68, H);
+      // ── 3. Diagonal gradient — room depth and warmth distribution ────────
+      // Creates the feeling of uneven lamplight across a wood-paneled room
+      const diagWarm = ctx.createLinearGradient(0, 0, W*0.75, H);
+      diagWarm.addColorStop(0,   `rgba(255,188,60,${0.22*fireFlicker})`);
+      diagWarm.addColorStop(0.40,`rgba(218,105,18,${0.10*fireFlicker})`);
+      diagWarm.addColorStop(1,   `rgba(140,42,4,0)`);
+      ctx.fillStyle=diagWarm; ctx.fillRect(0,0,W*0.80,H);
 
-      // ── 4. MORNING signature: vertical window light bars ──────────────────
-      // This is the key visual from the reference — vertical golden bars
-      if (period === 'MORNING') {
-        // Golden morning sunlight pouring through window — warm, hopeful
-        // Left window light bars — sun shafts through curtains
-        const barCount = 5;
-        for (let bi = 0; bi < barCount; bi++) {
-          const bx = W * (0.06 + bi * 0.048) + Math.sin(t*0.25+bi)*W*0.008;
-          const bw = W * (0.010 + 0.006 * Math.sin(t*0.28+bi));
-          const ba = (0.38 + 0.16 * Math.sin(t*0.45 + bi*0.78)) * fireFlicker;
-          const barG = ctx.createLinearGradient(bx - bw, 0, bx + bw, 0);
-          barG.addColorStop(0,   'rgba(255,225,128,0)');
-          barG.addColorStop(0.5, `rgba(255,235,145,${ba})`);
-          barG.addColorStop(1,   'rgba(255,225,128,0)');
-          ctx.fillStyle = barG; ctx.fillRect(bx - bw*2.5, 0, bw*5, H);
+      // ── 4. Left amber edge — lamp glow from window side ──────────────────
+      const lampAmt={MORNING:0.55,AFTERNOON:0.42,EVENING:0.35,NIGHT:0.45}[period]||0.4;
+      const lg=ctx.createRadialGradient(0,H*0.38,0,0,H*0.38,W*0.68);
+      lg.addColorStop(0,    `rgba(255,195,65,${lampAmt*fireFlicker})`);
+      lg.addColorStop(0.18, `rgba(235,145,35,${lampAmt*0.50*fireFlicker})`);
+      lg.addColorStop(0.45, `rgba(192,85,12,${lampAmt*0.18*fireFlicker})`);
+      lg.addColorStop(1,    'rgba(78,20,2,0)');
+      ctx.fillStyle=lg; ctx.fillRect(0,0,W*0.70,H);
+
+      // ── 5. MORNING: golden window light bars ─────────────────────────────
+      if (period==='MORNING') {
+        const barCount=5;
+        for (let bi=0;bi<barCount;bi++) {
+          const bx=W*(0.06+bi*0.048)+Math.sin(t*0.25+bi)*W*0.008;
+          const bw=W*(0.010+0.006*Math.sin(t*0.28+bi));
+          const ba=(0.38+0.16*Math.sin(t*0.45+bi*0.78))*fireFlicker;
+          const barG=ctx.createLinearGradient(bx-bw,0,bx+bw,0);
+          barG.addColorStop(0,'rgba(255,225,128,0)'); barG.addColorStop(0.5,`rgba(255,235,145,${ba})`); barG.addColorStop(1,'rgba(255,225,128,0)');
+          ctx.fillStyle=barG; ctx.fillRect(bx-bw*2.5,0,bw*5,H);
         }
-        // Wide warm golden window glow — top left (window source)
-        const mng = ctx.createRadialGradient(W*0.14, H*0.05, 0, W*0.14, H*0.05, W*0.68);
-        mng.addColorStop(0,    'rgba(255,232,138,0.55)');
-        mng.addColorStop(0.28, 'rgba(248,185,62,0.28)');
-        mng.addColorStop(0.55, 'rgba(215,118,18,0.11)');
-        mng.addColorStop(1,    'rgba(155,62,4,0)');
-        ctx.fillStyle = mng; ctx.fillRect(0, 0, W*0.72, H*0.80);
-        // Warm fill across scene — golden morning atmosphere
-        const mg2 = ctx.createRadialGradient(W*0.50, H*0.40, 0, W*0.50, H*0.40, W*0.75);
-        mg2.addColorStop(0,    'rgba(255,200,105,0.22)');
-        mg2.addColorStop(0.50, 'rgba(235,145,35,0.09)');
-        mg2.addColorStop(1,    'rgba(165,72,4,0)');
-        ctx.fillStyle = mg2; ctx.fillRect(0, 0, W, H);
+        const mng=ctx.createRadialGradient(W*0.14,H*0.05,0,W*0.14,H*0.05,W*0.70);
+        mng.addColorStop(0,'rgba(255,232,138,0.55)'); mng.addColorStop(0.28,'rgba(248,182,60,0.28)');
+        mng.addColorStop(0.55,'rgba(212,115,16,0.11)'); mng.addColorStop(1,'rgba(152,60,4,0)');
+        ctx.fillStyle=mng; ctx.fillRect(0,0,W*0.74,H*0.82);
+        const mg2=ctx.createRadialGradient(W*0.50,H*0.40,0,W*0.50,H*0.40,W*0.78);
+        mg2.addColorStop(0,'rgba(255,200,102,0.22)'); mg2.addColorStop(0.50,'rgba(232,142,32,0.09)'); mg2.addColorStop(1,'rgba(162,70,3,0)');
+        ctx.fillStyle=mg2; ctx.fillRect(0,0,W,H);
       }
 
-      // ── 5. AFTERNOON: rich warm amber light — full cozy atmosphere
-      if (period === 'AFTERNOON') {
-        const pulse = 0.90 + 0.10 * Math.sin(t * 0.65);
-        // Rich bottom amber fill — hearth warmth dominant
-        const ag = ctx.createRadialGradient(W*0.50, H*0.72, 0, W*0.50, H*0.72, W*0.88);
-        ag.addColorStop(0,    `rgba(255,128,18,${0.55 * pulse})`);
-        ag.addColorStop(0.28, `rgba(228,82,6,${0.26 * pulse})`);
-        ag.addColorStop(0.62, `rgba(172,38,2,${0.10 * pulse})`);
-        ag.addColorStop(1,    'rgba(62,8,0,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H);
-        // Warm upper amber ceiling — enclosed cozy room
-        const at = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.72);
-        at.addColorStop(0,    `rgba(188,88,15,${0.28 * pulse})`);
-        at.addColorStop(0.50, 'rgba(138,45,5,0.10)');
-        at.addColorStop(1,    'rgba(65,15,1,0)');
-        ctx.fillStyle = at; ctx.fillRect(0, 0, W, H*0.60);
-        // Right edge warm bleed
-        const ar = ctx.createRadialGradient(W, H*0.50, 0, W, H*0.50, W*0.52);
-        ar.addColorStop(0,    `rgba(255,105,12,${0.32 * pulse})`);
-        ar.addColorStop(0.45, 'rgba(188,48,4,0.12)');
-        ar.addColorStop(1,    'rgba(72,10,0,0)');
-        ctx.fillStyle = ar; ctx.fillRect(W*0.45, 0, W*0.55, H);
+      // ── 6. AFTERNOON: rich amber room ────────────────────────────────────
+      if (period==='AFTERNOON') {
+        const pulse=0.90+0.10*Math.sin(t*0.65);
+        const ag=ctx.createRadialGradient(W*0.50,H*0.72,0,W*0.50,H*0.72,W*0.90);
+        ag.addColorStop(0,`rgba(255,125,16,${0.55*pulse})`); ag.addColorStop(0.28,`rgba(225,80,5,${0.26*pulse})`);
+        ag.addColorStop(0.62,`rgba(170,36,1,${0.10*pulse})`); ag.addColorStop(1,'rgba(60,7,0,0)');
+        ctx.fillStyle=ag; ctx.fillRect(0,0,W,H);
+        const diagAft=ctx.createLinearGradient(W,0,0,H);
+        diagAft.addColorStop(0,`rgba(255,105,10,${0.25*pulse})`); diagAft.addColorStop(0.5,`rgba(200,55,3,${0.10*pulse})`); diagAft.addColorStop(1,'rgba(80,15,0,0)');
+        ctx.fillStyle=diagAft; ctx.fillRect(0,0,W,H);
+        const at=ctx.createRadialGradient(W*0.50,0,0,W*0.50,0,W*0.75);
+        at.addColorStop(0,`rgba(185,85,14,${0.28*pulse})`); at.addColorStop(0.50,'rgba(135,42,4,0.10)'); at.addColorStop(1,'rgba(62,12,1,0)');
+        ctx.fillStyle=at; ctx.fillRect(0,0,W,H*0.62);
       }
 
-      // ── 6. EVENING: deep ember evening — cinematic fireplace dominates everything
-      if (period === 'EVENING') {
-        // Dominant fireplace ember glow — strong bottom-center heat
-        const ef = ctx.createRadialGradient(W*0.50, H*0.92, 0, W*0.50, H*0.92, W*0.88);
-        ef.addColorStop(0,    `rgba(255,92,8,${0.72 * fireFlicker})`);
-        ef.addColorStop(0.12, `rgba(242,62,4,${0.45 * fireFlicker})`);
-        ef.addColorStop(0.35, `rgba(192,32,2,${0.20 * fireFlicker})`);
-        ef.addColorStop(1,    'rgba(72,6,0,0)');
-        ctx.fillStyle = ef; ctx.fillRect(0, H*0.28, W, H*0.72);
-        // Rising heat from fireplace — upper warmth
-        const eh = ctx.createRadialGradient(W*0.50, H*0.18, 0, W*0.50, H*0.18, W*0.78);
-        eh.addColorStop(0,    `rgba(248,102,12,${0.38 * fireFlicker})`);
-        eh.addColorStop(0.30, `rgba(205,55,5,${0.16 * fireFlicker})`);
-        eh.addColorStop(1,    'rgba(80,12,1,0)');
-        ctx.fillStyle = eh; ctx.fillRect(0, 0, W, H*0.65);
-        // Left amber edge — candle counterpoint
-        const el = ctx.createRadialGradient(0, H*0.48, 0, 0, H*0.48, W*0.48);
-        el.addColorStop(0,    `rgba(255,138,22,${0.28 * fireFlicker})`);
-        el.addColorStop(0.45, 'rgba(188,72,5,0.10)');
-        el.addColorStop(1,    'rgba(65,15,1,0)');
-        ctx.fillStyle = el; ctx.fillRect(0, 0, W*0.55, H);
+      // ── 7. EVENING: fireplace dominates — cinematic ───────────────────────
+      if (period==='EVENING') {
+        const ef=ctx.createRadialGradient(W*0.50,H*0.93,0,W*0.50,H*0.93,W*0.90);
+        ef.addColorStop(0,`rgba(255,90,7,${0.74*fireFlicker})`); ef.addColorStop(0.12,`rgba(240,60,3,${0.46*fireFlicker})`);
+        ef.addColorStop(0.36,`rgba(188,30,2,${0.20*fireFlicker})`); ef.addColorStop(1,'rgba(70,5,0,0)');
+        ctx.fillStyle=ef; ctx.fillRect(0,H*0.26,W,H*0.74);
+        // Diagonal heat wave from bottom-center to upper-left
+        const heatDiag=ctx.createLinearGradient(W*0.5,H,0,H*0.2);
+        heatDiag.addColorStop(0,`rgba(255,65,5,${0.35*fireFlicker})`); heatDiag.addColorStop(0.45,`rgba(200,30,2,${0.12*fireFlicker})`); heatDiag.addColorStop(1,'rgba(80,8,0,0)');
+        ctx.fillStyle=heatDiag; ctx.fillRect(0,0,W,H);
+        const eh=ctx.createRadialGradient(W*0.50,H*0.18,0,W*0.50,H*0.18,W*0.80);
+        eh.addColorStop(0,`rgba(245,100,10,${0.38*fireFlicker})`); eh.addColorStop(0.30,`rgba(200,52,4,${0.16*fireFlicker})`); eh.addColorStop(1,'rgba(78,10,1,0)');
+        ctx.fillStyle=eh; ctx.fillRect(0,0,W,H*0.68);
+        const el=ctx.createRadialGradient(0,H*0.48,0,0,H*0.48,W*0.50);
+        el.addColorStop(0,`rgba(255,138,20,${0.30*fireFlicker})`); el.addColorStop(0.45,'rgba(185,70,4,0.10)'); el.addColorStop(1,'rgba(62,14,1,0)');
+        ctx.fillStyle=el; ctx.fillRect(0,0,W*0.58,H);
       }
 
-      // ── 7. NIGHT: deep dark — only candles and dying embers remain
-      if (period === 'NIGHT') {
-        // Faint ember glow from low fireplace — almost burned out
-        const nf = ctx.createRadialGradient(W*0.50, H*0.96, 0, W*0.50, H*0.96, W*0.62);
-        nf.addColorStop(0,    `rgba(215,65,5,${0.42 * fireFlicker})`);
-        nf.addColorStop(0.22, `rgba(172,32,2,${0.20 * fireFlicker})`);
-        nf.addColorStop(1,    'rgba(55,5,0,0)');
-        ctx.fillStyle = nf; ctx.fillRect(0, H*0.50, W, H*0.50);
-        // Candle glow — left side, warm amber point
-        const nc = ctx.createRadialGradient(W*0.18, H*0.24, 0, W*0.18, H*0.24, W*0.38);
-        nc.addColorStop(0,    `rgba(255,188,68,${0.42 * fireFlicker})`);
-        nc.addColorStop(0.18, `rgba(242,135,25,${0.22 * fireFlicker})`);
-        nc.addColorStop(1,    'rgba(105,32,4,0)');
-        ctx.fillStyle = nc; ctx.fillRect(0, 0, W*0.50, H*0.72);
+      // ── 8. NIGHT: candlelight intimacy ───────────────────────────────────
+      if (period==='NIGHT') {
+        // Dying embers glow — faint orange from floor center
+        const nf=ctx.createRadialGradient(W*0.50,H*0.97,0,W*0.50,H*0.97,W*0.64);
+        nf.addColorStop(0,`rgba(210,62,4,${0.42*fireFlicker})`); nf.addColorStop(0.22,`rgba(168,30,2,${0.20*fireFlicker})`); nf.addColorStop(1,'rgba(52,4,0,0)');
+        ctx.fillStyle=nf; ctx.fillRect(0,H*0.52,W,H*0.48);
+        // Left candle — warm amber point light
+        const nc=ctx.createRadialGradient(W*0.18,H*0.24,0,W*0.18,H*0.24,W*0.40);
+        nc.addColorStop(0,`rgba(255,188,65,${0.44*fireFlicker})`); nc.addColorStop(0.18,`rgba(240,132,22,${0.22*fireFlicker})`); nc.addColorStop(1,'rgba(102,30,3,0)');
+        ctx.fillStyle=nc; ctx.fillRect(0,0,W*0.52,H*0.74);
         // Right candle — second warm point
-        const nc2 = ctx.createRadialGradient(W*0.82, H*0.28, 0, W*0.82, H*0.28, W*0.32);
-        nc2.addColorStop(0,    `rgba(255,165,45,${0.35 * fireFlicker})`);
-        nc2.addColorStop(0.22, `rgba(228,105,15,${0.16 * fireFlicker})`);
-        nc2.addColorStop(1,    'rgba(88,22,2,0)');
-        ctx.fillStyle = nc2; ctx.fillRect(W*0.50, 0, W*0.50, H*0.72);
+        const nc2=ctx.createRadialGradient(W*0.82,H*0.28,0,W*0.82,H*0.28,W*0.34);
+        nc2.addColorStop(0,`rgba(255,162,42,${0.36*fireFlicker})`); nc2.addColorStop(0.22,`rgba(225,102,14,${0.17*fireFlicker})`); nc2.addColorStop(1,'rgba(85,20,2,0)');
+        ctx.fillStyle=nc2; ctx.fillRect(W*0.52,0,W*0.48,H*0.74);
+        // Diagonal from candles — soft room gradient
+        const nightDiag=ctx.createLinearGradient(W*0.18,H*0.20,W*0.80,H*0.35);
+        nightDiag.addColorStop(0,`rgba(255,172,52,${0.15*fireFlicker})`); nightDiag.addColorStop(0.5,`rgba(185,85,12,${0.06*fireFlicker})`); nightDiag.addColorStop(1,'rgba(80,20,2,0)');
+        ctx.fillStyle=nightDiag; ctx.fillRect(0,0,W,H*0.60);
       }
 
-      // ── 8. Floating warm dust motes ──────────────────────────────────────
-      const dustVis = { MORNING:0.55, AFTERNOON:0.42, EVENING:0.62, NIGHT:0.78 }[period] || 0.5;
-      for (let di = 0; di < 32; di++) {
-        const dx = W * ((di * 0.0809 + Math.sin(t*0.22+di*0.62)*0.018 + 1.0) % 1.0);
-        const dy = H * ((di * 0.1618 + Math.cos(t*0.16+di*0.44)*0.014 + 1.0) % 1.0);
-        const dr = 0.5 + 1.8 * ((di * 0.382) % 1.0);
-        const da = (0.04 + 0.18 * ((di*0.618) % 1.0)) * dustVis * (0.35 + 0.65 * Math.abs(Math.sin(t*1.2+di*1.85)));
-        if (da < 0.012) continue;
-        const dg = ctx.createRadialGradient(dx, dy, 0, dx, dy, dr * 2.8);
-        dg.addColorStop(0,   `rgba(255,208,115,${da * 3.2})`);
-        dg.addColorStop(0.45, `rgba(242,172,65,${da * 1.4})`);
-        dg.addColorStop(1,   'rgba(215,128,28,0)');
-        ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(dx, dy, dr * 2.8, 0, Math.PI*2); ctx.fill();
+      // ── 9. Floating warm dust motes ──────────────────────────────────────
+      const dustVis={MORNING:0.52,AFTERNOON:0.40,EVENING:0.65,NIGHT:0.82}[period]||0.5;
+      for (let di=0;di<32;di++) {
+        const dx=W*((di*0.0809+Math.sin(t*0.22+di*0.62)*0.018+1.0)%1.0);
+        const dy=H*((di*0.1618+Math.cos(t*0.16+di*0.44)*0.014+1.0)%1.0);
+        const dr=0.5+1.8*((di*0.382)%1.0);
+        const da=(0.04+0.18*((di*0.618)%1.0))*dustVis*(0.35+0.65*Math.abs(Math.sin(t*1.2+di*1.85)));
+        if (da<0.012) continue;
+        const dg=ctx.createRadialGradient(dx,dy,0,dx,dy,dr*2.8);
+        dg.addColorStop(0,`rgba(255,208,112,${da*3.2})`); dg.addColorStop(0.45,`rgba(240,168,62,${da*1.4})`); dg.addColorStop(1,'rgba(212,125,26,0)');
+        ctx.fillStyle=dg; ctx.beginPath(); ctx.arc(dx,dy,dr*2.8,0,Math.PI*2); ctx.fill();
       }
 
-      // ── 9. Cinematic warm-edge vignette ──────────────────────────────────
-      const vigAmt = period === 'NIGHT' ? 0.88 : period === 'EVENING' ? 0.78 : 0.68;
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.20, W*0.5, H*0.5, W*0.88);
-      vigRad.addColorStop(0,    'rgba(0,0,0,0)');
-      vigRad.addColorStop(0.58, 'rgba(0,0,0,0)');
-      vigRad.addColorStop(1,    `rgba(4,1,0,${vigAmt})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
+      // ── 10. Vignette — frames the cozy interior ──────────────────────────
+      const vigAmt=period==='NIGHT'?0.90:period==='EVENING'?0.80:0.70;
+      const vigRad=ctx.createRadialGradient(W*0.5,H*0.5,W*0.18,W*0.5,H*0.5,W*0.90);
+      vigRad.addColorStop(0,'rgba(0,0,0,0)'); vigRad.addColorStop(0.58,'rgba(0,0,0,0)'); vigRad.addColorStop(1,`rgba(3,1,0,${vigAmt})`);
+      ctx.fillStyle=vigRad; ctx.fillRect(0,0,W,H);
 
-      // Animate fireplace particles (if they exist from old init)
-      const fpX = W * 0.5, fpW2 = W * 0.22, fpY = H * 0.98, fpH2 = H * 0.22;
+      // ── 11. Fireplace particles (inline) ─────────────────────────────────
+      const fpX=W*0.5, fpW2=W*0.22, fpY=H*0.98, fpH2=H*0.22;
       if (this._fireParticles) {
-        this._fireParticles.forEach((fp, i) => {
+        this._fireParticles.forEach((fp,i) => {
           fp.life++;
-          if (fp.life > fp.maxLife) {
-            fp.life = 0; fp.maxLife = 35 + Math.random() * 25|0;
-            fp.x = fpX + (Math.random() - 0.5) * fpW2 * 0.55;
-            fp.y = fpY - H * 0.05;
-            fp.vx = (Math.random() - 0.5) * 0.65;
-            fp.vy = -(0.55 + Math.random() * 1.0);
-            fp.r = 5 + Math.random() * 18;
-            fp.hue = 10 + Math.random() * 35|0;
+          if (fp.life>fp.maxLife) {
+            fp.life=0; fp.maxLife=35+Math.random()*25|0;
+            fp.x=fpX+(Math.random()-0.5)*fpW2*0.55; fp.y=fpY-H*0.05;
+            fp.vx=(Math.random()-0.5)*0.65; fp.vy=-(0.55+Math.random()*1.0);
+            fp.r=5+Math.random()*18; fp.hue=10+Math.random()*35|0;
           }
-          fp.x += fp.vx + Math.sin(t * 2.2 + i) * 0.45;
-          fp.y += fp.vy; fp.vy -= 0.012;
-          const prog = fp.life / fp.maxLife;
-          fp.alpha = Math.sin(prog * Math.PI) * 0.75;
-          const fG = ctx.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, fp.r);
-          fG.addColorStop(0,   `hsla(${fp.hue+18},100%,88%,${fp.alpha})`);
-          fG.addColorStop(0.5, `hsla(${fp.hue},92%,62%,${fp.alpha*0.6})`);
-          fG.addColorStop(1,   `hsla(${fp.hue-8},85%,38%,0)`);
-          ctx.fillStyle = fG; ctx.beginPath(); ctx.arc(fp.x, fp.y, fp.r, 0, Math.PI*2); ctx.fill();
+          fp.x+=fp.vx+Math.sin(t*2.2+i)*0.45; fp.y+=fp.vy; fp.vy-=0.012;
+          const prog=fp.life/fp.maxLife;
+          fp.alpha=Math.sin(prog*Math.PI)*0.80;
+          const fG=ctx.createRadialGradient(fp.x,fp.y,0,fp.x,fp.y,fp.r);
+          fG.addColorStop(0,`hsla(${fp.hue+20},100%,90%,${fp.alpha})`);
+          fG.addColorStop(0.5,`hsla(${fp.hue},94%,64%,${fp.alpha*0.60})`);
+          fG.addColorStop(1,`hsla(${fp.hue-10},86%,40%,0)`);
+          ctx.fillStyle=fG; ctx.beginPath(); ctx.arc(fp.x,fp.y,fp.r,0,Math.PI*2); ctx.fill();
         });
+      }
+
+      // ── 12. Window rain streaks ───────────────────────────────────────────
+      if (this._rainDrops) {
+        ctx.save();
+        this._rainDrops.forEach(d => {
+          d.y+=d.speed;
+          if (d.y>H+d.len) { d.y=-d.len; d.x=W*(0.02+Math.random()*0.26); }
+          ctx.globalAlpha=d.alpha * (0.65+0.35*Math.sin(t*0.3+d.x));
+          ctx.strokeStyle='rgba(155,190,225,1)'; ctx.lineWidth=d.width;
+          ctx.beginPath();
+          ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+d.len*d.dx,d.y+d.len);
+          ctx.stroke();
+        });
+        ctx.restore();
       }
     },
 
-
     create(W, H) {
       const r = Math.random();
-      if (r < 0.55) {
-        // Floating dust mote in warm light
-        return {
-          type: 'dust',
-          x: Math.random() * W, y: H * 0.12 + Math.random() * H * 0.72,
-          vx: (Math.random() - 0.5) * 0.30, vy: -(0.04 + Math.random() * 0.15),
-          r: 0.7 + Math.random() * 2.0,
-          hue: 32 + Math.random() * 22|0,
-          alpha: 0, maxAlpha: 0.28 + Math.random() * 0.28,
-          life: 0, fadeIn: 25, maxLife: 200 + Math.floor(Math.random() * 120),
-          sw: Math.random() * Math.PI * 2, swAmp: 0.4 + Math.random() * 0.9, swSpd: 0.007 + Math.random() * 0.012,
-        };
-      } else if (r < 0.80) {
-        // Ember spark from fireplace
-        return {
-          type: 'ember',
-          x: W * 0.5 + (Math.random() - 0.5) * W * 0.12,
-          y: H * 0.88,
-          vx: (Math.random() - 0.5) * 1.8, vy: -(1.2 + Math.random() * 2.2),
-          r: 0.8 + Math.random() * 2.5,
-          hue: 15 + Math.random() * 28|0,
-          alpha: 0, maxAlpha: 0.75 + Math.random() * 0.22,
-          life: 0, fadeIn: 5, maxLife: 30 + Math.floor(Math.random() * 28),
-          gravity: 0.045 + Math.random() * 0.030,
-        };
+      if (r<0.52) {
+        return { type:'dust', x:Math.random()*W, y:H*0.12+Math.random()*H*0.72,
+          vx:(Math.random()-0.5)*0.28, vy:-(0.04+Math.random()*0.14),
+          r:0.7+Math.random()*2.0, hue:30+Math.random()*24|0,
+          alpha:0, maxAlpha:0.28+Math.random()*0.26, life:0, fadeIn:25,
+          maxLife:200+Math.floor(Math.random()*120),
+          sw:Math.random()*Math.PI*2, swAmp:0.4+Math.random()*0.9, swSpd:0.007+Math.random()*0.012 };
+      } else if (r<0.78) {
+        return { type:'ember', x:W*0.5+(Math.random()-0.5)*W*0.14, y:H*0.88,
+          vx:(Math.random()-0.5)*1.9, vy:-(1.2+Math.random()*2.2),
+          r:0.8+Math.random()*2.5, hue:14+Math.random()*30|0,
+          alpha:0, maxAlpha:0.78+Math.random()*0.20, life:0, fadeIn:5,
+          maxLife:30+Math.floor(Math.random()*28), gravity:0.045+Math.random()*0.030 };
       } else {
-        // Rain droplet impact on window ledge
-        return {
-          type: 'drop',
-          x: W * (0.04 + Math.random() * 0.24),
-          y: H * (0.55 + Math.random() * 0.01),
-          r: 0, maxR: 3 + Math.random() * 5,
-          alpha: 0.20 + Math.random() * 0.22,
-          life: 0, maxLife: 20 + Math.floor(Math.random() * 18),
-        };
+        return { type:'drop', x:W*(0.04+Math.random()*0.24), y:H*(0.55+Math.random()*0.01),
+          r:0, maxR:3+Math.random()*5, alpha:0.20+Math.random()*0.22,
+          life:0, maxLife:20+Math.floor(Math.random()*18) };
       }
     },
 
     draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'dust') {
-        const dG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2);
-        dG.addColorStop(0, `hsla(${p.hue},78%,82%,1)`);
-        dG.addColorStop(1, `hsla(${p.hue},60%,60%,0)`);
-        ctx.fillStyle = dG; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2, 0, Math.PI * 2); ctx.fill();
-      } else if (p.type === 'ember') {
-        const eG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
-        eG.addColorStop(0,   `hsla(${p.hue + 20},100%,92%,1)`);
-        eG.addColorStop(0.4,  `hsla(${p.hue},95%,68%,0.75)`);
-        eG.addColorStop(1,   `hsla(${p.hue - 8},85%,42%,0)`);
-        ctx.fillStyle = eG; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2); ctx.fill();
-      } else if (p.type === 'drop') {
-        ctx.strokeStyle = 'rgba(165,195,230,1)'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.save(); ctx.globalAlpha=p.alpha;
+      if (p.type==='dust') {
+        const dG=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.2);
+        dG.addColorStop(0,`hsla(${p.hue},78%,84%,1)`); dG.addColorStop(1,`hsla(${p.hue},60%,62%,0)`);
+        ctx.fillStyle=dG; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*2.2,0,Math.PI*2); ctx.fill();
+      } else if (p.type==='ember') {
+        const eG=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.5);
+        eG.addColorStop(0,`hsla(${p.hue+22},100%,94%,1)`); eG.addColorStop(0.4,`hsla(${p.hue},96%,70%,0.75)`); eG.addColorStop(1,`hsla(${p.hue-8},86%,44%,0)`);
+        ctx.fillStyle=eG; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*2.5,0,Math.PI*2); ctx.fill();
+      } else if (p.type==='drop') {
+        ctx.strokeStyle='rgba(155,190,225,1)'; ctx.lineWidth=0.8;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.stroke();
       }
       ctx.restore();
     },
 
-    update(p, W, H) {
+    update(p,W,H) {
       p.life++;
-      if (p.type === 'dust') {
-        p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = p.life > p.maxLife - 25 ? Math.max(0, (p.maxLife - p.life) / 25) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        return p.life < p.maxLife && p.y > 0;
-      } else if (p.type === 'ember') {
-        p.vy += p.gravity; // gravity pulls it back down
-        p.vx *= 0.990;
-        p.x += p.vx; p.y += p.vy;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = p.life > p.maxLife - 10 ? Math.max(0, (p.maxLife - p.life) / 10) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        return p.life < p.maxLife && p.y < H;
-      } else if (p.type === 'drop') {
-        p.r = (p.life / p.maxLife) * p.maxR;
-        p.alpha = (1 - p.life / p.maxLife) * (0.20 + Math.random() * 0.22);
-        return p.life < p.maxLife;
+      if (p.type==='dust') {
+        p.sw+=p.swSpd; p.x+=p.vx+Math.sin(p.sw)*p.swAmp; p.y+=p.vy;
+        const fi=Math.min(1,p.life/p.fadeIn), fo=p.life>p.maxLife-25?Math.max(0,(p.maxLife-p.life)/25):1;
+        p.alpha=p.maxAlpha*fi*fo; return p.life<p.maxLife&&p.y>0;
+      } else if (p.type==='ember') {
+        p.vy+=p.gravity; p.vx*=0.990; p.x+=p.vx; p.y+=p.vy;
+        const fi=Math.min(1,p.life/p.fadeIn), fo=p.life>p.maxLife-10?Math.max(0,(p.maxLife-p.life)/10):1;
+        p.alpha=p.maxAlpha*fi*fo; return p.life<p.maxLife&&p.y<H;
+      } else if (p.type==='drop') {
+        p.r=(p.life/p.maxLife)*p.maxR;
+        p.alpha=(1-p.life/p.maxLife)*(0.20+Math.random()*0.22);
+        return p.life<p.maxLife;
       }
       return false;
     },
@@ -2814,690 +1126,167 @@ const CFG = {
     update() { return false; },
   },
 
-  // ── RAIN — Premium Atmospheric Rain Scene ──────────────────────────────────
-  // Cinematic overcast: layered rain streaks, fog, reflective puddle shimmer,
-  // cool silver palette, time-of-day sky toning.
-  // ── RAIN — Cinematic atmospheric rainfall ─────────────────────────────────
-  // Reference palette: MORNING=pale silver-blue + white center glow + sparkles,
-  // AFTERNOON=deep navy + piercing cyan star-glow + dense sparkle field,
-  // EVENING=deep violet + dramatic warm orange corner fire glow.
-  rain: {
-    max: 115, rate: 0.38,
-    _fog: null, _sparkles: null, _ripples: [],
+
+  // ── CUSTOM — User-defined: gradient + particle style ─────────────────────
+  // Time-immune. User picks 2 colors and a particle type.
+  // Particles: stars | orbs | rain | embers | none. Always has vignette.
+  custom: {
+    max: 0, rate: 0,
+    _stars: null, _orbs: null, _rainDrops: null, _embers: null,
+    _c1: [7, 4, 26], _c2: [26, 10, 58], _ptype: 'stars',
+
+    refresh(W, H) {
+      const s1 = Settings.get('customBg1') || '#07041a';
+      const s2 = Settings.get('customBg2') || '#1a0a3a';
+      this._ptype = Settings.get('customParticle') || 'stars';
+      const hr = h => [
+        parseInt(h.slice(1,3),16),
+        parseInt(h.slice(3,5),16),
+        parseInt(h.slice(5,7),16),
+      ];
+      this._c1 = hr(s1); this._c2 = hr(s2);
+      this._initParticles(W, H);
+    },
+
+    _initParticles(W, H) {
+      const rng = (a,b) => a + Math.random()*(b-a);
+      this._stars = Array.from({length:110},()=>({
+        x:Math.random()*W, y:Math.random()*H,
+        r:0.35+Math.random()*1.35,
+        alpha:0.18+Math.random()*0.70,
+        phase:Math.random()*Math.PI*2, spd:0.012+Math.random()*0.022,
+        twinkleAmp: 0.30+Math.random()*0.48,
+      }));
+      this._orbs = Array.from({length:18},(_,i)=>({
+        x:W*(0.08+i*0.052), y:H*(0.15+((i*0.137)%0.72)),
+        rx:W*(0.12+Math.random()*0.16), ry:H*(0.10+Math.random()*0.14),
+        hue:30+Math.floor(i*20)%320,
+        phase:Math.random()*Math.PI*2, phaseSpd:0.005+Math.random()*0.008,
+        alpha:0.04+Math.random()*0.08,
+      }));
+      this._rainDrops = Array.from({length:55},()=>({
+        x:Math.random()*W, y:Math.random()*H,
+        len:H*(0.025+Math.random()*0.06),
+        speed:H*(0.004+Math.random()*0.010),
+        alpha:rng(0.06,0.22),
+        width:rng(0.5,1.2),
+      }));
+      this._embers = Array.from({length:40},()=>({
+        x:Math.random()*W, y:H+Math.random()*50,
+        vx:(Math.random()-0.5)*0.55,
+        vy:-(0.55+Math.random()*1.1),
+        r:0.8+Math.random()*2.8,
+        hue:18+Math.random()*28|0,
+        alpha:0, maxAlpha:0.60+Math.random()*0.32,
+        life:Math.random()*80|0, maxLife:90+Math.random()*80|0,
+        sw:Math.random()*Math.PI*2, swAmp:0.5+Math.random()*1.0, swSpd:0.012+Math.random()*0.018,
+      }));
+    },
 
     init(W, H) {
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-      // Layered cinematic fog bands — elliptical, softly drifting
-      this._fog = Array.from({ length: 8 }, () => ({
-        y: H * rng(0.04, 0.84),
-        w: W * rng(1.4, 2.6),
-        h: H * rng(0.032, 0.095),
-        alpha: rng(0.015, 0.054),
-        x: -W * rng(0.08, 0.48),
-        speed: rng(0.04, 0.20),
-        phase: rng(0, Math.PI * 2),
-        spd: rng(0.003, 0.008),
-      }));
-      // Sparkle/shimmer particle field — visible in MORNING + AFTERNOON of reference
-      this._sparkles = Array.from({ length: 130 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H * 0.86,
-        r: 0.28 + Math.random() * 1.85,
-        baseAlpha: 0.07 + Math.random() * 0.55,
-        phase: Math.random() * Math.PI * 2,
-        spd: 0.018 + Math.random() * 0.040,
-      }));
-      this._ripples = [];
+      this.refresh(W, H);
     },
 
     drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend  = _getSmoothBlend();
-      const t = _frame * 0.010;
+      const [r1,g1,b1] = this._c1;
+      const [r2,g2,b2] = this._c2;
+      const t = _frame * 0.012;
 
-      // ── 1. Base sky gradient — matched precisely to reference ────────────
-      // MORNING: pale silver-blue (overcast brightened by hidden sun)
-      // AFTERNOON: deep cold navy (cinematic stormy deep blue)
-      // EVENING: deep purple-violet (dramatic moody dusk)
-      // NIGHT: near-black slate-blue
-      const SKY = {
-        MORNING:   { t:[ 52, 78,118], m:[ 75,108,155], b:[ 95,138,188] },
-        AFTERNOON: { t:[  4, 10, 38], m:[  8, 20, 58],  b:[ 14, 32, 80] },
-        EVENING:   { t:[  5,  3, 18], m:[ 12,  5, 40],  b:[ 22,  8, 62] },
-        NIGHT:     { t:[  2,  4, 14], m:[  5,  8, 22],  b:[  9, 12, 34] },
-      };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.46, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
+      // Base gradient fill
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, `rgb(${r1},${g1},${b1})`);
+      bg.addColorStop(1, `rgb(${r2},${g2},${b2})`);
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-      // ── 2. Signature period glow (the identity of each time of day) ──────
-      // MORNING: silver overcast dawn — flat cold light through cloud, no direct sun
-      if (period === 'MORNING') {
-        // Diffuse overcast white glow — wide, flat, no hotspot
-        const mg = ctx.createRadialGradient(W*0.50, H*0.22, 0, W*0.50, H*0.22, W*0.88);
-        mg.addColorStop(0,    'rgba(210,232,252,0.52)');
-        mg.addColorStop(0.24, 'rgba(175,208,242,0.26)');
-        mg.addColorStop(0.55, 'rgba(132,172,218,0.10)');
-        mg.addColorStop(1,    'rgba(88,128,185,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H*0.72);
-        // Steel-blue sky ceiling
-        const ms = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.78);
-        ms.addColorStop(0,    'rgba(92,125,172,0.35)');
-        ms.addColorStop(0.48, 'rgba(62,92,142,0.13)');
-        ms.addColorStop(1,    'rgba(35,58,108,0)');
-        ctx.fillStyle = ms; ctx.fillRect(0, 0, W, H*0.58);
-        // Wet ground reflection — luminous puddles
-        const mr = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.75);
-        mr.addColorStop(0,    'rgba(142,185,235,0.38)');
-        mr.addColorStop(0.40, 'rgba(98,145,205,0.15)');
-        mr.addColorStop(1,    'rgba(55,92,162,0)');
-        ctx.fillStyle = mr; ctx.fillRect(0, H*0.52, W, H*0.48);
-      }
-      // AFTERNOON: heavy storm noon — dark brooding sky, almost no sun, oppressive
-      if (period === 'AFTERNOON') {
-        const pulse = 0.84 + 0.16 * Math.sin(t * 1.2);
-        // Dark storm ceiling crushing down
-        const ag = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.80);
-        ag.addColorStop(0,    `rgba(10,18,48,${0.68 * pulse})`);
-        ag.addColorStop(0.38, 'rgba(5,10,30,0.28)');
-        ag.addColorStop(1,    'rgba(2,5,15,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H*0.75);
-        // Barely visible blue diffused light from above — storm diffusion
-        const ag2 = ctx.createRadialGradient(W*0.50, H*0.28, 0, W*0.50, H*0.28, W*0.55);
-        ag2.addColorStop(0,   `rgba(32,62,118,${0.22 * pulse})`);
-        ag2.addColorStop(0.50,'rgba(16,32,72,0.08)');
-        ag2.addColorStop(1,   'rgba(6,12,32,0)');
-        ctx.fillStyle = ag2; ctx.fillRect(0, 0, W, H);
-        // Ground reflects whatever blue is left — dark reflective puddles
-        const ag3 = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.68);
-        ag3.addColorStop(0,    `rgba(28,55,108,${0.30 * pulse})`);
-        ag3.addColorStop(0.42, 'rgba(14,28,62,0.10)');
-        ag3.addColorStop(1,    'rgba(4,8,25,0)');
-        ctx.fillStyle = ag3; ctx.fillRect(0, H*0.55, W, H*0.45);
-      }
-      // EVENING: amber city glow rising through heavy rain — warm neon reflections
-      if (period === 'EVENING') {
-        // Warm amber-orange streetlight glow rising from below
-        const eg = ctx.createRadialGradient(W*0.50, H*0.96, 0, W*0.50, H*0.96, W*0.88);
-        eg.addColorStop(0,    'rgba(255,122,24,0.68)');
-        eg.addColorStop(0.10, 'rgba(238,78,6,0.38)');
-        eg.addColorStop(0.32, 'rgba(185,38,2,0.16)');
-        eg.addColorStop(1,    'rgba(82,10,0,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, H*0.28, W, H*0.72);
-        // Deep violet-purple storm sky — fighting with city warmth
-        const ep = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.72);
-        ep.addColorStop(0,    'rgba(22,6,45,0.55)');
-        ep.addColorStop(0.45, 'rgba(10,2,22,0.20)');
-        ep.addColorStop(1,    'rgba(4,1,8,0)');
-        ctx.fillStyle = ep; ctx.fillRect(0, 0, W, H*0.72);
-        // Right amber edge — second light source
-        const er = ctx.createRadialGradient(W, H*0.68, 0, W, H*0.68, W*0.55);
-        er.addColorStop(0,    'rgba(205,95,12,0.32)');
-        er.addColorStop(0.45, 'rgba(138,48,4,0.12)');
-        er.addColorStop(1,    'rgba(55,12,0,0)');
-        ctx.fillStyle = er; ctx.fillRect(W*0.40, H*0.35, W*0.60, H*0.65);
-      }
-      // NIGHT: cool moonlit glow — subtle, through heavy cloud
-      if (period === 'NIGHT') {
-        const ng = ctx.createRadialGradient(W*0.22, H*0.10, 0, W*0.22, H*0.10, W*0.40);
-        ng.addColorStop(0,    'rgba(158,200,255,0.32)');
-        ng.addColorStop(0.42, 'rgba(98,155,238,0.13)');
-        ng.addColorStop(1,    'rgba(48,90,178,0)');
-        ctx.fillStyle = ng; ctx.fillRect(0, 0, W, H);
-      }
+      // Diagonal gradient accent — subtle richness
+      const diag = ctx.createLinearGradient(0, 0, W, H);
+      const mixR=(r1+r2)>>1, mixG=(g1+g2)>>1, mixB=(b1+b2)>>1;
+      diag.addColorStop(0,   `rgba(${r1},${g1},${b1},0.35)`);
+      diag.addColorStop(0.5, `rgba(${mixR},${mixG},${mixB},0.10)`);
+      diag.addColorStop(1,   `rgba(${r2},${g2},${b2},0.35)`);
+      ctx.fillStyle = diag; ctx.fillRect(0, 0, W, H);
 
-      // ── 3. Atmospheric fog layers — drifting elliptical bands ───────────
-      const fogMult = { MORNING:1.55, AFTERNOON:1.0, EVENING:1.22, NIGHT:0.88 }[period] || 1.0;
-      const fR = period === 'EVENING' ? 205 : period === 'NIGHT' ? 118 : 172;
-      const fGc = period === 'EVENING' ? 152 : period === 'NIGHT' ? 158 : 212;
-      const fB = period === 'EVENING' ? 225 : period === 'NIGHT' ? 222 : 252;
-      this._fog.forEach(f => {
-        f.x += f.speed;
-        f.phase += f.spd;
-        if (f.x > W * 1.28) f.x = -W * 0.68;
-        const pulse = 0.60 + 0.40 * Math.sin(f.phase);
-        const fa = f.alpha * pulse * fogMult;
-        const fgr = ctx.createLinearGradient(f.x, f.y, f.x + f.w, f.y);
-        fgr.addColorStop(0,    `rgba(${fR},${fGc},${fB},0)`);
-        fgr.addColorStop(0.22, `rgba(${fR},${fGc},${fB},${fa})`);
-        fgr.addColorStop(0.78, `rgba(${fR},${fGc},${fB},${fa * 0.80})`);
-        fgr.addColorStop(1,    `rgba(${fR},${fGc},${fB},0)`);
-        ctx.save(); ctx.fillStyle = fgr;
-        ctx.beginPath();
-        ctx.ellipse(f.x + f.w * 0.5, f.y, f.w * 0.5, f.h * 0.5, 0, 0, Math.PI * 2);
-        ctx.fill(); ctx.restore();
-      });
-
-      // ── 4. Sparkle / shimmer field — matches reference density per period
-      const sparkVis = { MORNING:0.55, AFTERNOON:0.95, EVENING:0.24, NIGHT:0.18 }[period] || 0.5;
-      const spR = period === 'AFTERNOON' ? 155 : period === 'EVENING' ? 255 : 198;
-      const spGc = period === 'AFTERNOON' ? 242 : period === 'EVENING' ? 195 : 228;
-      const spB = period === 'AFTERNOON' ? 255 : period === 'EVENING' ? 215 : 255;
-      this._sparkles.forEach(s => {
-        s.phase += s.spd;
-        const sa = s.baseAlpha * sparkVis * (0.28 + 0.72 * Math.abs(Math.sin(s.phase)));
-        if (sa < 0.015) return;
-        ctx.save(); ctx.globalAlpha = sa;
-        if (s.r > 1.12) {
-          // Cross-sparkle for brighter particles (visible in reference)
-          ctx.strokeStyle = `rgba(${spR},${spGc},${spB},1)`;
-          ctx.lineWidth = s.r * 0.38; ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(s.x - s.r * 2.8, s.y); ctx.lineTo(s.x + s.r * 2.8, s.y);
-          ctx.moveTo(s.x, s.y - s.r * 2.8); ctx.lineTo(s.x, s.y + s.r * 2.8);
-          ctx.stroke();
-        }
-        ctx.fillStyle = `rgba(${spR},${spGc},${spB},1)`;
-        ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(0.3, s.r * 0.52), 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-      });
-
-      // ── 5. Horizon glow + reflective ground ─────────────────────────────
-      const horizY = H * 0.76;
-      const hR = period === 'MORNING' ? 178 : period === 'AFTERNOON' ? 78 : period === 'EVENING' ? 255 : 78;
-      const hGc = period === 'MORNING' ? 215 : period === 'AFTERNOON' ? 200 : period === 'EVENING' ? 138 : 128;
-      const hB = period === 'MORNING' ? 255 : period === 'AFTERNOON' ? 255 : period === 'EVENING' ? 55 : 222;
-
-      // Horizon luminance band
-      const hGlow = ctx.createLinearGradient(0, horizY - 8, 0, horizY + 8);
-      hGlow.addColorStop(0,   `rgba(${hR},${hGc},${hB},0)`);
-      hGlow.addColorStop(0.5, `rgba(${hR},${hGc},${hB},0.42)`);
-      hGlow.addColorStop(1,   `rgba(${hR},${hGc},${hB},0)`);
-      ctx.fillStyle = hGlow; ctx.fillRect(0, horizY - 12, W, 24);
-
-      // Reflective wet ground
-      const gR = period === 'MORNING' ? 52 : period === 'AFTERNOON' ? 12 : period === 'EVENING' ? 32 : 6;
-      const gGc = period === 'MORNING' ? 82 : period === 'AFTERNOON' ? 30 : period === 'EVENING' ? 8 : 10;
-      const gB = period === 'MORNING' ? 128 : period === 'AFTERNOON' ? 80 : period === 'EVENING' ? 52 : 30;
-      const gndG = ctx.createLinearGradient(0, horizY, 0, H);
-      gndG.addColorStop(0,    `rgba(${gR},${gGc},${gB},0.86)`);
-      gndG.addColorStop(0.40, `rgba(${gR},${gGc},${gB},0.93)`);
-      gndG.addColorStop(1,    `rgba(${Math.max(0,gR-8)},${Math.max(0,gGc-5)},${Math.max(0,gB-6)},0.98)`);
-      ctx.fillStyle = gndG; ctx.fillRect(0, horizY, W, H - horizY);
-
-      // Center reflection glow (source mirrored on ground)
-      const refG = ctx.createRadialGradient(W*0.50, horizY + 8, 0, W*0.50, horizY + 8, W*0.60);
-      refG.addColorStop(0,    `rgba(${hR},${hGc},${hB},0.36)`);
-      refG.addColorStop(0.22, `rgba(${hR},${hGc},${hB},0.14)`);
-      refG.addColorStop(1,    `rgba(${hR},${hGc},${hB},0)`);
-      ctx.fillStyle = refG; ctx.fillRect(0, horizY, W, H - horizY);
-
-      // Puddle shimmer strips
-      ctx.save();
-      for (let pi = 0; pi < 7; pi++) {
-        const py = horizY + (H - horizY) * (0.05 + pi * 0.14);
-        const pw = W * (0.10 + 0.06 * Math.sin(t * 0.22 + pi * 1.42));
-        const px = W * (0.25 + pi * 0.075) + Math.cos(t * 0.15 + pi) * W * 0.055;
-        const shimA = (0.14 + 0.05 * Math.sin(t * 0.75 + pi)) * (period === 'NIGHT' ? 1.75 : 1.0);
-        ctx.globalAlpha = shimA;
-        const pG = ctx.createLinearGradient(px - pw, py, px + pw, py);
-        pG.addColorStop(0,   `rgba(${hR},${hGc},${hB},0)`);
-        pG.addColorStop(0.5, `rgba(${hR},${hGc},${hB},1)`);
-        pG.addColorStop(1,   `rgba(${hR},${hGc},${hB},0)`);
-        ctx.fillStyle = pG; ctx.fillRect(px - pw, py - 1.2, pw * 2, 2.6);
-      }
-      ctx.restore();
-
-      // ── 6. Puddle ripples ────────────────────────────────────────────────
-      if (Math.random() < 0.10) {
-        this._ripples.push({
-          x: W * (0.04 + Math.random() * 0.92),
-          y: horizY + (H - horizY) * (0.06 + Math.random() * 0.90),
-          r: 0, maxR: 14 + Math.random() * 26,
-          alpha: 0.48 + Math.random() * 0.32,
-          life: 0, maxLife: 30 + Math.floor(Math.random() * 22),
+      // Particle layer
+      if (this._ptype === 'stars' && this._stars) {
+        this._stars.forEach(s => {
+          s.phase += s.spd;
+          const a = s.alpha * (1 - s.twinkleAmp + s.twinkleAmp * Math.abs(Math.sin(s.phase)));
+          ctx.save(); ctx.globalAlpha = a;
+          ctx.fillStyle = 'rgba(230,228,255,1)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+          if (s.r > 0.9) {
+            ctx.strokeStyle = `rgba(220,218,255,${a*0.40})`; ctx.lineWidth = 0.45;
+            const cr = s.r*2.2;
+            ctx.beginPath(); ctx.moveTo(s.x-cr,s.y); ctx.lineTo(s.x+cr,s.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(s.x,s.y-cr); ctx.lineTo(s.x,s.y+cr); ctx.stroke();
+          }
+          ctx.restore();
         });
       }
-      this._ripples = this._ripples.filter(rp => {
-        rp.life++;
-        rp.r += rp.maxR / rp.maxLife;
-        const a = rp.alpha * (1 - rp.life / rp.maxLife);
-        ctx.save(); ctx.globalAlpha = a;
-        ctx.strokeStyle = `rgba(${hR},${hGc},${hB},1)`; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.ellipse(rp.x, rp.y, rp.r, rp.r * 0.34, 0, 0, Math.PI * 2); ctx.stroke();
-        if (rp.r > 5) {
-          ctx.strokeStyle = `rgba(${hR},${hGc},${hB},0.38)`; ctx.lineWidth = 0.45;
-          ctx.beginPath(); ctx.ellipse(rp.x, rp.y, rp.r * 0.55, rp.r * 0.20, 0, 0, Math.PI * 2); ctx.stroke();
-        }
-        ctx.restore();
-        return rp.life < rp.maxLife;
-      });
 
-      // ── 7. Cinematic radial edge vignette ────────────────────────────────
-      const vR = period === 'EVENING' ? 8 : period === 'NIGHT' ? 2 : 3;
-      const vGc = period === 'EVENING' ? 2 : period === 'NIGHT' ? 3 : 7;
-      const vB = period === 'EVENING' ? 18 : period === 'NIGHT' ? 12 : 18;
-      const vigA = period === 'NIGHT' ? 0.80 : period === 'EVENING' ? 0.70 : 0.54;
-      const vigRad = ctx.createRadialGradient(W*0.5, H*0.5, W*0.25, W*0.5, H*0.5, W*0.90);
-      vigRad.addColorStop(0,    `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(0.60, `rgba(${vR},${vGc},${vB},0)`);
-      vigRad.addColorStop(1,    `rgba(${vR},${vGc},${vB},${vigA})`);
-      ctx.fillStyle = vigRad; ctx.fillRect(0, 0, W, H);
-    },
-
-    create(W, H) {
-      const period = _getCanvasPeriod();
-      const r = Math.random();
-      if (r < 0.70) {
-        // Rain streak — layered depth with wind sway
-        const windBias = Math.sin(_frame * 0.006) * 0.38;
-        const heavy = period === 'NIGHT' || period === 'AFTERNOON';
-        return {
-          type: 'rain',
-          x: Math.random() * W * 1.32 - W * 0.16,
-          y: -28 - Math.random() * H * 0.48,
-          vx: -0.65 + windBias + (Math.random() - 0.5) * 0.28,
-          vy: (heavy ? 7.2 : 5.0) + Math.random() * 4.2,
-          len: (heavy ? 14 : 9) + Math.random() * 22,
-          alpha: 0.05 + Math.random() * 0.17,
-          layer: Math.floor(Math.random() * 3),
-        };
-      } else if (r < 0.88) {
-        // Atmospheric mist orb
-        return {
-          type: 'mist',
-          x: Math.random() * W, y: Math.random() * H * 0.80,
-          vx: (Math.random() - 0.5) * 0.20, vy: (Math.random() - 0.5) * 0.09,
-          r: 8 + Math.random() * 30,
-          alpha: 0, maxAlpha: 0.022 + Math.random() * 0.028,
-          life: 0, fadeIn: 42, maxLife: 185 + Math.floor(Math.random() * 130),
-          sw: Math.random() * Math.PI * 2, swAmp: 0.28 + Math.random() * 0.82, swSpd: 0.005 + Math.random() * 0.008,
-        };
-      } else {
-        // Near-vertical falling droplet (foreground)
-        return {
-          type: 'drop',
-          x: Math.random() * W,
-          y: -10 - Math.random() * 52,
-          vy: 4.8 + Math.random() * 3.8,
-          alpha: 0.16 + Math.random() * 0.26,
-        };
-      }
-    },
-
-    draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'rain') {
-        const layerA  = [1.0, 0.62, 0.36][p.layer] || 0.5;
-        const layerBl = [188, 175, 162][p.layer] || 175;
-        ctx.strokeStyle = `rgba(${layerBl},215,255,${layerA})`;
-        ctx.lineWidth = [0.85, 0.52, 0.30][p.layer] || 0.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + p.vx * 2.6, p.y + p.len);
-        ctx.stroke();
-      } else if (p.type === 'mist') {
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-        g.addColorStop(0,   'rgba(178,216,255,1)');
-        g.addColorStop(0.5, 'rgba(162,206,250,0.38)');
-        g.addColorStop(1,   'rgba(145,195,244,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.fillStyle = 'rgba(182,222,255,0.88)';
-        ctx.beginPath(); ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-    },
-
-    update(p, W, H) {
-      if (p.type === 'rain') {
-        p.x += p.vx; p.y += p.vy;
-        return p.y < H + 32 && p.x > -55 && p.x < W + 55;
-      } else if (p.type === 'mist') {
-        p.life++; p.sw += p.swSpd;
-        p.x += p.vx + Math.sin(p.sw) * p.swAmp; p.y += p.vy;
-        const fi = Math.min(1, p.life / p.fadeIn);
-        const fo = p.life > p.maxLife - 38 ? Math.max(0, (p.maxLife - p.life) / 38) : 1;
-        p.alpha = p.maxAlpha * fi * fo;
-        return p.life < p.maxLife;
-      } else {
-        p.y += p.vy;
-        return p.y < H + 16;
-      }
-    },
-  },
-
-  // ── DREAMSCAPE — Surreal Lucid Dream ───────────────────────────────────────
-  // Weightless, ethereal: floating light orbs, aurora-like waves,
-  // dreamy depth blur particles, soft cosmic atmosphere.
-  dreamscape: {
-    max: 45, rate: 0.095,
-    _orbs: null, _waveLines: null, _stars: null, _dust: null,
-
-    init(W, H) {
-      _stars = [];
-      _initStars(W, H, 80);
-      const rng = (lo, hi) => lo + Math.random() * (hi - lo);
-
-      // Floating luminous orbs — dreamy blobs
-      this._orbs = Array.from({ length: 12 }, (_, i) => ({
-        x: W * rng(0.05, 0.95),
-        y: H * rng(0.10, 0.90),
-        r: W * rng(0.025, 0.12),
-        hue: [260, 195, 285, 220, 300, 180, 240, 320, 200, 280, 160, 310][i % 12],
-        alpha: 0.04 + rng(0, 0.06),
-        phase: rng(0, Math.PI * 2),
-        spd: rng(0.004, 0.010),
-        driftX: (rng(-1, 1)) * 0.18,
-        driftY: -(0.05 + rng(0, 0.12)),
-      }));
-
-      // Aurora-like wave lines across top half
-      this._waveLines = Array.from({ length: 8 }, (_, i) => ({
-        yBase: H * rng(0.05, 0.55),
-        amplitude: H * rng(0.02, 0.08),
-        hue: [255, 185, 290, 210, 320, 170, 270, 205][i % 8],
-        alpha: 0.04 + rng(0, 0.05),
-        phase: i * 0.62 + rng(0, 1),
-        spd: rng(0.004, 0.009),
-        wavelength: W * rng(0.35, 0.80),
-        thickness: 1.5 + rng(0, 2.5),
-      }));
-
-      // Fine dust particles
-      this._dust = Array.from({ length: 38 }, () => ({
-        x: rng(0, W), y: rng(0, H),
-        r: 0.6 + rng(0, 1.8),
-        hue: rng(220, 310)|0,
-        phase: rng(0, Math.PI * 2), spd: rng(0.012, 0.025),
-        vx: (rng(-1,1)) * 0.18, vy: -(0.05 + rng(0, 0.22)),
-        alpha: 0.15 + rng(0, 0.25),
-      }));
-    },
-
-    drawBackground(ctx, W, H) {
-      const period = _getCanvasPeriod();
-      const blend  = _getSmoothBlend();
-      const t = _frame * 0.011;
-
-      // ── 1. Dream sky gradient — matched to reference ─────────────────────
-      // MORNING: medium purple-lavender with lighter upper tone
-      // AFTERNOON: deep violet + vivid pink cloud masses (reference: very saturated)
-      // EVENING: dark rich indigo-blue (reference shows cool blue dominance)
-      // NIGHT: near-black deep indigo
-      const SKY = {
-        MORNING:   { t:[ 42, 20, 92], m:[ 88, 42,158], b:[148, 82,218] },
-        AFTERNOON: { t:[ 18,  8, 52], m:[ 42, 16,108], b:[ 95, 35,178] },
-        EVENING:   { t:[  6,  3, 28], m:[ 14,  7, 58], b:[ 28, 12, 98] },
-        NIGHT:     { t:[  2,  1, 12], m:[  6,  2, 28], b:[ 14,  5, 55] },
-      };
-      const sk = _blendPeriodColors(SKY, blend);
-      const skyG = ctx.createLinearGradient(0, 0, 0, H);
-      skyG.addColorStop(0,    _rgb(sk.t));
-      skyG.addColorStop(0.48, _rgb(sk.m));
-      skyG.addColorStop(1,    _rgb(sk.b));
-      ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, H);
-
-      // ── 2. Signature period glow ─────────────────────────────────────────
-      if (period === 'MORNING') {
-        // Dreamscape dawn — soft lavender mist, ethereal peach warmth rising
-        // Upper violet-lavender bloom — dream waking up
-        const mg = ctx.createRadialGradient(W*0.50, H*0.18, 0, W*0.50, H*0.18, W*0.72);
-        mg.addColorStop(0,    'rgba(218,155,255,0.58)');
-        mg.addColorStop(0.20, 'rgba(175,95,248,0.32)');
-        mg.addColorStop(0.52, 'rgba(122,45,218,0.13)');
-        mg.addColorStop(1,    'rgba(65,12,162,0)');
-        ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H*0.78);
-        // Warm peach-rose bottom — dream floor glow
-        const mb = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.80);
-        mb.addColorStop(0,    'rgba(255,138,225,0.42)');
-        mb.addColorStop(0.35, 'rgba(222,78,195,0.18)');
-        mb.addColorStop(1,    'rgba(128,18,128,0)');
-        ctx.fillStyle = mb; ctx.fillRect(0, H*0.40, W, H*0.60);
-        // Soft center ethereal light
-        const mc = ctx.createRadialGradient(W*0.50, H*0.48, 0, W*0.50, H*0.48, W*0.52);
-        mc.addColorStop(0,    'rgba(255,210,255,0.22)');
-        mc.addColorStop(0.45, 'rgba(205,148,245,0.08)');
-        mc.addColorStop(1,    'rgba(128,65,195,0)');
-        ctx.fillStyle = mc; ctx.fillRect(0, 0, W, H);
-      }
-      if (period === 'AFTERNOON') {
-        const pulse = 0.88 + 0.12 * Math.sin(t * 1.4);
-        // Vivid pink cloud mass at bottom-centre (reference signature)
-        const ag = ctx.createRadialGradient(W*0.50, H*0.92, 0, W*0.50, H*0.92, W*0.72);
-        ag.addColorStop(0,    `rgba(255,78,220,${0.72 * pulse})`);
-        ag.addColorStop(0.12, `rgba(235,42,195,${0.50 * pulse})`);
-        ag.addColorStop(0.32, `rgba(188,18,162,${0.24 * pulse})`);
-        ag.addColorStop(0.60, `rgba(128,4,115,${0.10 * pulse})`);
-        ag.addColorStop(1,    'rgba(55,0,55,0)');
-        ctx.fillStyle = ag; ctx.fillRect(0, 0, W, H);
-        // Upper deep violet bloom
-        const av = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.68);
-        av.addColorStop(0,    `rgba(88,22,215,${0.42 * pulse})`);
-        av.addColorStop(0.45, 'rgba(52,10,165,0.18)');
-        av.addColorStop(1,    'rgba(22,3,80,0)');
-        ctx.fillStyle = av; ctx.fillRect(0, 0, W, H*0.68);
-        // Side ethereal columns
-        const asL = ctx.createRadialGradient(0, H*0.55, 0, 0, H*0.55, W*0.52);
-        asL.addColorStop(0,    `rgba(145,42,255,${0.30 * pulse})`);
-        asL.addColorStop(0.50, 'rgba(88,18,210,0.11)');
-        asL.addColorStop(1,    'rgba(38,4,95,0)');
-        ctx.fillStyle = asL; ctx.fillRect(0, 0, W*0.58, H);
-        const asR = ctx.createRadialGradient(W, H*0.52, 0, W, H*0.52, W*0.52);
-        asR.addColorStop(0,    `rgba(38,175,255,${0.28 * pulse})`);
-        asR.addColorStop(0.50, 'rgba(18,115,215,0.10)');
-        asR.addColorStop(1,    'rgba(4,42,95,0)');
-        ctx.fillStyle = asR; ctx.fillRect(W*0.42, 0, W*0.58, H);
-      }
-      if (period === 'EVENING') {
-        // Dreamscape dusk — deep indigo pressing down, last violet light on horizon
-        // Rich indigo-violet ceiling — the dream deepening
-        const eg = ctx.createRadialGradient(W*0.50, 0, 0, W*0.50, 0, W*0.82);
-        eg.addColorStop(0,    'rgba(22,38,178,0.52)');
-        eg.addColorStop(0.40, 'rgba(10,18,128,0.20)');
-        eg.addColorStop(1,    'rgba(3,5,52,0)');
-        ctx.fillStyle = eg; ctx.fillRect(0, 0, W, H*0.78);
-        // Violet-pink horizon — last dream light
-        const ep = ctx.createRadialGradient(W*0.50, H*0.82, 0, W*0.50, H*0.82, W*0.72);
-        ep.addColorStop(0,    'rgba(165,35,205,0.42)');
-        ep.addColorStop(0.28, 'rgba(105,14,158,0.18)');
-        ep.addColorStop(1,    'rgba(38,2,62,0)');
-        ctx.fillStyle = ep; ctx.fillRect(0, H*0.35, W, H*0.65);
-        // Ethereal teal edge — the dreamscape signature
-        const et = ctx.createRadialGradient(W*0.88, H*0.48, 0, W*0.88, H*0.48, W*0.42);
-        et.addColorStop(0,    'rgba(18,145,215,0.22)');
-        et.addColorStop(0.45, 'rgba(8,88,165,0.08)');
-        et.addColorStop(1,    'rgba(2,28,72,0)');
-        ctx.fillStyle = et; ctx.fillRect(W*0.45, 0, W*0.55, H);
-      }
-      if (period === 'NIGHT') {
-        // Full cosmic night — vivid nebula glow, deep dream space
-        // Left nebula — violet-indigo
-        const ng = ctx.createRadialGradient(W*0.32, H*0.15, 0, W*0.32, H*0.15, W*0.58);
-        ng.addColorStop(0,    'rgba(115,72,228,0.35)');
-        ng.addColorStop(0.40, 'rgba(68,32,178,0.14)');
-        ng.addColorStop(1,    'rgba(22,8,78,0)');
-        ctx.fillStyle = ng; ctx.fillRect(0, 0, W*0.68, H*0.62);
-        // Right nebula — teal-cyan complement
-        const nc = ctx.createRadialGradient(W*0.75, H*0.25, 0, W*0.75, H*0.25, W*0.48);
-        nc.addColorStop(0,    'rgba(28,158,215,0.28)');
-        nc.addColorStop(0.42, 'rgba(12,92,165,0.11)');
-        nc.addColorStop(1,    'rgba(3,28,68,0)');
-        ctx.fillStyle = nc; ctx.fillRect(W*0.28, 0, W*0.72, H*0.55);
-        // Deep floor cosmic glow
-        const nf = ctx.createRadialGradient(W*0.50, H, 0, W*0.50, H, W*0.72);
-        nf.addColorStop(0,    'rgba(88,18,145,0.32)');
-        nf.addColorStop(0.42, 'rgba(48,8,98,0.12)');
-        nf.addColorStop(1,    'rgba(15,2,38,0)');
-        ctx.fillStyle = nf; ctx.fillRect(0, H*0.45, W, H*0.55);
-      }
-
-      // ── 3. Ethereal cloud formations (the signature of dreamscape) ────────
-      // These mimic the volumetric pink cloud masses seen in reference
-      const cloudVis = { MORNING:0.65, AFTERNOON:1.0, EVENING:0.45, NIGHT:0.22 }[period] || 0.6;
-      const [cR,cGc,cB] = period === 'EVENING' ? [88,65,215] : period === 'NIGHT' ? [55,28,145] : period === 'MORNING' ? [215,125,255] : [255,68,218];
-      const cloudCfg = [
-        {cx:0.18, cy:0.55, rx:0.28, ry:0.16},
-        {cx:0.50, cy:0.50, rx:0.32, ry:0.18},
-        {cx:0.80, cy:0.57, rx:0.26, ry:0.14},
-        {cx:0.12, cy:0.72, rx:0.22, ry:0.12},
-        {cx:0.68, cy:0.68, rx:0.25, ry:0.13},
-        {cx:0.38, cy:0.78, rx:0.30, ry:0.15},
-      ];
-      cloudCfg.forEach((c, ci) => {
-        const pulse = 0.55 + 0.45 * Math.sin(t * 0.55 + ci * 1.18);
-        const ca = 0.08 * pulse * cloudVis;
-        if (ca < 0.01) return;
-        // Multi-layer cloud mass
-        for (let li = 0; li < 3; li++) {
-          const lx = W * (c.cx + (li - 1) * c.rx * 0.22);
-          const ly = H * (c.cy - li * c.ry * 0.18);
-          const lrx = W * c.rx * (0.7 + li * 0.15);
-          const lry = H * c.ry * (0.7 + li * 0.10);
-          const cg = ctx.createRadialGradient(lx, ly, 0, lx, ly, lrx);
-          cg.addColorStop(0,    `rgba(${cR},${cGc},${cB},${ca * (1.4 - li*0.28)})`);
-          cg.addColorStop(0.50, `rgba(${cR},${cGc},${cB},${ca * (0.60 - li*0.12)})`);
-          cg.addColorStop(1,    `rgba(${cR},${cGc},${cB},0)`);
-          ctx.save(); ctx.scale(1, lry / lrx);
-          ctx.fillStyle = cg;
-          ctx.beginPath(); ctx.arc(lx, ly * lrx / lry, lrx, 0, Math.PI*2); ctx.fill();
+      if (this._ptype === 'orbs' && this._orbs) {
+        this._orbs.forEach(o => {
+          o.phase += o.phaseSpd;
+          const pulse = 0.72 + 0.28 * Math.sin(o.phase);
+          const ox = o.x + Math.sin(o.phase * 0.7) * o.rx * 0.08;
+          const oy = o.y + Math.cos(o.phase * 0.5) * o.ry * 0.12;
+          const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, Math.max(o.rx, o.ry));
+          g.addColorStop(0,   `hsla(${o.hue},78%,72%,${o.alpha * pulse * 1.8})`);
+          g.addColorStop(0.45,`hsla(${o.hue},65%,55%,${o.alpha * pulse * 0.8})`);
+          g.addColorStop(1,   `hsla(${o.hue},52%,38%,0)`);
+          ctx.save(); ctx.scale(1, o.ry/o.rx); ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(ox, oy*(o.rx/o.ry), o.rx, 0, Math.PI*2); ctx.fill();
           ctx.restore();
-        }
-      });
+        });
+      }
 
-      // ── 4. Aurora waves ──────────────────────────────────────────────────
-      const auroraVis = period === 'NIGHT' ? 1.0 : period === 'EVENING' ? 0.5 : 0.18;
-      this._waveLines.forEach(wl => {
-        wl.phase += wl.spd;
-        ctx.save(); ctx.globalAlpha = wl.alpha * auroraVis;
-        ctx.strokeStyle = `hsla(${wl.hue},85%,72%,1)`;
-        ctx.lineWidth = wl.thickness; ctx.lineCap = 'round';
-        ctx.beginPath();
-        for (let xi = 0; xi <= W; xi += 4) {
-          const y = wl.yBase + Math.sin((xi / wl.wavelength) * Math.PI * 2 + wl.phase) * wl.amplitude;
-          xi === 0 ? ctx.moveTo(xi, y) : ctx.lineTo(xi, y);
-        }
-        ctx.stroke();
+      if (this._ptype === 'rain' && this._rainDrops) {
+        ctx.save();
+        this._rainDrops.forEach(d => {
+          d.y += d.speed;
+          if (d.y > H + d.len) { d.y = -d.len; d.x = Math.random()*W; }
+          ctx.globalAlpha = d.alpha;
+          ctx.strokeStyle = 'rgba(165,205,240,1)';
+          ctx.lineWidth = d.width;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.len*0.22, d.y + d.len);
+          ctx.stroke();
+        });
         ctx.restore();
-      });
-
-      // ── 5. Floating luminous orbs ────────────────────────────────────────
-      this._orbs.forEach(orb => {
-        orb.phase += orb.spd;
-        orb.x += orb.driftX + Math.sin(orb.phase * 0.7) * 0.3;
-        orb.y += orb.driftY + Math.cos(orb.phase * 0.5) * 0.2;
-        if (orb.y < -orb.r * 2) { orb.y = H + orb.r; orb.x = Math.random() * W; }
-        if (orb.x < -orb.r) orb.x = W + orb.r;
-        if (orb.x > W + orb.r) orb.x = -orb.r;
-        const pulse = 0.65 + 0.35 * Math.sin(orb.phase);
-        const a = orb.alpha * pulse;
-        const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
-        g.addColorStop(0,    `hsla(${orb.hue},90%,82%,${a * 2.5})`);
-        g.addColorStop(0.42, `hsla(${orb.hue},80%,62%,${a * 1.2})`);
-        g.addColorStop(1,    `hsla(${orb.hue},70%,48%,0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2); ctx.fill();
-      });
-
-      // ── 6. Fine dust motes ───────────────────────────────────────────────
-      this._dust.forEach(d => {
-        d.phase += d.spd; d.x += d.vx; d.y += d.vy;
-        if (d.y < -10) d.y = H + 10;
-        if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10;
-        const da = d.alpha * (0.4 + 0.6 * Math.sin(d.phase));
-        const dg = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 3);
-        dg.addColorStop(0, `hsla(${d.hue},88%,80%,${da * 2.2})`);
-        dg.addColorStop(1, `hsla(${d.hue},72%,58%,0)`);
-        ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 3, 0, Math.PI * 2); ctx.fill();
-      });
-
-      // ── 7. Edge vignette ─────────────────────────────────────────────────
-      const vg = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.2, W * 0.5, H * 0.5, W * 0.85);
-      vg.addColorStop(0,    'rgba(0,0,0,0)');
-      vg.addColorStop(0.68, 'rgba(0,0,0,0)');
-      vg.addColorStop(1,    'rgba(2,0,12,0.72)');
-      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-    },
-
-    create(W, H) {
-      const period = _getCanvasPeriod();
-      const r = Math.random();
-      if (r < 0.52) {
-        // Ethereal floating particle — drifts upward weightlessly
-        return {
-          type: 'ether',
-          x: Math.random() * W * 1.2 - W * 0.10,
-          y: H + 15 + Math.random() * 60,
-          vx: (Math.random() - 0.5) * 0.55,
-          vy: -(0.20 + Math.random() * 0.65),
-          r: 2 + Math.random() * 8,
-          hue: [255, 190, 285, 215, 305, 175][Math.floor(Math.random() * 6)],
-          alpha: 0, maxAlpha: 0.45 + Math.random() * 0.40,
-          life: 0, fadeIn: 22, maxLife: 120 + Math.floor(Math.random() * 90),
-          sw: Math.random() * Math.PI * 2, swAmp: 0.8 + Math.random() * 2.2, swSpd: 0.008 + Math.random() * 0.015,
-        };
-      } else if (r < 0.80) {
-        // Dream sparkle — twinkles in place
-        return {
-          type: 'sparkle',
-          x: Math.random() * W, y: Math.random() * H * 0.92,
-          r: 0.6 + Math.random() * 2.8,
-          hue: [260, 200, 300, 220, 315, 185][Math.floor(Math.random() * 6)],
-          alpha: 0, maxAlpha: 0.55 + Math.random() * 0.38,
-          life: 0, fadeIn: 8, maxLife: 45 + Math.floor(Math.random() * 40),
-          vx: (Math.random() - 0.5) * 0.20, vy: -(0.04 + Math.random() * 0.18),
-        };
-      } else {
-        // Slow-drifting dream mote
-        return {
-          type: 'mote',
-          x: Math.random() * W, y: Math.random() * H * 0.88,
-          vx: (Math.random() - 0.5) * 0.28, vy: -(0.06 + Math.random() * 0.20),
-          r: 1.2 + Math.random() * 3.5,
-          hue: [270, 210, 295, 180][Math.floor(Math.random() * 4)],
-          alpha: 0, maxAlpha: 0.32 + Math.random() * 0.30,
-          life: 0, fadeIn: 18, maxLife: 160 + Math.floor(Math.random() * 110),
-          sw: Math.random() * Math.PI * 2, swAmp: 0.5 + Math.random() * 1.5, swSpd: 0.006 + Math.random() * 0.010,
-        };
       }
-    },
 
-    draw(ctx, p) {
-      ctx.save(); ctx.globalAlpha = p.alpha;
-      if (p.type === 'ether') {
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
-        g.addColorStop(0,   `hsla(${p.hue},92%,88%,1)`);
-        g.addColorStop(0.38,`hsla(${p.hue},82%,68%,0.55)`);
-        g.addColorStop(1,   `hsla(${p.hue},72%,50%,0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2); ctx.fill();
-        // Core dot
-        ctx.fillStyle = `hsla(${p.hue},95%,92%,0.85)`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.45, 0, Math.PI * 2); ctx.fill();
-      } else if (p.type === 'sparkle') {
-        const s = p.r;
-        ctx.strokeStyle = `hsla(${p.hue},90%,82%,1)`;
-        ctx.lineWidth = s * 0.50; ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.x - s * 3.0, p.y); ctx.lineTo(p.x + s * 3.0, p.y);
-        ctx.moveTo(p.x, p.y - s * 3.0); ctx.lineTo(p.x, p.y + s * 3.0);
-        ctx.moveTo(p.x - s * 1.9, p.y - s * 1.9); ctx.lineTo(p.x + s * 1.9, p.y + s * 1.9);
-        ctx.moveTo(p.x + s * 1.9, p.y - s * 1.9); ctx.lineTo(p.x - s * 1.9, p.y + s * 1.9);
-        ctx.stroke();
-        ctx.fillStyle = `hsla(${p.hue},95%,90%,0.90)`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.35, 0, Math.PI * 2); ctx.fill();
-      } else {
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.8);
-        g.addColorStop(0,   `hsla(${p.hue},88%,82%,1)`);
-        g.addColorStop(0.5, `hsla(${p.hue},78%,62%,0.4)`);
-        g.addColorStop(1,   `hsla(${p.hue},68%,46%,0)`);
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2); ctx.fill();
+      if (this._ptype === 'embers' && this._embers) {
+        this._embers.forEach(e => {
+          e.life++; e.sw += e.swSpd;
+          e.x += e.vx + Math.sin(e.sw)*e.swAmp; e.y += e.vy;
+          if (e.y < -20 || e.life > e.maxLife) {
+            e.x = Math.random()*W; e.y = H + 10 + Math.random()*30;
+            e.life = 0; e.alpha = 0; e.vx = (Math.random()-0.5)*0.55;
+            e.vy = -(0.55+Math.random()*1.1);
+          }
+          const fi = Math.min(1, e.life/12);
+          const fo = e.life > e.maxLife-18 ? Math.max(0,(e.maxLife-e.life)/18) : 1;
+          e.alpha = e.maxAlpha * fi * fo;
+          const eG = ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r*2.5);
+          eG.addColorStop(0,   `hsla(${e.hue+22},100%,92%,${e.alpha})`);
+          eG.addColorStop(0.4, `hsla(${e.hue},95%,68%,${e.alpha*0.7})`);
+          eG.addColorStop(1,   `hsla(${e.hue-8},85%,42%,0)`);
+          ctx.fillStyle=eG; ctx.beginPath(); ctx.arc(e.x,e.y,e.r*2.5,0,Math.PI*2); ctx.fill();
+        });
       }
-      ctx.restore();
+
+      // Always: cinematic vignette
+      const vigRad = ctx.createRadialGradient(W*0.5,H*0.5,W*0.18,W*0.5,H*0.5,W*0.90);
+      vigRad.addColorStop(0,   `rgba(${r1},${g1},${b1},0)`);
+      vigRad.addColorStop(0.62,`rgba(${r1},${g1},${b1},0)`);
+      vigRad.addColorStop(1,   `rgba(${Math.max(0,r1-4)},${Math.max(0,g1-4)},${Math.max(0,b1-4)},0.70)`);
+      ctx.fillStyle=vigRad; ctx.fillRect(0,0,W,H);
     },
 
-    update(p, W, H) {
-      p.life++;
-      if (p.sw !== undefined) { p.sw += p.swSpd; p.x += p.vx + Math.sin(p.sw) * p.swAmp; } else { p.x += p.vx; }
-      p.y += p.vy;
-      const fi = Math.min(1, p.life / p.fadeIn);
-      const fo = (p.maxLife && p.life > p.maxLife - 22) ? Math.max(0, (p.maxLife - p.life) / 22) : 1;
-      p.alpha = p.maxAlpha * fi * fo;
-      if (p.type === 'ether') return p.y > -p.r * 4 && p.life < p.maxLife;
-      return p.life < p.maxLife;
-    },
+    // Custom uses own internal update loops (no _particles array)
+    create() { return null; },
+    draw() {},
+    update() { return false; },
   },
 
   };
@@ -3567,10 +1356,20 @@ const CFG = {
 
   // Expose ocean CFG so bubble-click handler in main() can reach it
   function _afterInit() {
-    window._ThemeOceanCFG = CFG.ocean;
+    // ocean theme removed
   }
 
-  return { init: () => { init(); _afterInit(); }, setTheme, setPaused, setEnabled };
+  return {
+    init: () => { init(); _afterInit(); },
+    setTheme,
+    setPaused,
+    setEnabled,
+    refreshCustom() {
+      if (_theme === 'custom' && CFG.custom && _canvas) {
+        CFG.custom.refresh(_canvas.width, _canvas.height);
+      }
+    },
+  };
 })();
 
 
@@ -6190,8 +3989,7 @@ const CFG = {
     }
 
     // ── Full-screen theme picker ─────────────────────────────────────────
-    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-ocean','theme-cherry',
-                           'theme-snow','theme-rain','theme-dreamscape','theme-anime','theme-matrix','theme-neon','theme-cozy'];
+    const THEME_CLASSES = ['theme-galaxy','theme-classic','theme-forest','theme-cherry','theme-matrix','theme-cozy','theme-custom'];
 
     function _applyFullTheme(theme) {
       document.body.classList.remove(...THEME_CLASSES);
@@ -6211,7 +4009,72 @@ const CFG = {
         btn.addEventListener('click', () => Settings.set('fullTheme', btn.dataset.theme));
       });
     }
-    Settings.onChange('fullTheme', (v) => _applyFullTheme(v));
+    Settings.onChange('fullTheme', (v) => {
+      _applyFullTheme(v);
+      // Show/hide custom theme editor
+      const customEditor = document.getElementById('custom-theme-editor');
+      if (customEditor) customEditor.style.display = v === 'custom' ? '' : 'none';
+      // When switching to custom, ensure CSS vars + canvas are up to date immediately
+      if (v === 'custom') _applyCustomThemeVisuals();
+    });
+    // ── Custom theme editor wiring ───────────────────────────────────────
+    function _applyCustomThemeVisuals() {
+      const bg1 = Settings.get('customBg1') || '#07041a';
+      const bg2 = Settings.get('customBg2') || '#1a0a3a';
+      // Set CSS vars so body.full-mode.theme-custom background gradient updates live
+      document.body.style.setProperty('--custom-bg1', bg1);
+      document.body.style.setProperty('--custom-bg2', bg2);
+      // Compute a midpoint mix for the radial overlay var
+      const hr = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+      try {
+        const c1 = hr(bg1), c2 = hr(bg2);
+        const mix = c1.map((v,i) => ((v+c2[i])>>1));
+        document.body.style.setProperty('--custom-mix-rgb', mix.join(','));
+      } catch(_) {}
+      // Update swatch on chip
+      const swatch = document.getElementById('custom-theme-swatch');
+      if (swatch) swatch.style.background = `linear-gradient(135deg,${bg1},${bg2})`;
+      // Refresh canvas if active
+      if ((Settings.get('fullTheme') || 'galaxy') === 'custom') {
+        ThemeCanvas.refreshCustom();
+      }
+    }
+    // React to cross-context changes (e.g. settings import)
+    Settings.onChange('customBg1', _applyCustomThemeVisuals);
+    Settings.onChange('customBg2', _applyCustomThemeVisuals);
+    Settings.onChange('customParticle', _applyCustomThemeVisuals);
+    const customBg1Input = document.getElementById('custom-bg-color1');
+    const customBg2Input = document.getElementById('custom-bg-color2');
+    if (customBg1Input) {
+      customBg1Input.value = Settings.get('customBg1') || '#07041a';
+      customBg1Input.addEventListener('input', () => {
+        Settings.set('customBg1', customBg1Input.value);
+        _applyCustomThemeVisuals();
+      });
+    }
+    if (customBg2Input) {
+      customBg2Input.value = Settings.get('customBg2') || '#1a0a3a';
+      customBg2Input.addEventListener('input', () => {
+        Settings.set('customBg2', customBg2Input.value);
+        _applyCustomThemeVisuals();
+      });
+    }
+    // Custom particle style chips
+    const customPartChips = document.querySelectorAll('#custom-particle-chips .custom-particle-chip');
+    function _applyCustomParticle(ptype) {
+      customPartChips.forEach(c => c.classList.toggle('active', c.dataset.cpart === ptype));
+      Settings.set('customParticle', ptype);
+      _applyCustomThemeVisuals();
+    }
+    customPartChips.forEach(c => {
+      c.addEventListener('click', () => _applyCustomParticle(c.dataset.cpart));
+    });
+    _applyCustomParticle(Settings.get('customParticle') || 'stars');
+    // Show/hide custom editor on boot
+    const customEditorEl = document.getElementById('custom-theme-editor');
+    if (customEditorEl) customEditorEl.style.display = (Settings.get('fullTheme')||'galaxy')==='custom' ? '' : 'none';
+    // Init custom theme on boot if active
+    _applyCustomThemeVisuals();
 
     // ── Eye colour picker ────────────────────────────────────────────────
     const EYE_COLOR_CLASSES = ['eye-periwinkle','eye-emerald','eye-rose','eye-amber',
@@ -6868,7 +4731,7 @@ const CFG = {
     // Only galaxy, classic, matrix are fully immune (no time canvas logic).
     // All scene themes (forest, cherry, ocean, snow, rain, dreamscape, anime, neon, cozy)
     // now implement full time-of-day in their drawBackground.
-    const TIME_IMMUNE = new Set(['galaxy', 'classic', 'matrix']);
+    const TIME_IMMUNE = new Set(['galaxy', 'classic', 'matrix', 'custom']);
 
     function _getTimePeriodMain() {
       const h = new Date().getHours();
@@ -6920,19 +4783,13 @@ const CFG = {
     // ── SensaMode — soft solid-color theme for visual sensitivity ─────────
     // Each theme gets a soft pastel solid that replaces the animated canvas.
     const SENSA_COLORS = {
-      // Each color is a distinct solid that perfectly captures the theme's soul
-      galaxy:     '#050014',  // deep cosmic indigo-black
-      classic:    '#0f0f0f',  // neutral near-black
-      forest:     '#01100a',  // deep emerald-void
-      cherry:     '#1a020e',  // midnight rose-black
-      ocean:      '#000e1a',  // abyss deep-sea navy
-      snow:       '#060c1e',  // crisp moonlit winter navy
-      rain:       '#040a14',  // overcast slate-navy
-      dreamscape: '#0a0218',  // deep surreal indigo
-      anime:      '#08021a',  // rich cinematic purple-black
-      matrix:     '#000601',  // phosphor green-void
-      neon:       '#02000c',  // pure cyber night
-      cozy:       '#120400',  // deep hearth ember-black
+      galaxy:  '#050014',  // deep cosmic indigo-black
+      classic: '#0f0f0f',  // neutral near-black
+      forest:  '#01100a',  // deep emerald-void
+      cherry:  '#1a020e',  // midnight rose-black
+      matrix:  '#000601',  // phosphor green-void
+      cozy:    '#120400',  // deep hearth ember-black
+      custom:  '#07041a',  // user-defined — fallback
     };
     const SENSA_LABEL = 'SensaMode';
 
