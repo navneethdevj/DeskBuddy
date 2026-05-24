@@ -121,6 +121,32 @@
                   <button class="theme-chip" data-theme="matrix"><span class="theme-swatch" style="background:linear-gradient(135deg,#000400,#002800 50%,#004000 100%)"></span>Matrix</button>
                   <button class="theme-chip" data-theme="neon"><span class="theme-swatch" style="background:linear-gradient(135deg,#03000e,#060018 50%,#0090cc 100%)"></span>Neon City</button>
                   <button class="theme-chip" data-theme="cozy"><span class="theme-swatch" style="background:linear-gradient(135deg,#0b0400,#1e0904 50%,#8c3808 100%)"></span>Cozy</button>
+                  <button class="theme-chip" data-theme="custom"><span class="theme-swatch" id="custom-theme-swatch" style="background:linear-gradient(135deg,#07041a,#1a0a3a)"></span>Custom ✦</button>
+                </div>
+                <!-- Custom theme editor — shown only when Custom is active -->
+                <div id="custom-theme-editor" style="display:none">
+                  <div class="custom-row">
+                    <span class="custom-label">Background colour 1</span>
+                    <div class="custom-color-wrap">
+                      <input type="color" id="custom-bg-color1" value="#07041a" title="Background start colour">
+                    </div>
+                  </div>
+                  <div class="custom-row">
+                    <span class="custom-label">Background colour 2</span>
+                    <div class="custom-color-wrap">
+                      <input type="color" id="custom-bg-color2" value="#1a0a3a" title="Background end colour">
+                    </div>
+                  </div>
+                  <div class="custom-row" style="flex-direction:column;align-items:flex-start;gap:7px">
+                    <span class="custom-label">Particle style</span>
+                    <div class="custom-particle-chips" id="custom-particle-chips">
+                      <button class="custom-particle-chip active" data-cpart="stars">✦ Stars</button>
+                      <button class="custom-particle-chip" data-cpart="orbs">◉ Orbs</button>
+                      <button class="custom-particle-chip" data-cpart="rain">⛆ Rain</button>
+                      <button class="custom-particle-chip" data-cpart="embers">🔥 Embers</button>
+                      <button class="custom-particle-chip" data-cpart="none">∅ None</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="settings-row">
