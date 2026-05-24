@@ -2576,18 +2576,20 @@ body.full-mode.theme-forest::before {
 /* ── THEME: Sakura — Japanese cherry blossom atmosphere ─────────────── */
 body.full-mode.theme-cherry {
   background:
-    /* Petal bloom — signature bottom warm glow, rich and deep */
-    radial-gradient(ellipse 78% 55% at 50% 110%, rgba(255,65,105, 0.72) 0%, rgba(225,38,85, 0.35) 36%, transparent 64%),
-    /* Left crimson-rose edge warmth */
-    radial-gradient(ellipse 44% 98% at 0% 56%,   rgba(255,110,158, 0.40) 0%, rgba(218,58,125, 0.17) 46%, transparent 72%),
-    /* Right crimson-rose edge warmth */
-    radial-gradient(ellipse 44% 98% at 100% 54%,  rgba(255,110,158, 0.38) 0%, rgba(218,58,125, 0.15) 46%, transparent 70%),
-    /* Deep violet sky — upper atmospheric bloom */
-    radial-gradient(ellipse 82% 46% at 50% 0%,    rgba(138,52,205, 0.28) 0%, rgba(90,28,168, 0.12) 56%, transparent 74%),
-    /* Center atmospheric depth */
-    radial-gradient(ellipse 60% 60% at 50% 46%,   rgba(245,88,152, 0.08) 0%, transparent 66%),
-    /* Deep midnight crimson base */
-    linear-gradient(180deg, #050116 0%, #0b0226 20%, #160332 44%, #0e0220 64%, #050116 100%);
+    /* Petal bloom — wider, deeply blended bottom glow */
+    radial-gradient(ellipse 110% 75% at 50% 118%, rgba(255,55,100, 0.68) 0%, rgba(225,28,80, 0.42) 24%, rgba(190,12,65, 0.22) 46%, rgba(150,5,48, 0.08) 64%, transparent 80%),
+    /* Left edge — wide rose-crimson cascade blending into center */
+    radial-gradient(ellipse 70% 120% at -8% 58%, rgba(255,90,148, 0.50) 0%, rgba(220,45,120, 0.28) 36%, rgba(180,18,95, 0.12) 62%, transparent 80%),
+    /* Right edge — matching warm rose cascade */
+    radial-gradient(ellipse 70% 120% at 108% 56%, rgba(255,85,142, 0.46) 0%, rgba(215,40,115, 0.26) 36%, rgba(175,15,90, 0.10) 62%, transparent 78%),
+    /* Upper sky — deep violet-rose sky blending down */
+    radial-gradient(ellipse 110% 62% at 50% -8%, rgba(168,48,220, 0.36) 0%, rgba(128,30,195, 0.22) 32%, rgba(90,15,165, 0.12) 58%, rgba(60,5,128, 0.04) 80%, transparent 96%),
+    /* Center atmospheric bridge — fuses sky and petal bloom */
+    radial-gradient(ellipse 90% 90% at 50% 52%, rgba(225,50,145, 0.10) 0%, rgba(195,28,118, 0.14) 38%, rgba(155,12,92, 0.08) 62%, transparent 82%),
+    /* Mid-sky rose-violet blend */
+    radial-gradient(ellipse 88% 52% at 50% 28%, rgba(210,70,210, 0.12) 0%, rgba(175,40,178, 0.08) 48%, transparent 78%),
+    /* Deep midnight base — smooth multi-stop gradient */
+    linear-gradient(180deg, #030014 0%, #06011c 10%, #0d022c 22%, #160338 36%, #1d0442 52%, #120230 68%, #07011a 84%, #030010 100%);
   background-size: auto;
 }
 body.full-mode.theme-cherry::before {
@@ -2639,71 +2641,7 @@ body.full-mode.theme-ocean::before {
   animation-duration: 22s;
 }
 
-/* ── THEME: Snow — silent atmospheric winter ─────────────────────────── */
-body.full-mode.theme-snow {
-  background:
-    /* Moonlit sky apex — diffuse top glow */
-    radial-gradient(ellipse 58% 34% at 50%  0%,   rgba(200,225,255, 0.32) 0%, rgba(160,195,255, 0.14) 50%, transparent 70%),
-    /* Left frosted atmospheric edge */
-    radial-gradient(ellipse 30% 88% at  0%  58%,  rgba( 90,128,208, 0.24) 0%, rgba(60,100,182, 0.10) 50%, transparent 70%),
-    /* Right frosted atmospheric edge */
-    radial-gradient(ellipse 30% 88% at 100% 56%,  rgba( 82,122,202, 0.22) 0%, rgba(52,92,176, 0.08) 50%, transparent 68%),
-    /* Snow field luminance — the bright white ground */
-    radial-gradient(ellipse 100% 30% at 50% 107%, rgba(190,218,255, 0.35) 0%, rgba(150,192,255, 0.16) 50%, transparent 70%),
-    /* Aurora left corner hint */
-    radial-gradient(ellipse 28% 22% at  8% 10%,   rgba(120,230,208, 0.14) 0%, transparent 60%),
-    /* Aurora right corner hint */
-    radial-gradient(ellipse 22% 20% at 92%  8%,   rgba(105,210,252, 0.12) 0%, transparent 56%),
-    /* Deep winter midnight base */
-    linear-gradient(180deg, #030818 0%, #050e28 24%, #07122c 48%, #050d24 74%, #030716 100%);
-  background-size: auto;
-}
-body.full-mode.theme-snow::before {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    /* Soft moon diffusion */
-    radial-gradient(ellipse 72% 40% at 50%  0%,  rgba(185,215,255, 0.16) 0%, transparent 63%),
-    /* Ice-surface sparkle top-left */
-    radial-gradient(ellipse 26% 20% at 24% 7%,   rgba(245,250,255, 0.14) 0%, transparent 56%),
-    /* Snow ground luminance reflection */
-    radial-gradient(ellipse 100% 22% at 50% 104%, rgba(205,225,255, 0.18) 0%, transparent 60%),
-    /* Cinematic edge depth vignette */
-    radial-gradient(ellipse 86% 86% at 50% 50%, transparent 53%, rgba(2,4,16, 0.70) 100%);
-  animation-duration: 24s;
-}
 
-/* ── THEME: Rain — cinematic overcast atmosphere ─────────────────────── */
-body.full-mode.theme-rain {
-  background:
-    /* Overcast sky — diffuse luminance from above */
-    radial-gradient(ellipse 92% 32% at 50%   0%,  rgba(118,165,225, 0.32) 0%, rgba(80,130,200, 0.14) 50%, transparent 70%),
-    /* Left stormy atmospheric column */
-    radial-gradient(ellipse 36% 86% at   0%  52%,  rgba( 52,108,185, 0.32) 0%, rgba(35,78,155, 0.12) 50%, transparent 70%),
-    /* Right stormy atmospheric column */
-    radial-gradient(ellipse 36% 86% at 100%  50%,  rgba( 45,98,178, 0.28) 0%, rgba(28,70,148, 0.10) 50%, transparent 68%),
-    /* Reflective puddle ground glow */
-    radial-gradient(ellipse  95% 26% at 50% 107%,  rgba( 85,138,222, 0.40) 0%, rgba(58,108,195, 0.18) 50%, transparent 70%),
-    /* Center storm depth void */
-    radial-gradient(ellipse  60% 50% at 50%  50%,  rgba( 5, 18, 42, 0.45) 0%, transparent 70%),
-    /* Deep slate-blue storm base */
-    linear-gradient(180deg, #020b16 0%, #050e1e 16%, #071322 36%, #060f1c 60%, #030b16 100%);
-  background-size: auto;
-}
-body.full-mode.theme-rain::before {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    /* Sky diffuse luminance */
-    radial-gradient(ellipse 86% 32% at 50%  0%,  rgba(138,185,245, 0.15) 0%, transparent 60%),
-    /* Left mist atmospheric */
-    radial-gradient(ellipse 20% 74% at   0% 52%,  rgba( 65,125,205, 0.13) 0%, transparent 53%),
-    /* Right mist atmospheric */
-    radial-gradient(ellipse 20% 74% at 100% 50%,  rgba( 55,112,195, 0.11) 0%, transparent 50%),
-    /* Puddle reflection glow */
-    radial-gradient(ellipse 75% 26% at 50% 104%, rgba(92,155,230, 0.14) 0%, transparent 56%),
-    /* Deep cinematic edge vignette */
-    radial-gradient(ellipse 84% 84% at 50% 50%, transparent 50%, rgba(1,4,15, 0.74) 100%);
-  animation-duration: 20s;
-}
 
 /* ── THEME: Dreamscape — surreal lucid dream atmosphere ─────────────── */
 body.full-mode.theme-dreamscape {
@@ -2738,77 +2676,16 @@ body.full-mode.theme-dreamscape::before {
   animation-duration: 16s;
 }
 
-/* ── THEME: Anime — cinematic manga atmosphere (Shinkai-inspired) ─────── */
-body.full-mode.theme-anime {
-  background:
-    /* Manga halftone — very subtle screen texture */
-    radial-gradient(circle, rgba(200,170,255,.04) 1px, transparent 1px),
-    /* Cinematic upper sky — warm blue-violet */
-    radial-gradient(ellipse 80% 48% at 50%  0%,   rgba(120,55,220, 0.22) 0%, rgba(80,28,185, 0.10) 58%, transparent 76%),
-    /* Left atmospheric edge — violet */
-    radial-gradient(ellipse 42% 82% at   0%  55%,  rgba(155, 55,255, 0.18)  0%, rgba(100,30,210, 0.08) 52%, transparent 72%),
-    /* Right atmospheric edge */
-    radial-gradient(ellipse 42% 82% at 100%  55%,  rgba(110, 38,225, 0.16)  0%, rgba(72,18,195, 0.07) 52%, transparent 70%),
-    /* Warm cinematic sunset horizon */
-    radial-gradient(ellipse 100% 28% at 50% 105%, rgba(215, 62,155, 0.38)  0%, rgba(175,40,120, 0.16) 48%, transparent 70%),
-    /* Center anime sky glow */
-    radial-gradient(ellipse 62% 58% at 50%  48%,   rgba(190, 80,178, 0.14)  0%, transparent 70%),
-    /* Deep indigo sky base */
-    linear-gradient(180deg, #04010e 0%, #08031e 22%, #12062e 48%, #0a0420 72%, #040112 100%);
-  background-size: 14px 14px, auto, auto, auto, auto, auto, auto;
-}
-body.full-mode.theme-anime::before {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    /* Manga screentone — horizontal */
-    linear-gradient(180deg, transparent 49.4%, rgba(165,140,255,.05) 49.4%, rgba(165,140,255,.05) 50.6%, transparent 50.6%),
-    /* Manga screentone — vertical */
-    linear-gradient(90deg,  transparent 49.6%, rgba(165,140,255,.04) 49.6%, rgba(165,140,255,.04) 50.4%, transparent 50.4%),
-    /* Cinematic edge vignette */
-    radial-gradient(ellipse 84% 84% at 50% 50%, transparent 58%, rgba(0,0,8, 0.62) 100%);
-}
 
 /* ── THEME: Matrix — digital rain ──────────────────────────────────── */
 body.full-mode.theme-matrix {
-  background:
-    radial-gradient(ellipse 42% 48% at 50% 50%, rgba(0,55,0,.10) 0%, transparent 65%),
-    linear-gradient(180deg, #000600 0%, #000900 50%, #000600 100%);
+  background: #000800;
 }
 body.full-mode.theme-matrix::before {
   content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(ellipse 84% 82% at 50% 50%, transparent 60%, rgba(0,0,0,.58) 100%);
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 55%, rgba(0,0,0,.65) 100%);
 }
 
-/* ── THEME: Neon — cinematic futuristic atmosphere ───────────────────── */
-body.full-mode.theme-neon {
-  background:
-    /* Dominant cyan-white left billboard star */
-    radial-gradient(ellipse 44% 58% at  9% 57%,  rgba(0,252,255, 0.68) 0%, rgba(0,215,255, 0.32) 34%, transparent 64%),
-    /* Hot magenta right counter-star */
-    radial-gradient(ellipse 40% 54% at  93% 55%,  rgba(255,0,215, 0.60) 0%, rgba(228,0,188, 0.28) 34%, transparent 62%),
-    /* Wet pavement reflection — vivid neon on street */
-    radial-gradient(ellipse  98% 30% at 50% 112%, rgba(0,232,255, 0.52) 0%, rgba(0,192,240, 0.22) 40%, transparent 64%),
-    /* Deep indigo sky pressing down */
-    radial-gradient(ellipse  88% 50% at 50%   0%, rgba(0, 12, 52, 0.82) 0%, rgba(0,  5, 28, 0.42) 46%, transparent 68%),
-    /* Pure black void between signs */
-    radial-gradient(ellipse  55% 60% at 50%  54%, rgba(0,  0,  6, 0.48) 0%, transparent 68%),
-    /* Ultra-dark neon night base */
-    linear-gradient(180deg, #000004 0%, #00000d 14%, #000113 32%, #00000d 58%, #000004 100%);
-  background-size: auto;
-}
-body.full-mode.theme-neon::before {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background:
-    /* Left neon wall bleed */
-    radial-gradient(ellipse 22% 85% at   0% 56%,  rgba(0, 238, 255, 0.16) 0%, transparent 56%),
-    /* Right neon wall bleed */
-    radial-gradient(ellipse 22% 82% at 100% 54%,  rgba(255, 0, 205, 0.14) 0%, transparent 54%),
-    /* Street shimmer strip */
-    radial-gradient(ellipse 78% 26% at 50% 106%, rgba(0,218,255, 0.13) 0%, transparent 56%),
-    /* Pure black abyss vignette */
-    radial-gradient(ellipse 84% 84% at 50% 50%, transparent 50%, rgba(0, 0, 2, 0.88) 100%);
-  animation-duration: 9s;
-}
 
 /* ── THEME: Cozy — warm amber hearth atmosphere ──────────────────────── */
 body.full-mode.theme-cozy {
@@ -2866,17 +2743,7 @@ body[data-theme-period="AFTERNOON"].theme-ocean   #world { filter: brightness(1.
 body[data-theme-period="EVENING"].theme-ocean     #world { filter: sepia(.14) saturate(1.20) hue-rotate(-20deg) brightness(.78) contrast(1.06); }
 body[data-theme-period="NIGHT"].theme-ocean       #world { filter: hue-rotate(-32deg) brightness(.55) saturate(1.22) contrast(1.10); }
 
-/* SNOW — crisp icy dawn · brilliant blue noon · violet aurora dusk · moonlit deep night */
-body[data-theme-period="MORNING"].theme-snow      #world { filter: brightness(1.30) saturate(0.86) hue-rotate(14deg) contrast(0.94); }
-body[data-theme-period="AFTERNOON"].theme-snow    #world { filter: brightness(1.22) saturate(1.20) contrast(1.06); }
-body[data-theme-period="EVENING"].theme-snow      #world { filter: sepia(.36) saturate(1.30) hue-rotate(-14deg) brightness(.82) contrast(1.06); }
-body[data-theme-period="NIGHT"].theme-snow        #world { filter: hue-rotate(-22deg) brightness(.62) saturate(.80) contrast(1.10); }
 
-/* RAIN — silver overcast dawn · deep stormy noon · amber city-light dusk · slate night */
-body[data-theme-period="MORNING"].theme-rain      #world { filter: brightness(1.22) saturate(0.80) hue-rotate(16deg) contrast(0.95); }
-body[data-theme-period="AFTERNOON"].theme-rain    #world { filter: brightness(0.94) saturate(1.08) contrast(1.10); }
-body[data-theme-period="EVENING"].theme-rain      #world { filter: sepia(.35) saturate(1.48) hue-rotate(-24deg) brightness(.76) contrast(1.10); }
-body[data-theme-period="NIGHT"].theme-rain        #world { filter: hue-rotate(-28deg) brightness(.60) saturate(.82) contrast(1.08); }
 
 /* DREAMSCAPE — soft lavender dawn · vivid surreal noon · deep indigo dusk · cosmic night */
 body[data-theme-period="MORNING"].theme-dreamscape  #world { filter: brightness(1.20) saturate(1.28) hue-rotate(24deg) contrast(0.95); }
@@ -2884,17 +2751,7 @@ body[data-theme-period="AFTERNOON"].theme-dreamscape #world { filter: brightness
 body[data-theme-period="EVENING"].theme-dreamscape  #world { filter: sepia(.12) saturate(1.38) hue-rotate(-22deg) brightness(.80) contrast(1.08); }
 body[data-theme-period="NIGHT"].theme-dreamscape    #world { filter: hue-rotate(-30deg) brightness(.62) saturate(1.15) contrast(1.10); }
 
-/* ANIME — airy cream morning, vivid cinematic afternoon, purple-orange dusk, deep night */
-body[data-theme-period="MORNING"].theme-anime     #world { filter: brightness(1.18) saturate(1.22) hue-rotate(16deg) contrast(0.95); }
-body[data-theme-period="AFTERNOON"].theme-anime   #world { filter: brightness(1.06) saturate(1.18) contrast(1.06); }
-body[data-theme-period="EVENING"].theme-anime     #world { filter: sepia(.22) saturate(1.32) hue-rotate(-16deg) brightness(.82) contrast(1.06); }
-body[data-theme-period="NIGHT"].theme-anime       #world { filter: hue-rotate(-28deg) brightness(.68) saturate(.88) contrast(1.06); }
 
-/* NEON — pre-dawn cold blue · cold neon noon · blazing magenta evening · full neon night */
-body[data-theme-period="MORNING"].theme-neon      #world { filter: brightness(1.16) saturate(0.76) hue-rotate(26deg) contrast(0.94); }
-body[data-theme-period="AFTERNOON"].theme-neon    #world { filter: brightness(1.06) saturate(1.26) contrast(1.12); }
-body[data-theme-period="EVENING"].theme-neon      #world { filter: saturate(1.52) brightness(.87) hue-rotate(-10deg) contrast(1.14); }
-body[data-theme-period="NIGHT"].theme-neon        #world { filter: brightness(.83) saturate(1.38) hue-rotate(-6deg) contrast(1.16); }
 
 /* COZY — golden morning warmth · rich amber noon · deep ember evening · dark candlelit night */
 body[data-theme-period="MORNING"].theme-cozy      #world { filter: brightness(1.26) saturate(1.28) hue-rotate(14deg) contrast(0.94); }
@@ -2907,12 +2764,8 @@ body[data-theme-period="NIGHT"].theme-cozy        #world { filter: sepia(.22) br
 body.theme-particles-off.theme-forest  #world::after,
 body.theme-particles-off.theme-cherry  #world::after,
 body.theme-particles-off.theme-ocean   #world::after,
-body.theme-particles-off.theme-snow    #world::after,
-body.theme-particles-off.theme-rain    #world::after,
 body.theme-particles-off.theme-dreamscape #world::after,
-body.theme-particles-off.theme-anime   #world::after,
 body.theme-particles-off.theme-matrix  #world::after,
-body.theme-particles-off.theme-neon    #world::after,
 body.theme-particles-off.theme-cozy    #world::after {
   content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
 }
@@ -2937,20 +2790,8 @@ body.theme-particles-off.theme-ocean   #world::after {
     radial-gradient(ellipse 50% 65% at  0%  55%, rgba(0,88,150,.30)    0%, transparent 58%),
     radial-gradient(ellipse 50% 65% at 100% 52%, rgba(0,80,140,.28)    0%, transparent 55%);
 }
-body.theme-particles-off.theme-snow    #world::after {
-  background:
-    radial-gradient(ellipse 62% 36% at 50%   0%, rgba(185,215,255,.24) 0%, transparent 62%),
-    radial-gradient(ellipse 100% 26% at 50% 105%, rgba(175,210,255,.28) 0%, transparent 60%),
-    radial-gradient(ellipse 35% 72% at  0%  58%, rgba(85,120,195,.16)  0%, transparent 55%),
-    radial-gradient(ellipse 35% 72% at 100% 55%, rgba(80,115,188,.14)  0%, transparent 52%);
-}
-body.theme-particles-off.theme-rain    #world::after {
-  background:
-    radial-gradient(ellipse 88% 30% at 50%   0%, rgba(120,170,238,.22) 0%, transparent 62%),
-    radial-gradient(ellipse 95% 26% at 50% 108%, rgba(90,148,230,.32)  0%, transparent 60%),
-    radial-gradient(ellipse 42% 72% at  0%  54%, rgba(55,108,190,.22)  0%, transparent 58%),
-    radial-gradient(ellipse 42% 72% at 100% 52%, rgba(45,95,178,.20)   0%, transparent 55%);
-}
+
+
 body.theme-particles-off.theme-dreamscape #world::after {
   background:
     radial-gradient(ellipse 65% 48% at 50%  45%, rgba(165,72,255,.20)  0%, transparent 68%),
@@ -2958,25 +2799,14 @@ body.theme-particles-off.theme-dreamscape #world::after {
     radial-gradient(ellipse 45% 90% at 100% 50%, rgba(30,168,255,.16)  0%, transparent 58%),
     radial-gradient(ellipse 100% 30% at 50% 108%, rgba(88,18,220,.38)  0%, transparent 62%);
 }
-body.theme-particles-off.theme-anime   #world::after {
-  background:
-    radial-gradient(ellipse 78% 42% at 50%   0%, rgba(110,50,210,.18)  0%, transparent 62%),
-    radial-gradient(ellipse 68% 32% at 50% 108%, rgba(210,58,148,.28)  0%, transparent 60%),
-    radial-gradient(ellipse 55% 52% at 50%  48%, rgba(180,72,165,.12)  0%, transparent 65%);
-}
+
 body.theme-particles-off.theme-matrix  #world::after {
   background:
     radial-gradient(ellipse 60% 52% at 50%  50%, rgba(0,90,0,.22)     0%, transparent 62%),
     radial-gradient(ellipse 80% 25% at 50% 100%, rgba(0,60,0,.32)     0%, transparent 58%),
     radial-gradient(ellipse 40% 40% at 50%   5%, rgba(0,55,0,.14)     0%, transparent 55%);
 }
-body.theme-particles-off.theme-neon    #world::after {
-  background:
-    radial-gradient(ellipse 40% 88% at  0%  52%, rgba(0,225,255,.22)  0%, transparent 65%),
-    radial-gradient(ellipse 40% 88% at 100% 50%, rgba(255,0,215,.20)  0%, transparent 63%),
-    radial-gradient(ellipse 100% 25% at 50% 108%, rgba(160,0,255,.30) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 42% at 50%  0%,  rgba(72,0,168,.22)  0%, transparent 62%);
-}
+
 body.theme-particles-off.theme-cozy    #world::after {
   background:
     radial-gradient(ellipse 65% 55% at 50%  100%, rgba(255,122,18,.52) 0%, transparent 65%),
@@ -3153,75 +2983,7 @@ body[data-theme-period="NIGHT"].buddy-adapt.theme-ocean .companion {
           hue-rotate(-35deg) saturate(1.35) brightness(0.62) opacity(0.85);
 }
 
-/* ── SNOW — icy luminescence, cool pale-blue winter ─────────────────── */
-body.buddy-adapt.theme-snow .companion {
-  filter: drop-shadow(0 0 7vmin rgba(175,218,255,0.48))
-          drop-shadow(0 0 26vmin rgba(142,192,255,0.20))
-          drop-shadow(0 0 50vmin rgba(108,165,248,0.07))
-          hue-rotate(12deg) saturate(0.82) brightness(1.18);
-}
-body.buddy-adapt.theme-snow .eye { filter: brightness(1.18) saturate(0.75) hue-rotate(14deg); }
-body.buddy-adapt.theme-snow .companion-inner { opacity: 0.99; }
 
-body[data-theme-period="MORNING"].buddy-adapt.theme-snow .companion {
-  filter: drop-shadow(0 0 8vmin rgba(212,232,255,0.55))
-          drop-shadow(0 0 28vmin rgba(175,208,252,0.24))
-          drop-shadow(0 0 55vmin rgba(138,182,248,0.09))
-          hue-rotate(16deg) saturate(0.78) brightness(1.32) contrast(0.94);
-}
-body[data-theme-period="AFTERNOON"].buddy-adapt.theme-snow .companion {
-  filter: drop-shadow(0 0 8vmin rgba(165,210,255,0.52))
-          drop-shadow(0 0 28vmin rgba(112,172,248,0.22))
-          drop-shadow(0 0 55vmin rgba(75,138,235,0.08))
-          hue-rotate(14deg) saturate(1.22) brightness(1.22) contrast(1.06);
-}
-body[data-theme-period="EVENING"].buddy-adapt.theme-snow .companion {
-  filter: drop-shadow(0 0 8vmin rgba(200,135,252,0.52))
-          drop-shadow(0 0 28vmin rgba(158,82,238,0.22))
-          drop-shadow(0 0 52vmin rgba(118,42,215,0.08))
-          hue-rotate(-14deg) saturate(1.28) brightness(0.90) contrast(1.06);
-}
-body[data-theme-period="NIGHT"].buddy-adapt.theme-snow .companion {
-  filter: drop-shadow(0 0 8vmin rgba(128,172,235,0.42))
-          drop-shadow(0 0 26vmin rgba(88,132,215,0.16))
-          drop-shadow(0 0 50vmin rgba(55,95,195,0.06))
-          hue-rotate(-22deg) saturate(0.78) brightness(0.70) contrast(1.10);
-}
-
-/* ── RAIN — slate blue, desaturated, reflective ──────────────────────── */
-body.buddy-adapt.theme-rain .companion {
-  filter: drop-shadow(0 0 7vmin rgba(88,158,235,0.42))
-          drop-shadow(0 0 24vmin rgba(58,122,205,0.16))
-          drop-shadow(0 0 48vmin rgba(35,92,178,0.06))
-          hue-rotate(8deg) saturate(0.80) brightness(0.95);
-}
-body.buddy-adapt.theme-rain .eye { filter: brightness(0.95) saturate(0.84) hue-rotate(10deg); }
-body.buddy-adapt.theme-rain .companion-inner { opacity: 0.94; }
-
-body[data-theme-period="MORNING"].buddy-adapt.theme-rain .companion {
-  filter: drop-shadow(0 0 8vmin rgba(165,205,248,0.48))
-          drop-shadow(0 0 26vmin rgba(118,165,228,0.20))
-          drop-shadow(0 0 50vmin rgba(78,125,205,0.07))
-          hue-rotate(14deg) saturate(0.72) brightness(1.18) contrast(0.95);
-}
-body[data-theme-period="AFTERNOON"].buddy-adapt.theme-rain .companion {
-  filter: drop-shadow(0 0 7vmin rgba(48,98,185,0.48))
-          drop-shadow(0 0 24vmin rgba(28,62,155,0.20))
-          drop-shadow(0 0 48vmin rgba(12,35,118,0.07))
-          hue-rotate(6deg) saturate(0.88) brightness(0.85) contrast(1.10);
-}
-body[data-theme-period="EVENING"].buddy-adapt.theme-rain .companion {
-  filter: drop-shadow(0 0 7vmin rgba(215,105,18,0.50))
-          drop-shadow(0 0 24vmin rgba(172,62,5,0.20))
-          drop-shadow(0 0 48vmin rgba(118,28,2,0.08))
-          hue-rotate(-22deg) saturate(1.28) brightness(0.78) contrast(1.10);
-}
-body[data-theme-period="NIGHT"].buddy-adapt.theme-rain .companion {
-  filter: drop-shadow(0 0 7vmin rgba(62,112,195,0.42))
-          drop-shadow(0 0 24vmin rgba(35,72,162,0.16))
-          drop-shadow(0 0 48vmin rgba(15,35,118,0.06))
-          hue-rotate(-28deg) saturate(0.72) brightness(0.65) contrast(1.08);
-}
 
 /* ── DREAMSCAPE — vivid violet, ethereal luminous ────────────────────── */
 body.buddy-adapt.theme-dreamscape .companion {
@@ -3258,15 +3020,6 @@ body[data-theme-period="NIGHT"].buddy-adapt.theme-dreamscape .companion {
           hue-rotate(-38deg) saturate(1.18) brightness(0.72) contrast(1.10);
 }
 
-/* ── ANIME — kept for compatibility ──────────────────────────────────── */
-body.buddy-adapt.theme-anime .companion {
-  filter: drop-shadow(0 0 8vmin rgba(188,82,248,0.40))
-          drop-shadow(0 0 24vmin rgba(148,52,218,0.15))
-          drop-shadow(0 0 44vmin rgba(118,32,195,0.06))
-          hue-rotate(-14deg) saturate(1.20) brightness(1.05);
-}
-body.buddy-adapt.theme-anime .eye { filter: brightness(1.07) saturate(1.24) hue-rotate(-16deg); }
-body.buddy-adapt.theme-anime .companion-inner { opacity: 0.97; }
 
 /* ── MATRIX — phosphor green, terminal glow ──────────────────────────── */
 body.buddy-adapt.theme-matrix .companion {
@@ -3278,40 +3031,17 @@ body.buddy-adapt.theme-matrix .companion {
 body.buddy-adapt.theme-matrix .eye { filter: brightness(0.86) saturate(1.42) hue-rotate(108deg); }
 body.buddy-adapt.theme-matrix .companion-inner { opacity: 0.87; }
 
-/* ── NEON — dual cyan-magenta city glow ──────────────────────────────── */
-body.buddy-adapt.theme-neon .companion {
-  filter: drop-shadow(0 0 9vmin rgba(0,232,255,0.50))
-          drop-shadow(0 0 30vmin rgba(0,185,248,0.18))
-          drop-shadow(0 0 58vmin rgba(255,0,205,0.08))
-          hue-rotate(-24deg) saturate(1.32) brightness(0.92);
+/* ── MATRIX — always-on green iris and glow (regardless of buddy-adapt) ── */
+body.full-mode.theme-matrix .pupil {
+  filter: hue-rotate(115deg) saturate(1.70) brightness(0.74);
 }
-body.buddy-adapt.theme-neon .eye { filter: brightness(0.92) saturate(1.38) hue-rotate(-26deg); }
-body.buddy-adapt.theme-neon .companion-inner { opacity: 0.93; }
+body.full-mode.theme-matrix .eye-wrap {
+  filter: drop-shadow(0 0 3.5vmin rgba(0, 240, 60, 0.58))
+          drop-shadow(0 0 10vmin  rgba(0, 205, 40, 0.26))
+          drop-shadow(0 0 20vmin  rgba(0, 172, 28, 0.10));
+}
+body.glow-off.full-mode.theme-matrix .eye-wrap { filter: none; }
 
-body[data-theme-period="MORNING"].buddy-adapt.theme-neon .companion {
-  filter: drop-shadow(0 0 9vmin rgba(48,215,255,0.52))
-          drop-shadow(0 0 30vmin rgba(18,165,245,0.22))
-          drop-shadow(0 0 58vmin rgba(5,105,215,0.08))
-          hue-rotate(-18deg) saturate(0.88) brightness(1.10) contrast(0.94);
-}
-body[data-theme-period="AFTERNOON"].buddy-adapt.theme-neon .companion {
-  filter: drop-shadow(0 0 9vmin rgba(0,242,255,0.62))
-          drop-shadow(0 0 30vmin rgba(255,18,218,0.20))
-          drop-shadow(0 0 58vmin rgba(0,185,248,0.10))
-          hue-rotate(-24deg) saturate(1.45) brightness(0.96) contrast(1.12);
-}
-body[data-theme-period="EVENING"].buddy-adapt.theme-neon .companion {
-  filter: drop-shadow(0 0 10vmin rgba(255,12,178,0.65))
-          drop-shadow(0 0 32vmin rgba(215,4,148,0.28))
-          drop-shadow(0 0 62vmin rgba(165,0,112,0.10))
-          hue-rotate(-32deg) saturate(1.55) brightness(0.88) contrast(1.14);
-}
-body[data-theme-period="NIGHT"].buddy-adapt.theme-neon .companion {
-  filter: drop-shadow(0 0 9vmin rgba(0,215,255,0.55))
-          drop-shadow(0 0 30vmin rgba(225,0,200,0.22))
-          drop-shadow(0 0 58vmin rgba(0,168,235,0.09))
-          hue-rotate(-28deg) saturate(1.42) brightness(0.85) contrast(1.16);
-}
 
 /* ── COZY — Fireplace amber glow + eye warmth + emotional aura ───────────
    Eye:    warm amber-honey tint — like candlelight on eyes
@@ -3514,12 +3244,8 @@ body.sensa-mode.theme-classic     { --sensa-bg: #111111; }
 body.sensa-mode.theme-forest      { --sensa-bg: #0d1f0d; }  /* soft forest green  */
 body.sensa-mode.theme-cherry      { --sensa-bg: #200d18; }  /* soft sakura pink   */
 body.sensa-mode.theme-ocean       { --sensa-bg: #061420; }  /* soft ocean blue    */
-body.sensa-mode.theme-snow        { --sensa-bg: #0e1428; }  /* soft ice blue      */
-body.sensa-mode.theme-rain        { --sensa-bg: #080f1c; }  /* soft slate rain    */
 body.sensa-mode.theme-dreamscape  { --sensa-bg: #0c0622; }  /* soft dream violet  */
-body.sensa-mode.theme-anime       { --sensa-bg: #120820; }  /* soft anime violet  */
 body.sensa-mode.theme-matrix      { --sensa-bg: #030a03; }  /* soft matrix green  */
-body.sensa-mode.theme-neon        { --sensa-bg: #050015; }  /* soft neon midnight */
 body.sensa-mode.theme-cozy        { --sensa-bg: #180c06; }  /* soft amber brown   */
 
 /* SensaMode: preserve world #world overlay glow but reduce intensity */
