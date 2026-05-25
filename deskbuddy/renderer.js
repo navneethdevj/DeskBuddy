@@ -1475,11 +1475,16 @@ const CFG = {
     // Spawn and update particles
     if (_particles.length < cfg.max && Math.random() < cfg.rate)
       _particles.push(cfg.create(W, H));
-    _particles = _particles.filter(p => {
+    // Update and draw particles in-place, removing dead ones with splice
+    for (let i = _particles.length - 1; i >= 0; i--) {
+      const p = _particles[i];
       const alive = cfg.update(p, W, H);
-      if (alive) cfg.draw(_ctx, p);
-      return alive;
-    });
+      if (alive) {
+        cfg.draw(_ctx, p);
+      } else {
+        _particles.splice(i, 1);
+      }
+    }
     _animId = requestAnimationFrame(_tick);
   }
 
@@ -1793,29 +1798,43 @@ const CFG = {
   // All handlers guard against acting in wrong session state.
 
   function _wireUI() {
-    // Start session button
+    // Cache frequently accessed DOM elements to avoid repeated queries
+    const goalEl = document.getElementById('goal-input');
+    const goalOverlay = document.getElementById('goal-overlay');
+    const catPillsContainer = document.getElementById('sp-category-pills');
     const startBtn = document.getElementById('start-session');
+    const pauseBtn = document.getElementById('pause-session');
+    const resumeBtn = document.getElementById('resume-session');
+    const abandonBtn = document.getElementById('abandon-session');
+    const abandonBreakBtn = document.getElementById('abandon-session-break');
+    const newSessionBtn = document.getElementById('new-session-btn');
+    const goalYes = document.getElementById('goal-achieved-yes');
+    const goalNo = document.getElementById('goal-achieved-no');
+    const sensitivitySel = document.getElementById('sensitivity-select');
+    const spIcon = document.getElementById('sp-icon');
+
+    // Helper function to start a session (reduces code duplication)
+    function _startSession() {
+      const stats = Session.getCurrentStats();
+      if (stats && stats.state !== 'IDLE') return;
+      const goal = goalEl?.value?.trim() || null;
+      const mins = _getDurationMinutes();
+
+      BreakReminder.setInterval(_getBreakMinutes());
+      Timer.init(mins);
+       
+      // Read currently selected category pill
+      const activeCatPill = catPillsContainer?.querySelector('.sp-cat-pill.active');
+      const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
+      Settings.set('sessionCategory', category);
+      Session.startNew(mins, goal, category);
+      Timer.start();
+      if (goalOverlay) goalOverlay.style.display = 'none';
+    }
+
+    // Start session button
     if (startBtn) {
-      startBtn.addEventListener('click', () => {
-        const stats = Session.getCurrentStats();
-        if (stats && stats.state !== 'IDLE') return;
-        const goalEl = document.getElementById('goal-input');
-        const goal   = goalEl?.value?.trim() || null;
-        const mins   = _getDurationMinutes();
-
-        // Sync break interval from session panel
-        BreakReminder.setInterval(_getBreakMinutes());
-
-        Timer.init(mins);
-        // Read currently selected category pill
-        const activeCatPill = document.querySelector('.sp-cat-pill.active');
-        const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
-        Settings.set('sessionCategory', category);
-        Session.startNew(mins, goal, category);
-        Timer.start();
-        const overlay = document.getElementById('goal-overlay');
-        if (overlay) overlay.style.display = 'none';
-      });
+      startBtn.addEventListener('click', _startSession);
     }
 
     // Quick preset buttons — set duration and start session
@@ -1824,25 +1843,7 @@ const CFG = {
         const minutes = parseInt(btn.dataset.minutes, 10);
         if (!isNaN(minutes) && minutes > 0) {
           _setDurationSeconds(minutes * 60);
-          // Auto-start the session with the preset
-          const stats = Session.getCurrentStats();
-          if (stats && stats.state !== 'IDLE') return;
-          const goalEl = document.getElementById('goal-input');
-          const goal   = goalEl?.value?.trim() || null;
-          const mins   = _getDurationMinutes();
-
-          // Sync break interval from session panel
-          BreakReminder.setInterval(_getBreakMinutes());
-
-          Timer.init(mins);
-          // Read currently selected category pill
-          const activeCatPill = document.querySelector('.sp-cat-pill.active');
-          const category = activeCatPill ? activeCatPill.dataset.cat : (Settings.get('sessionCategory') || 'study');
-          Settings.set('sessionCategory', category);
-          Session.startNew(mins, goal, category);
-          Timer.start();
-          const overlay = document.getElementById('goal-overlay');
-          if (overlay) overlay.style.display = 'none';
+          _startSession();
         }
       });
     });
@@ -1850,7 +1851,6 @@ const CFG = {
     _wireSteppers();
 
     // Pause / break button
-    const pauseBtn = document.getElementById('pause-session');
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
         if (Session.getCurrentStats()?.state !== 'ACTIVE') return;
@@ -1860,7 +1860,6 @@ const CFG = {
     }
 
     // Resume button
-    const resumeBtn = document.getElementById('resume-session');
     if (resumeBtn) {
       resumeBtn.addEventListener('click', () => {
         if (Session.getCurrentStats()?.state !== 'PAUSED') return;
@@ -1870,7 +1869,6 @@ const CFG = {
     }
 
     // Abandon button (active state)
-    const abandonBtn = document.getElementById('abandon-session');
     if (abandonBtn) {
       abandonBtn.addEventListener('click', () => {
         const s = Session.getCurrentStats()?.state;
@@ -1881,7 +1879,6 @@ const CFG = {
     }
 
     // Abandon button (break/paused state — separate DOM button)
-    const abandonBreakBtn = document.getElementById('abandon-session-break');
     if (abandonBreakBtn) {
       abandonBreakBtn.addEventListener('click', () => {
         if (Session.getCurrentStats()?.state !== 'PAUSED') return;
@@ -1891,25 +1888,20 @@ const CFG = {
     }
 
     // "New session" button on the outcome screen (FAILED / ABANDONED) → reset back to IDLE
-    const newSessionBtn = document.getElementById('new-session-btn');
     if (newSessionBtn) {
       newSessionBtn.addEventListener('click', () => {
         Session.reset();
         Timer.reset();
         // Clear goal input for fresh start
-        const goalEl = document.getElementById('goal-input');
         if (goalEl) goalEl.value = '';
       });
     }
 
     // Goal achieved buttons (outcome screen)
-    const goalYes = document.getElementById('goal-achieved-yes');
-    const goalNo  = document.getElementById('goal-achieved-no');
     if (goalYes) goalYes.addEventListener('click', () => Session.setGoalAchieved(true));
     if (goalNo)  goalNo.addEventListener('click',  () => Session.setGoalAchieved(false));
 
     // Sensitivity selector (legacy — kept for any external HTML using it)
-    const sensitivitySel = document.getElementById('sensitivity-select');
     if (sensitivitySel) {
       sensitivitySel.value = localStorage.getItem('deskbuddy_sensitivity') || 'NORMAL';
       sensitivitySel.addEventListener('change', (e) => Brain.setSensitivity(e.target.value));
@@ -1917,13 +1909,14 @@ const CFG = {
 
     // ── Category pills ─────────────────────────────────────────────────────
     // Wire activity category buttons, pre-select saved category, and update daily goal arc.
-    const catPillsContainer = document.getElementById('sp-category-pills');
     if (catPillsContainer) {
       const savedCat = Settings.get('sessionCategory') || 'study';
-      catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(pill => {
+      const pills = catPillsContainer.querySelectorAll('.sp-cat-pill');
+       
+      pills.forEach(pill => {
         pill.classList.toggle('active', pill.dataset.cat === savedCat);
         pill.addEventListener('click', () => {
-          catPillsContainer.querySelectorAll('.sp-cat-pill').forEach(p => p.classList.remove('active'));
+          pills.forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
           Settings.set('sessionCategory', pill.dataset.cat);
         });
@@ -1936,7 +1929,6 @@ const CFG = {
 
     // ── Quick-preset duration pills (mouseenter on session icon triggers panel open)
     // Re-render the daily goal and recent sessions whenever the panel becomes visible (via mouseover)
-    const spIcon = document.getElementById('sp-icon');
     if (spIcon) spIcon.addEventListener('mouseenter', () => {
       _updateDailyGoalArc();
       _updateRecentSessions();
@@ -1996,18 +1988,27 @@ const CFG = {
       if (sEl) sEl.value = String(Math.max(0, Math.min(59, parseInt(sEl.value, 10) || 0)));
     }
 
+    // Cache DOM references
+    const durationH = document.getElementById('duration-h');
+    const durationM = document.getElementById('duration-m');
+    const durationS = document.getElementById('duration-s');
+    const breakH = document.getElementById('break-h');
+    const breakM = document.getElementById('break-m');
+    const breakS = document.getElementById('break-s');
+    const decBtn = document.getElementById('duration-dec');
+    const incBtn = document.getElementById('duration-inc');
+    const breakDecBtn = document.getElementById('break-dec');
+    const breakIncBtn = document.getElementById('break-inc');
+
     // Clamp individual fields on manual edit
-    ['duration-h', 'duration-m', 'duration-s'].forEach(id => {
-      const el = document.getElementById(id);
+    [durationH, durationM, durationS].forEach(el => {
       if (el) el.addEventListener('change', () => _clampHmsFields('duration-h', 'duration-m', 'duration-s'));
     });
-    ['break-h', 'break-m', 'break-s'].forEach(id => {
-      const el = document.getElementById(id);
+    [breakH, breakM, breakS].forEach(el => {
       if (el) el.addEventListener('change', () => _clampHmsFields('break-h', 'break-m', 'break-s'));
     });
 
-    const decBtn = document.getElementById('duration-dec');
-    const incBtn = document.getElementById('duration-inc');
+    const BREAK_STEP_SECS = 5 * 60; // 5 min default step for break
 
     if (decBtn) {
       decBtn.addEventListener('click', () => {
@@ -2026,10 +2027,6 @@ const CFG = {
         _setDurationSeconds(next);
       });
     }
-
-    const breakDecBtn = document.getElementById('break-dec');
-    const breakIncBtn = document.getElementById('break-inc');
-    const BREAK_STEP_SECS = 5 * 60; // 5 min default step for break
 
     if (breakDecBtn) {
       breakDecBtn.addEventListener('click', () => {
@@ -5704,17 +5701,26 @@ const CFG = {
       icon.style.removeProperty('visibility');
     }
 
-    // Poll every second: if panel is closed but icon is invisible, restore it.
-    // This is the belt-and-suspenders fix for all panels.
-    setInterval(() => {
-      const sp    = document.getElementById('session-panel');
-      const hp    = document.getElementById('history-panel');
-      const tasks = document.getElementById('tasks-panel');
+    // Use MutationObserver instead of polling to watch for panel class changes
+    // This is more efficient than polling every second
+    const panelConfigs = [
+      { panelId: 'session-panel', iconId: 'sp-icon', openClass: 'sidebar-open', hiddenClass: 'sp-icon-hidden' },
+      { panelId: 'history-panel', iconId: 'hp-icon', openClass: 'hp-panel-open', hiddenClass: 'hp-icon-hidden' },
+      { panelId: 'tasks-panel', iconId: 'tasks-icon', openClass: 'tasks-panel-open', hiddenClass: 'tasks-icon-hidden' }
+    ];
 
-      if (sp && !sp.classList.contains('sidebar-open'))   _restoreIcon('sp-icon',    'sp-icon-hidden');
-      if (hp && !hp.classList.contains('hp-panel-open'))  _restoreIcon('hp-icon',    'hp-icon-hidden');
-      if (tasks && !tasks.classList.contains('tasks-panel-open')) _restoreIcon('tasks-icon', 'tasks-icon-hidden');
-    }, 1000);
+    panelConfigs.forEach(config => {
+      const panel = document.getElementById(config.panelId);
+      if (!panel) return;
+
+      const observer = new MutationObserver(() => {
+        if (!panel.classList.contains(config.openClass)) {
+          _restoreIcon(config.iconId, config.hiddenClass);
+        }
+      });
+
+      observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+    });
   })();
 
 })();
