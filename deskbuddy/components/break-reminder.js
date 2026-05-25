@@ -2,13 +2,14 @@
  * BreakReminder — Proactive break reminder for DeskBuddy.
  *
  * Tracks wall-clock working time independently of session state.
+ * Break pauses reset the interval so the next active stretch starts from 0.
  * After X minutes of continuous focused working, fires a reminder.
  * Purely advisory — has no authority over session state.
  *
  * API:
  *   BreakReminder.init(intervalMinutes)
  *   BreakReminder.start()   — begin accumulating (call when session ACTIVE)
- *   BreakReminder.pause()   — stop accumulating without reset (call on PAUSED)
+ *   BreakReminder.pause()   — stop accumulating and reset (breaks restart interval)
  *   BreakReminder.resume()  — resume accumulating (call when session resumes)
  *   BreakReminder.stop()    — stop + reset (call when session ends)
  *   BreakReminder.dismiss() — clear the active reminder manually
@@ -16,6 +17,9 @@
  *   BreakReminder.onTrigger(fn)
  *   BreakReminder.onDismiss(fn)
  *   BreakReminder.isActive()
+ *   BreakReminder.getElapsedMs()
+ *   BreakReminder.getIntervalMinutes()
+ *   BreakReminder.wasDue()
  */
 const BreakReminder = (() => {
 
@@ -25,6 +29,7 @@ const BreakReminder = (() => {
   let _lastTickMs      = null;
   let _running         = false;
   let _tickId          = null;
+  let _dueSinceReset   = false;
 
   const _onTriggerCbs = [];
   const _onDismissCbs = [];
@@ -36,6 +41,7 @@ const BreakReminder = (() => {
     _walltimeMs = 0;
     _active = false;
     _lastTickMs = null;
+    _dueSinceReset = false;
   }
 
   // ── Start / stop ──────────────────────────────────────────────────────────
@@ -52,6 +58,7 @@ const BreakReminder = (() => {
     if (_tickId !== null) { clearInterval(_tickId); _tickId = null; }
     _lastTickMs = null;
     _walltimeMs = 0;
+    _dueSinceReset = false;
     _dismiss();
   }
 
@@ -59,6 +66,9 @@ const BreakReminder = (() => {
     _running = false;
     if (_tickId !== null) { clearInterval(_tickId); _tickId = null; }
     _lastTickMs = null;
+    // Reset so the next break interval starts fresh after a break.
+    _walltimeMs = 0;
+    _dueSinceReset = false;
     _dismiss();
   }
 
@@ -91,6 +101,7 @@ const BreakReminder = (() => {
     if (_active) return;
     _active = true;
     _walltimeMs = 0;
+    _dueSinceReset = true;
 
     // Visual cue — timer colour becomes a soft teal "you've earned a break"
     document.documentElement.style.setProperty('--timer-color',       '#44e8b0');
@@ -124,6 +135,23 @@ const BreakReminder = (() => {
   function onDismiss(fn)  { _onDismissCbs.push(fn); }
   function isActive()     { return _active; }
   function dismiss()      { _dismiss(); }
+  function getElapsedMs() { return _walltimeMs; }
+  function getIntervalMinutes() { return _intervalMinutes; }
+  function wasDue()       { return _dueSinceReset || _active; }
 
-  return { init, start, stop, pause, resume, setInterval: setInterval_, onTrigger, onDismiss, isActive, dismiss };
+  return {
+    init,
+    start,
+    stop,
+    pause,
+    resume,
+    setInterval: setInterval_,
+    onTrigger,
+    onDismiss,
+    isActive,
+    dismiss,
+    getElapsedMs,
+    getIntervalMinutes,
+    wasDue,
+  };
 })();

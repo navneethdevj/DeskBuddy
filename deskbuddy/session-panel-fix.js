@@ -424,6 +424,30 @@
     const goal       = session.goalText||'—';
     const mood       = session.moodRating!=null ? `${session.moodRating}/5` : '—';
     const longest    = session.longestFocusStreakSeconds||0;
+    const focusPhases = Array.isArray(session.focusPhases) ? session.focusPhases.filter(n => n > 0) : [];
+    const focusPhaseText = focusPhases.length
+      ? focusPhases.map((secs, i) => `#${i + 1} ${_fmtFocus(secs)}`).join(' · ')
+      : '—';
+    const breaks = Array.isArray(session.breaks) ? session.breaks : [];
+    const breakDurations = breaks
+      .map(b => (typeof b?.durationSecs === 'number' ? Math.max(0, Math.round(b.durationSecs)) : 0))
+      .filter(n => n > 0);
+    const breakTotalSecs = breakDurations.reduce((sum, n) => sum + n, 0);
+    const timingLabels = {
+      before_due: 'before due',
+      after_due:  'after due',
+      on_time:    'on time',
+      unscheduled:'no schedule',
+    };
+    const breakLines = breaks.length
+      ? breaks.map((b, i) => {
+          const dur = (typeof b?.durationSecs === 'number' && b.durationSecs >= 0)
+            ? _fmtFocus(b.durationSecs)
+            : '—';
+          const timing = timingLabels[b?.timing] || 'no schedule';
+          return `#${i + 1} ${dur} · ${timing}`;
+        }).join('<br>')
+      : '—';
 
     const outcomeColor = outcome==='COMPLETED'?'sp-det-good':outcome==='FAILED'?'sp-det-bad':'sp-det-warn';
     const focusColor   = focusPct>=80?'sp-det-good':focusPct>=50?'sp-det-warn':'sp-det-bad';
@@ -468,6 +492,26 @@
         <div class="sp-det-item">
           <div class="sp-det-label">mood</div>
           <div class="sp-det-value" style="font-size:12px">${mood}</div>
+        </div>
+      </div>
+
+      <div class="sp-det-section-head">Focus Phases</div>
+      <div class="sp-det-row">
+        <div class="sp-det-item sp-det-full">
+          <div class="sp-det-label">focus stretches</div>
+          <div class="sp-det-value" style="font-size:12px;font-weight:700">${focusPhaseText}</div>
+        </div>
+      </div>
+
+      <div class="sp-det-section-head">Breaks</div>
+      <div class="sp-det-row">
+        <div class="sp-det-item">
+          <div class="sp-det-label">total break time</div>
+          <div class="sp-det-value">${breakTotalSecs > 0 ? _fmtFocus(breakTotalSecs) : '—'}</div>
+        </div>
+        <div class="sp-det-item sp-det-full">
+          <div class="sp-det-label">break timing</div>
+          <div class="sp-det-value" style="font-size:12px;font-weight:700;line-height:1.4">${breakLines}</div>
         </div>
       </div>
 

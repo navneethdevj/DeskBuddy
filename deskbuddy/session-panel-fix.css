@@ -341,3 +341,64 @@ body[data-session-state="ABANDONED"] #session-idle { display: flex !important; }
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.6; transform: scale(1.05); }
 }
+
+
+/* ── 12. SESSION PANEL STRUCTURE IMPROVEMENTS ─────────────────────────────── */
+
+/* Improve quick presets layout and spacing */
+#session-idle .sp-quick-presets {
+  margin-bottom: 12px;
+}
+
+#session-idle .sp-qp-label {
+  margin-bottom: 2px;
+  opacity: 0.85;
+}
+
+/* Better spacing for category row */
+#session-idle .sp-category-row {
+  gap: 8px;
+  margin: 10px 0 8px 0;
+}
+
+#session-idle .sp-category-pills {
+  gap: 6px;
+  flex-wrap: wrap;
+  -webkit-app-region: no-drag;
+}
+
+/* Improve button sizing for category pills */
+#session-idle .sp-cat-pill {
+  font-size: 11px;
+  padding: 7px 12px;
+  border-radius: 18px;
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+/* Goal input improvements */
+#session-idle .sp-goal-row {
+  margin: 10px 0 12px 0;
+}
+
+#session-idle .sp-goal-input {
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-height: 38px;
+}
+
+/* Better spacing for steppers */
+#session-idle .sp-steppers-stack {
+  margin: 12px 0;
+  gap: 12px !important;
+}
+
+/* Primary button spacing */
+#session-idle #start-session {
+  margin-top: 8px;
+  font-size: 13px;
+  padding: 11px 14px;
+  min-height: 42px;
+}
+

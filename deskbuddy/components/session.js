@@ -222,6 +222,45 @@ const Session = (() => {
     _breakStartMs = null;
   }
 
+  function _createBreakEntry() {
+    if (!_current) return null;
+    const intervalMinutes = (typeof BreakReminder !== 'undefined' && BreakReminder.getIntervalMinutes)
+      ? BreakReminder.getIntervalMinutes()
+      : null;
+    const intervalSecs = intervalMinutes != null ? Math.max(0, Math.round(intervalMinutes * 60)) : 0;
+    const elapsedMs = (typeof BreakReminder !== 'undefined' && BreakReminder.getElapsedMs)
+      ? BreakReminder.getElapsedMs()
+      : null;
+    const elapsedSecs = (elapsedMs != null) ? Math.max(0, Math.round(elapsedMs / 1000)) : null;
+    let wasDue = false;
+    if (typeof BreakReminder !== 'undefined') {
+      if (BreakReminder.wasDue) wasDue = BreakReminder.wasDue();
+      else if (BreakReminder.isActive) wasDue = BreakReminder.isActive();
+    }
+    let timing = 'unscheduled';
+    if (intervalSecs > 0) {
+      if (wasDue) timing = 'after_due';
+      else if (elapsedSecs == null) timing = 'unscheduled';
+      else if (elapsedSecs < intervalSecs) timing = 'before_due';
+      else timing = 'on_time';
+    }
+    return {
+      startElapsedSecs: _elapsedSeconds(),
+      intervalSecs,
+      elapsedBeforeBreakSecs: elapsedSecs,
+      timing,
+      durationSecs: null,
+    };
+  }
+
+  function _finalizeBreak() {
+    if (!_current || !_current.breaks || !_current.breaks.length || _breakStartMs === null) return;
+    const last = _current.breaks[_current.breaks.length - 1];
+    if (last && (last.durationSecs == null)) {
+      last.durationSecs = Math.max(0, Math.round((_now() - _breakStartMs) / 1000));
+    }
+  }
+
   // ── Focus streak accounting ────────────────────────────────────────────────
 
   /**
@@ -234,6 +273,9 @@ const Session = (() => {
     _current.actualFocusedSeconds += duration;
     if (duration > _current.longestFocusStreakSeconds) {
       _current.longestFocusStreakSeconds = duration;
+    }
+    if (duration > 0 && Array.isArray(_current.focusPhases)) {
+      _current.focusPhases.push(duration);
     }
     _focusedSince = null;
   }
@@ -312,6 +354,7 @@ const Session = (() => {
     if (!_current) return;
 
     _closeFocusedStreak();
+    _finalizeBreak();
     _clearBreakStart();
 
     // Stop timeline sampling and push a final snapshot
@@ -383,6 +426,8 @@ const Session = (() => {
                                    ? category : null,
       focusTimeline:             [],   // { t: elapsedSecs, level: 0-100, state: timerState }
       milestones:                [],   // { t: elapsedSecs, type: 'distraction'|'milestone_5m' }
+      focusPhases:               [],   // array of focused streak durations (secs)
+      breaks:                    [],   // [{ startElapsedSecs, intervalSecs, elapsedBeforeBreakSecs, timing, durationSecs }]
     };
 
     // Record t=0 baseline snapshot then start periodic sampling
@@ -432,6 +477,8 @@ const Session = (() => {
     _recordSnapshot();
     _stopTimeline();
 
+    const breakEntry = _createBreakEntry();
+    if (breakEntry) _current.breaks.push(breakEntry);
     _breakStartMs = _now();
 
     _setState(STATE.PAUSED);
@@ -444,6 +491,7 @@ const Session = (() => {
   function resume() {
     if (_state !== STATE.PAUSED) return;
 
+    _finalizeBreak();
     _clearBreakStart();
 
     // Resume focused tracking from this moment

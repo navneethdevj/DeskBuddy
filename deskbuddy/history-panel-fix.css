@@ -205,21 +205,34 @@
 .hp-stat-cards {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  gap: 8px !important;
+  gap: 10px !important;
+  margin-bottom: 8px !important;
 }
 
 .hp-sc {
-  padding: 11px 12px 10px !important;
+  padding: 12px 14px !important;
   min-height: 62px !important;
+  background: rgba(139, 118, 255, 0.07) !important;
+  border: 1px solid rgba(139, 118, 255, 0.12) !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
 }
 
 .hp-sc-val {
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+  color: rgba(225, 215, 255, 0.92) !important;
 }
 
 .hp-sc-lbl {
-  font-size: 8px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(155, 140, 220, 0.45) !important;
   margin-top: 2px !important;
 }
 
@@ -618,15 +631,15 @@
 }
 
 .sp-qp-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .sp-qp-chip {
-  padding: 5px 11px;
-  border-radius: 20px;
-  font-size: 10.5px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   border: 1px solid rgba(139, 118, 255, 0.22);
@@ -634,8 +647,10 @@
   color: rgba(190, 175, 255, 0.70);
   transition: all 0.15s ease;
   letter-spacing: 0.02em;
-  white-space: nowrap;
+  white-space: normal;
   -webkit-app-region: no-drag;
+  text-align: center;
+  line-height: 1.3;
 }
 
 .sp-qp-chip:hover {
@@ -657,4 +672,211 @@
   border-color: rgba(68, 232, 176, 0.45);
   color: rgba(68, 232, 176, 1);
 }
+
+
+/* ── HISTORY PANEL LAYOUT IMPROVEMENTS ─────────────────────────────────────── */
+
+/* Remove excessive scrolling from main history panel container */
+#history-panel {
+  overflow-y: auto !important;
+  max-height: calc(100vh - 78px) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* Ensure history-card doesn't have conflicting scroll */
+#history-card {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* Improve chart visibility and sizing */
+.hp-chart-wrap {
+  min-height: 120px;
+  max-height: 160px;
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(139, 118, 255, 0.15) !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#hp-chart-daily,
+#hp-chart-weekly,
+#hp-chart-monthly,
+#hp-chart-lifetime {
+  display: block !important;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+}
+
+/* Canvas rendering fix */
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Better section spacing */
+.hp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.hp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.hp-slabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(200, 190, 255, 0.55);
+}
+
+/* Recent sessions container scrollable only */
+#hp-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  padding-right: 2px;
+}
+
+/* Compact recent session row */
+.hp-recent-row {
+  padding: 10px 12px;
+  background: rgba(139, 118, 255, 0.06);
+  border: 1px solid rgba(139, 118, 255, 0.10);
+  border-radius: 10px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hp-recent-row:hover {
+  background: rgba(139, 118, 255, 0.12);
+  border-color: rgba(139, 118, 255, 0.20);
+}
+
+/* Radar chart section */
+.hp-radar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(139, 118, 255, 0.08), rgba(68, 232, 176, 0.04));
+  border: 1px solid rgba(139, 118, 255, 0.15);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.hp-radar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(225, 215, 255, 0.75);
+  margin-bottom: 2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.20);
+}
+
+.hp-radar-chart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 160px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.hp-radar-chart svg {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.hp-radar-factors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.hp-radar-factor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(139, 118, 255, 0.06);
+  border: 1px solid rgba(139, 118, 255, 0.12);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.hp-radar-factor:hover {
+  background: rgba(139, 118, 255, 0.10);
+  border-color: rgba(139, 118, 255, 0.20);
+  transform: translateY(-1px);
+}
+
+.hp-rf-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(155, 140, 220, 0.60);
+}
+
+.hp-rf-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: rgba(225, 215, 255, 0.95);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hp-rf-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(139, 118, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.hp-rf-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(139, 118, 255, 0.70), rgba(68, 232, 176, 0.80));
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(139, 118, 255, 0.40);
+  animation: slideIn 0.5s ease-out;
+  transform-origin: left;
+}
+
+@keyframes slideIn {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 

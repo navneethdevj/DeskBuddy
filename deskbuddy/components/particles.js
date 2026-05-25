@@ -49,33 +49,33 @@ const Particles = (() => {
 
   /**
    * Called each frame to occasionally spawn particles based on emotion.
-   * Spawn rates are kept low for performance.
+   * Spawn rates are kept low for performance but increased for more visual feedback.
    */
   function update(emotion) {
     if (!container) return;
 
     var rate;
     switch (emotion) {
-      case 'focused':    rate = 0.015; break;
-      case 'happy':      rate = 0.03;  break;
-      case 'curious':    rate = 0.02;  break;
-      case 'sleepy':     rate = 0.008; break;
-      case 'overjoyed':  rate = 0.04;  break;
-      case 'scared':     rate = 0.018; break;
-      case 'sad':        rate = 0.008; break;
-      case 'crying':     rate = 0.012; break;
-      case 'suspicious': rate = 0.008; break;
-      case 'pouty':      rate = 0.010; break;
-      case 'grumpy':     rate = 0.010; break;
-      case 'sulking':    rate = 0.006; break;
-      case 'excited':    rate = 0.05;  break;
-      case 'love':       rate = 0.035; break;
-      case 'cozy':       rate = 0.025; break;
-      case 'shy':        rate = 0.012; break;
-      case 'startled':   rate = 0.022; break;
-      case 'embarrassed':rate = 0.012; break;
-      case 'forgiven':   rate = 0.020; break;
-      default:           rate = 0.005; break;
+      case 'focused':    rate = 0.025; break;  // Increased from 0.015
+      case 'happy':      rate = 0.045; break;  // Increased from 0.03
+      case 'curious':    rate = 0.030; break;  // Increased from 0.02
+      case 'sleepy':     rate = 0.012; break;  // Increased from 0.008
+      case 'overjoyed':  rate = 0.06;  break;  // Increased from 0.04
+      case 'scared':     rate = 0.028; break;  // Increased from 0.018
+      case 'sad':        rate = 0.012; break;  // Increased from 0.008
+      case 'crying':     rate = 0.018; break;  // Increased from 0.012
+      case 'suspicious': rate = 0.012; break;  // Increased from 0.008
+      case 'pouty':      rate = 0.015; break;  // Increased from 0.010
+      case 'grumpy':     rate = 0.014; break;  // Increased from 0.010
+      case 'sulking':    rate = 0.010; break;  // Increased from 0.006
+      case 'excited':    rate = 0.065; break;  // Increased from 0.05
+      case 'love':       rate = 0.050; break;  // Increased from 0.035
+      case 'cozy':       rate = 0.038; break;  // Increased from 0.025
+      case 'shy':        rate = 0.018; break;  // Increased from 0.012
+      case 'startled':   rate = 0.035; break;  // Increased from 0.022
+      case 'embarrassed':rate = 0.018; break;  // Increased from 0.012
+      case 'forgiven':   rate = 0.030; break;  // Increased from 0.020
+      default:           rate = 0.008; break;  // Increased from 0.005
     }
 
     if (Math.random() < rate) {
@@ -89,12 +89,12 @@ const Particles = (() => {
    */
   function burst(type, count) {
     if (!container) return;
-    const n = Math.min(count || 8, MAX_PARTICLES - particles.length);
+    const n = Math.min(count || 12, MAX_PARTICLES - particles.length);  // Increased default from 8 to 12
     for (var i = 0; i < n; i++) {
       // Small staggered delay so they don't all appear in the same frame
       (function (delay) {
         setTimeout(function () { spawn(type || 'happy'); }, delay);
-      })(i * 40);
+      })(i * 30);  // Reduced delay from 40 to 30 for snappier burst effect
     }
   }
 

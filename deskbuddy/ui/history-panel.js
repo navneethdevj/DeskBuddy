@@ -106,6 +106,7 @@ const HistoryPanel = (() => {
     _syncAntiCheatBadge();
     _renderAllViewStats(history);
     _renderStreakRow(history);
+    _renderRadarChart(history);
     _activateView('daily');
     _renderRecentSessions(history);
     // Draw compact week calendar (session-panel-fix.js also draws it; belt+braces)
@@ -1038,6 +1039,161 @@ const HistoryPanel = (() => {
       });
     }
     return bars;
+  }
+
+  // ── 4b. Focus Metrics Radar Chart ─────────────────────────────────────────
+
+  /**
+   * Calculates focus metrics for the radar chart:
+   * - Focus Score: Average focus percentage
+   * - Consistency: Standard deviation of session durations (inverted)
+   * - Session Count: Number of sessions (normalized to 0-100)
+   * - Avg Duration: Average session duration in minutes
+   * - Completion Rate: Percentage of completed sessions
+   */
+  function _calculateRadarMetrics(history) {
+    if (!history || history.length === 0) {
+      return {
+        focusScore: 0,
+        consistency: 0,
+        sessionCount: 0,
+        avgDuration: 0,
+        completionRate: 0
+      };
+    }
+
+    // Focus Score
+    const completed = history.filter(s => s.outcome === 'COMPLETED');
+    let focusScore = 0;
+    if (completed.length > 0) {
+      const sum = completed.reduce((acc, s) => {
+        const total = (s.durationMinutes || 0) * 60;
+        const focused = s.actualFocusedSeconds || 0;
+        return acc + (total > 0 ? (focused / total) * 100 : 0);
+      }, 0);
+      focusScore = Math.round(sum / completed.length);
+    }
+
+    // Session Count (normalize to 0-100, capped at 50 sessions)
+    const sessionCount = Math.min(100, (history.length / 50) * 100);
+
+    // Average Duration
+    let avgDuration = 0;
+    if (history.length > 0) {
+      const totalDuration = history.reduce((acc, s) => acc + (s.durationMinutes || 0), 0);
+      avgDuration = Math.round(totalDuration / history.length);
+    }
+
+    // Completion Rate
+    const completionRate = history.length > 0 
+      ? Math.round((completed.length / history.length) * 100)
+      : 0;
+
+    // Consistency (inverse of CV — lower variance = higher consistency)
+    let consistency = 50; // default
+    if (history.length > 1) {
+      const durations = history.map(s => s.durationMinutes || 0);
+      const mean = durations.reduce((a, b) => a + b, 0) / durations.length;
+      const variance = durations.reduce((acc, d) => acc + Math.pow(d - mean, 2), 0) / durations.length;
+      const stdDev = Math.sqrt(variance);
+      // Lower std dev = higher consistency
+      // Normalize: stdDev from 0-30 maps to consistency 100-0
+      consistency = Math.max(0, Math.min(100, 100 - (stdDev / 30) * 100));
+    }
+
+    return {
+      focusScore: Math.round(focusScore),
+      consistency: Math.round(consistency),
+      sessionCount: Math.round(sessionCount),
+      avgDuration,
+      completionRate
+    };
+  }
+
+  /**
+   * Render the focus metrics radar chart
+   */
+  function _renderRadarChart(history) {
+    const radarEl = document.getElementById('hp-radar-chart');
+    const factorsEl = document.getElementById('hp-radar-factors');
+    if (!radarEl || !factorsEl) return;
+
+    const metrics = _calculateRadarMetrics(history);
+
+    // Build radar SVG (5-axis pentagonal)
+    const svg = _buildRadarSVG(metrics);
+    radarEl.innerHTML = svg;
+
+    // Build factor rows
+    const sessionCountValue = Math.min(50, Math.round(metrics.sessionCount / 2));
+    const factors = [
+      { label: 'Focus Score', value: metrics.focusScore, unit: '%', fill: (metrics.focusScore / 100) },
+      { label: 'Consistency', value: metrics.consistency, unit: '%', fill: (metrics.consistency / 100) },
+      { label: 'Sessions', value: sessionCountValue, unit: '', fill: (sessionCountValue / 50) },
+      { label: 'Avg Duration', value: metrics.avgDuration, unit: 'm', fill: Math.min(1, metrics.avgDuration / 60) },
+      { label: 'Completion', value: metrics.completionRate, unit: '%', fill: (metrics.completionRate / 100) }
+    ];
+
+    let factorsHtml = '';
+    for (const factor of factors) {
+      factorsHtml += `
+        <div class="hp-radar-factor">
+          <div class="hp-rf-label">${factor.label}</div>
+          <div class="hp-rf-value">${factor.value}${factor.unit}</div>
+          <div class="hp-rf-bar">
+            <div class="hp-rf-bar-fill" style="width: ${factor.fill * 100}%"></div>
+          </div>
+        </div>
+      `;
+    }
+    factorsEl.innerHTML = factorsHtml;
+  }
+
+  /**
+   * Build a 5-axis pentagonal radar chart as SVG
+   */
+  function _buildRadarSVG(metrics) {
+    const N = 5;
+    const CX = 80, CY = 80, R = 60;
+    const labels = ['Focus', 'Consistency', 'Sessions', 'Duration', 'Completion'];
+    // Normalize sessionCount the same way as in factors: min(50, round(sessionCount / 2)) / 50
+    const normalizedSessions = Math.min(50, Math.round(metrics.sessionCount / 2)) / 50;
+    const values = [
+      metrics.focusScore / 100,
+      metrics.consistency / 100,
+      normalizedSessions,
+      Math.min(1, metrics.avgDuration / 60),
+      metrics.completionRate / 100
+    ];
+
+    // Calculate polygon points
+    const pts = values.map((val, i) => {
+      const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+      const r = Math.max(0, Math.min(1, val)) * R;
+      return { x: CX + Math.cos(angle) * r, y: CY + Math.sin(angle) * r };
+    });
+
+    const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+    // Axis lines + labels
+    const axes = values.map((_, i) => {
+      const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+      const lx = CX + Math.cos(angle) * (R + 16);
+      const ly = CY + Math.sin(angle) * (R + 16);
+      return `<line x1="${CX}" y1="${CY}" x2="${(CX + Math.cos(angle)*R).toFixed(1)}" y2="${(CY + Math.sin(angle)*R).toFixed(1)}" stroke="rgba(155,135,255,.15)" stroke-width="1"/>
+<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="rgba(155,135,255,.55)" font-size="8" text-anchor="middle" dominant-baseline="middle" font-weight="600">${labels[i]}</text>`;
+    }).join('');
+
+    // Grid circles
+    const grid = [0.25, 0.5, 0.75, 1].map(f =>
+      `<circle cx="${CX}" cy="${CY}" r="${(R*f).toFixed(1)}" fill="none" stroke="rgba(155,135,255,.08)" stroke-width="0.8"/>`
+    ).join('');
+
+    return `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" style="width:160px;height:160px">
+      ${grid}${axes}
+      <polygon points="${poly}" fill="rgba(139,118,255,.20)" stroke="rgba(139,118,255,.70)" stroke-width="1.5" stroke-linejoin="round"/>
+      <polygon points="${poly}" fill="none" stroke="rgba(68,232,176,.40)" stroke-width="2.5" stroke-linejoin="round" opacity="0.6"/>
+    </svg>`;
   }
 
   // ── 5. Recent Sessions (last 10) — with multi-select + context menu ─────────

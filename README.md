@@ -61,7 +61,7 @@ It has feelings. Not real ones, obviously — but convincingly close.
 
 ## 🐱 Meet the Buddy
 
-Buddy is a small animated cat-like creature that sits on your desktop. It has:
+Buddy is a small animated creature that sits on your desktop. It has:
 
 - **Expressive eyes** that blink, look around, and follow your face
 - **Animated ears, tail, and body** that react to what it's feeling
