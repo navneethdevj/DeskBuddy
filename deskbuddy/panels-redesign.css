@@ -53,27 +53,19 @@
   border-radius: var(--lg-radius)                    !important;
   box-shadow:    var(--lg-shadow)                    !important;
   padding:       16px 14px 18px                      !important;
-  display:       flex                                !important;
+  display:       none                               !important;
   flex-direction:column                              !important;
   gap:           9px                                 !important;
 }
 
+/* session-panel-fix.css drives visibility via body[data-session-state] */
+
 /* ── 1.2 Elements to suppress (kept in DOM for JS) ──────────────────────── */
-#sp-break-row,
-.sp-break-divider,
 #sp-daily-goal-row,
-#sp-recent-sessions,
-input#duration-s,
-input#break-s,
-input#break-h,
-input#break-m {
+#sp-recent-sessions {
   display: none !important;
 }
-/* Hide the 's' label that follows the seconds input */
-input#duration-s + .sp-hms-lbl,
-input#duration-s ~ .sp-hms-lbl:last-of-type {
-  display: none !important;
-}
+/* sp-break-row, break-h/m/s, duration-s are now shown — session-panel-fix.css controls them */
 
 /* ── 1.3 Header ─────────────────────────────────────────────────────────── */
 .sp-header {
