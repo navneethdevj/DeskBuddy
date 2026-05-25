@@ -537,39 +537,39 @@ body.glow-off .eye-wrap { filter: none; }
 
 /* Scared — quick shivering tremble */
 .companion.scared .companion-inner {
-  animation: scaredShiver 0.4s ease-in-out infinite;
+  animation: scaredShiver 0.35s ease-in-out infinite;  // Reduced from 0.4s
 }
 @keyframes scaredShiver {
-  0%, 100% { transform: translateY(0) rotate(0deg) scale(0.99); }
-  25%      { transform: translateY(-0.2vh) rotate(0.5deg) scale(0.988); }
-  50%      { transform: translateY(0.1vh) rotate(-0.4deg) scale(0.992); }
-  75%      { transform: translateY(-0.1vh) rotate(0.3deg) scale(0.987); }
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(0.98); }
+  25%      { transform: translateY(-0.25vh) rotate(0.6deg) scale(0.985); }
+  50%      { transform: translateY(0.15vh) rotate(-0.5deg) scale(0.990); }
+  75%      { transform: translateY(-0.15vh) rotate(0.4deg) scale(0.985); }
 }
 
 /* Curious — investigative head tilts: quick lean, hold, re-check */
 .companion.curious .companion-inner {
-  animation: curiousTilt 3.8s ease-in-out infinite;
+  animation: curiousTilt 3.0s ease-in-out infinite;  // Reduced from 3.8s
 }
 @keyframes curiousTilt {
-  0%   { transform: translateY(-0.4vh) rotate(0deg)    scale(1.005); }
-  12%  { transform: translateY(-0.8vh) rotate(3.5deg)  scale(1.010); }
-  28%  { transform: translateY(-0.6vh) rotate(3deg)    scale(1.008); }
-  42%  { transform: translateY(-0.3vh) rotate(-1deg)   scale(1.002); }
-  58%  { transform: translateY(-0.6vh) rotate(2deg)    scale(1.006); }
-  75%  { transform: translateY(-0.9vh) rotate(-2.5deg) scale(1.012); }
-  88%  { transform: translateY(-0.5vh) rotate(0.5deg)  scale(1.004); }
-  100% { transform: translateY(-0.4vh) rotate(0deg)    scale(1.005); }
+  0%   { transform: translateY(-0.5vh) rotate(0deg)    scale(1.007); }
+  12%  { transform: translateY(-0.9vh) rotate(4deg)    scale(1.012); }
+  28%  { transform: translateY(-0.7vh) rotate(3.5deg)  scale(1.010); }
+  42%  { transform: translateY(-0.4vh) rotate(-1.5deg) scale(1.004); }
+  58%  { transform: translateY(-0.7vh) rotate(2.5deg)  scale(1.008); }
+  75%  { transform: translateY(-1.0vh) rotate(-3deg)   scale(1.014); }
+  88%  { transform: translateY(-0.6vh) rotate(0.8deg)  scale(1.006); }
+  100% { transform: translateY(-0.5vh) rotate(0deg)    scale(1.007); }
 }
 
 /* Sleepy — slow gentle nodding */
 .companion.sleepy .companion-inner {
-  animation: sleepyNod 5s ease-in-out infinite;
+  animation: sleepyNod 4.0s ease-in-out infinite;  // Reduced from 5s
 }
 @keyframes sleepyNod {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  30%      { transform: translateY(0.4vh) rotate(-1deg); }
-  60%      { transform: translateY(0.6vh) rotate(0.5deg); }
-  80%      { transform: translateY(0.3vh) rotate(-0.3deg); }
+  30%      { transform: translateY(0.5vh) rotate(-1.2deg); }
+  60%      { transform: translateY(0.7vh) rotate(0.6deg); }
+  80%      { transform: translateY(0.4vh) rotate(-0.4deg); }
 }
 
 /* Idle — resting, present, gently breathing */
@@ -585,33 +585,33 @@ body.glow-off .eye-wrap { filter: none; }
 
 /* Suspicious — slow suspicious lean */
 .companion.suspicious .companion-inner {
-  animation: suspiciousLean 3s ease-in-out infinite;
+  animation: suspiciousLean 2.5s ease-in-out infinite;  // Reduced from 3s
 }
 @keyframes suspiciousLean {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50%      { transform: translateY(-0.2vh) rotate(-1.5deg); }
+  50%      { transform: translateY(-0.3vh) rotate(-2deg); }
 }
 
 /* Pouty — small huffing motions */
 .companion.pouty .companion-inner {
-  animation: poutyHuff 2.8s ease-in-out infinite;
+  animation: poutyHuff 2.2s ease-in-out infinite;  // Reduced from 2.8s
 }
 @keyframes poutyHuff {
   0%, 100% { transform: translateY(0) scale(1); }
-  40%      { transform: translateY(0.2vh) scale(1.01); }
-  55%      { transform: translateY(-0.1vh) scale(0.995); }
-  70%      { transform: translateY(0.15vh) scale(1.005); }
+  40%      { transform: translateY(0.25vh) scale(1.012); }
+  55%      { transform: translateY(-0.15vh) scale(0.992); }
+  70%      { transform: translateY(0.20vh) scale(1.008); }
 }
 
 /* Grumpy — sharp little irritated shifts */
 .companion.grumpy .companion-inner {
-  animation: grumpyShift 2.2s ease-in-out infinite;
+  animation: grumpyShift 1.8s ease-in-out infinite;  // Reduced from 2.2s
 }
 @keyframes grumpyShift {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  20%      { transform: translateY(0.1vh) rotate(-0.8deg); }
-  45%      { transform: translateY(-0.1vh) rotate(0.6deg); }
-  70%      { transform: translateY(0.05vh) rotate(-0.4deg); }
+  20%      { transform: translateY(0.15vh) rotate(-1deg); }
+  45%      { transform: translateY(-0.15vh) rotate(0.8deg); }
+  70%      { transform: translateY(0.1vh) rotate(-0.5deg); }
 }
 
 /* Sulking — slow slumped sway */
