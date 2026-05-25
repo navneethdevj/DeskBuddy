@@ -1343,13 +1343,15 @@
         </div>
       </div>
       
-      <!-- Quick preset buttons — fast-track common durations -->
+      <!-- Last session quick-fill + practical suggestions -->
       <div class="sp-quick-presets" id="sp-quick-presets">
-        <button class="sp-preset-btn" data-minutes="15" title="Start a 15-minute focus session">15m</button>
-        <button class="sp-preset-btn" data-minutes="25" title="Start a 25-minute focus session">25m</button>
-        <button class="sp-preset-btn" data-minutes="45" title="Start a 45-minute focus session">45m</button>
-        <button class="sp-preset-btn" data-minutes="60" title="Start a 60-minute focus session">1h</button>
-        <button class="sp-preset-btn" data-minutes="90" title="Start a 90-minute focus session">1.5h</button>
+        <div class="sp-qp-label">quick fill</div>
+        <div class="sp-qp-chips" id="sp-qp-chips">
+          <button class="sp-qp-chip" id="sp-qp-last" title="Repeat your last session" style="display:none">↩ last session</button>
+          <button class="sp-qp-chip sp-qp-chip--pomodoro" data-h="0" data-m="25" data-s="0" data-bh="0" data-bm="5" data-bs="0" data-bi-h="0" data-bi-m="25" data-bi-s="0" title="Classic Pomodoro: 25m work, 5m break every 25m">🍅 Pomodoro</button>
+          <button class="sp-qp-chip" data-h="1" data-m="0" data-s="0" data-bh="0" data-bm="15" data-bs="0" data-bi-h="1" data-bi-m="0" data-bi-s="0" title="90-minute deep work block">🧠 Deep Work</button>
+          <button class="sp-qp-chip" data-h="0" data-m="45" data-s="0" data-bh="0" data-bm="10" data-bs="0" data-bi-h="0" data-bi-m="45" data-bi-s="0" title="45-minute study block">📚 Study Sprint</button>
+        </div>
       </div>
 
       <div class="sp-setup">
@@ -1373,35 +1375,66 @@
               <button class="sp-step-btn" id="duration-inc" aria-label="increase duration">+</button>
             </div>
           </div>
+
           <div class="sp-row sp-row-hms sp-break-divider" id="sp-break-row">
             <label class="sp-label">break every</label>
             <div class="sp-stepper sp-stepper-hms">
-              <button class="sp-step-btn" id="break-dec" aria-label="decrease break">−</button>
+              <button class="sp-step-btn" id="break-dec" aria-label="decrease break interval">−</button>
               <div class="sp-hms-group">
                 <input type="number" id="break-h" class="sp-hms-input"
-                  value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+                  value="1" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
                 <span class="sp-hms-lbl">h</span>
                 <input type="number" id="break-m" class="sp-hms-input"
-                  value="25" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+                  value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
                 <span class="sp-hms-lbl">m</span>
                 <input type="number" id="break-s" class="sp-hms-input"
                   value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
                 <span class="sp-hms-lbl">s</span>
               </div>
-              <button class="sp-step-btn" id="break-inc" aria-label="increase break">+</button>
+              <button class="sp-step-btn" id="break-inc" aria-label="increase break interval">+</button>
             </div>
+          </div>
+
+          <div class="sp-row sp-row-hms">
+            <label class="sp-label">break for</label>
+            <div class="sp-stepper sp-stepper-hms">
+              <button class="sp-step-btn" id="break-dur-dec" aria-label="decrease break duration">−</button>
+              <div class="sp-hms-group">
+                <input type="number" id="break-dur-h" class="sp-hms-input"
+                  value="0" min="0" max="23" autocomplete="off" -webkit-app-region="no-drag">
+                <span class="sp-hms-lbl">h</span>
+                <input type="number" id="break-dur-m" class="sp-hms-input"
+                  value="5" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+                <span class="sp-hms-lbl">m</span>
+                <input type="number" id="break-dur-s" class="sp-hms-input"
+                  value="0" min="0" max="59" autocomplete="off" -webkit-app-region="no-drag">
+                <span class="sp-hms-lbl">s</span>
+              </div>
+              <button class="sp-step-btn" id="break-dur-inc" aria-label="increase break duration">+</button>
+            </div>
+          </div>
+
+          <div class="sp-row sp-autobreak-row">
+            <label class="sp-autobreak-label" for="break-auto-enabled">
+              <input type="checkbox" id="break-auto-enabled" -webkit-app-region="no-drag">
+              auto-start breaks
+            </label>
+            <label class="sp-autobreak-label" for="break-snooze-enabled">
+              <input type="checkbox" id="break-snooze-enabled" checked -webkit-app-region="no-drag">
+              allow snooze
+            </label>
           </div>
         </div>
 
         <!-- Session category selector -->
         <div class="sp-category-row">
-          <label class="sp-label">category</label>
+          <label class="sp-label">session type</label>
           <div class="sp-category-pills" id="sp-category-pills">
-            <button class="sp-cat-pill active" data-cat="study"    title="Study">Study</button>
-            <button class="sp-cat-pill"        data-cat="work"     title="Work">Work</button>
-            <button class="sp-cat-pill"        data-cat="creative" title="Creative">Create</button>
-            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">Read</button>
-            <button class="sp-cat-pill"        data-cat="other"    title="Other">Other</button>
+            <button class="sp-cat-pill active" data-cat="study"    title="Study">📚 Study</button>
+            <button class="sp-cat-pill"        data-cat="work"     title="Work">💼 Work</button>
+            <button class="sp-cat-pill"        data-cat="creative" title="Creative">🎨 Create</button>
+            <button class="sp-cat-pill"        data-cat="reading"  title="Reading">📖 Read</button>
+            <button class="sp-cat-pill"        data-cat="other"    title="Other">⚙️ Other</button>
           </div>
         </div>
 
@@ -1467,6 +1500,13 @@
         <div id="sp-budget-count" class="sp-budget-count"></div>
       </div>
       <div class="sp-controls">
+        <!-- Break due notification (shown when BreakReminder fires) -->
+        <div id="sp-break-due" class="sp-break-due" style="display:none" role="alert" aria-live="polite">
+          <span class="sp-break-due-icon">☕</span>
+          <span class="sp-break-due-text">break time!</span>
+          <button id="sp-break-snooze" class="sp-break-due-btn sp-break-snooze-btn" title="Snooze 5 minutes">snooze 5m</button>
+          <button id="sp-take-break-notif" class="sp-break-due-btn sp-break-take-btn" title="Take a break now">take break</button>
+        </div>
         <button id="pause-session" class="sp-btn sp-btn-secondary">
           ☕ take a break
         </button>
@@ -1479,15 +1519,35 @@
     <!-- ── Paused / break state ───────────────────────────────────── -->
     <div id="session-paused" style="display:none">
       <div class="sp-header">
-        <span class="sp-mode-label">on break</span>
+        <div class="sp-header-left">
+          <span class="sp-mode-label">on break</span>
+          <span class="sp-mode-desc">recharge &amp; reset</span>
+        </div>
         <span class="sp-mode-star" style="color:rgba(80,230,175,0.50)">✦</span>
         <button class="sp-close-btn" id="sp-close-paused" title="Close" aria-label="Close session panel">✕</button>
       </div>
+
       <div class="sp-break-body">
-        <div class="sp-break-icon">☕</div>
+        <div class="sp-break-icon" id="sp-break-icon-main">☕</div>
         <div id="break-countdown" class="sp-break-countdown">5:00</div>
-        <div class="sp-break-hint">time on break</div>
+        <div class="sp-break-hint" id="sp-break-hint">remaining</div>
+
+        <!-- Adjust break duration live -->
+        <div class="sp-break-adjust-row">
+          <button id="sp-break-adj-minus" class="sp-break-adj-btn" title="Reduce break by 1 min" aria-label="reduce break by 1 minute">−1m</button>
+          <span class="sp-break-adj-label">adjust</span>
+          <button id="sp-break-adj-plus"  class="sp-break-adj-btn" title="Add 1 min to break" aria-label="add 1 minute to break">+1m</button>
+        </div>
+
+        <!-- Break over notification -->
+        <div id="sp-break-over-notif" class="sp-break-over-notif" style="display:none" role="alert" aria-live="assertive">
+          <span class="sp-break-over-text">🔔 break time's up!</span>
+          <button id="sp-break-over-resume" class="sp-break-over-resume-btn">▶ resume now</button>
+        </div>
       </div>
+
+      <div class="sp-break-affirmation" id="sp-break-affirmation"></div>
+
       <div class="sp-controls">
         <button id="resume-session" class="sp-btn sp-btn-primary">
           ▶ resume session
@@ -1703,49 +1763,27 @@
 
       <!-- ── STREAK SECTION (always visible) ───────────────────────── -->
       <div class="hp-section hp-streak-section">
-        <div class="hp-streak-row">
-          <div class="hp-sr-item">
-            <div class="hp-sr-val" id="hsr-current-streak">0</div>
-            <div class="hp-sr-lbl">day streak 🔥</div>
+        <!-- Streak totals always at top -->
+        <div class="hp-streak-totals">
+          <div class="hp-st-item">
+            <div class="hp-st-val" id="hsr-current-streak">0</div>
+            <div class="hp-st-lbl">🔥 streak</div>
           </div>
-          <div class="hp-sr-div"></div>
-          <div class="hp-sr-item">
-            <div class="hp-sr-val" id="hsr-longest-streak">0</div>
-            <div class="hp-sr-lbl">longest 🏆</div>
+          <div class="hp-st-div"></div>
+          <div class="hp-st-item">
+            <div class="hp-st-val" id="hsr-longest-streak">0</div>
+            <div class="hp-st-lbl">🏆 longest</div>
           </div>
-          <div class="hp-sr-div"></div>
-          <div class="hp-sr-item">
-            <div class="hp-sr-val hp-sr-val-score" id="hsr-avg-score">—</div>
-            <div class="hp-sr-lbl">avg focus %</div>
-          </div>
-        </div>
-        <div class="hp-section-head" style="margin-top:6px">
-          <span class="hp-slabel">streak calendar</span>
-          <div class="hp-cal-modes">
-            <button class="hp-cal-mode-btn active" data-cal-mode="16w" title="Show last 16 weeks (GitHub-style)">16 Weeks</button>
-            <button class="hp-cal-mode-btn" data-cal-mode="month" title="Show current month as calendar">Month</button>
+          <div class="hp-st-div"></div>
+          <div class="hp-st-item">
+            <div class="hp-st-val hp-st-val-score" id="hsr-avg-score">—</div>
+            <div class="hp-st-lbl">avg focus</div>
           </div>
         </div>
-        <!-- GitHub-style: columns=weeks, rows=days, day labels on left -->
-        <div class="hp-cal-wrap" id="hp-cal-wrap-github">
-          <div class="hp-cal-day-col" id="hp-cal-day-col">
-            <!-- Day labels: Mon, Tue, Wed, Thu, Fri, Sat, Sun -->
-            <span title="Monday">M</span>
-            <span title="Tuesday">T</span>
-            <span title="Wednesday">W</span>
-            <span title="Thursday">T</span>
-            <span title="Friday">F</span>
-            <span title="Saturday">S</span>
-            <span title="Sunday">S</span>
-          </div>
-          <div class="hp-cal-graph-wrap">
-            <div class="hp-cal-month-labels" id="hp-cal-months"></div>
-            <canvas id="hp-streak-canvas" class="hp-streak-canvas" title="Focus streak — purple = completed session, dim = attempted, empty = no session"></canvas>
-          </div>
-        </div>
-        <!-- Month-mode calendar grid (hidden by default) -->
-        <div id="hp-cal-wrap-month" style="display:none;">
-          <div id="hp-cal-month-grid-container"></div>
+
+        <!-- Current week calendar — compact, always shows Mon–Sun of this week -->
+        <div class="hp-week-cal" id="hp-week-cal">
+          <!-- Populated by JS -->
         </div>
       </div>
 
@@ -1978,6 +2016,53 @@
   <script src="ui/focus-graph.js"></script>
   <script src="ui/share-card.js"></script>
   <script src="ui/history-stats.js"></script>
+  <!-- Global Break Notification Toast (bottom-right of whole window) -->
+  <div id="global-break-toast" class="global-break-toast" style="display:none" role="alert" aria-live="assertive">
+    <div class="gbt-icon">☕</div>
+    <div class="gbt-body">
+      <div class="gbt-title">Time for a break!</div>
+      <div class="gbt-sub" id="gbt-sub">You've been focused for <span id="gbt-elapsed">—</span></div>
+    </div>
+    <div class="gbt-actions">
+      <button class="gbt-btn gbt-snooze" id="gbt-snooze-btn" title="Snooze 5 minutes">💤 Snooze 5m</button>
+      <button class="gbt-btn gbt-take"   id="gbt-take-btn"   title="Take a break now">☕ Take break</button>
+    </div>
+    <button class="gbt-dismiss" id="gbt-dismiss-btn" aria-label="Dismiss">✕</button>
+  </div>
+
+  <!-- Break Type Chooser (shown when break starts) -->
+  <div id="break-type-modal" class="break-type-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Choose break type">
+    <div class="btm-card">
+      <div class="btm-title">how long is your break?</div>
+      <div class="btm-options">
+        <button class="btm-opt" id="btm-timed" aria-pressed="false">
+          <div class="btm-opt-icon">⏱</div>
+          <div class="btm-opt-label">timed break</div>
+          <div class="btm-opt-sub" id="btm-timed-dur">5 minutes</div>
+        </button>
+        <button class="btm-opt" id="btm-open" aria-pressed="false">
+          <div class="btm-opt-icon">∞</div>
+          <div class="btm-opt-label">until I'm ready</div>
+          <div class="btm-opt-sub">counts up freely</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session Details Modal -->
+  <div id="sp-session-details-modal" class="sp-details-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Session details">
+    <div class="sp-details-backdrop"></div>
+    <div class="sp-details-card">
+      <div class="sp-details-header">
+        <span class="sp-details-title" id="sp-det-title">Session Details</span>
+        <button class="sp-details-close" id="sp-det-close" aria-label="Close details">✕</button>
+      </div>
+      <div class="sp-details-body" id="sp-det-body">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
   <script src="ui/history-panel.js"></script>
   <script src="components/iris-color.js"></script>
   <script src="ui/personality-editor.js"></script>
@@ -1986,6 +2071,9 @@
   <script src="renderer.js"></script>
   <script src="premium-panels.js"></script>
   <script src="ui/daily-tasks.js"></script>
+  <link rel="stylesheet" href="session-panel-fix.css">
+  <link rel="stylesheet" href="history-panel-fix.css">
+  <script src="session-panel-fix.js"></script>
   <div id="pip-lock-badge" aria-hidden="true">🔒 locked</div>
 </body>
 </html>
