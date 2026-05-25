@@ -1125,10 +1125,11 @@ const HistoryPanel = (() => {
     radarEl.innerHTML = svg;
 
     // Build factor rows
+    const sessionCountValue = Math.min(50, Math.round(metrics.sessionCount / 2));
     const factors = [
       { label: 'Focus Score', value: metrics.focusScore, unit: '%', fill: (metrics.focusScore / 100) },
       { label: 'Consistency', value: metrics.consistency, unit: '%', fill: (metrics.consistency / 100) },
-      { label: 'Sessions', value: Math.min(50, Math.round(metrics.sessionCount / 2)), unit: '', fill: (Math.min(50, Math.round(metrics.sessionCount / 2)) / 50) },
+      { label: 'Sessions', value: sessionCountValue, unit: '', fill: (sessionCountValue / 50) },
       { label: 'Avg Duration', value: metrics.avgDuration, unit: 'm', fill: Math.min(1, metrics.avgDuration / 60) },
       { label: 'Completion', value: metrics.completionRate, unit: '%', fill: (metrics.completionRate / 100) }
     ];
@@ -1155,10 +1156,12 @@ const HistoryPanel = (() => {
     const N = 5;
     const CX = 80, CY = 80, R = 60;
     const labels = ['Focus', 'Consistency', 'Sessions', 'Duration', 'Completion'];
+    // Normalize sessionCount the same way as in factors: min(50, round(sessionCount / 2)) / 50
+    const normalizedSessions = Math.min(50, Math.round(metrics.sessionCount / 2)) / 50;
     const values = [
       metrics.focusScore / 100,
       metrics.consistency / 100,
-      Math.min(1, (metrics.sessionCount / 100) / 2),
+      normalizedSessions,
       Math.min(1, metrics.avgDuration / 60),
       metrics.completionRate / 100
     ];
