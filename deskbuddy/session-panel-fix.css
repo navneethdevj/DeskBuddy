@@ -1,0 +1,343 @@
+/**
+ * session-panel-fix.css
+ *
+ * Overrides panels-redesign.css which uses `display: flex !important` on ALL
+ * three session sections simultaneously — making them all visible at once.
+ *
+ * Fix: drive visibility via body[data-session-state] attribute.
+ * Higher specificity (body[attr] #id vs plain #id) wins even against !important
+ * on same-ID rules when the new rule also uses !important.
+ *
+ * State values:  IDLE | ACTIVE | PAUSED | COMPLETED | FAILED | ABANDONED
+ */
+
+/* ── 1. CORE VISIBILITY FIX ──────────────────────────────────────────────── */
+
+/* Default: hide all three panels */
+#session-idle,
+#session-active,
+#session-paused {
+  display: none !important;
+}
+
+/* Show only the relevant panel per state */
+body[data-session-state="IDLE"]    #session-idle   { display: flex !important; }
+body[data-session-state="ACTIVE"]  #session-active { display: flex !important; }
+body[data-session-state="PAUSED"]  #session-paused { display: flex !important; }
+
+/* Terminal states after a session ends — show idle so user can start fresh */
+body[data-session-state="COMPLETED"] #session-idle { display: flex !important; }
+body[data-session-state="FAILED"]    #session-idle { display: flex !important; }
+body[data-session-state="ABANDONED"] #session-idle { display: flex !important; }
+
+
+/* ── 2. UN-HIDE BREAK & DURATION-S CONTROLS ─────────────────────────────── */
+/*
+ * panels-redesign.css hides these with display:none !important.
+ * We override with higher specificity.
+ */
+
+#session-panel #sp-break-row,
+#session-panel .sp-break-divider   { display: flex  !important; }
+
+#session-idle input#duration-s,
+#session-idle input#duration-s + .sp-hms-lbl { display: inline-block !important; }
+
+#session-idle input#break-h,
+#session-idle input#break-m,
+#session-idle input#break-s,
+#session-idle input#break-h + .sp-hms-lbl,
+#session-idle input#break-m + .sp-hms-lbl,
+#session-idle input#break-s + .sp-hms-lbl { display: inline-block !important; }
+
+
+/* ── 3. NEW: BREAK DURATION ROW (break-dur-h/m/s) ───────────────────────── */
+
+#session-idle .sp-steppers-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+/* ── 4. AUTO-BREAK TOGGLE ROW ────────────────────────────────────────────── */
+
+.sp-autobreak-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 2px 2px;
+  flex-wrap: wrap;
+}
+
+.sp-autobreak-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(175, 160, 255, 0.65);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sp-autobreak-label input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: rgba(139, 118, 255, 0.9);
+  cursor: pointer;
+}
+
+.sp-autobreak-label:hover {
+  color: rgba(195, 180, 255, 0.85);
+}
+
+
+/* ── 5. CATEGORY PILLS WITH EMOJIS ──────────────────────────────────────── */
+
+.sp-category-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sp-cat-pill {
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(139, 118, 255, 0.20);
+  background: rgba(139, 118, 255, 0.08);
+  color: rgba(190, 175, 255, 0.65);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  -webkit-app-region: no-drag;
+}
+
+.sp-cat-pill:hover {
+  background: rgba(139, 118, 255, 0.18);
+  border-color: rgba(139, 118, 255, 0.40);
+  color: rgba(210, 200, 255, 0.90);
+  transform: translateY(-1px);
+}
+
+.sp-cat-pill.active {
+  background: rgba(139, 118, 255, 0.25) !important;
+  border-color: rgba(139, 118, 255, 0.55) !important;
+  color: rgba(220, 210, 255, 0.96) !important;
+  box-shadow: 0 2px 8px rgba(139, 118, 255, 0.20);
+}
+
+
+/* ── 6. BREAK DUE NOTIFICATION (inside session-active) ──────────────────── */
+
+.sp-break-due {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  background: rgba(68, 232, 176, 0.10);
+  border: 1px solid rgba(68, 232, 176, 0.30);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.sp-break-due.sp-notif-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sp-break-due-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sp-break-due-text {
+  flex: 1;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(68, 232, 176, 0.90);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sp-break-due-btn {
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.12s ease;
+  -webkit-app-region: no-drag;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.sp-break-snooze-btn {
+  background: rgba(251, 191, 36, 0.10);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: rgba(251, 191, 36, 0.85);
+}
+.sp-break-snooze-btn:hover {
+  background: rgba(251, 191, 36, 0.20);
+  color: rgba(251, 191, 36, 1);
+}
+
+.sp-break-take-btn {
+  background: rgba(68, 232, 176, 0.14);
+  border-color: rgba(68, 232, 176, 0.45);
+  color: rgba(68, 232, 176, 0.90);
+}
+.sp-break-take-btn:hover {
+  background: rgba(68, 232, 176, 0.25);
+  color: rgba(68, 232, 176, 1);
+}
+
+
+/* ── 7. BREAK PANEL ENHANCEMENTS ─────────────────────────────────────────── */
+
+#session-paused .sp-break-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 6px;
+}
+
+.sp-break-countdown {
+  font-size: 36px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.03em !important;
+  color: rgba(68, 232, 176, 0.90);
+  transition: color 0.4s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-break-hint {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(155, 140, 220, 0.45);
+}
+
+/* Break duration +/- adjust row */
+.sp-break-adjust-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sp-break-adj-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(139, 118, 255, 0.10);
+  border: 1px solid rgba(139, 118, 255, 0.25);
+  color: rgba(190, 175, 255, 0.75);
+  transition: all 0.12s ease;
+  -webkit-app-region: no-drag;
+}
+
+.sp-break-adj-btn:hover {
+  background: rgba(139, 118, 255, 0.22);
+  border-color: rgba(139, 118, 255, 0.50);
+  color: rgba(210, 200, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.sp-break-adj-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: rgba(155, 140, 220, 0.40);
+}
+
+
+/* ── 8. BREAK OVER NOTIFICATION ──────────────────────────────────────────── */
+
+.sp-break-over-notif {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.30);
+  border-radius: 10px;
+  margin-top: 8px;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.sp-break-over-notif.sp-notif-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sp-break-over-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(251, 191, 36, 0.90);
+  letter-spacing: 0.06em;
+}
+
+.sp-break-over-resume-btn {
+  padding: 6px 14px !important;
+  font-size: 10.5px !important;
+  background: rgba(68, 232, 176, 0.18) !important;
+  border-color: rgba(68, 232, 176, 0.45) !important;
+  color: rgba(68, 232, 176, 0.92) !important;
+}
+
+.sp-break-over-resume-btn:hover {
+  background: rgba(68, 232, 176, 0.28) !important;
+}
+
+
+/* ── 9. BREAK AFFIRMATION ─────────────────────────────────────────────────── */
+
+.sp-break-affirmation {
+  font-size: 10px;
+  font-style: italic;
+  text-align: center;
+  color: rgba(155, 140, 220, 0.40);
+  padding: 0 6px;
+  min-height: 16px;
+  letter-spacing: 0.02em;
+}
+
+
+/* ── 10. QUICK STATS LABELS ──────────────────────────────────────────────── */
+
+.sp-qs-lbl {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+/* Streak value in idle panel */
+#sp-qs-streak {
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ── 11. BREAK COUNTDOWN ANIMATION ──────────────────────────────────────── */
+
+@keyframes sp-break-done-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.05); }
+}
