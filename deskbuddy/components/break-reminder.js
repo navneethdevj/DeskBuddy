@@ -8,7 +8,7 @@
  * API:
  *   BreakReminder.init(intervalMinutes)
  *   BreakReminder.start()   — begin accumulating (call when session ACTIVE)
- *   BreakReminder.pause()   — stop accumulating and reset (call on PAUSED)
+ *   BreakReminder.pause()   — stop accumulating and reset (breaks restart interval)
  *   BreakReminder.resume()  — resume accumulating (call when session resumes)
  *   BreakReminder.stop()    — stop + reset (call when session ends)
  *   BreakReminder.dismiss() — clear the active reminder manually
@@ -65,6 +65,7 @@ const BreakReminder = (() => {
     _running = false;
     if (_tickId !== null) { clearInterval(_tickId); _tickId = null; }
     _lastTickMs = null;
+    // Reset so the next break interval starts fresh after a break.
     _walltimeMs = 0;
     _dueSinceReset = false;
     _dismiss();

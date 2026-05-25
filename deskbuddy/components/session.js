@@ -232,9 +232,11 @@ const Session = (() => {
       ? BreakReminder.getElapsedMs()
       : null;
     const elapsedSecs = (elapsedMs != null) ? Math.max(0, Math.round(elapsedMs / 1000)) : null;
-    const wasDue = (typeof BreakReminder !== 'undefined' && BreakReminder.wasDue)
-      ? BreakReminder.wasDue()
-      : (typeof BreakReminder !== 'undefined' && BreakReminder.isActive ? BreakReminder.isActive() : false);
+    let wasDue = false;
+    if (typeof BreakReminder !== 'undefined') {
+      if (BreakReminder.wasDue) wasDue = BreakReminder.wasDue();
+      else if (BreakReminder.isActive) wasDue = BreakReminder.isActive();
+    }
     let timing = 'unscheduled';
     if (intervalSecs > 0) {
       if (wasDue) timing = 'after_due';
