@@ -370,10 +370,10 @@ body[data-session-state="ABANDONED"] #session-idle { display: flex !important; }
 /* Improve button sizing for category pills */
 #session-idle .sp-cat-pill {
   font-size: 11px;
-  padding: 6px 12px;
+  padding: 7px 12px;
   border-radius: 18px;
-  flex: 1 1 calc(50% - 3px);
-  min-width: 70px;
+  flex: 0 1 auto;
+  white-space: nowrap;
 }
 
 /* Goal input improvements */

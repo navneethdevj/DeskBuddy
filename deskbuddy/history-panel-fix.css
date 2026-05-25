@@ -205,21 +205,34 @@
 .hp-stat-cards {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  gap: 8px !important;
+  gap: 10px !important;
+  margin-bottom: 8px !important;
 }
 
 .hp-sc {
-  padding: 11px 12px 10px !important;
+  padding: 12px 14px !important;
   min-height: 62px !important;
+  background: rgba(139, 118, 255, 0.07) !important;
+  border: 1px solid rgba(139, 118, 255, 0.12) !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
 }
 
 .hp-sc-val {
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+  color: rgba(225, 215, 255, 0.92) !important;
 }
 
 .hp-sc-lbl {
-  font-size: 8px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(155, 140, 220, 0.45) !important;
   margin-top: 2px !important;
 }
 
@@ -701,39 +714,6 @@
 canvas {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-}
-
-/* Improve stat cards visibility */
-.hp-stat-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.hp-sc {
-  padding: 12px 14px;
-  background: rgba(139, 118, 255, 0.07);
-  border: 1px solid rgba(139, 118, 255, 0.12);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.hp-sc-val {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: rgba(225, 215, 255, 0.92);
-}
-
-.hp-sc-lbl {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(155, 140, 220, 0.45);
 }
 
 /* Better section spacing */
