@@ -11,12 +11,12 @@
  */
 const Movement = (() => {
   const MAX_DRIFT = 40;
-  const SPEED = 0.3;
+  const SPEED = 0.42;  // Increased from 0.3 for more active drifting
   const HOME_RADIUS = 25;
   const ARRIVAL_THRESHOLD = 3;
-  const STEER_STRENGTH = 0.04;
-  const CURVE_AMOUNT = 0.2;
-  const DECAY_FACTOR = 0.92;
+  const STEER_STRENGTH = 0.06;  // Increased from 0.04 for snappier steering
+  const CURVE_AMOUNT = 0.25;  // Increased from 0.2 for more pronounced curved paths
+  const DECAY_FACTOR = 0.88;  // Decreased from 0.92 for faster deceleration and more responsive stops
 
   let homeX = 0;
   let homeY = 0;

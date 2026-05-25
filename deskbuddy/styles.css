@@ -41,7 +41,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   will-change: transform, filter;
-  animation: glowIdle 4s ease-in-out infinite, idleSway 14s ease-in-out infinite;
+  animation: glowIdle 3.2s ease-in-out infinite, idleSway 12s ease-in-out infinite;
   /* Companion is interactive (pet / click reactions) — must not be a drag region. */
   -webkit-app-region: no-drag;
 }
@@ -50,7 +50,7 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
-  animation: breathe 5.5s ease-in-out infinite;
+  animation: breathe 4.5s ease-in-out infinite;
   transform-origin: center center;
   will-change: transform;
 }
@@ -132,11 +132,11 @@ html, body {
 }
 
 /* Expression → glow override (each has unique color + speed) */
-.companion.curious    { animation: glowCurious 2.5s ease-in-out infinite, idleSway 12s ease-in-out infinite; }
-.companion.focused    { animation: glowFocused 3.5s ease-in-out infinite, idleSway 16s ease-in-out infinite; }
-.companion.sleepy     { animation: glowSleepy 6s ease-in-out infinite, idleSway 18s ease-in-out infinite; }
-.companion.suspicious { animation: glowSuspicious 3s ease-in-out infinite, idleSway 12s ease-in-out infinite; }
-.companion.happy      { animation: glowHappy 1.8s ease-in-out infinite, idleSway 9s ease-in-out infinite; }
+.companion.curious    { animation: glowCurious 2.0s ease-in-out infinite, idleSway 11s ease-in-out infinite; }
+.companion.focused    { animation: glowFocused 3.0s ease-in-out infinite, idleSway 14s ease-in-out infinite; }
+.companion.sleepy     { animation: glowSleepy 5s ease-in-out infinite, idleSway 16s ease-in-out infinite; }
+.companion.suspicious { animation: glowSuspicious 2.5s ease-in-out infinite, idleSway 10s ease-in-out infinite; }
+.companion.happy      { animation: glowHappy 1.5s ease-in-out infinite, idleSway 8s ease-in-out infinite; }
 
 /* ===== Breathing Animation (enhanced — more alive) ===== */
 @keyframes breathe {
@@ -151,10 +151,10 @@ html, body {
 /* Subtle idle sway — makes companion feel alive even when idle */
 @keyframes idleSway {
   0%   { margin-left: 0;   margin-top: 0; }
-  20%  { margin-left: 4px; margin-top: -2px; }
-  40%  { margin-left: -3px; margin-top: 2px; }
-  60%  { margin-left: 3px; margin-top: -3px; }
-  80%  { margin-left: -2px; margin-top: 1px; }
+  20%  { margin-left: 5px; margin-top: -3px; }
+  40%  { margin-left: -4px; margin-top: 3px; }
+  60%  { margin-left: 4px; margin-top: -4px; }
+  80%  { margin-left: -3px; margin-top: 2px; }
   100% { margin-left: 0;   margin-top: 0; }
 }
 
@@ -191,7 +191,7 @@ html, body {
   filter: drop-shadow(0 0 3.5vmin rgba(var(--eye-glow-rgb, 120, 135, 235), 0.50))
           drop-shadow(0 0 10vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.22))
           drop-shadow(0 0 20vmin  rgba(var(--eye-glow-rgb, 120, 135, 235), 0.08));
-  transition: filter 0.35s ease, transform 0.25s cubic-bezier(.4, 0, .2, 1);
+  transition: filter 0.25s ease, transform 0.15s cubic-bezier(.4, 0, .2, 1);
   will-change: transform, filter;
 }
 body.glow-off .eye-wrap { filter: none; }
@@ -222,12 +222,12 @@ body.glow-off .eye-wrap { filter: none; }
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  transition: height 0.22s cubic-bezier(.4, 0, .2, 1),
-              width 0.22s cubic-bezier(.4, 0, .2, 1),
-              border-radius 0.22s cubic-bezier(.4, 0, .2, 1),
-              transform 0.22s cubic-bezier(.4, 0, .2, 1),
-              opacity 0.30s ease,
-              box-shadow 0.22s ease;
+  transition: height 0.15s cubic-bezier(.4, 0, .2, 1),
+              width 0.15s cubic-bezier(.4, 0, .2, 1),
+              border-radius 0.15s cubic-bezier(.4, 0, .2, 1),
+              transform 0.15s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.25s ease,
+              box-shadow 0.15s ease;
   box-shadow: inset 0 -1px 2px rgba(255, 255, 255, 0.12);
   will-change: width, height, border-radius, transform, box-shadow;
 }
@@ -378,9 +378,9 @@ body.glow-off .eye-wrap { filter: none; }
   flex-shrink: 0;
   transform-origin: center;
   will-change: transform, background-color;
-  transition: transform 0.28s cubic-bezier(.4,0,.2,1),
-              width    0.28s cubic-bezier(.4,0,.2,1),
-              background-color 0.28s ease;
+  transition: transform 0.18s cubic-bezier(.4,0,.2,1),
+              width    0.18s cubic-bezier(.4,0,.2,1),
+              background-color 0.18s ease;
 }
 
 /* Default: very slight inward arch — relaxed but alive */
@@ -487,29 +487,29 @@ body.glow-off .eye-wrap { filter: none; }
 
 /* Happy — gentle excited wiggle, the creature is delighted */
 .companion.happy .companion-inner {
-  animation: happyWiggle 1.6s ease-in-out infinite;
+  animation: happyWiggle 1.2s ease-in-out infinite;
 }
 @keyframes happyWiggle {
   0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-  15%      { transform: translateY(-0.5vh) rotate(0.5deg) scale(1.008); }
-  30%      { transform: translateY(-0.3vh) rotate(-0.3deg) scale(1.005); }
-  50%      { transform: translateY(-0.7vh) rotate(0.4deg) scale(1.01); }
-  70%      { transform: translateY(-0.2vh) rotate(-0.2deg) scale(1.004); }
-  85%      { transform: translateY(-0.4vh) rotate(0.3deg) scale(1.006); }
+  15%      { transform: translateY(-0.6vh) rotate(0.6deg) scale(1.010); }
+  30%      { transform: translateY(-0.4vh) rotate(-0.4deg) scale(1.006); }
+  50%      { transform: translateY(-0.8vh) rotate(0.5deg) scale(1.012); }
+  70%      { transform: translateY(-0.3vh) rotate(-0.3deg) scale(1.005); }
+  85%      { transform: translateY(-0.5vh) rotate(0.4deg) scale(1.008); }
 }
 
 /* Overjoyed — bigger bouncy excitement */
 .companion.overjoyed .companion-inner {
-  animation: overjoyedBounce 1.0s ease-in-out infinite;
+  animation: overjoyedBounce 0.75s ease-in-out infinite;
 }
 @keyframes overjoyedBounce {
   0%   { transform: translateY(0)      rotate(0deg)    scaleX(1.00) scaleY(1.00); }
-  12%  { transform: translateY(-1.8vh) rotate(-2.5deg) scaleX(0.94) scaleY(1.06); }
-  26%  { transform: translateY( 0.2vh) rotate( 1.8deg) scaleX(1.05) scaleY(0.95); }
-  40%  { transform: translateY(-2.2vh) rotate( 2.2deg) scaleX(0.93) scaleY(1.07); }
-  55%  { transform: translateY( 0.3vh) rotate(-1.0deg) scaleX(1.04) scaleY(0.96); }
-  70%  { transform: translateY(-1.4vh) rotate( 1.5deg) scaleX(0.96) scaleY(1.04); }
-  84%  { transform: translateY( 0.1vh) rotate(-0.6deg) scaleX(1.02) scaleY(0.98); }
+  12%  { transform: translateY(-2.0vh) rotate(-3deg) scaleX(0.92) scaleY(1.08); }
+  26%  { transform: translateY( 0.3vh) rotate( 2.2deg) scaleX(1.07) scaleY(0.93); }
+  40%  { transform: translateY(-2.4vh) rotate( 2.5deg) scaleX(0.91) scaleY(1.09); }
+  55%  { transform: translateY( 0.4vh) rotate(-1.2deg) scaleX(1.06) scaleY(0.94); }
+  70%  { transform: translateY(-1.6vh) rotate( 1.8deg) scaleX(0.94) scaleY(1.06); }
+  84%  { transform: translateY( 0.2vh) rotate(-0.8deg) scaleX(1.03) scaleY(0.97); }
   100% { transform: translateY(0)      rotate(0deg)    scaleX(1.00) scaleY(1.00); }
 }
 

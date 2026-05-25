@@ -35,26 +35,26 @@ const Brain = (() => {
   const FOCUS_DECAY_RATE = 0.04; // per frame when inactive
 
   // Activity detection thresholds
-  const MOUSE_ACTIVITY_TIMEOUT = 500;
-  const KEY_ACTIVITY_TIMEOUT = 1000;
+  const MOUSE_ACTIVITY_TIMEOUT = 350;  // Reduced from 500ms for snappier response
+  const KEY_ACTIVITY_TIMEOUT = 800;    // Reduced from 1000ms for faster feedback
 
   // Idle look timing
-  const IDLE_LOOK_MIN_WAIT = 3000;
-  const IDLE_LOOK_MAX_WAIT = 6000;
-  const IDLE_LOOK_MIN_DURATION = 1000;
-  const IDLE_LOOK_MAX_DURATION = 2000;
+  const IDLE_LOOK_MIN_WAIT = 2500;  // Reduced from 3000 for more frequent idle looks
+  const IDLE_LOOK_MAX_WAIT = 5000;  // Reduced from 6000
+  const IDLE_LOOK_MIN_DURATION = 800;  // Reduced from 1000 for snappier transitions
+  const IDLE_LOOK_MAX_DURATION = 1500;  // Reduced from 2000
 
   // Curious trigger: sustained focused attention for this long → curious state
   const CURIOUS_ATTENTION_MS  = 14000;  // 14s focused + high attention → curious
   const CURIOUS_COOLDOWN_MS   = 50000;  // 50s before curious can fire again after exiting
 
   // Emotion timing thresholds (ms) — tuned for snappy, responsive feel
-  const LOOKING_AWAY_SUSPICIOUS_MS =  4000;   //  4s → suspicious
-  const LOOKING_AWAY_POUTY_MS      = 12000;   // 12s → pouty
-  const LOOKING_AWAY_GRUMPY_MS     = 28000;   // 28s → grumpy
-  const NOFACE_SCARED_MS           =  2500;   //  2.5s → scared
-  const NOFACE_SAD_MS              = 12000;   // 12s → sad
-  const NOFACE_CRYING_MS           = 25000;   // 25s → crying
+  const LOOKING_AWAY_SUSPICIOUS_MS =  3000;   //  3s → suspicious (was 4s)
+  const LOOKING_AWAY_POUTY_MS      = 10000;   // 10s → pouty (was 12s)
+  const LOOKING_AWAY_GRUMPY_MS     = 24000;   // 24s → grumpy (was 28s)
+  const NOFACE_SCARED_MS           =  2000;   //  2s → scared (was 2.5s)
+  const NOFACE_SAD_MS              = 10000;   // 10s → sad (was 12s)
+  const NOFACE_CRYING_MS           = 22000;   // 22s → crying (was 25s)
 
   // ── NEW PERSONALITY CONSTANTS ──────────────────────────────────────────────
 
@@ -77,8 +77,8 @@ const Brain = (() => {
   const STARTLED_HOLD_MS        = 550;  // brief flash
 
   // Idle life: spontaneous pet-like behaviors
-  const IDLE_LIFE_MIN_WAIT     = 4000;  // 4s minimum between behaviors (at idleSpeed=2)
-  const IDLE_LIFE_MAX_WAIT     = 10000; // 10s maximum (at idleSpeed=2)
+  const IDLE_LIFE_MIN_WAIT     = 3000;  // 3s minimum between behaviors (was 4s)
+  const IDLE_LIFE_MAX_WAIT     = 8000;  // 8s maximum (was 10s)
 
   // ── Runtime-adjustable personality knobs (set via setIdleSpeed / setExpressiveness)
   let _idleSpeedMult     = 1.0;   // 1 = default; <1 = slower, >1 = faster
