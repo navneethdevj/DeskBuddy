@@ -106,9 +106,10 @@ const HistoryPanel = (() => {
     _syncAntiCheatBadge();
     _renderAllViewStats(history);
     _renderStreakRow(history);
-    _drawStreakCalendar(history);
     _activateView('daily');
     _renderRecentSessions(history);
+    // Draw compact week calendar (session-panel-fix.js also draws it; belt+braces)
+    if(typeof _drawWeekCalendarHP === 'function') _drawWeekCalendarHP();
   }
 
   // ── Activate view (show/hide panels + draw chart) ─────────────────────────
@@ -345,9 +346,92 @@ const HistoryPanel = (() => {
   function _drawStreakCalendar(history) {
     if (_calMode === 'month') {
       _drawMonthCalendar(history);
-    } else {
+    } else if (_calMode === '16w') {
       _drawGithubCalendar(history);
+    } else {
+      // Default: current week only
+      _drawWeekCalendar(history);
     }
+  }
+
+  /**
+   * Current-week calendar: 7 horizontal cells Mon→Sun for this week.
+   * Compact, always visible, advances automatically to the next week.
+   */
+  function _drawWeekCalendar(history) {
+    const githubWrap = document.getElementById('hp-cal-wrap-github');
+    const monthWrap  = document.getElementById('hp-cal-wrap-month');
+    let weekWrap     = document.getElementById('hp-cal-wrap-week');
+
+    if (githubWrap) githubWrap.style.display = 'none';
+    if (monthWrap)  monthWrap.style.display  = 'none';
+
+    // Create week wrapper if it doesn't exist yet
+    if (!weekWrap) {
+      weekWrap = document.createElement('div');
+      weekWrap.id = 'hp-cal-wrap-week';
+      const streakSection = document.querySelector('.hp-streak-section');
+      if (streakSection) {
+        const calParent = document.getElementById('hp-cal-wrap-github')?.parentNode;
+        if (calParent) calParent.appendChild(weekWrap);
+      }
+    }
+    weekWrap.style.display = '';
+
+    const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const now       = new Date(); now.setHours(0, 0, 0, 0);
+    const todayDow  = (now.getDay() + 6) % 7; // 0=Mon…6=Sun
+    const monday    = new Date(now); monday.setDate(now.getDate() - todayDow);
+
+    // Build day map
+    const dayMap = new Map();
+    history.forEach(s => {
+      if (!s.date) return;
+      const d   = new Date(s.date);
+      const key = _isoDay(d);
+      if (!dayMap.has(key)) dayMap.set(key, { completed: false, attempted: false, focusSecs: 0 });
+      const e = dayMap.get(key);
+      if (s.outcome === 'COMPLETED')     e.completed = true;
+      else if (s.outcome !== 'ABANDONED') e.attempted = true;
+      e.focusSecs += (s.actualFocusedSeconds || 0);
+    });
+
+    let html = '<div class="hp-week-strip">';
+    for (let i = 0; i < 7; i++) {
+      const d       = new Date(monday); d.setDate(monday.getDate() + i);
+      const key     = _isoDay(d);
+      const info    = dayMap.get(key);
+      const isToday = d.getTime() === now.getTime();
+      const isFutr  = d > now;
+
+      let cls = 'hp-week-cell';
+      let title = '';
+      if (isToday)        cls += ' hp-week-today';
+      if (!isFutr && info?.completed) { cls += ' hp-week-done'; title = _fmtSecs(info.focusSecs) + ' focused'; }
+      else if (!isFutr && info?.attempted) { cls += ' hp-week-tried'; title = 'attempted'; }
+      else if (isFutr)    cls += ' hp-week-future';
+
+      const focusBar = (!isFutr && info?.focusSecs > 0)
+        ? `<div class="hp-week-bar" style="height:${Math.min(100, Math.round(info.focusSecs / 72))}%"></div>`
+        : '';
+
+      html += `
+        <div class="${cls}" title="${isToday ? 'Today — ' : ''}${DAY_NAMES[i]}${title ? ' · ' + title : ''}">
+          <div class="hp-week-bar-wrap">${focusBar}</div>
+          <div class="hp-week-day">${DAY_NAMES[i]}</div>
+        </div>`;
+    }
+    html += '</div>';
+
+    // Week date range label
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const rangeLabel = monday.getMonth() === sunday.getMonth()
+      ? `${MONTHS[monday.getMonth()]} ${monday.getDate()}–${sunday.getDate()}`
+      : `${MONTHS[monday.getMonth()]} ${monday.getDate()} – ${MONTHS[sunday.getMonth()]} ${sunday.getDate()}`;
+    html = `<div class="hp-week-label">${rangeLabel}</div>` + html;
+
+    weekWrap.innerHTML = html;
   }
 
   /**
@@ -1309,6 +1393,18 @@ const HistoryPanel = (() => {
       }
       case 'details': {
         if (!session) return;
+        // Use the rich details modal from session-panel-fix.js if available
+        if (typeof _showDetailsModal === 'function') {
+          _showDetailsModal(session);
+          break;
+        }
+        // Fallback: build and show the modal directly
+        const modal = document.getElementById('sp-session-details-modal');
+        if (modal && window._showDetailsModal) {
+          window._showDetailsModal(session);
+          break;
+        }
+        // Last resort fallback
         const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const d     = session.date ? new Date(session.date) : null;
