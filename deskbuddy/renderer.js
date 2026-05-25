@@ -2337,6 +2337,10 @@ const CFG = {
         setTimeout(() => {
           _updateDailyGoalArc();
           _updateRecentSessions();
+          // Refresh radar chart to show updated metrics
+          if (typeof HistoryPanel !== 'undefined' && HistoryPanel.refresh) {
+            HistoryPanel.refresh();
+          }
         }, 200);
         const budgetRow = document.getElementById('sp-budget-row');
         if (budgetRow) budgetRow.style.display = 'none';
