@@ -1665,13 +1665,30 @@ const Brain = (() => {
       // Update focus timer display
       const timerEl = document.getElementById('focus-timer');
       if (timerEl) {
-        const h = Math.floor(_focusSecs / 3600);
-        const m = Math.floor((_focusSecs % 3600) / 60);
-        const s = _focusSecs % 60;
+        const sessionState = (typeof Session !== 'undefined' && Session.getCurrentStats)
+          ? Session.getCurrentStats()?.state
+          : null;
+        const intervalMinutes = (typeof BreakReminder !== 'undefined' && BreakReminder.getIntervalMinutes)
+          ? BreakReminder.getIntervalMinutes()
+          : null;
+        const intervalSecs = intervalMinutes != null ? Math.max(0, Math.round(intervalMinutes * 60)) : 0;
+        const elapsedMs = (typeof BreakReminder !== 'undefined' && BreakReminder.getElapsedMs)
+          ? BreakReminder.getElapsedMs()
+          : null;
+        let displaySecs = _focusSecs;
+        const useBreakTimer = (sessionState === 'ACTIVE' || sessionState === 'PAUSED') && intervalSecs > 0 && elapsedMs != null;
+        if (useBreakTimer) {
+          displaySecs = Math.min(Math.max(0, Math.round(elapsedMs / 1000)), intervalSecs);
+          if (sessionState === 'PAUSED') displaySecs = 0;
+        }
+        const label = useBreakTimer ? 'break' : 'focus';
+        const h = Math.floor(displaySecs / 3600);
+        const m = Math.floor((displaySecs % 3600) / 60);
+        const s = displaySecs % 60;
         const timeStr = h > 0
           ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
           : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        timerEl.textContent = `focus ${timeStr}`;
+        timerEl.textContent = `${label} ${timeStr}`;
 
         // Update color to reflect session timer state
         const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';

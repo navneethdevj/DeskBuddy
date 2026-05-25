@@ -2365,7 +2365,7 @@ const CFG = {
       // Live focus stat bar
       const stats = Session.getCurrentStats ? Session.getCurrentStats() : null;
       if (stats && stats.elapsed > 0) {
-        const pct = Math.round((stats.focusedSeconds / stats.elapsed) * 100);
+        const pct = Math.min(100, Math.max(0, Math.round((stats.focusedSeconds / stats.elapsed) * 100)));
         const fill = document.getElementById('sp-focus-stat-fill');
         const pctEl = document.getElementById('sp-focus-stat-pct');
         if (fill) fill.style.width = `${pct}%`;
