@@ -240,7 +240,8 @@ const Session = (() => {
     let timing = 'unscheduled';
     if (intervalSecs > 0) {
       if (wasDue) timing = 'after_due';
-      else if (elapsedSecs != null && elapsedSecs < intervalSecs) timing = 'before_due';
+      else if (elapsedSecs == null) timing = 'unscheduled';
+      else if (elapsedSecs < intervalSecs) timing = 'before_due';
       else timing = 'on_time';
     }
     return {

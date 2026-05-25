@@ -433,18 +433,18 @@
       .map(b => (typeof b?.durationSecs === 'number' ? Math.max(0, Math.round(b.durationSecs)) : 0))
       .filter(n => n > 0);
     const breakTotalSecs = breakDurations.reduce((sum, n) => sum + n, 0);
+    const timingLabels = {
+      before_due: 'before due',
+      after_due:  'after due',
+      on_time:    'on time',
+      unscheduled:'no schedule',
+    };
     const breakLines = breaks.length
       ? breaks.map((b, i) => {
           const dur = (typeof b?.durationSecs === 'number' && b.durationSecs >= 0)
             ? _fmtFocus(b.durationSecs)
             : '—';
-          const timing = b?.timing === 'before_due'
-            ? 'before due'
-            : b?.timing === 'after_due'
-              ? 'after due'
-              : b?.timing === 'on_time'
-                ? 'on time'
-                : 'no schedule';
+          const timing = timingLabels[b?.timing] || 'no schedule';
           return `#${i + 1} ${dur} · ${timing}`;
         }).join('<br>')
       : '—';

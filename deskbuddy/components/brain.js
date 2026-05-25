@@ -1679,6 +1679,7 @@ const Brain = (() => {
         const useBreakTimer = (sessionState === 'ACTIVE' || sessionState === 'PAUSED') && intervalSecs > 0 && elapsedMs != null;
         if (useBreakTimer) {
           displaySecs = Math.min(Math.max(0, Math.round(elapsedMs / 1000)), intervalSecs);
+          // Breaks reset the buddy timer to 0 while paused.
           if (sessionState === 'PAUSED') displaySecs = 0;
         }
         const label = useBreakTimer ? 'break' : 'focus';

@@ -2,6 +2,7 @@
  * BreakReminder — Proactive break reminder for DeskBuddy.
  *
  * Tracks wall-clock working time independently of session state.
+ * Break pauses reset the interval so the next active stretch starts from 0.
  * After X minutes of continuous focused working, fires a reminder.
  * Purely advisory — has no authority over session state.
  *
