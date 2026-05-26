@@ -1,294 +1,556 @@
-/**
- * navneeth-polish.css
- * Session panel: remove quick-fill presets, taller panel.
- * History panel: accordion at top, animated charts, bigger glowing radar,
- *                scrollable with premium top-fade effect.
- */
+/* ════════════════════════════════════════════════════════════════════
+   §0  CSS CUSTOM PROPS — glass system
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --glass-bg:        rgba(14, 10, 34, 0.45);
+  --glass-blur:      blur(28px) saturate(1.6);
+  --glass-border:    rgba(255, 255, 255, 0.10);
+  --glass-border-t:  rgba(255, 255, 255, 0.22);
+  --glass-shadow:    0 24px 64px rgba(0,0,0,0.65),
+                     0 1px  0   rgba(255,255,255,0.08) inset;
+  --glass-radius:    18px;
 
-/* ══════════════════════════════════════════════════════════════════════════
-   §1  SESSION PANEL — remove quick-fill chips, taller panel
-   ══════════════════════════════════════════════════════════════════════════ */
+  /* Shining button base */
+  --shine-dur:       2.8s;
+}
 
-/* Hide the 5m / 25m / Pomodoro / Deep Work / Study Sprint chips entirely */
-#sp-quick-presets,
-.sp-quick-presets {
+
+/* ════════════════════════════════════════════════════════════════════
+   §1  SESSION PANEL
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Hide ONLY the enhancements.js chip row (5m / 15m / 25m / 45m / 1h / 90m) */
+#enh-quick-presets,
+.enh-quick-presets {
   display: none !important;
 }
 
-/* Taller panel so "begin session" button is always reachable */
+/* Keep the named preset row (Pomodoro / Deep Work / Study Sprint / ↩ last) */
+#sp-quick-presets,
+.sp-quick-presets {
+  display:        flex  !important;
+  flex-direction: column !important;
+  gap:            5px   !important;
+  margin-bottom:  6px   !important;
+}
+
+/* Taller panel — begin-session button always reachable */
 #session-panel {
-  max-height: min(92vh, 780px) !important;
+  max-height: min(94vh, 820px) !important;
 }
 
-/* Reclaim the space left by removing presets — tighten top gap */
-#session-idle .sp-header {
-  margin-bottom: 4px !important;
-}
-
-#session-idle .sp-quick-stats {
-  margin-bottom: 8px !important;
-}
-
-/* Ensure begin-session button has comfortable breathing room at bottom */
+/* Breathing room before begin-session after presets */
 #session-idle #start-session {
-  margin-top:    10px  !important;
-  margin-bottom: 4px   !important;
+  margin-top:    10px !important;
+  margin-bottom:  4px !important;
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
-   §2  HISTORY PANEL — accordion (Daily/Weekly/Monthly/Lifetime) at the top
-   ══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   §2  HISTORY PANEL — scrollable, nothing clipped
+   ════════════════════════════════════════════════════════════════════ */
 
-/*
- * #history-card is already display:flex flex-direction:column.
- * Reorder children so the accordion (the view tabs) sit ABOVE the title.
- */
-.hp-accordion        { order: -1 !important; } /* ← topmost */
-.hp-header           { order:  0 !important; position: relative !important; }
-.hp-streak-section   { order:  1 !important; }
-.hp-radar-section    { order:  2 !important; }
+#history-panel {
+  overflow-y:      auto   !important;
+  overflow-x:      hidden !important;
+  scroll-behavior: smooth !important;
+}
+
+/* Card grows with content */
+#history-card {
+  height:         auto    !important;
+  max-height:     none    !important;
+  overflow:       visible !important;
+  display:        flex    !important;
+  flex-direction: column  !important;
+}
+
+/* Every accordion body, radar, and section may expand freely */
+.hp-acc-body,
+.hp-acc-item,
+.hp-streak-section,
+.hp-radar-section,
+#history-panel .hp-section {
+  overflow: visible !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   §3  HISTORY PANEL — accordion pinned at top
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Reorder: accordion first, title below */
+.hp-accordion { order: -1 !important; }
+.hp-header     { order:  0 !important; }
+.hp-streak-section      { order: 1 !important; }
+.hp-radar-section       { order: 2 !important; }
 #history-panel .hp-section { order: 3 !important; }
 
-/* Style the accordion in its new top-position:
-   give it the same glass header feel, top-rounded corners only */
+/* Sticky accordion — glass header */
 .hp-accordion {
-  border-radius: 18px 18px 0 0 !important;
-  padding:       10px 12px 6px !important;
-  background:    rgba(8,6,18,0.50) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  border-bottom: 1px solid rgba(139,118,255,0.08) !important;
-  gap:           4px !important;
-  position:      relative !important; /* needed for ::after fade overlay */
+  position:                sticky                       !important;
+  top:                     0                            !important;
+  z-index:                 10                           !important;
+  background:              rgba(8, 6, 20, 0.76)         !important;
+  backdrop-filter:         blur(22px) saturate(1.5)     !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.5)     !important;
+  border-radius:           18px 18px 0 0                !important;
+  border-bottom:           1px solid rgba(139,118,255,0.10) !important;
+  padding:                 9px 10px 8px                 !important;
+  gap:                     4px                          !important;
 }
 
-/* Accordion item headers look like horizontal tabs when at the top */
-.hp-acc-item {
-  border-radius: 10px !important;
+/* Fade gradient under the sticky bar — premium "content disappears up" */
+.hp-accordion::after {
+  content:        '';
+  position:       absolute  !important;
+  bottom:         -28px     !important;
+  left:           0         !important;
+  right:          0         !important;
+  height:         28px      !important;
+  background:     linear-gradient(
+                    to bottom,
+                    rgba(8, 6, 20, 0.65),
+                    transparent
+                  )           !important;
+  pointer-events: none       !important;
+  z-index:        9          !important;
 }
+
+.hp-acc-item   { border-radius: 10px !important; }
 
 .hp-acc-header {
-  padding: 7px 10px !important;
-  border-radius: 10px !important;
+  padding:       7px 10px  !important;
+  border-radius: 10px      !important;
+  font-size:     9.5px     !important;
 }
 
 .hp-acc-header.hp-acc-open {
-  background: rgba(139,118,255,0.13) !important;
-  border-color: rgba(139,118,255,0.22) !important;
+  background:   rgba(139,118,255,0.15) !important;
+  border-color: rgba(139,118,255,0.28) !important;
 }
 
-/* Strip sticky from the title-row (no longer the topmost element) */
+/* Title row: scrolls normally now */
 .hp-header {
-  top:      unset    !important;
-  z-index:  1        !important;
-  border-radius: 0   !important;
+  top:           unset   !important;
+  z-index:       1       !important;
+  border-radius: 0       !important;
   border-bottom: 1px solid rgba(139,118,255,0.06) !important;
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
-   §3  HISTORY PANEL — scrollable + premium top-fade effect
-   ══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   §4  CHART BREAKDOWN — structured, animated
+   ════════════════════════════════════════════════════════════════════ */
 
-#history-panel {
-  overflow-y:   auto    !important;
-  overflow-x:   hidden  !important;
-  scroll-behavior: smooth !important;
-}
-
-/*
- * The top-fade trick: the accordion (now sticky at order:-1 top) gets
- * a ::after gradient that casts a soft shadow downward, creating the
- * illusion that content dissolves into the panel edge as you scroll up.
- */
-.hp-accordion::after {
-  content:          '';
-  position:         absolute !important;
-  bottom:           -22px    !important;
-  left:             0        !important;
-  right:            0        !important;
-  height:           22px     !important;
-  background:       linear-gradient(
-                      to bottom,
-                      rgba(8, 6, 18, 0.55),
-                      transparent
-                    )         !important;
-  pointer-events:   none      !important;
-  z-index:          4         !important;
-}
-
-.hp-accordion {
-  position: sticky !important;
-  top:      0      !important;
-  z-index:  5      !important;
-}
-
-/*
- * Subtle top-edge fade on the panel itself — content gently fades
- * as it scrolls up under the sticky accordion.
- */
-#history-card {
-  /* Thin mist at top that always shows */
-  background-image:
-    linear-gradient(
-      to bottom,
-      rgba(8,6,18,0.85) 0px,
-      rgba(8,6,18,0.00) 48px
-    ) !important;
-  background-attachment: local !important; /* scrolls with content */
-}
-
-
-/* ══════════════════════════════════════════════════════════════════════════
-   §4  CHART BREAKDOWN — structured layout + entrance animation
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/* Chart section sits cleanly inside its view */
 .hp-chart-section {
-  padding:       0    !important;
-  margin-top:    6px  !important;
-  border-radius: 12px !important;
-  overflow:      hidden !important;
+  display:        flex        !important;
+  flex-direction: column      !important;
+  gap:            6px         !important;
+  padding:        0           !important;
+  margin-top:     8px         !important;
 }
 
-/* Chart label looks like a section chip */
 .hp-chart-label {
-  padding:       0 2px 4px 2px !important;
-  font-size:     7px           !important;
-  color:         rgba(139,118,255,0.45) !important;
-  letter-spacing: 0.11em       !important;
+  font-size:      7px                      !important;
+  font-weight:    700                      !important;
+  letter-spacing: 0.11em                   !important;
+  text-transform: uppercase                !important;
+  color:          rgba(139,118,255,0.45)   !important;
+  padding-left:   2px                      !important;
 }
 
-/* Chart container: clean rounded card */
 .hp-chart-wrap {
-  border-radius: 11px !important;
+  width:         100%    !important;
+  min-height:    156px   !important;
+  height:        156px   !important;
+  border-radius: 12px    !important;
   border:        1px solid rgba(139,118,255,0.09) !important;
   background:    rgba(0,0,0,0.18) !important;
-  min-height:    152px !important;
-  height:        152px !important;
-  overflow:      hidden !important;
+  overflow:      hidden   !important;
   position:      relative !important;
-  /* Entrance fade-in when the accordion body opens */
-  animation: hp-chart-appear 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-sizing:    border-box !important;
+  animation: hp-chart-in 0.48s cubic-bezier(0.22,1,0.36,1) both;
 }
 
 .hp-chart-wrap canvas {
   position: absolute !important;
-  top:      0        !important;
-  left:     0        !important;
+  inset:    0        !important;
   width:    100%     !important;
   height:   100%     !important;
   display:  block    !important;
 }
 
-@keyframes hp-chart-appear {
-  from {
-    opacity:   0;
-    transform: translateY(8px) scale(0.98);
-  }
-  to {
-    opacity:   1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Re-trigger animation when the parent accordion opens */
 .hp-acc-body .hp-chart-wrap {
-  animation: hp-chart-appear 0.50s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.08s;
+  animation-delay: 0.10s !important;
+}
+
+@keyframes hp-chart-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
-   §5  RADAR CHART — bigger, glowing, premium look
-   ══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   §5  RADAR CHART — bigger, glowing
+   ════════════════════════════════════════════════════════════════════ */
 
-.hp-radar-section {
-  padding:        6px 14px 10px !important;
-}
+.hp-radar-section { padding: 8px 14px 14px !important; }
+.hp-radar-title   { font-size: 8px !important; color: rgba(175,160,255,0.50) !important; margin-bottom: 4px !important; }
 
-.hp-radar-title {
-  font-size:      8px   !important;
-  color:          rgba(175,160,255,0.50) !important;
-  margin-bottom:  6px   !important;
-}
-
-/* Radar chart wrapper: center + expand */
 #hp-radar-chart {
-  display:         flex           !important;
-  justify-content: center         !important;
-  align-items:     center         !important;
-  padding:         10px 0         !important;
+  display:         flex   !important;
+  justify-content: center !important;
+  align-items:     center !important;
+  padding:         10px 0 6px !important;
 }
 
-/* Override the inline style="width:160px;height:160px" on the SVG */
 #hp-radar-chart svg {
-  width:  210px   !important;
-  height: 210px   !important;
-  /* Pulsing ambient glow */
-  filter: drop-shadow(0 0 10px rgba(139,118,255,0.35))
-          drop-shadow(0 0 22px rgba(68,232,176,0.18))  !important;
-  animation: radar-glow-pulse 3.5s ease-in-out infinite !important;
+  width:    218px   !important;
+  height:   218px   !important;
   overflow: visible !important;
+  animation: radar-breathe 3.8s ease-in-out infinite !important;
 }
 
-@keyframes radar-glow-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0  8px rgba(139,118,255,0.30))
-            drop-shadow(0 0 20px rgba(68,232,176,0.14));
-  }
-  50% {
-    filter: drop-shadow(0 0 16px rgba(139,118,255,0.55))
-            drop-shadow(0 0 34px rgba(68,232,176,0.28));
-  }
+@keyframes radar-breathe {
+  0%,100% { filter: drop-shadow(0 0  8px rgba(139,118,255,0.30)) drop-shadow(0 0 20px rgba(68,232,176,0.12)); }
+  50%     { filter: drop-shadow(0 0 18px rgba(139,118,255,0.60)) drop-shadow(0 0 38px rgba(68,232,176,0.30)); }
 }
 
-/* Factor bars below radar — cleaner layout */
-#hp-radar-factors {
-  display:        flex        !important;
-  flex-direction: column      !important;
-  gap:            5px         !important;
-  padding:        4px 4px 0   !important;
+#hp-radar-factors { display: flex !important; flex-direction: column !important; gap: 5px !important; padding: 2px 2px 0 !important; }
+
+.hp-radar-factor { display: grid !important; grid-template-columns: 76px 30px 1fr !important; align-items: center !important; gap: 5px !important; }
+.hp-rf-label { font-size: 8.5px !important; font-weight: 600 !important; color: rgba(175,160,255,0.55) !important; white-space: nowrap !important; }
+.hp-rf-value { font-size: 8.5px !important; font-weight: 700 !important; color: rgba(210,200,255,0.80) !important; text-align: right !important; font-variant-numeric: tabular-nums !important; }
+.hp-rf-bar   { height: 4px !important; border-radius: 3px !important; background: rgba(139,118,255,0.10) !important; overflow: hidden !important; }
+.hp-rf-bar-fill { height: 100% !important; border-radius: 3px !important; background: linear-gradient(90deg,rgba(139,118,255,0.80),rgba(68,232,176,0.72)) !important; transition: width 0.85s cubic-bezier(0.22,1,0.36,1) !important; }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   §6  LIQUID GLASS HELPERS
+   ════════════════════════════════════════════════════════════════════ */
+
+/* The "shine" sweep — applied as ::before on shining buttons */
+@keyframes btn-shine {
+  0%   { background-position: -200% center; }
+  100% { background-position:  300% center; }
 }
 
-.hp-radar-factor {
-  display:     grid                      !important;
-  grid-template-columns: 72px 28px 1fr  !important;
-  align-items: center                    !important;
-  gap:         5px                       !important;
+/* Shared glass card mixin (applied inline below) */
+.lg-card {
+  background:              var(--glass-bg)      !important;
+  backdrop-filter:         var(--glass-blur)    !important;
+  -webkit-backdrop-filter: var(--glass-blur)    !important;
+  border:         1px solid var(--glass-border) !important;
+  border-top:     1px solid var(--glass-border-t) !important;
+  box-shadow:     var(--glass-shadow)           !important;
+  border-radius:  var(--glass-radius)           !important;
 }
 
-.hp-rf-label {
-  font-size:      8.5px  !important;
-  font-weight:    600    !important;
-  color:          rgba(175,160,255,0.55) !important;
-  letter-spacing: 0.03em !important;
-  white-space:    nowrap !important;
+
+/* ════════════════════════════════════════════════════════════════════
+   §7  GLOBAL BREAK TOAST — liquid glass
+   ════════════════════════════════════════════════════════════════════ */
+
+.global-break-toast {
+  background:              rgba(12, 8, 28, 0.42)         !important;
+  backdrop-filter:         blur(32px) saturate(1.8)      !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.8)      !important;
+  border:         1px solid rgba(255,255,255,0.08)        !important;
+  border-top:     1px solid rgba(255,255,255,0.22)        !important;
+  box-shadow:     0 28px 72px rgba(0,0,0,0.70),
+                  0  1px  0   rgba(255,255,255,0.10) inset,
+                  0  0  40px  rgba(139,118,255,0.08)      !important;
+  border-radius: 20px !important;
+  padding:       13px 16px !important;
+  /* Subtle bottom specular edge */
+  outline:       1px solid rgba(255,255,255,0.03)         !important;
 }
 
-.hp-rf-value {
-  font-size:   8.5px  !important;
-  font-weight: 700    !important;
-  color:       rgba(210,200,255,0.80) !important;
-  text-align:  right  !important;
-  font-variant-numeric: tabular-nums !important;
+/* Shining buttons inside the toast */
+.gbt-btn {
+  position:        relative !important;
+  overflow:        hidden   !important;
+  border-radius:   10px     !important;
+  font-size:       9.5px    !important;
+  padding:         6px 11px !important;
+  font-weight:     700      !important;
+  letter-spacing:  0.03em   !important;
+  transition:      transform 0.12s, box-shadow 0.12s, background 0.12s !important;
+  /* Glassy button base */
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
-.hp-rf-bar {
-  height:        4px           !important;
-  border-radius: 3px           !important;
-  background:    rgba(139,118,255,0.10) !important;
-  overflow:      hidden        !important;
+.gbt-btn::before {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    105deg,
+    transparent  30%,
+    rgba(255,255,255,0.18) 50%,
+    transparent  70%
+  );
+  background-size: 200% 100%;
+  background-position: -200% center;
+  animation:  btn-shine var(--shine-dur) ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
 }
 
-.hp-rf-bar-fill {
-  height:        100%           !important;
-  border-radius: 3px            !important;
-  background:    linear-gradient(
-                   90deg,
-                   rgba(139,118,255,0.75),
-                   rgba(68,232,176,0.70)
-                 )               !important;
-  transition:    width 0.8s cubic-bezier(0.22,1,0.36,1) !important;
+.gbt-btn:hover {
+  transform:  translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35) !important;
+}
+
+.gbt-snooze {
+  background:   rgba(252,202,76,0.12)  !important;
+  border-color: rgba(252,202,76,0.35)  !important;
+  color:        rgba(255,215,100,0.92) !important;
+  box-shadow:   0 0 12px rgba(252,202,76,0.12) inset !important;
+}
+.gbt-snooze::before { animation-delay: 0.4s; }
+.gbt-snooze:hover {
+  background:   rgba(252,202,76,0.22) !important;
+  box-shadow:   0 4px 14px rgba(0,0,0,0.35), 0 0 20px rgba(252,202,76,0.18) !important;
+}
+
+.gbt-take {
+  background:   rgba(68,218,165,0.14)  !important;
+  border-color: rgba(68,218,165,0.40)  !important;
+  color:        rgba(80,240,185,0.92)  !important;
+  box-shadow:   0 0 12px rgba(68,218,165,0.12) inset !important;
+}
+.gbt-take:hover {
+  background:   rgba(68,218,165,0.24) !important;
+  box-shadow:   0 4px 14px rgba(0,0,0,0.35), 0 0 20px rgba(68,218,165,0.20) !important;
+}
+
+.gbt-dismiss {
+  border-radius: 8px   !important;
+  transition: background 0.12s, color 0.12s !important;
+}
+.gbt-dismiss:hover {
+  background:  rgba(139,118,255,0.12) !important;
+  color:       rgba(185,170,255,0.80) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   §8  BREAK TYPE MODAL — liquid glass
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Overlay: blurred backdrop with faint purple tint */
+.break-type-modal {
+  background: rgba(4, 2, 14, 0.50)            !important;
+  backdrop-filter: blur(10px) saturate(1.4)   !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4) !important;
+}
+
+/* Card */
+.btm-card {
+  background:              rgba(12, 8, 28, 0.44)         !important;
+  backdrop-filter:         blur(36px) saturate(1.9)      !important;
+  -webkit-backdrop-filter: blur(36px) saturate(1.9)      !important;
+  border:         1px solid rgba(255,255,255,0.09)        !important;
+  border-top:     1px solid rgba(255,255,255,0.24)        !important;
+  box-shadow:     0 32px 80px rgba(0,0,0,0.72),
+                  0  1px  0   rgba(255,255,255,0.12) inset,
+                  0  0   50px rgba(139,118,255,0.10)      !important;
+  border-radius:  22px    !important;
+  padding:        24px 22px !important;
+  /* Appear animation */
+  animation: btm-pop 0.26s cubic-bezier(0.22,1,0.36,1) both !important;
+}
+
+@keyframes btm-pop {
+  from { opacity: 0; transform: scale(0.90) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.btm-title {
+  font-size:      10.5px  !important;
+  letter-spacing: 0.13em  !important;
+  color:          rgba(185,168,255,0.60) !important;
+}
+
+/* Option buttons — glassy shining pills */
+.btm-opt {
+  background:              rgba(139,118,255,0.07)         !important;
+  border:         1px solid rgba(139,118,255,0.15)        !important;
+  border-top:     1px solid rgba(255,255,255,0.14)        !important;
+  backdrop-filter:         blur(14px)                    !important;
+  -webkit-backdrop-filter: blur(14px)                    !important;
+  border-radius:  14px     !important;
+  padding:        16px 12px !important;
+  position:       relative !important;
+  overflow:       hidden   !important;
+  transition:     background 0.15s, border-color 0.15s, transform 0.12s, box-shadow 0.12s !important;
+}
+
+.btm-opt::before {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    125deg,
+    transparent  30%,
+    rgba(255,255,255,0.14) 50%,
+    transparent  70%
+  );
+  background-size: 200% 100%;
+  background-position: -200% center;
+  animation:  btn-shine var(--shine-dur) ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.btm-opt:nth-child(2)::before { animation-delay: 1.0s; }
+
+.btm-opt:hover {
+  background:   rgba(139,118,255,0.18) !important;
+  border-color: rgba(180,158,255,0.38) !important;
+  transform:    translateY(-2px)        !important;
+  box-shadow:   0 8px 24px rgba(0,0,0,0.40),
+                0 0 20px rgba(139,118,255,0.18) !important;
+}
+
+.btm-opt:active { transform: translateY(0) !important; }
+
+.btm-opt-icon  { font-size: 22px !important; }
+.btm-opt-label { font-size: 11px !important; font-weight: 700 !important; color: rgba(218,208,255,0.90) !important; }
+.btm-opt-sub   { font-size: 8.5px !important; color: rgba(145,132,205,0.50) !important; }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   §9  BREAK-OVER NOTIFICATION — liquid glass strip
+   ════════════════════════════════════════════════════════════════════ */
+
+.sp-break-over-notif {
+  background:              rgba(12, 8, 28, 0.42)         !important;
+  backdrop-filter:         blur(24px) saturate(1.6)      !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6)      !important;
+  border:         1px solid rgba(251,191,36,0.20)         !important;
+  border-top:     1px solid rgba(255,220,80,0.36)         !important;
+  box-shadow:     0 12px 36px rgba(0,0,0,0.55),
+                  0  1px  0   rgba(255,220,80,0.14) inset !important;
+  border-radius:  14px !important;
+  margin-top:     10px !important;
+}
+
+.sp-break-over-resume-btn {
+  position:       relative !important;
+  overflow:       hidden   !important;
+  padding:        7px 16px !important;
+  border-radius:  10px     !important;
+  font-size:      10.5px   !important;
+  font-weight:    700      !important;
+  background:     rgba(68,232,176,0.14) !important;
+  border-color:   rgba(68,232,176,0.42) !important;
+  border-top:     1px solid rgba(120,255,210,0.32) !important;
+  color:          rgba(80,245,195,0.96) !important;
+  box-shadow:     0 0 14px rgba(68,232,176,0.14) inset !important;
+  transition:     transform 0.12s, box-shadow 0.12s, background 0.12s !important;
+}
+
+.sp-break-over-resume-btn::before {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    105deg,
+    transparent  30%,
+    rgba(255,255,255,0.18) 50%,
+    transparent  70%
+  );
+  background-size: 200% 100%;
+  background-position: -200% center;
+  animation:  btn-shine var(--shine-dur) ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.sp-break-over-resume-btn:hover {
+  background:  rgba(68,232,176,0.26) !important;
+  transform:   translateY(-1px) !important;
+  box-shadow:  0 6px 18px rgba(0,0,0,0.40),
+               0 0 24px rgba(68,232,176,0.22) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   §10  SESSION DETAILS MODAL — liquid glass
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Full-screen backdrop */
+.sp-details-backdrop {
+  background:              rgba(4, 2, 14, 0.50)           !important;
+  backdrop-filter:         blur(10px) saturate(1.4)       !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4)       !important;
+}
+
+/* Card */
+.sp-details-card {
+  background:              rgba(12, 8, 28, 0.44)          !important;
+  backdrop-filter:         blur(36px) saturate(1.9)       !important;
+  -webkit-backdrop-filter: blur(36px) saturate(1.9)       !important;
+  border:         1px solid rgba(255,255,255,0.08)         !important;
+  border-top:     1px solid rgba(255,255,255,0.22)         !important;
+  box-shadow:     0 32px 80px rgba(0,0,0,0.72),
+                  0  1px  0   rgba(255,255,255,0.10) inset,
+                  0  0   50px rgba(139,118,255,0.10)       !important;
+  border-radius:  22px     !important;
+  animation: sp-det-glass-in 0.24s cubic-bezier(0.22,1,0.36,1) both !important;
+}
+
+@keyframes sp-det-glass-in {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* Header */
+.sp-details-header {
+  border-bottom: 1px solid rgba(139,118,255,0.10) !important;
+  padding:       14px 18px !important;
+}
+
+.sp-details-title {
+  font-size:      10.5px   !important;
+  letter-spacing: 0.13em   !important;
+  color:          rgba(215,205,255,0.80) !important;
+}
+
+/* Close button — shining glass pill */
+.sp-details-close {
+  border-radius:  9px      !important;
+  border:         1px solid rgba(255,255,255,0.10) !important;
+  border-top:     1px solid rgba(255,255,255,0.22) !important;
+  background:     rgba(255,255,255,0.04) !important;
+  color:          rgba(175,160,255,0.50) !important;
+  position:       relative !important;
+  overflow:       hidden   !important;
+  transition:     background 0.12s, color 0.12s !important;
+}
+
+.sp-details-close::before {
+  content:    '';
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    105deg,
+    transparent  30%,
+    rgba(255,255,255,0.16) 50%,
+    transparent  70%
+  );
+  background-size: 200% 100%;
+  background-position: -200% center;
+  animation:  btn-shine var(--shine-dur) ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.sp-details-close:hover {
+  background: rgba(248,90,90,0.14) !important;
+  color:      rgba(248,90,90,0.90) !important;
 }
