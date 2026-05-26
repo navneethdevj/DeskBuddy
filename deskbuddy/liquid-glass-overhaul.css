@@ -1,0 +1,627 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   LIQUID GLASS OVERHAUL — DeskBuddy
+   Kills rainbow apple-border on panels. Pure translucent liquid glass.
+   History panel: pills + stats + chart always visible. Accordion for details.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 0. KILL RAINBOW BORDER ON PANELS ──────────────────────────────────── */
+/* Apple border conic gradients cause the "rainbow color" bug.
+   We suppress them on panels but leave the companion bubble untouched. */
+
+#session-idle    .apple-border-ring,
+#session-idle    .apple-border-glow,
+#session-active  .apple-border-ring,
+#session-active  .apple-border-glow,
+#session-paused  .apple-border-ring,
+#session-paused  .apple-border-glow,
+#history-card    .apple-border-ring,
+#history-card    .apple-border-glow {
+  display: none !important;
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+/* Also disable the outer wrap rings injected by apple-border.js */
+#session-idle-ab-ring,
+#session-idle-ab-glow,
+#session-active-ab-ring,
+#session-active-ab-glow,
+#session-paused-ab-ring,
+#session-paused-ab-glow,
+#history-ab-ring,
+#history-ab-glow {
+  opacity: 0 !important;
+  animation: none !important;
+  pointer-events: none !important;
+}
+
+/* Wrapper: no rainbow bleed */
+.apple-border-wrap[data-panel="session"],
+.apple-border-wrap[data-panel="history"] {
+  --ab-opacity: 0 !important;
+}
+
+/* ─── 1. DESIGN TOKENS ───────────────────────────────────────────────────── */
+:root {
+  /* Liquid glass core */
+  --lg-bg:          rgba(10, 7, 24, 0.44);
+  --lg-bg-light:    rgba(14, 10, 32, 0.38);
+  --lg-blur:        blur(28px) saturate(1.75) brightness(1.06);
+  --lg-blur-heavy:  blur(34px) saturate(1.85) brightness(1.08);
+
+  /* Borders — refractive edge simulation */
+  --lg-border:      rgba(255, 255, 255, 0.055);
+  --lg-border-top:  rgba(255, 255, 255, 0.18);   /* bright top "light catch" */
+  --lg-border-side: rgba(0, 0, 0, 0.15);
+  --lg-border-bot:  rgba(0, 0, 0, 0.22);
+
+  /* Shadows */
+  --lg-shadow:
+    0 32px 72px rgba(0, 0, 0, 0.72),
+    0 8px 28px  rgba(0, 0, 0, 0.40),
+    0 2px 8px   rgba(0, 0, 0, 0.28);
+
+  /* Inner highlights = "liquid" feel */
+  --lg-inset:
+    0 1px 0     rgba(255, 255, 255, 0.14) inset,   /* top glint */
+    0 -1px 0    rgba(0, 0, 0, 0.22)        inset,   /* bottom shadow */
+    1px 0 0     rgba(255, 255, 255, 0.04)  inset,   /* left micro-glint */
+    -1px 0 0    rgba(0, 0, 0, 0.10)        inset;   /* right micro-shadow */
+
+  /* Accent tint pool — subtle internal hue from behind */
+  --lg-tint:
+    linear-gradient(
+      135deg,
+      rgba(128, 100, 220, 0.045) 0%,
+      rgba(80,  60, 180, 0.030)  35%,
+      transparent 60%
+    ),
+    linear-gradient(
+      310deg,
+      rgba(60, 40, 140, 0.030) 0%,
+      transparent 45%
+    );
+
+  /* Radius + timing */
+  --lg-radius:  18px;
+  --lg-ease:    cubic-bezier(0.34, 1.38, 0.64, 1);
+  --lg-ease-out:cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §1  SESSION PANEL — liquid glass shell
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#session-idle,
+#session-active,
+#session-paused {
+  /* Liquid glass surface */
+  background:              var(--lg-tint), var(--lg-bg)         !important;
+  backdrop-filter:         var(--lg-blur)                        !important;
+  -webkit-backdrop-filter: var(--lg-blur)                        !important;
+
+  /* Refractive border: bright top edge catches "light" */
+  border-top:    1px solid var(--lg-border-top)                  !important;
+  border-left:   1px solid var(--lg-border)                      !important;
+  border-right:  1px solid var(--lg-border-side)                 !important;
+  border-bottom: 1px solid var(--lg-border-bot)                  !important;
+  border-radius: var(--lg-radius)                                 !important;
+
+  /* Depth stack */
+  box-shadow: var(--lg-shadow), var(--lg-inset)                  !important;
+
+  /* No grain/SVG background-image from premium-panels.css */
+  background-image: none                                          !important;
+
+  /* Sizing — balanced, not cramped */
+  padding: 13px 14px 15px                                         !important;
+  gap:     8px                                                     !important;
+}
+
+/* Session panel container width */
+#session-panel {
+  width: 274px !important;
+}
+
+/* State transitions on the panel itself */
+#session-active {
+  background:
+    linear-gradient(135deg, rgba(50, 215, 130, 0.04) 0%, transparent 50%),
+    var(--lg-tint),
+    var(--lg-bg) !important;
+  border-top-color: rgba(50, 215, 130, 0.22) !important;
+}
+
+#session-paused {
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, transparent 50%),
+    var(--lg-tint),
+    var(--lg-bg) !important;
+  border-top-color: rgba(251, 191, 36, 0.20) !important;
+}
+
+/* ── 1.1 Quick stats — cleaner 3-col ────────────────────────────────────── */
+.sp-quick-stats {
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 5px !important;
+}
+
+.sp-qs-item {
+  background:    rgba(255, 255, 255, 0.028) !important;
+  border:        1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 11px                                !important;
+  padding:       9px 8px 8px                         !important;
+}
+
+.sp-qs-val {
+  font-size: 16px !important;
+}
+
+.sp-qs-lbl {
+  font-size: 7px !important;
+}
+
+/* ── 1.2 Timer ring — tighten ───────────────────────────────────────────── */
+.sp-progress-ring { width: 76px !important; height: 76px !important; }
+.sp-inline-timer   { font-size: 17px !important; }
+
+/* ── 1.3 Buttons — liquid glass style ───────────────────────────────────── */
+.sp-btn-primary {
+  background:
+    linear-gradient(135deg, rgba(160, 135, 255, 0.20) 0%, rgba(120, 95, 230, 0.16) 100%) !important;
+  border:     1px solid rgba(160, 138, 255, 0.32) !important;
+  border-top: 1px solid rgba(180, 158, 255, 0.44) !important;
+  color:      rgba(232, 222, 255, 0.97)            !important;
+  box-shadow:
+    0 4px 18px rgba(130, 100, 255, 0.22),
+    0 1px 0 rgba(220, 200, 255, 0.12) inset        !important;
+  backdrop-filter: blur(4px)                       !important;
+}
+.sp-btn-primary:hover {
+  background:
+    linear-gradient(135deg, rgba(170, 145, 255, 0.28) 0%, rgba(130, 105, 240, 0.24) 100%) !important;
+  box-shadow:
+    0 6px 24px rgba(130, 100, 255, 0.30),
+    0 1px 0 rgba(220, 200, 255, 0.15) inset        !important;
+}
+
+/* ── 1.4 Goal input — liquid style ─────────────────────────────────────── */
+.sp-goal-input {
+  background:    rgba(255, 255, 255, 0.04)       !important;
+  border:        1px solid rgba(160, 138, 255, 0.12) !important;
+  backdrop-filter: blur(4px)                     !important;
+}
+.sp-goal-input:focus {
+  background:    rgba(130, 100, 255, 0.06)       !important;
+  border-color:  rgba(160, 138, 255, 0.35)       !important;
+  box-shadow:    0 0 0 3px rgba(130, 100, 255, 0.08) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §2  HISTORY PANEL — liquid glass + always-visible stats & chart
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#history-card {
+  /* Liquid glass — slightly lighter tint for larger panel */
+  background:
+    linear-gradient(140deg, rgba(120, 90, 230, 0.04) 0%, transparent 55%),
+    linear-gradient(310deg, rgba(70,  50, 180, 0.03) 0%, transparent 48%),
+    rgba(8, 6, 20, 0.46)                                                    !important;
+  backdrop-filter:         var(--lg-blur-heavy)                             !important;
+  -webkit-backdrop-filter: var(--lg-blur-heavy)                             !important;
+
+  border-top:    1px solid var(--lg-border-top)                             !important;
+  border-left:   1px solid var(--lg-border)                                 !important;
+  border-right:  1px solid var(--lg-border-side)                            !important;
+  border-bottom: 1px solid var(--lg-border-bot)                             !important;
+  border-radius: var(--lg-radius)                                            !important;
+  box-shadow:    var(--lg-shadow), var(--lg-inset)                          !important;
+
+  background-image: none !important;
+  overflow:          hidden !important;
+}
+
+/* ── 2.1 Panel header ────────────────────────────────────────────────────── */
+.hp-header {
+  background:
+    rgba(6, 4, 16, 0.50) !important;
+  backdrop-filter:         blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.044) !important;
+  padding: 12px 14px 10px !important;
+  border-radius: 18px 18px 0 0 !important;
+}
+
+/* ── 2.2 Pills — always visible, outside accordion ────────────────────────── */
+.hp-pills-row {
+  padding:    10px 13px 0 !important;
+  flex-shrink: 0          !important;
+}
+
+.hgraph-pill {
+  border-radius:  9px     !important;
+  font-size:      8.5px   !important;
+  font-weight:    700     !important;
+  padding:        7px 7px !important;
+  letter-spacing: 0.04em  !important;
+}
+
+.hgraph-pill.active {
+  background:   rgba(130, 108, 255, 0.18) !important;
+  border-color: rgba(140, 118, 255, 0.38) !important;
+  color:        rgba(228, 218, 255, 0.97) !important;
+  box-shadow:
+    0 0 0 2px rgba(130, 108, 255, 0.08),
+    0 2px 10px rgba(130, 108, 255, 0.18) !important;
+}
+
+/* ── 2.3 View panels: stats + chart always shown ──────────────────────────── */
+/* History accordion JS currently wraps hp-views in accordion items.
+   We override to keep views pill-controlled, NOT accordion-wrapped. */
+.hp-accordion {
+  display: none !important;           /* hide accordion wrapper for VIEWS */
+}
+
+/* Restore pills-row */
+.hp-pills-row {
+  display:    block  !important;
+  visibility: visible !important;
+}
+
+/* All views default hidden; active pill shows its view */
+.hp-view {
+  display: none !important;
+}
+.hp-view.hp-view-active {
+  display:        flex          !important;
+  flex-direction: column        !important;
+  gap:            9px           !important;
+  padding:        10px 13px 0   !important;
+  visibility:     visible       !important;
+  opacity:        1             !important;
+}
+
+/* Chart always fixed height & visible */
+.hp-chart-wrap {
+  min-height: 148px  !important;
+  height:     148px  !important;
+  display:    block  !important;
+  overflow:   hidden !important;
+  position:   relative !important;
+  background: rgba(0, 0, 0, 0.12) !important;
+  border:     1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 12px !important;
+}
+.hp-chart-wrap canvas {
+  display:  block    !important;
+  position: absolute !important;
+  top: 0; left: 0   !important;
+  width:  100%      !important;
+  height: 100%      !important;
+}
+
+/* Stat cards — 2×2 grid, liquid glass look */
+.hp-stat-cards {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap:                   5px            !important;
+}
+
+.hp-sc {
+  background:    rgba(255, 255, 255, 0.024) !important;
+  border:        1px solid rgba(255, 255, 255, 0.054) !important;
+  border-top:    1px solid rgba(255, 255, 255, 0.10)  !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(6px) !important;
+}
+.hp-sc:hover {
+  background: rgba(130, 108, 255, 0.045) !important;
+  border-color: rgba(130, 108, 255, 0.12) !important;
+}
+
+.hp-sc-val { font-size: 19px !important; }
+.hp-sc-lbl { font-size: 7px  !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §3  DETAIL ACCORDION — for Streaks, Radar, Sessions Log
+   Three collapsible sections below the always-visible stats+chart
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.hp-detail-accordion {
+  display:        flex;
+  flex-direction: column;
+  padding:        6px 10px 12px;
+  gap:            4px;
+}
+
+/* ── 3.1 Accordion Item ───────────────────────────────────────────────────── */
+.hp-da-item {
+  border-radius: 13px;
+  overflow:      hidden;
+  border:        1px solid rgba(255, 255, 255, 0.04);
+  background:
+    rgba(255, 255, 255, 0.014);
+  transition: background 0.18s, border-color 0.20s;
+  /* Spring settle */
+}
+
+.hp-da-item.hp-da-open {
+  border-color: rgba(130, 108, 255, 0.13);
+  background:   rgba(130, 108, 255, 0.022);
+}
+
+/* ── 3.2 Header button ───────────────────────────────────────────────────── */
+.hp-da-header {
+  width:      100%;
+  display:    flex;
+  align-items:center;
+  gap:        10px;
+  padding:    10px 12px;
+  background: transparent;
+  border:     none;
+  cursor:     pointer;
+  text-align: left;
+  font-family:inherit;
+  -webkit-app-region: no-drag;
+  min-height: 40px;
+  position:   relative;
+}
+
+/* Glassmorphism icon (Skiper103 inspired) */
+.hp-da-icon {
+  width:           28px;
+  height:          28px;
+  flex-shrink:     0;
+  border-radius:   9px;
+  background:      rgba(130, 108, 255, 0.08);
+  border:          1px solid rgba(130, 108, 255, 0.13);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       14px;
+  color:           rgba(178, 160, 255, 0.60);
+  transition:
+    background   0.18s var(--lg-ease),
+    border-color 0.18s,
+    color        0.15s,
+    transform    0.22s var(--lg-ease),
+    box-shadow   0.18s;
+}
+.hp-da-header:hover .hp-da-icon,
+.hp-da-header.hp-da-open .hp-da-icon {
+  background:    rgba(140, 118, 255, 0.16);
+  border-color:  rgba(148, 128, 255, 0.30);
+  color:         rgba(215, 200, 255, 0.92);
+  transform:     scale(1.08);
+  box-shadow:    0 2px 12px rgba(130, 108, 255, 0.22);
+}
+
+.hp-da-label {
+  font-size:      11px;
+  font-weight:    700;
+  letter-spacing: 0.01em;
+  color:          rgba(188, 174, 255, 0.52);
+  flex:           1;
+  line-height:    1;
+  transition:     color 0.15s;
+}
+.hp-da-header:hover .hp-da-label,
+.hp-da-header.hp-da-open .hp-da-label {
+  color: rgba(222, 210, 255, 0.92);
+}
+
+/* Meta badge — shows summary like "3 sessions" */
+.hp-da-meta {
+  font-size:            9px;
+  font-weight:          700;
+  color:                rgba(130, 108, 255, 0.48);
+  font-variant-numeric: tabular-nums;
+  line-height:          1;
+  letter-spacing:       -0.01em;
+  margin-right:         2px;
+}
+
+/* Chevron — spring rotate */
+.hp-da-chevron {
+  flex-shrink: 0;
+  color:       rgba(148, 132, 200, 0.28);
+  display:     flex;
+  align-items: center;
+  transition:
+    transform 0.28s var(--lg-ease),
+    color     0.15s;
+}
+.hp-da-header.hp-da-open .hp-da-chevron {
+  transform: rotate(180deg);
+  color:     rgba(168, 152, 255, 0.60);
+}
+
+/* ── 3.3 Body — spring height animation ─────────────────────────────────── */
+.hp-da-body {
+  overflow:   hidden;
+  will-change: height, opacity;
+  /* JS controls: height, opacity, transform */
+}
+.hp-da-body .hp-section,
+.hp-da-body .hp-radar-section,
+.hp-da-body .hp-streak-section-inner {
+  padding-left:  12px !important;
+  padding-right: 12px !important;
+  border-top:    none !important;
+  margin-top:    0    !important;
+  padding-top:   8px  !important;
+  padding-bottom:12px !important;
+}
+
+/* Streak totals inside accordion */
+.hp-da-body .hp-streak-totals {
+  background:    rgba(130, 108, 255, 0.055) !important;
+  border:        1px solid rgba(130, 108, 255, 0.10) !important;
+  border-radius: 11px !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Radar section inside accordion */
+.hp-da-body .hp-radar-section {
+  padding: 8px 12px 12px !important;
+}
+
+/* ── 3.4 Active item — highlighted border ────────────────────────────────── */
+.hp-da-item::before {
+  content:    '';
+  position:   absolute;
+  top:        0; left: 0; right: 0;
+  height:     1.5px;
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(90deg,
+    rgba(130, 108, 255, 0) 0%,
+    rgba(130, 108, 255, 0.36) 50%,
+    rgba(130, 108, 255, 0) 100%
+  );
+  opacity:    0;
+  transition: opacity 0.22s;
+}
+.hp-da-item.hp-da-open::before { opacity: 1; }
+
+/* ── 3.5 Session log inside accordion ───────────────────────────────────── */
+.hp-da-body #hp-recent-list {
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+  padding:        0 !important;
+}
+
+.hp-da-body .hp-section:not(.hp-streak-section) {
+  padding-top: 6px !important;
+}
+
+/* Recent rows inside accordion */
+.hp-da-body .hp-recent-row {
+  border-radius: 9px !important;
+}
+
+/* Toolbar inside accordion */
+.hp-da-body #hp-select-toolbar {
+  margin-top: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §4  SECTION SEPARATORS — cleaner dividers between accordion items
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Gap between view content and accordion */
+.hp-detail-accordion {
+  border-top: 1px solid rgba(255, 255, 255, 0.038);
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §5  SESSION PANEL FIX — visibility override (extends session-panel-fix.css)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Ensure panels show correctly */
+body[data-session-state="IDLE"]      #session-idle   { display: flex !important; }
+body[data-session-state="ACTIVE"]    #session-active { display: flex !important; }
+body[data-session-state="PAUSED"]    #session-paused { display: flex !important; }
+body[data-session-state="COMPLETED"] #session-idle   { display: flex !important; }
+body[data-session-state="FAILED"]    #session-idle   { display: flex !important; }
+body[data-session-state="ABANDONED"] #session-idle   { display: flex !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §6  HISTORY PANEL OUTER — natural scroll, no double-scroll trap
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#history-panel {
+  overflow-y:           auto      !important;
+  overflow-x:           hidden    !important;
+  scrollbar-width:      thin      !important;
+  scrollbar-color: rgba(255,255,255,0.06) transparent !important;
+}
+#history-panel::-webkit-scrollbar       { width: 3px !important; }
+#history-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07) !important; border-radius: 3px !important; }
+
+#history-card {
+  overflow:   visible !important;
+  min-height: 0       !important;
+}
+
+.hp-body-scroll {
+  overflow: visible !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §7  PREMIUM PANEL ENTRANCE — Nike-inspired slide-in
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Session panel: subtle slide from right */
+@keyframes lg-session-in {
+  from { opacity: 0; transform: translateX(14px) scale(0.98); filter: blur(2px); }
+  to   { opacity: 1; transform: translateX(0)    scale(1);    filter: blur(0);   }
+}
+
+/* History panel: subtle slide from left */
+@keyframes lg-history-in {
+  from { opacity: 0; transform: translateX(-12px) scale(0.98); filter: blur(2px); }
+  to   { opacity: 1; transform: translateX(0)     scale(1);    filter: blur(0);   }
+}
+
+/* Accordion items stagger in */
+@keyframes lg-acc-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+#session-panel.sidebar-open #session-idle,
+#session-panel.sidebar-open #session-active,
+#session-panel.sidebar-open #session-paused {
+  animation: lg-session-in 0.30s var(--lg-ease-out) both !important;
+}
+
+#history-panel.hp-panel-open #history-card {
+  animation: lg-history-in 0.28s var(--lg-ease-out) both !important;
+}
+
+.hp-da-item:nth-child(1) { animation-delay: 0.04s; }
+.hp-da-item:nth-child(2) { animation-delay: 0.08s; }
+.hp-da-item:nth-child(3) { animation-delay: 0.12s; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   §8  MISCELLANEOUS CLEANUP
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* No grain overlay (was causing color pollution) */
+#session-idle, #session-active, #session-paused, #history-card {
+  background-image: none !important;
+}
+
+/* Clean scrollbar inside session-idle */
+#session-idle {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 100px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.05) transparent;
+}
+
+/* hp-section that contains recent sessions: no extra border */
+.hp-section:not(.hp-streak-section) {
+  border-top: none !important;
+  margin-top:  0   !important;
+}
+/* When inside accordion body, handled by §3.3 */
+
+/* Streaks section: remove top border (now accordion header handles separation) */
+.hp-streak-section {
+  border-top:  none    !important;
+  padding-top: 0       !important;
+  margin-top:  0       !important;
+}
+
+/* Radar section: remove any top spacing */
+.hp-radar-section {
+  padding-top: 0 !important;
+}
+
+/* Cal mode buttons — hide, not needed */
+.hp-cal-modes { display: none !important; }
