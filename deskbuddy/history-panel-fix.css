@@ -62,7 +62,7 @@
   bottom:         20px            !important;
   right:          20px            !important;
   z-index:        6000            !important;
-  display:        flex            !important;
+  display:        flex;
   align-items:    center          !important;
   gap:            10px            !important;
   background:     rgba(8,6,18,0.94) !important;
@@ -75,6 +75,21 @@
   -webkit-backdrop-filter: blur(18px) !important;
   max-width:      320px           !important;
   animation:      gbt-slide 0.22s cubic-bezier(0.0,0.0,0.2,1) !important;
+}
+
+body.pip-mode .global-break-toast { display: none !important; }
+
+@keyframes pip-break-pulse {
+  0%,100% { box-shadow: 0 0 8px rgba(68,232,176,0.35), 0 0 18px rgba(68,232,176,0.20); opacity: 0.75; }
+  50%     { box-shadow: 0 0 16px rgba(68,232,176,0.55), 0 0 34px rgba(68,232,176,0.30); opacity: 1; }
+}
+
+body.pip-mode.pip-break-due #world::before {
+  display: block !important;
+  border: 2px solid rgba(68,232,176,0.85) !important;
+  box-shadow: 0 0 12px rgba(68,232,176,0.45), 0 0 26px rgba(68,232,176,0.25) !important;
+  animation: pip-break-pulse 1.6s ease-in-out infinite !important;
+  opacity: 1;
 }
 
 @keyframes gbt-slide {
@@ -111,7 +126,7 @@
 .break-type-modal {
   position: fixed !important;
   inset:    0     !important;
-  display:  flex  !important;
+  display:  flex;
   align-items: center !important;
   justify-content: center !important;
   z-index:  5500  !important;
@@ -169,7 +184,7 @@
   position: fixed !important;
   inset:    0     !important;
   z-index:  5800  !important;
-  display:  flex  !important;
+  display:  flex;
   align-items: center !important;
   justify-content: center !important;
 }
