@@ -1,334 +1,64 @@
 /**
  * panels-style-enhancements.css
- * 
- * Visual enhancements for session and history panels
- * - Improved spacing and visual hierarchy
- * - Better animations and transitions
- * - Enhanced color and contrast
- * - Smooth updates for radar chart
+ * Minimal performance-focused overrides only.
+ * Heavy animations removed — they caused lag.
  */
 
-/* ── SESSION PANEL ENHANCEMENTS ────────────────────────────────────────── */
+/* ── FAST PANEL SLIDE TRANSITIONS ────────────────────────────────────────── */
 
 #session-panel {
-  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: transform 0.22s cubic-bezier(0.0,0.0,0.2,1),
+              opacity   0.18s ease !important;
 }
 
-/* Session sections improved styling */
+#history-panel {
+  transition: transform 0.22s cubic-bezier(0.0,0.0,0.2,1),
+              opacity   0.18s ease !important;
+}
+
+/* Remove heavy per-element animations that cause paint jank */
 #session-idle,
 #session-active,
 #session-paused {
-  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+  transition: none !important;
 }
 
-/* Idle panel content improvements */
-#session-idle .sp-quick-presets {
-  background: rgba(139, 118, 255, 0.04);
-  border: 1px solid rgba(139, 118, 255, 0.10);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 14px;
-  transition: all 0.3s ease;
+/* ── CHART CANVAS PERFORMANCE ─────────────────────────────────────────────── */
+
+#hp-chart-daily,
+#hp-chart-weekly,
+#hp-chart-monthly,
+#hp-chart-lifetime {
+  /* No filter — filters on canvas are expensive */
+  display: block !important;
 }
 
-#session-idle .sp-quick-presets:hover {
-  background: rgba(139, 118, 255, 0.07);
-  border-color: rgba(139, 118, 255, 0.15);
-}
+/* ── PROGRESS RING — fast, smooth update ──────────────────────────────────── */
 
-/* Category pills with improved styling */
-#session-idle .sp-cat-pill {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
-  transition: all 0.2s ease;
-}
-
-#session-idle .sp-cat-pill:hover {
-  box-shadow: 0 4px 8px rgba(139, 118, 255, 0.20);
-  transform: translateY(-2px);
-}
-
-#session-idle .sp-cat-pill.active {
-  box-shadow: 0 4px 12px rgba(139, 118, 255, 0.30);
-}
-
-/* Goal input improvements */
-#session-idle .sp-goal-input {
-  background: rgba(139, 118, 255, 0.05);
-  border: 1px solid rgba(139, 118, 255, 0.15);
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10);
-}
-
-#session-idle .sp-goal-input:hover {
-  background: rgba(139, 118, 255, 0.08);
-  border-color: rgba(139, 118, 255, 0.25);
-}
-
-#session-idle .sp-goal-input:focus {
-  background: rgba(139, 118, 255, 0.10);
-  border-color: rgba(139, 118, 255, 0.35);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10), 0 0 8px rgba(139, 118, 255, 0.20);
-}
-
-/* Start button enhancements */
-#session-idle #start-session,
-#session-active #pause-session,
-#session-paused #resume-session {
-  background: linear-gradient(135deg, rgba(139, 118, 255, 0.25), rgba(68, 232, 176, 0.15));
-  border: 1px solid rgba(139, 118, 255, 0.30);
-  box-shadow: 0 4px 12px rgba(139, 118, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-#session-idle #start-session:hover,
-#session-active #pause-session:hover,
-#session-paused #resume-session:hover {
-  background: linear-gradient(135deg, rgba(139, 118, 255, 0.35), rgba(68, 232, 176, 0.25));
-  border-color: rgba(139, 118, 255, 0.45);
-  box-shadow: 0 6px 16px rgba(139, 118, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transform: translateY(-1px);
-}
-
-/* Progress ring improvements */
 #sp-ring-progress {
-  filter: drop-shadow(0 0 4px rgba(139, 118, 255, 0.20));
-  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: stroke-dashoffset 0.4s cubic-bezier(0.0,0.0,0.2,1) !important;
+  filter:     none !important;
 }
 
-/* Focus stat improvements */
-.sp-focus-stat {
-  background: rgba(139, 118, 255, 0.06);
-  border: 1px solid rgba(139, 118, 255, 0.12);
-  border-radius: 10px;
-  padding: 10px;
-  transition: all 0.3s ease;
-}
-
-.sp-focus-stat:hover {
-  background: rgba(139, 118, 255, 0.10);
-  border-color: rgba(139, 118, 255, 0.20);
-}
+/* ── FOCUS FILL BAR ───────────────────────────────────────────────────────── */
 
 #sp-focus-stat-fill {
-  background: linear-gradient(90deg, rgba(68, 232, 176, 0.40), rgba(139, 118, 255, 0.60));
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(68, 232, 176, 0.30);
-  transition: width 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: width 0.35s cubic-bezier(0.0,0.0,0.2,1) !important;
 }
 
-/* Distraction info improvements */
-.sp-distraction-info {
-  background: rgba(251, 191, 36, 0.06);
-  border: 1px solid rgba(251, 191, 36, 0.12);
-  border-radius: 10px;
-  padding: 10px;
-  transition: all 0.3s ease;
-}
+/* ── STREAK COUNTDOWN ─────────────────────────────────────────────────────── */
 
-.sp-distraction-info:hover {
-  background: rgba(251, 191, 36, 0.10);
-  border-color: rgba(251, 191, 36, 0.20);
-}
-
-/* Break countdown enhancements */
+/* Remove pulsing animation — uses GPU overdraw */
 .sp-break-countdown {
-  animation: breakCountdownPulse 1s ease-in-out infinite;
+  animation: none !important;
 }
 
-@keyframes breakCountdownPulse {
-  0%, 100% {
-    opacity: 1;
-    text-shadow: 0 0 0 rgba(68, 232, 176, 0);
-  }
-  50% {
-    opacity: 0.85;
-    text-shadow: 0 0 12px rgba(68, 232, 176, 0.30);
-  }
-}
+/* ── CLOSE BUTTONS ────────────────────────────────────────────────────────── */
 
-/* ── HISTORY PANEL ENHANCEMENTS ────────────────────────────────────────── */
-
-#history-panel {
-  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
-#history-card {
-  transition: all 0.3s ease;
-}
-
-/* View pills improvements */
-.hgraph-pill {
-  background: rgba(139, 118, 255, 0.06);
-  border: 1px solid rgba(139, 118, 255, 0.12);
-  transition: all 0.2s ease;
-}
-
-.hgraph-pill:hover {
-  background: rgba(139, 118, 255, 0.12);
-  border-color: rgba(139, 118, 255, 0.25);
-  transform: translateY(-1px);
-}
-
-.hgraph-pill.active {
-  background: linear-gradient(135deg, rgba(139, 118, 255, 0.20), rgba(68, 232, 176, 0.10));
-  border-color: rgba(139, 118, 255, 0.35);
-  box-shadow: 0 4px 12px rgba(139, 118, 255, 0.15);
-}
-
-/* Stat cards improvements */
-.hp-stat-card {
-  background: rgba(139, 118, 255, 0.05);
-  border: 1px solid rgba(139, 118, 255, 0.12);
-  border-radius: 12px;
-  padding: 14px;
-  transition: all 0.3s ease;
-}
-
-.hp-stat-card:hover {
-  background: rgba(139, 118, 255, 0.10);
-  border-color: rgba(139, 118, 255, 0.20);
-  transform: translateY(-2px);
-}
-
-/* Streak section improvements */
-.hp-streak-totals {
-  background: linear-gradient(135deg, rgba(139, 118, 255, 0.08), rgba(68, 232, 176, 0.04));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.10);
-  transition: all 0.3s ease;
-}
-
-.hp-streak-totals:hover {
-  background: linear-gradient(135deg, rgba(139, 118, 255, 0.12), rgba(68, 232, 176, 0.08));
-  border-color: rgba(139, 118, 255, 0.20);
-}
-
-/* Calendar improvements */
-#hp-calendar-canvas {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
-  transition: filter 0.3s ease;
-}
-
-#hp-calendar-canvas:hover {
-  filter: drop-shadow(0 4px 8px rgba(139, 118, 255, 0.15));
-}
-
-/* Chart improvements */
-#hp-chart-daily,
-#hp-chart-weekly,
-#hp-chart-monthly,
-#hp-chart-lifetime {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.10));
-  transition: filter 0.3s ease;
-}
-
-/* Recent sessions improvements */
-.hp-rs-row {
-  background: rgba(139, 118, 255, 0.04);
-  border: 1px solid rgba(139, 118, 255, 0.10);
-  border-radius: 10px;
-  padding: 10px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.hp-rs-row:hover {
-  background: rgba(139, 118, 255, 0.10);
-  border-color: rgba(139, 118, 255, 0.20);
-  transform: translateX(2px);
-}
-
-.hp-rs-row.selected {
-  background: rgba(139, 118, 255, 0.15);
-  border-color: rgba(139, 118, 255, 0.30);
-  box-shadow: 0 2px 6px rgba(139, 118, 255, 0.15);
-}
-
-/* ── ANIMATION IMPROVEMENTS ────────────────────────────────────────────── */
-
-/* Smooth fade in for panel content */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-#history-panel,
-#session-panel {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Smooth update animation for charts */
-@keyframes chartUpdate {
-  0% {
-    opacity: 0.8;
-    filter: blur(1px);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
-#hp-radar-chart,
-#hp-radar-factors,
-#hp-calendar-container,
-#hp-chart-daily,
-#hp-chart-weekly,
-#hp-chart-monthly,
-#hp-chart-lifetime {
-  animation: chartUpdate 0.4s ease-out;
-}
-
-/* Close button improvements */
 .sp-close-btn,
-.hp-close-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(139, 118, 255, 0.08);
-  border: 1px solid rgba(139, 118, 255, 0.15);
-  border-radius: 8px;
-  color: rgba(190, 175, 255, 0.70);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 16px;
-  line-height: 1;
+#hp-close-btn {
+  transition: background 0.10s, color 0.10s, border-color 0.10s !important;
+  transform:  none !important;
 }
-
 .sp-close-btn:hover,
-.hp-close-btn:hover {
-  background: rgba(139, 118, 255, 0.15);
-  border-color: rgba(139, 118, 255, 0.30);
-  color: rgba(225, 215, 255, 0.90);
-  transform: scale(1.05);
-}
-
-/* ── RESPONSIVE IMPROVEMENTS ────────────────────────────────────────────── */
-
-@media (max-width: 768px) {
-  #session-idle,
-  #session-active,
-  #session-paused {
-    border-radius: 16px;
-    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.70);
-  }
-
-  #history-card {
-    border-radius: 16px;
-    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.70);
-  }
-
-  .hp-radar-factors {
-    grid-template-columns: 1fr;
-  }
-}
+#hp-close-btn:hover { transform: none !important; }
