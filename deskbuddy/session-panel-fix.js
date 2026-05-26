@@ -263,6 +263,11 @@
     setTimeout(()=>{ toast.style.display='none'; }, 400);
   }
 
+  function _setPipBreakDue(active) {
+    if (!document.body) return;
+    document.body.classList.toggle('pip-break-due', !!active);
+  }
+
   function _snooze5() {
     _hideGlobalToast();
     _snoozeActive = true;
@@ -714,11 +719,17 @@
     // 4. BreakReminder → show toast
     if(typeof BreakReminder !== 'undefined') {
       BreakReminder.onTrigger(() => {
+        _setPipBreakDue(true);
         _showGlobalToast();
         // Auto-start if checkbox enabled
         if(_el('break-auto-enabled')?.checked) {
           setTimeout(() => { _hideGlobalToast(); _takeBreak(); }, 1500);
         }
+      });
+
+      BreakReminder.onDismiss(() => {
+        _setPipBreakDue(false);
+        _hideGlobalToast();
       });
     }
 
