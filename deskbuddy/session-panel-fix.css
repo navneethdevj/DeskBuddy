@@ -402,3 +402,155 @@ body[data-session-state="ABANDONED"] #session-idle { display: flex !important; }
   min-height: 42px;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   BREAK SCHEDULE ENABLE TOGGLE ROW
+   ═══════════════════════════════════════════════════════════════ */
+.sp-break-enable-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 4px 0 2px !important;
+  gap: 10px !important;
+}
+.sp-break-enable-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  color: rgba(255,255,255,0.55) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+.sp-break-enable-label input[type=checkbox] {
+  accent-color: rgba(144,124,255,0.9) !important;
+  width: 13px !important;
+  height: 13px !important;
+  cursor: pointer !important;
+}
+
+/* collapse break schedule body when disabled */
+#sp-break-schedule-body {
+  transition: opacity 0.25s, max-height 0.3s;
+  overflow: hidden !important;
+  max-height: 400px;
+}
+#sp-break-schedule-body.spf-schedule-disabled {
+  opacity: 0.35 !important;
+  pointer-events: none !important;
+  max-height: 400px; /* keep layout, just dim + block */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BREAK-OVER NOTIFICATION — 2-button layout
+   ═══════════════════════════════════════════════════════════════ */
+.sp-break-over-notif {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  background: rgba(22,18,38,0.92) !important;
+  border: 1px solid rgba(144,124,255,0.28) !important;
+  border-radius: 14px !important;
+  margin-top: 8px !important;
+  animation: sp-notif-slide-in 0.3s cubic-bezier(.22,1,.36,1) both !important;
+}
+@keyframes sp-notif-slide-in {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0);   }
+}
+.sp-break-over-text {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: rgba(255,255,255,0.90) !important;
+  letter-spacing: 0.01em !important;
+}
+.sp-break-over-actions {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+.sp-break-over-resume-btn {
+  background: rgba(68,232,176,0.18) !important;
+  border: 1px solid rgba(68,232,176,0.35) !important;
+  color: rgba(68,232,176,0.95) !important;
+  border-radius: 9px !important;
+  padding: 5px 14px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: background 0.18s !important;
+  -webkit-app-region: no-drag !important;
+}
+.sp-break-over-resume-btn:hover {
+  background: rgba(68,232,176,0.30) !important;
+}
+.sp-break-over-snooze-btn {
+  background: rgba(144,124,255,0.14) !important;
+  border: 1px solid rgba(144,124,255,0.30) !important;
+  color: rgba(144,124,255,0.90) !important;
+  border-radius: 9px !important;
+  padding: 5px 14px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: background 0.18s !important;
+  -webkit-app-region: no-drag !important;
+}
+.sp-break-over-snooze-btn:hover {
+  background: rgba(144,124,255,0.26) !important;
+}
+
+/* visible class for fade-in */
+.sp-notif-visible { opacity: 1 !important; }
+.sp-break-over-notif { opacity: 0; transition: opacity 0.25s !important; }
+.sp-break-over-notif.sp-notif-visible { opacity: 1 !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PiP BREAK BADGE
+   ═══════════════════════════════════════════════════════════════ */
+#pip-break-badge {
+  position: fixed !important;
+  top: 6px !important;
+  right: 6px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: rgba(255,180,40,0.92) !important;
+  color: #1a1228 !important;
+  font-size: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  cursor: default !important;
+  animation: pip-badge-pulse 1.4s ease-in-out infinite !important;
+  box-shadow: 0 0 10px rgba(255,180,40,0.55) !important;
+  -webkit-app-region: no-drag !important;
+}
+@keyframes pip-badge-pulse {
+  0%,100% { transform: scale(1);   box-shadow: 0 0 8px rgba(255,180,40,0.5); }
+  50%      { transform: scale(1.18); box-shadow: 0 0 18px rgba(255,180,40,0.8); }
+}
+/* Only show badge in PiP/compact mode */
+body:not(.pip-mode):not(.compact-mode) #pip-break-badge { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   BREAK COUNTDOWN — done pulse animation
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes sp-break-done-pulse {
+  0%,100% { transform: scale(1);    opacity:1; }
+  50%      { transform: scale(1.12); opacity:0.7; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Suppress the legacy break-toast when session panel is managing breaks
+   (global-break-toast replaces it during active sessions)
+   ═══════════════════════════════════════════════════════════════ */
+body[data-session-state="ACTIVE"] #break-toast,
+body[data-session-state="PAUSED"] #break-toast {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
