@@ -57,6 +57,8 @@
   let _snoozeActive       = false;
   let _snoozeTimerId      = null;
   let _breakStartWallMs   = null;
+  let _segmentSecs  = 0;   // seconds elapsed in current focus segment (since last break ended / session start)
+  let _breakIntervalSecs = 0; // cached break interval in seconds (set on session start)
 
   // ══════════════════════════════════════════════════════════════
   //  HELPERS
@@ -117,8 +119,8 @@
 
   function _getSessionTimerMode() {
     if (typeof Settings !== 'undefined' && Settings.get)
-      return Settings.get('sessionTimerMode') || 'remaining';
-    return 'remaining';
+      return Settings.get('sessionTimerMode') || 'breakInterval';
+    return 'breakInterval';
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -137,9 +139,16 @@
 
   function _wallTick() {
     _wallSecs++;
-
-    // Update sp-inline-timer
+    _segmentSecs++;
     _updateSessionPanelTimer();
+
+    // Session ending-soon warnings (Change 11)
+    if (_totalSecs > 0) {
+      const remaining = _totalSecs - _wallSecs;
+      if (remaining === 300 || remaining === 120 || remaining === 60) {
+        _showEndingSoonToast(remaining);
+      }
+    }
 
     // Check session wall-clock expiry
     if (_totalSecs > 0 && _wallSecs >= _totalSecs) {
@@ -150,9 +159,17 @@
 
   function _updateSessionPanelTimer() {
     const mode = _getSessionTimerMode();
-    const displaySecs = mode === 'elapsed'
-      ? _wallSecs
-      : Math.max(0, _totalSecs - _wallSecs);
+    let displaySecs;
+
+    if (mode === 'elapsed') {
+      displaySecs = _wallSecs;
+    } else if (mode === 'breakInterval') {
+      const interval = _breakIntervalSecs > 0 ? _breakIntervalSecs : _getBreakIntervalSecs();
+      displaySecs = Math.max(0, interval - _segmentSecs);
+    } else {
+      // 'remaining' (full session countdown)
+      displaySecs = Math.max(0, _totalSecs - _wallSecs);
+    }
 
     const inlineTimer = _el('sp-inline-timer');
     if (inlineTimer) inlineTimer.textContent = _fmtTime(displaySecs);
@@ -162,6 +179,45 @@
     if (ring && _totalSecs > 0) {
       ring.style.strokeDashoffset = String(RING_CIRC * (_wallSecs / _totalSecs));
     }
+
+    // Update state label (Change 10A)
+    const stateLabel = document.querySelector('.sp-ring-state-label');
+    if (stateLabel) {
+      if (mode === 'breakInterval') stateLabel.textContent = 'next break';
+      else if (mode === 'elapsed')  stateLabel.textContent = 'elapsed';
+      else                          stateLabel.textContent = 'remaining';
+    }
+  }
+
+  function _showEndingSoonToast(remainingSecs) {
+    // Reuse the global-break-toast briefly as a non-intrusive nudge
+    const toast = _el('global-break-toast');
+    const titleEl = _el('gbt-title') || toast?.querySelector('.gbt-title');
+    const subEl = _el('gbt-sub') || toast?.querySelector('.gbt-sub');
+    const actionsEl = toast?.querySelector('.gbt-actions');
+    if (!toast || _toastVisible) return;
+
+    const label = remainingSecs >= 300 ? '5 minutes left'
+                : remainingSecs >= 120 ? '2 minutes left'
+                :                        '1 minute left';
+    if (titleEl) titleEl.textContent = label;
+    if (subEl)   subEl.textContent   = 'your session is almost done ✦';
+    if (actionsEl) actionsEl.style.display = 'none';
+
+    _toastVisible = true;
+    toast.style.display = '';
+    _raf(() => toast.classList.add('gbt-visible'));
+
+    // Auto-hide after 4 seconds, then restore toast for breaks
+    setTimeout(() => {
+      _hideGlobalToast();
+      if (titleEl)   titleEl.textContent = 'Time for a break!';
+      // Restore inner HTML to preserve the gbt-elapsed span
+      if (subEl)     subEl.innerHTML = "You've been focused for <span id=\"gbt-elapsed\">—</span>";
+      if (actionsEl) actionsEl.style.display = '';
+    }, 4000);
+
+    if (typeof Sounds !== 'undefined') Sounds.play('break_end');
   }
 
   function _endSessionByWallClock() {
@@ -235,6 +291,10 @@
       // Buddy timer: countup
       window._spfBuddyTimerOverride = `break ${_fmtTime(_breakElapsedSecs)}`;
     }
+
+    // State label: on break (Change 10A)
+    const stateLabel = document.querySelector('.sp-ring-state-label');
+    if (stateLabel) stateLabel.textContent = 'on break';
   }
 
   function _startBreakCountdown(isTimed) {
@@ -280,6 +340,7 @@
             _hideBreakOverNotif();
             Session.resume();
             Timer.resume();
+            _segmentSecs = 0;
             if (typeof BreakReminder !== 'undefined') BreakReminder.resume();
           }
         }
@@ -301,13 +362,20 @@
   //  BREAK TYPE CHOOSER
   // ══════════════════════════════════════════════════════════════
 
-  function _showBreakTypeChooser() {
+  function _showBreakTypeChooser(source) {
     // Check if break-for duration is 0 → open-ended (until turned off)
     const durSecs = _getBreakDurSecs();
 
     // If "until I turn off" (0s), skip chooser and go open-ended
     if (durSecs === 0) {
       _startBreakCountdown(false);
+      return;
+    }
+
+    // Skip modal for scheduled breaks when duration is already configured
+    const skipModal = source === 'scheduled' && _el('break-for-enabled')?.checked !== false;
+    if (skipModal) {
+      _startBreakCountdown(true);
       return;
     }
 
@@ -372,7 +440,9 @@
     if (!document.body) return;
     document.body.classList.toggle('pip-break-due', !!active);
     const badge = _el('pip-break-badge');
-    if (badge) badge.style.display = active ? '' : 'none';
+    if (badge) {
+      badge.style.display = active ? 'block' : 'none';
+    }
   }
 
   // ── PiP OS notification ──────────────────────────────────────
@@ -395,20 +465,29 @@
     _hideGlobalToast();
     _setPipBreakDue(false);
     _snoozeActive = true;
-    if(typeof BreakReminder !== 'undefined') {
+    if (typeof BreakReminder === 'undefined') {
+      // BreakReminder unavailable — just cancel the flag after 5 min
+      if (_snoozeTimerId) clearTimeout(_snoozeTimerId);
+      _snoozeTimerId = setTimeout(() => { _snoozeActive = false; }, 5 * 60 * 1000);
+      return;
+    }
+    if (typeof BreakReminder !== 'undefined') {
       BreakReminder.dismiss();
+      // Extend the current break interval by 5 minutes: shift threshold forward
+      const currentInterval = BreakReminder.getIntervalMinutes();
+      // Store original and set extended interval so break fires 5 min from now
+      // BreakReminder.pause() resets elapsed to 0; since we're still ACTIVE,
+      // just increase the threshold temporarily
+      BreakReminder.setInterval(currentInterval + 5);
+      // After 5 min, restore original interval
+      if (_snoozeTimerId) clearTimeout(_snoozeTimerId);
+      _snoozeTimerId = setTimeout(() => {
+        _snoozeActive = false;
+        if (typeof BreakReminder !== 'undefined') {
+          BreakReminder.setInterval(currentInterval);
+        }
+      }, 5 * 60 * 1000);
     }
-    if(_snoozeTimerId) clearTimeout(_snoozeTimerId);
-    // Snooze: re-arm break in 5 minutes by temporarily adjusting interval
-    const origInterval = _getBreakIntervalSecs();
-    if(typeof BreakReminder !== 'undefined') {
-      BreakReminder.setInterval(5); // 5 min from now
-    }
-    _snoozeTimerId = setTimeout(()=>{
-      _snoozeActive = false;
-      if(typeof BreakReminder !== 'undefined' && origInterval > 0)
-        BreakReminder.setInterval(origInterval / 60);
-    }, 5*60*1000);
   }
 
   function _takeBreak() {
@@ -419,7 +498,7 @@
     if(s && s.state === 'ACTIVE') {
       Session.pause();
       Timer.pause();
-      setTimeout(_showBreakTypeChooser, 200);
+      setTimeout(() => _showBreakTypeChooser('scheduled'), 200);
     }
   }
 
@@ -615,14 +694,17 @@
       </div>
     `;
 
-    modal.style.display = '';
-    _raf(()=> modal.style.opacity = '1');
+    modal.style.opacity  = '0';
+    modal.style.display  = '';
+    modal.style.transition = 'opacity 0.18s ease';
+    _raf(() => { modal.style.opacity = '1'; });
   }
 
   function _hideDetailsModal() {
     const modal = _el('sp-session-details-modal');
     if(!modal) return;
-    modal.style.display = 'none';
+    modal.style.opacity = '0';
+    setTimeout(() => { if(modal) modal.style.display = 'none'; }, 180);
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -682,42 +764,8 @@
   // ══════════════════════════════════════════════════════════════
 
   function _patchHistoryDetails() {
-    const tryPatch = () => {
-      if(typeof HistoryPanel !== 'undefined') {
-        document.addEventListener('click', e => {
-          const detBtn = e.target.closest('[data-action="details"]');
-          if(!detBtn) return;
-        }, true);
-        return;
-      }
-      setTimeout(tryPatch, 200);
-    };
-    tryPatch();
-
-    document.getElementById('hp-ctx-menu')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="details"]');
-      if(!btn) return;
-      e.stopPropagation();
-      e.preventDefault();
-      const selectedRow = document.querySelector('#hp-recent-list .hp-row.sp-selected, #hp-recent-list .hp-row:hover');
-      if(selectedRow) {
-        const idx = parseInt(selectedRow.dataset.idx, 10);
-        if(typeof Session!=='undefined') {
-          const s = Session.getHistory()[idx];
-          if(s) { _showDetailsModal(s); return; }
-        }
-      }
-      const rows = document.querySelectorAll('#hp-recent-list .hp-row');
-      rows.forEach(row => {
-        if(row.classList.contains('hp-row-selected')) {
-          const idx = parseInt(row.dataset.idx,10);
-          if(typeof Session!=='undefined'){
-            const s=Session.getHistory()[idx];
-            if(s) _showDetailsModal(s);
-          }
-        }
-      });
-    }, true);
+    // No-op: HistoryPanel._handleCtxAction handles 'details' via window._showDetailsModal.
+    // This stub exists so _init() step 14 call is harmless.
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -732,6 +780,8 @@
         // Fresh session start — read configured durations
         _wallSecs  = 0;
         _totalSecs = _getSessionTotalSecs();
+        _segmentSecs = 0;
+        _breakIntervalSecs = _getBreakIntervalSecs();
         window._spfWallTimerActive = true;
 
         // Arm BreakReminder with the break interval (minutes)
@@ -751,6 +801,9 @@
       _startWallTimer();
       // Clear buddy override — brain.js takes over in ACTIVE state
       window._spfBuddyTimerOverride = null;
+      // Reset state label (Change 10A)
+      const _stateLabel = document.querySelector('.sp-ring-state-label');
+      if (_stateLabel) _stateLabel.textContent = '';
       _stopBreakTimer();
       _hideGlobalToast();
       _hideBreakOverNotif();
@@ -858,6 +911,7 @@
         if (s && s.state === 'PAUSED') {
           Session.resume();
           Timer.resume();
+          _segmentSecs = 0;
           if (typeof BreakReminder !== 'undefined') BreakReminder.resume();
         }
       }
@@ -956,7 +1010,7 @@
     const modeSelect = _el('session-timer-mode-select');
     if (modeSelect) {
       const saved = (typeof Settings !== 'undefined' && Settings.get)
-        ? (Settings.get('sessionTimerMode') || 'remaining') : 'remaining';
+        ? (Settings.get('sessionTimerMode') || 'breakInterval') : 'breakInterval';
       modeSelect.value = saved;
       modeSelect.addEventListener('change', e => {
         if (typeof Settings !== 'undefined' && Settings.set)
@@ -991,6 +1045,69 @@
         _applyScheduleToggle(e.target.checked);
       });
     }
+
+    // 18. Individual break-every and break-for row enable/disable toggles (Change 7)
+    const breakEveryToggle = _el('break-every-enabled');
+    const breakForToggle   = _el('break-for-enabled');
+    const breakEveryRow    = _el('sp-break-row');
+    const breakForRow      = document.querySelector('#sp-break-schedule-body .sp-row.sp-row-hms:not(#sp-break-row)');
+
+    function _applyBreakEveryToggle(enabled) {
+      if (breakEveryRow) {
+        breakEveryRow.classList.toggle('spf-row-disabled', !enabled);
+        breakEveryRow.querySelectorAll('input, button').forEach(el => {
+          if (el !== breakEveryToggle) el.disabled = !enabled;
+        });
+      }
+      if (typeof BreakReminder !== 'undefined') {
+        if (!enabled) {
+          BreakReminder.setInterval(99999);
+        } else {
+          const intSecs = _getBreakIntervalSecs();
+          if (intSecs > 0) BreakReminder.setInterval(intSecs / 60);
+        }
+      }
+      localStorage.setItem('spf-break-every-enabled', String(enabled));
+    }
+
+    function _applyBreakForToggle(enabled) {
+      if (breakForRow) {
+        breakForRow.classList.toggle('spf-row-disabled', !enabled);
+        breakForRow.querySelectorAll('input, button').forEach(el => {
+          if (el !== breakForToggle) el.disabled = !enabled;
+        });
+      }
+      // When break-for is OFF: set break-dur to 0 so open-ended mode auto-activates
+      if (!enabled) {
+        _setBreakDurSecs(0);
+      }
+      localStorage.setItem('spf-break-for-enabled', String(enabled));
+    }
+
+    if (breakEveryToggle) {
+      const saved = localStorage.getItem('spf-break-every-enabled');
+      if (saved === 'false') { breakEveryToggle.checked = false; _applyBreakEveryToggle(false); }
+      breakEveryToggle.addEventListener('change', e => _applyBreakEveryToggle(e.target.checked));
+    }
+
+    if (breakForToggle) {
+      const saved = localStorage.getItem('spf-break-for-enabled');
+      if (saved === 'false') { breakForToggle.checked = false; _applyBreakForToggle(false); }
+      breakForToggle.addEventListener('change', e => _applyBreakForToggle(e.target.checked));
+    }
+
+    // 19. Break affirmation refresh button (Change 13-js)
+    _el('sp-affirmation-refresh')?.addEventListener('click', () => {
+      const affEl = _el('sp-break-affirmation');
+      if (affEl) {
+        affEl.style.opacity = '0';
+        setTimeout(() => {
+          affEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+          affEl.style.opacity = '1';
+        }, 200);
+      }
+    });
+
   }
 
   if (document.readyState === 'loading') {
