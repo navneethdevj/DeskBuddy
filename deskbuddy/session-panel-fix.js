@@ -796,6 +796,11 @@
             BreakReminder.setInterval(99999);
           }
         }
+      } else if (oldState === 'PAUSED') {
+        // Resume from break — reset segment counter so break-interval
+        // countdown restarts from full interval (covers ALL resume paths:
+        // auto-resume, sp-break-over-resume button, and #resume-session button)
+        _segmentSecs = 0;
       }
       // Start (or resume) wall-clock
       _startWallTimer();
@@ -954,10 +959,12 @@
     });
 
     // 9. Pause button → show break type chooser AFTER session.js/renderer.js handle state
+    // Capture phase ensures this fires before renderer.js bubble-phase handler.
+    // setTimeout(0) yields to let renderer complete state transition, then we show chooser.
     const pauseBtn = _el('pause-session');
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
-        setTimeout(_showBreakTypeChooser, 100);
+        setTimeout(_showBreakTypeChooser, 0);
       }, true);
     }
 
