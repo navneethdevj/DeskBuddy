@@ -522,7 +522,8 @@
                   <div class="settings-row-sublabel">What the in-session countdown displays</div>
                 </div>
                 <select id="session-timer-mode-select" class="settings-select">
-                  <option value="remaining">Remaining</option>
+                  <option value="breakInterval">Break Interval (default)</option>
+                  <option value="remaining">Full Session Remaining</option>
                   <option value="elapsed">Elapsed</option>
                 </select>
               </div>
@@ -1399,7 +1400,7 @@
 
           <div id="sp-break-schedule-body">
           <div class="sp-row sp-row-hms sp-break-divider" id="sp-break-row">
-            <label class="sp-label">break every</label>
+            <label class="sp-label">break every <label class="sp-row-inline-toggle" for="break-every-enabled"><input type="checkbox" id="break-every-enabled" checked -webkit-app-region="no-drag"> on</label></label>
             <div class="sp-stepper sp-stepper-hms">
               <button class="sp-step-btn" id="break-dec" aria-label="decrease break interval">−</button>
               <div class="sp-hms-group">
@@ -1418,7 +1419,7 @@
           </div>
 
           <div class="sp-row sp-row-hms">
-            <label class="sp-label">break for</label>
+            <label class="sp-label">break for <label class="sp-row-inline-toggle" for="break-for-enabled"><input type="checkbox" id="break-for-enabled" checked -webkit-app-region="no-drag"> on</label></label>
             <div class="sp-stepper sp-stepper-hms">
               <button class="sp-step-btn" id="break-dur-dec" aria-label="decrease break duration">−</button>
               <div class="sp-hms-group">
@@ -1578,7 +1579,10 @@
         </div>
       </div>
 
-      <div class="sp-break-affirmation" id="sp-break-affirmation"></div>
+      <div class="sp-break-affirmation-row">
+        <div class="sp-break-affirmation" id="sp-break-affirmation"></div>
+        <button id="sp-affirmation-refresh" class="sp-affirmation-refresh-btn" title="New tip" aria-label="Get a new break tip">↻</button>
+      </div>
 
       <div class="sp-controls">
         <button id="resume-session" class="sp-btn sp-btn-primary">
@@ -1872,6 +1876,16 @@
         <div class="sp-goal-achieved-row">
           <button id="goal-achieved-yes" class="sp-btn sp-btn-yes">yes ✓</button>
           <button id="goal-achieved-no"  class="sp-btn sp-btn-no">not yet</button>
+        </div>
+      </div>
+      <div id="mood-rating-row" class="sp-mood-row" style="display:none">
+        <div class="sp-mood-label">how do you feel?</div>
+        <div class="sp-mood-stars" id="sp-mood-stars">
+          <button class="sp-mood-star" data-rating="1" title="Drained">😴</button>
+          <button class="sp-mood-star" data-rating="2" title="Okay">😐</button>
+          <button class="sp-mood-star" data-rating="3" title="Good">🙂</button>
+          <button class="sp-mood-star" data-rating="4" title="Great">😊</button>
+          <button class="sp-mood-star" data-rating="5" title="On fire">🔥</button>
         </div>
       </div>
       <button id="new-session-btn" class="sp-btn sp-btn-primary">
