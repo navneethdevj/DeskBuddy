@@ -32,6 +32,7 @@ const Settings = (() => {
     nightAutoVolume: true,
     sessionLength:   25,
     timerStep:       5,
+    sessionTimerMode: 'remaining',
     ticksEnabled:       true,
     celebrationEnabled: true,
     breakAnimEnabled:   true,
