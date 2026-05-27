@@ -562,6 +562,12 @@ body[data-session-state="PAUSED"] #break-toast {
   opacity: 0.38 !important;
   pointer-events: none !important;
 }
+/* Keep the enable checkbox always interactive even when row is disabled */
+.spf-row-disabled .sp-row-inline-toggle {
+  pointer-events: all !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
 .spf-row-disabled input:not([type="checkbox"]),
 .spf-row-disabled button {
   cursor: not-allowed !important;
