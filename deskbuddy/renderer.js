@@ -2124,7 +2124,7 @@ const CFG = {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
-  let _breakCountdownInterval = null;
+  // (break countdown interval removed — session-panel-fix.js owns it)
   let _sessionTotalSeconds    = 0;   // set on ACTIVE; used for progress ring
   let _dailyGoalLastTick      = 0;   // throttle daily goal arc updates during sessions
   let _budgetWarnedAt         = -1;  // distraction count at which we last warned
@@ -2256,9 +2256,8 @@ const CFG = {
         }
       }
 
-      // Break countdown — start/stop the live update interval
+      // Break countdown — owned exclusively by session-panel-fix.js
       if (newState === 'PAUSED') {
-        _startBreakCountdown();
         if (Settings.get('breakAnimEnabled')) {
           // Teal glow sweeps up from the bottom
           const glow = document.getElementById('break-glow');
@@ -2272,10 +2271,9 @@ const CFG = {
         // Auto-open panel so user sees the break countdown (skip if DND active)
         if (typeof DND === 'undefined' || !DND.isActive()) _panelOpen();
       } else if (newState === 'ACTIVE' && oldState === 'PAUSED') {
-        _stopBreakCountdown();
         _fireBreakEndAnim();
       } else {
-        _stopBreakCountdown();
+        // terminal state — nothing to stop (spf owns countdown)
       }
 
       // Goal display in active panel
@@ -2723,28 +2721,8 @@ const CFG = {
 
   // ── Break countdown helpers ───────────────────────────────────────────────
 
-  function _startBreakCountdown() {
-    _stopBreakCountdown();
-    _updateBreakCountdown();
-    _breakCountdownInterval = setInterval(_updateBreakCountdown, 1000);
-  }
-
-  function _stopBreakCountdown() {
-    if (_breakCountdownInterval !== null) {
-      clearInterval(_breakCountdownInterval);
-      _breakCountdownInterval = null;
-    }
-  }
-
-  function _updateBreakCountdown() {
-    const el = document.getElementById('break-countdown');
-    if (!el) return;
-    const ms = Session.getBreakElapsedMs();
-    const totalSecs = Math.floor(ms / 1000);
-    const m = String(Math.floor(totalSecs / 60));
-    const s = String(totalSecs % 60).padStart(2, '0');
-    el.textContent = `${m}:${s}`;
-  }
+  // Break countdown display is handled exclusively by session-panel-fix.js.
+  // _startBreakCountdown / _stopBreakCountdown removed to prevent timer conflict.
 
   // ── Utility ───────────────────────────────────────────────────────────────
 
