@@ -2217,8 +2217,18 @@ const CFG = {
         if (ring) ring.style.strokeDashoffset = '0';
         const inlineTimer = document.getElementById('sp-inline-timer');
         if (inlineTimer) {
-          const _timerMode = (typeof Settings !== 'undefined' && Settings.get) ? (Settings.get('sessionTimerMode') || 'remaining') : 'remaining';
-          inlineTimer.textContent = _timerMode === 'elapsed' ? '00:00' : _fmtSecs(_sessionTotalSeconds);
+          const _timerMode = (typeof Settings !== 'undefined' && Settings.get) ? (Settings.get('sessionTimerMode') || 'breakInterval') : 'breakInterval';
+          if (_timerMode === 'elapsed') {
+            inlineTimer.textContent = '00:00';
+          } else if (_timerMode === 'breakInterval') {
+            const _biH = parseInt(document.getElementById('break-h')?.value || 0, 10) || 0;
+            const _biM = parseInt(document.getElementById('break-m')?.value || 0, 10) || 0;
+            const _biS = parseInt(document.getElementById('break-s')?.value || 0, 10) || 0;
+            const _biSecs = _biH * 3600 + _biM * 60 + _biS;
+            inlineTimer.textContent = _biSecs > 0 ? _fmtSecs(_biSecs) : _fmtSecs(_sessionTotalSeconds);
+          } else {
+            inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
+          }
         }
         // Reset focus stat bar on fresh start
         if (oldState === 'IDLE') {
@@ -2293,6 +2303,25 @@ const CFG = {
         else if (newState === 'FAILED')     outcomeLabel.textContent = 'session ended early.';
         else if (newState === 'ABANDONED')  outcomeLabel.textContent = 'session ended early.';
         else                                outcomeLabel.textContent = '';
+      }
+
+      // Mood rating row (Change 12B)
+      const moodRow = document.getElementById('mood-rating-row');
+      if (moodRow) {
+        const showMood = (newState === 'COMPLETED' || newState === 'FAILED' || newState === 'ABANDONED');
+        moodRow.style.display = showMood ? '' : 'none';
+        if (showMood) {
+          document.querySelectorAll('.sp-mood-star').forEach(btn => {
+            btn.classList.remove('sp-mood-active');
+            btn.addEventListener('click', function moodClick() {
+              const rating = parseInt(this.dataset.rating, 10);
+              if (typeof Session !== 'undefined') Session.setMoodRating(rating);
+              document.querySelectorAll('.sp-mood-star').forEach(b => b.classList.remove('sp-mood-active'));
+              this.classList.add('sp-mood-active');
+              document.querySelectorAll('.sp-mood-star').forEach(b => b.removeEventListener('click', moodClick));
+            }, { once: true });
+          });
+        }
       }
 
       if (newState === 'COMPLETED') {
@@ -3783,7 +3812,7 @@ const CFG = {
     // ── Session timer mode (remaining vs elapsed) ────────────────────────
     const sessionTimerModeSel = document.getElementById('session-timer-mode-select');
     if (sessionTimerModeSel) {
-      const _stmSaved = Settings.get('sessionTimerMode') || 'remaining';
+      const _stmSaved = Settings.get('sessionTimerMode') || 'breakInterval';
       sessionTimerModeSel.value = _stmSaved;
       sessionTimerModeSel.addEventListener('change', (e) => {
         Settings.set('sessionTimerMode', e.target.value);
