@@ -1055,8 +1055,8 @@
     function _applyBreakEveryToggle(enabled) {
       if (breakEveryRow) {
         breakEveryRow.classList.toggle('spf-row-disabled', !enabled);
-        breakEveryRow.querySelectorAll('input, button').forEach(el => {
-          if (el !== breakEveryToggle) el.disabled = !enabled;
+        breakEveryRow.querySelectorAll('input[type="number"]').forEach(el => {
+          el.disabled = !enabled;
         });
       }
       if (typeof BreakReminder !== 'undefined') {
@@ -1073,8 +1073,8 @@
     function _applyBreakForToggle(enabled) {
       if (breakForRow) {
         breakForRow.classList.toggle('spf-row-disabled', !enabled);
-        breakForRow.querySelectorAll('input, button').forEach(el => {
-          if (el !== breakForToggle) el.disabled = !enabled;
+        breakForRow.querySelectorAll('input[type="number"]').forEach(el => {
+          el.disabled = !enabled;
         });
       }
       // When break-for is OFF: set break-dur to 0 so open-ended mode auto-activates
