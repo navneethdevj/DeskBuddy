@@ -1062,16 +1062,17 @@ const HistoryPanel = (() => {
       };
     }
 
-    // Focus Score
-    const completed = history.filter(s => s.outcome === 'COMPLETED');
+    // Focus Score — avg focus % across ALL sessions, capped at 100%
+    // Uses same calculation as _avgFocusScore() for consistency
     let focusScore = 0;
-    if (completed.length > 0) {
-      const sum = completed.reduce((acc, s) => {
+    const sessionsWithDuration = history.filter(s => (s.durationMinutes || 0) > 0);
+    if (sessionsWithDuration.length > 0) {
+      const sum = sessionsWithDuration.reduce((acc, s) => {
         const total = (s.durationMinutes || 0) * 60;
         const focused = s.actualFocusedSeconds || 0;
-        return acc + (total > 0 ? (focused / total) * 100 : 0);
+        return acc + (total > 0 ? Math.min(100, (focused / total) * 100) : 0);
       }, 0);
-      focusScore = Math.round(sum / completed.length);
+      focusScore = Math.min(100, Math.round(sum / sessionsWithDuration.length));
     }
 
     // Session Count (normalize to 0-100, capped at 50 sessions)
@@ -1085,6 +1086,7 @@ const HistoryPanel = (() => {
     }
 
     // Completion Rate
+    const completed = history.filter(s => s.outcome === 'COMPLETED');
     const completionRate = history.length > 0 
       ? Math.round((completed.length / history.length) * 100)
       : 0;
@@ -1127,7 +1129,7 @@ const HistoryPanel = (() => {
     // Build factor rows
     const sessionCountValue = Math.min(50, Math.round(metrics.sessionCount / 2));
     const factors = [
-      { label: 'Focus Score', value: metrics.focusScore, unit: '%', fill: (metrics.focusScore / 100) },
+      { label: 'Avg Focus %', value: metrics.focusScore, unit: '%', fill: (metrics.focusScore / 100) },
       { label: 'Consistency', value: metrics.consistency, unit: '%', fill: (metrics.consistency / 100) },
       { label: 'Sessions', value: sessionCountValue, unit: '', fill: (sessionCountValue / 50) },
       { label: 'Avg Duration', value: metrics.avgDuration, unit: 'm', fill: Math.min(1, metrics.avgDuration / 60) },
@@ -1155,7 +1157,7 @@ const HistoryPanel = (() => {
   function _buildRadarSVG(metrics) {
     const N = 5;
     const CX = 80, CY = 80, R = 60;
-    const labels = ['Focus', 'Consistency', 'Sessions', 'Duration', 'Completion'];
+    const labels = ['Avg Focus', 'Consistency', 'Sessions', 'Duration', 'Completion'];
     // Normalize sessionCount the same way as in factors: min(50, round(sessionCount / 2)) / 50
     const normalizedSessions = Math.min(50, Math.round(metrics.sessionCount / 2)) / 50;
     const values = [
@@ -1251,6 +1253,21 @@ const HistoryPanel = (() => {
         return total > 0 ? Math.round((focusedSecs / total) * 100) : 0;
       })();
 
+      // Trend arrow vs previous session (Change 14)
+      const prevScore = (() => {
+        if (idx + 1 >= recent.length) return null;
+        const ps = recent[idx + 1];
+        const pt = (ps.durationMinutes || 0) * 60;
+        const pf = Math.max(0, ps.actualFocusedSeconds || 0);
+        return pt > 0 ? Math.min(100, Math.round((pf / pt) * 100)) : null;
+      })();
+      const trendHtml = prevScore === null || scoreNum === 0 ? ''
+        : scoreNum > prevScore
+          ? '<span class="hp-trend-up" title="Focus improved">↑</span>'
+          : scoreNum < prevScore
+            ? '<span class="hp-trend-down" title="Focus dropped">↓</span>'
+            : '<span class="hp-trend-flat">—</span>';
+
       // Focus rating
       const rating = scoreNum >= 90 ? 'A+' : scoreNum >= 80 ? 'A' : scoreNum >= 70 ? 'B'
                    : scoreNum >= 60 ? 'C'  : scoreNum >= 40 ? 'D' : scoreNum > 0 ? 'F' : '';
@@ -1306,7 +1323,7 @@ const HistoryPanel = (() => {
               <span class="hp-rr-sep">·</span>
               <span class="hp-rr-dur" title="Session duration">${durMins}m</span>
               ${focusedTimeStr ? `<span class="hp-rr-sep">·</span><span class="hp-rr-focused-time" title="Time spent focused: ${focusedTimeStr} out of ${durMins}m" style="color:${ratingColor};font-variant-numeric:tabular-nums">${focusedTimeStr}</span>` : ''}
-              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused" style="color:${ratingColor};opacity:0.70">${scoreNum}%</span>` : ''}
+              ${scoreNum > 0 ? `<span class="hp-rr-sep">·</span><span class="hp-rr-score" title="Focus score: ${scoreNum}% of session time spent focused" style="color:${ratingColor};opacity:0.70">${scoreNum}%</span>${trendHtml}` : ''}
               ${outLabel}
             </div>
             <div class="hp-rr-right">
@@ -1549,43 +1566,25 @@ const HistoryPanel = (() => {
       }
       case 'details': {
         if (!session) return;
-        // Use the rich details modal from session-panel-fix.js if available
-        if (typeof _showDetailsModal === 'function') {
-          _showDetailsModal(session);
-          break;
-        }
-        // Fallback: build and show the modal directly
-        const modal = document.getElementById('sp-session-details-modal');
-        if (modal && window._showDetailsModal) {
+        // session-panel-fix.js exposes _showDetailsModal on window in its _init() (step 13).
+        // HistoryPanel is inside an IIFE so window._showDetailsModal is the correct path.
+        if (typeof window._showDetailsModal === 'function') {
           window._showDetailsModal(session);
-          break;
+        } else {
+          // Fallback if session-panel-fix.js hasn't loaded yet — use alert summary
+          const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const d     = session.date ? new Date(session.date) : null;
+          const dateS = d && isFinite(d.getTime())
+            ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
+            : 'Unknown date';
+          const dur  = session.durationMinutes || 0;
+          const foc  = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
+          const pct  = dur > 0 ? Math.round((foc / (dur * 60)) * 100) : 0;
+          const out  = String(session.outcome || 'ABANDONED');
+          const mood = session.moodRating != null ? `${session.moodRating}/5` : '—';
+          alert(`📅  ${dateS}\n⏱  ${dur}m · 🎯 ${pct}% focus\n✅  ${out}\n😊  Mood: ${mood}`);
         }
-        // Last resort fallback
-        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        const d     = session.date ? new Date(session.date) : null;
-        const dateS = d && isFinite(d.getTime())
-          ? `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`
-          : 'Unknown date';
-        const dur     = session.durationMinutes || 0;
-        const focused = Math.max(0, parseInt(session.actualFocusedSeconds, 10) || 0);
-        const focus   = dur > 0 ? Math.round((focused / (dur * 60)) * 100) : 0;
-        const focusedFmt = _fmtSecs(focused);
-        const distracts = session.distractionCount || 0;
-        const out   = String(session.outcome || 'ABANDONED');
-        const cat   = session.category || '—';
-        const goal  = session.goalText  || '—';
-        const mood  = session.moodRating != null ? `${session.moodRating}/5` : '—';
-        alert(
-          `📅  ${dateS}\n` +
-          `⏱  Duration: ${dur} min\n` +
-          `🎯  Focused: ${focusedFmt} (${focus}%)\n` +
-          `⚡  Distractions: ${distracts}\n` +
-          `✅  Outcome: ${out}\n` +
-          `🏷  Category: ${cat}\n` +
-          `📝  Goal: ${goal}\n` +
-          `😊  Mood: ${mood}`
-        );
         break;
       }
       case 'star': {
