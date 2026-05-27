@@ -1,17 +1,16 @@
 /**
  * session-panel-fix.js  —  Complete session + history panel overhaul
  *
- * Features:
- *  1.  body[data-session-state] drives CSS visibility (fixes all-3-showing bug)
- *  2.  Global break toast — bottom-right of whole window
- *  3.  Break type chooser — timed vs open-ended
- *  4.  Timed break: countdown. Open-ended: countup.
- *  5.  Break adjust ±1m during active break
- *  6.  Snooze 5m from toast
- *  7.  Current-week calendar in history panel
- *  8.  Quick-fill chips (replace useless presets)
- *  9.  Session details modal replaces alert()
- *  10. Correct focus-time format in idle stats
+ * v2 additions:
+ *  • Wall-clock session timer: _wallSecs counts active-state seconds only
+ *  • Break interval scheduler: fires break toast when segment secs >= interval
+ *  • Session ends when _wallSecs >= _totalSecs (wall-clock expiry → COMPLETED)
+ *  • sp-inline-timer shows remaining/elapsed based on sessionTimerMode setting
+ *  • Progress ring driven by wall-clock elapsed
+ *  • Buddy timer override during breaks (window._spfBuddyTimerOverride)
+ *  • PiP break pending: badge + OS notification, toast shown on fullscreen return
+ *  • Auto-resume toggle synced with break-auto-resume-enabled checkbox
+ *  • History panel scrollbar properly visible
  */
 
 (function () {
@@ -36,8 +35,19 @@
     "look out a window, far away",
   ];
 
+  const RING_CIRC = 138.23; // 2π × r=22 for the SVG progress ring
+
   // ══════════════════════════════════════════════════════════════
-  //  STATE
+  //  WALL-CLOCK SESSION STATE
+  // ══════════════════════════════════════════════════════════════
+
+  let _wallTimerId    = null;  // setInterval handle — runs every 1s during ACTIVE
+  let _wallSecs       = 0;     // total active-state wall-clock seconds elapsed
+  let _totalSecs      = 0;     // configured session duration in seconds
+  let _pipBreakPending = false; // break fired while in PiP mode
+
+  // ══════════════════════════════════════════════════════════════
+  //  BREAK TIMER STATE
   // ══════════════════════════════════════════════════════════════
 
   let _breakTimerId       = null;
@@ -46,7 +56,7 @@
   let _breakElapsedSecs   = 0;      // countup elapsed
   let _snoozeActive       = false;
   let _snoozeTimerId      = null;
-  let _breakStartWallMs   = null;   // wall clock when break began (for history)
+  let _breakStartWallMs   = null;
 
   // ══════════════════════════════════════════════════════════════
   //  HELPERS
@@ -74,8 +84,15 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  BREAK DURATION INPUTS
+  //  INPUT READERS
   // ══════════════════════════════════════════════════════════════
+
+  function _getSessionTotalSecs() {
+    const h = parseInt(_el('duration-h')?.value, 10) || 0;
+    const m = parseInt(_el('duration-m')?.value, 10) || 0;
+    const s = parseInt(_el('duration-s')?.value, 10) || 0;
+    return h * 3600 + m * 60 + s;
+  }
 
   function _getBreakDurSecs() {
     const h = parseInt(_el('break-dur-h')?.value,10)||0;
@@ -96,6 +113,67 @@
     const m = parseInt(_el('break-m')?.value,10)||0;
     const s = parseInt(_el('break-s')?.value,10)||0;
     return h*3600 + m*60 + s;
+  }
+
+  function _getSessionTimerMode() {
+    if (typeof Settings !== 'undefined' && Settings.get)
+      return Settings.get('sessionTimerMode') || 'remaining';
+    return 'remaining';
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  WALL-CLOCK SESSION TIMER
+  // ══════════════════════════════════════════════════════════════
+
+  function _startWallTimer() {
+    _stopWallTimer();
+    window._spfWallTimerActive = true;
+    _wallTimerId = setInterval(_wallTick, 1000);
+  }
+
+  function _stopWallTimer() {
+    if (_wallTimerId) { clearInterval(_wallTimerId); _wallTimerId = null; }
+  }
+
+  function _wallTick() {
+    _wallSecs++;
+
+    // Update sp-inline-timer
+    _updateSessionPanelTimer();
+
+    // Check session wall-clock expiry
+    if (_totalSecs > 0 && _wallSecs >= _totalSecs) {
+      _stopWallTimer();
+      _endSessionByWallClock();
+    }
+  }
+
+  function _updateSessionPanelTimer() {
+    const mode = _getSessionTimerMode();
+    const displaySecs = mode === 'elapsed'
+      ? _wallSecs
+      : Math.max(0, _totalSecs - _wallSecs);
+
+    const inlineTimer = _el('sp-inline-timer');
+    if (inlineTimer) inlineTimer.textContent = _fmtTime(displaySecs);
+
+    // Drive the progress ring from wall-clock
+    const ring = _el('sp-ring-progress');
+    if (ring && _totalSecs > 0) {
+      ring.style.strokeDashoffset = String(RING_CIRC * (_wallSecs / _totalSecs));
+    }
+  }
+
+  function _endSessionByWallClock() {
+    // Trigger COMPLETED via Timer: init(0) → Timer fires FAILED with remaining=0
+    // → session.js detects naturalExpiry=true → marks COMPLETED ✓
+    if (typeof BreakReminder !== 'undefined') BreakReminder.stop();
+    _hideGlobalToast();
+    _stopBreakTimer();
+    if (typeof Timer !== 'undefined') {
+      Timer.init(0);
+      Timer.start();
+    }
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -141,16 +219,21 @@
     if (_breakIsTimed) {
       el.textContent = _fmtTime(_breakRemSecs);
       if(hint) hint.textContent = 'remaining';
-      // colour: green → yellow → red
       const dur = _getBreakDurSecs();
       const pct = dur > 0 ? _breakRemSecs/dur : 1;
       if      (pct < 0.20) el.style.color = 'rgba(248,113,113,0.90)';
       else if (pct < 0.45) el.style.color = 'rgba(251,191,36,0.90)';
       else                 el.style.color = 'rgba(68,232,176,0.90)';
+
+      // Buddy timer: countdown
+      window._spfBuddyTimerOverride = `break ${_fmtTime(_breakRemSecs)}`;
     } else {
       el.textContent = _fmtTime(_breakElapsedSecs);
       el.style.color = 'rgba(139,118,255,0.80)';
       if(hint) hint.textContent = 'time on break';
+
+      // Buddy timer: countup
+      window._spfBuddyTimerOverride = `break ${_fmtTime(_breakElapsedSecs)}`;
     }
   }
 
@@ -175,7 +258,6 @@
       }
     }, 1000);
 
-    // Affirmation
     const affEl = _el('sp-break-affirmation');
     if(affEl) affEl.textContent = AFFIRMATIONS[Math.floor(Math.random()*AFFIRMATIONS.length)];
   }
@@ -186,8 +268,26 @@
       el.style.animation = 'sp-break-done-pulse 0.9s ease-in-out 4';
       setTimeout(()=>{ if(el) el.style.animation=''; }, 3800);
     }
-    const notif = _el('sp-break-over-notif');
-    if(notif) { notif.style.display=''; _raf(()=>notif.classList.add('sp-notif-visible')); }
+
+    // Auto-resume if setting enabled, otherwise show notification
+    const autoResume = _el('break-auto-resume-enabled')?.checked;
+    if (autoResume) {
+      window._spfBuddyTimerOverride = 'break ✦ resuming...';
+      setTimeout(() => {
+        if (typeof Session !== 'undefined' && typeof Timer !== 'undefined') {
+          const s = Session.getCurrentStats();
+          if (s && s.state === 'PAUSED') {
+            _hideBreakOverNotif();
+            Session.resume();
+            Timer.resume();
+            if (typeof BreakReminder !== 'undefined') BreakReminder.resume();
+          }
+        }
+      }, 900);
+    } else {
+      const notif = _el('sp-break-over-notif');
+      if(notif) { notif.style.display=''; _raf(()=>notif.classList.add('sp-notif-visible')); }
+    }
   }
 
   function _hideBreakOverNotif() {
@@ -202,12 +302,19 @@
   // ══════════════════════════════════════════════════════════════
 
   function _showBreakTypeChooser() {
+    // Check if break-for duration is 0 → open-ended (until turned off)
+    const durSecs = _getBreakDurSecs();
+
+    // If "until I turn off" (0s), skip chooser and go open-ended
+    if (durSecs === 0) {
+      _startBreakCountdown(false);
+      return;
+    }
+
     const modal = _el('break-type-modal');
     if (!modal) { _startBreakCountdown(true); return; }
 
-    // Update timed option label with configured duration
-    const durSecs = _getBreakDurSecs();
-    const durLbl  = _el('btm-timed-dur');
+    const durLbl = _el('btm-timed-dur');
     if(durLbl) durLbl.textContent = _fmtTime(durSecs) + ' break';
 
     modal.style.display = '';
@@ -226,7 +333,6 @@
     if(timedBtn) timedBtn.addEventListener('click', onTimed, {once:true});
     if(openBtn)  openBtn.addEventListener('click',  onOpen,  {once:true});
 
-    // Auto-close after 15s → default to timed
     const autoTimer = setTimeout(() => {
       if(modal.style.display !== 'none') { modal.style.display='none'; _startBreakCountdown(true); cleanup(); }
     }, 15000);
@@ -247,7 +353,6 @@
     toast.style.display = '';
     _raf(()=>toast.classList.add('gbt-visible'));
 
-    // Update elapsed label
     const elapsedEl = _el('gbt-elapsed');
     if(elapsedEl) {
       const intSecs = _getBreakIntervalSecs();
@@ -266,32 +371,54 @@
   function _setPipBreakDue(active) {
     if (!document.body) return;
     document.body.classList.toggle('pip-break-due', !!active);
+    const badge = _el('pip-break-badge');
+    if (badge) badge.style.display = active ? '' : 'none';
+  }
+
+  // ── PiP OS notification ──────────────────────────────────────
+  function _tryOsNotification() {
+    if (!('Notification' in window)) return;
+    const grant = () => {
+      new Notification('DeskBuddy — Break Time! ☕', {
+        body: `You've been focused for ${_fmtTime(_getBreakIntervalSecs())}. Take a break!`,
+        silent: false,
+      });
+    };
+    if (Notification.permission === 'granted') {
+      grant();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { if (p === 'granted') grant(); });
+    }
   }
 
   function _snooze5() {
     _hideGlobalToast();
+    _setPipBreakDue(false);
     _snoozeActive = true;
     if(typeof BreakReminder !== 'undefined') {
       BreakReminder.dismiss();
-      BreakReminder.setInterval(5);
     }
     if(_snoozeTimerId) clearTimeout(_snoozeTimerId);
+    // Snooze: re-arm break in 5 minutes by temporarily adjusting interval
+    const origInterval = _getBreakIntervalSecs();
+    if(typeof BreakReminder !== 'undefined') {
+      BreakReminder.setInterval(5); // 5 min from now
+    }
     _snoozeTimerId = setTimeout(()=>{
       _snoozeActive = false;
-      const origSecs = _getBreakIntervalSecs();
-      if(typeof BreakReminder !== 'undefined' && origSecs > 0)
-        BreakReminder.setInterval(origSecs/60);
+      if(typeof BreakReminder !== 'undefined' && origInterval > 0)
+        BreakReminder.setInterval(origInterval / 60);
     }, 5*60*1000);
   }
 
   function _takeBreak() {
     _hideGlobalToast();
+    _setPipBreakDue(false);
     if(typeof Session==='undefined'||typeof Timer==='undefined') return;
     const s = Session.getCurrentStats();
     if(s && s.state === 'ACTIVE') {
       Session.pause();
       Timer.pause();
-      // Small delay then show chooser
       setTimeout(_showBreakTypeChooser, 200);
     }
   }
@@ -304,7 +431,6 @@
     if(_breakIsTimed) {
       _breakRemSecs = Math.max(0, _breakRemSecs+deltaSecs);
     } else {
-      // Switch to timed countdown from deltaSecs
       if(deltaSecs>0) {
         _stopBreakTimer();
         _breakIsTimed = true;
@@ -318,7 +444,6 @@
         return;
       }
     }
-    _setBreakDurSecs(_getBreakDurSecs()+deltaSecs);
     _updateBreakDisplay();
   }
 
@@ -346,7 +471,6 @@
     const monday     = new Date(now); monday.setDate(now.getDate()-todayDow);
     const sunday     = new Date(monday); sunday.setDate(monday.getDate()+6);
 
-    // Build day map
     const dayMap = new Map();
     history.forEach(s => {
       if(!s.date) return;
@@ -386,7 +510,6 @@
       }
       if(isToday) cellCls += ' hp-week-today';
 
-      // Bar height: cap at 120min = 100%
       const pct  = info ? Math.min(100, Math.round((info.focusSecs/7200)*100)) : 0;
       const bar  = (!isFuture && pct>0)
         ? `<div class="hp-week-bar" style="height:${Math.max(8,pct)}%"></div>` : '';
@@ -439,16 +562,13 @@
       .filter(n => n > 0);
     const breakTotalSecs = breakDurations.reduce((sum, n) => sum + n, 0);
     const timingLabels = {
-      before_due: 'before due',
-      after_due:  'after due',
-      on_time:    'on time',
-      unscheduled:'no schedule',
+      before_due: 'before due', after_due: 'after due',
+      on_time: 'on time',       unscheduled:'no schedule',
     };
     const breakLines = breaks.length
       ? breaks.map((b, i) => {
           const dur = (typeof b?.durationSecs === 'number' && b.durationSecs >= 0)
-            ? _fmtFocus(b.durationSecs)
-            : '—';
+            ? _fmtFocus(b.durationSecs) : '—';
           const timing = timingLabels[b?.timing] || 'no schedule';
           return `#${i + 1} ${dur} · ${timing}`;
         }).join('<br>')
@@ -462,86 +582,36 @@
     body.innerHTML = `
       <div class="sp-det-section-head">Overview</div>
       <div class="sp-det-row">
-        <div class="sp-det-item">
-          <div class="sp-det-label">duration</div>
-          <div class="sp-det-value">${_fmtFocus(durSecs)}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">outcome</div>
-          <div class="sp-det-value ${outcomeColor}">${outcome.toLowerCase()}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">focus time</div>
-          <div class="sp-det-value ${focusColor}">${_fmtFocus(focusSecs)}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">focus %</div>
-          <div class="sp-det-value ${focusColor}">${focusPct}%</div>
-        </div>
+        <div class="sp-det-item"><div class="sp-det-label">duration</div><div class="sp-det-value">${_fmtFocus(durSecs)}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">outcome</div><div class="sp-det-value ${outcomeColor}">${outcome.toLowerCase()}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">focus time</div><div class="sp-det-value ${focusColor}">${_fmtFocus(focusSecs)}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">focus %</div><div class="sp-det-value ${focusColor}">${focusPct}%</div></div>
       </div>
-
       <div class="sp-det-section-head">Focus Quality</div>
       <div class="sp-det-row">
-        <div class="sp-det-item">
-          <div class="sp-det-label">distractions</div>
-          <div class="sp-det-value ${distracts===0?'sp-det-good':distracts>4?'sp-det-bad':'sp-det-warn'}">${distracts}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">longest streak</div>
-          <div class="sp-det-value">${_fmtFocus(longest)}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">category</div>
-          <div class="sp-det-value" style="font-size:12px">${cat}</div>
-        </div>
-        <div class="sp-det-item">
-          <div class="sp-det-label">mood</div>
-          <div class="sp-det-value" style="font-size:12px">${mood}</div>
-        </div>
+        <div class="sp-det-item"><div class="sp-det-label">distractions</div><div class="sp-det-value ${distracts===0?'sp-det-good':distracts>4?'sp-det-bad':'sp-det-warn'}">${distracts}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">longest streak</div><div class="sp-det-value">${_fmtFocus(longest)}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">category</div><div class="sp-det-value" style="font-size:12px">${cat}</div></div>
+        <div class="sp-det-item"><div class="sp-det-label">mood</div><div class="sp-det-value" style="font-size:12px">${mood}</div></div>
       </div>
-
       <div class="sp-det-section-head">Focus Phases</div>
       <div class="sp-det-row">
-        <div class="sp-det-item sp-det-full">
-          <div class="sp-det-label">focus stretches</div>
-          <div class="sp-det-value" style="font-size:12px;font-weight:700">${focusPhaseText}</div>
-        </div>
+        <div class="sp-det-item sp-det-full"><div class="sp-det-label">focus stretches</div><div class="sp-det-value" style="font-size:12px;font-weight:700">${focusPhaseText}</div></div>
       </div>
-
       <div class="sp-det-section-head">Breaks</div>
       <div class="sp-det-row">
-        <div class="sp-det-item">
-          <div class="sp-det-label">total break time</div>
-          <div class="sp-det-value">${breakTotalSecs > 0 ? _fmtFocus(breakTotalSecs) : '—'}</div>
-        </div>
-        <div class="sp-det-item sp-det-full">
-          <div class="sp-det-label">break timing</div>
-          <div class="sp-det-value" style="font-size:12px;font-weight:700;line-height:1.4">${breakLines}</div>
-        </div>
+        <div class="sp-det-item"><div class="sp-det-label">total break time</div><div class="sp-det-value">${breakTotalSecs > 0 ? _fmtFocus(breakTotalSecs) : '—'}</div></div>
+        <div class="sp-det-item sp-det-full"><div class="sp-det-label">break timing</div><div class="sp-det-value" style="font-size:12px;font-weight:700;line-height:1.4">${breakLines}</div></div>
       </div>
-
       ${goal !== '—' ? `
       <div class="sp-det-section-head">Goal</div>
       <div class="sp-det-row">
-        <div class="sp-det-item sp-det-full">
-          <div class="sp-det-label">what you were working on</div>
-          <div class="sp-det-value" style="font-size:12px;font-weight:700">${goal}</div>
-        </div>
-        ${session.goalAchieved!=null?`
-        <div class="sp-det-item">
-          <div class="sp-det-label">goal achieved?</div>
-          <div class="sp-det-value ${session.goalAchieved?'sp-det-good':'sp-det-bad'}">${session.goalAchieved?'yes ✓':'no ✗'}</div>
-        </div>
-        `:''}
-      </div>
-      ` : ''}
-
+        <div class="sp-det-item sp-det-full"><div class="sp-det-label">what you were working on</div><div class="sp-det-value" style="font-size:12px;font-weight:700">${goal}</div></div>
+        ${session.goalAchieved!=null?`<div class="sp-det-item"><div class="sp-det-label">goal achieved?</div><div class="sp-det-value ${session.goalAchieved?'sp-det-good':'sp-det-bad'}">${session.goalAchieved?'yes ✓':'no ✗'}</div></div>`:''}
+      </div>` : ''}
       <div class="sp-det-section-head">Session Date</div>
       <div class="sp-det-row">
-        <div class="sp-det-item sp-det-full">
-          <div class="sp-det-label">started at</div>
-          <div class="sp-det-value" style="font-size:12px;font-weight:700">${dateS}</div>
-        </div>
+        <div class="sp-det-item sp-det-full"><div class="sp-det-label">started at</div><div class="sp-det-value" style="font-size:12px;font-weight:700">${dateS}</div></div>
       </div>
     `;
 
@@ -560,7 +630,6 @@
   // ══════════════════════════════════════════════════════════════
 
   function _wireQuickFillChips() {
-    // "Last session" chip
     const lastChip = _el('sp-qp-last');
     if(lastChip) {
       if(typeof Session!=='undefined') {
@@ -579,35 +648,29 @@
       }
     }
 
-    // All chips (preset patterns)
     document.querySelectorAll('.sp-qp-chip[data-h]').forEach(chip => {
       chip.addEventListener('click', () => {
-        // Fill duration
         const dH=_el('duration-h'), dM=_el('duration-m'), dS=_el('duration-s');
         if(dH) dH.value = chip.dataset.h || 0;
         if(dM) dM.value = chip.dataset.m || 25;
         if(dS) dS.value = chip.dataset.s || 0;
 
-        // Fill break duration
         const bdH=_el('break-dur-h'), bdM=_el('break-dur-m'), bdS=_el('break-dur-s');
         if(bdH) bdH.value = chip.dataset.bh || 0;
         if(bdM) bdM.value = chip.dataset.bm || 5;
         if(bdS) bdS.value = chip.dataset.bs || 0;
 
-        // Fill break interval
         const biH=_el('break-h'), biM=_el('break-m'), biS=_el('break-s');
         if(biH) biH.value = chip.dataset['bi-h'] || 0;
         if(biM) biM.value = chip.dataset['bi-m'] || 25;
         if(biS) biS.value = chip.dataset['bi-s'] || 0;
 
-        // Sync BreakReminder
         const intSecs = parseInt(chip.dataset['bi-h']||0)*3600 +
                         parseInt(chip.dataset['bi-m']||0)*60   +
                         parseInt(chip.dataset['bi-s']||0);
         if(typeof BreakReminder!=='undefined' && intSecs>0)
           BreakReminder.setInterval(intSecs/60);
 
-        // Active highlight
         document.querySelectorAll('.sp-qp-chip').forEach(c=>c.classList.remove('active'));
         chip.classList.add('active');
       });
@@ -615,24 +678,15 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  PATCH HISTORY PANEL DETAILS ACTION
+  //  PATCH HISTORY DETAILS
   // ══════════════════════════════════════════════════════════════
 
   function _patchHistoryDetails() {
-    // Poll until HistoryPanel is available then monkey-patch it
     const tryPatch = () => {
       if(typeof HistoryPanel !== 'undefined') {
-        // We can't directly monkey-patch the private _handleCtxAction because
-        // it's in a closure. Instead intercept right-click on session rows.
         document.addEventListener('click', e => {
           const detBtn = e.target.closest('[data-action="details"]');
           if(!detBtn) return;
-          // Find the target session from HistoryPanel's internal state
-          // by reading the nearest row index
-          const ctxMenu = document.getElementById('hp-ctx-menu');
-          if(!ctxMenu) return;
-          // HistoryPanel exposes refresh/init only, so we intercept differently:
-          // We hook into the row right-click to capture the session ourselves
         }, true);
         return;
       }
@@ -640,14 +694,11 @@
     };
     tryPatch();
 
-    // Better approach: intercept the details button click and show our modal
-    // by reading the row's data-idx attribute which is already on the DOM
     document.getElementById('hp-ctx-menu')?.addEventListener('click', e => {
       const btn = e.target.closest('[data-action="details"]');
       if(!btn) return;
       e.stopPropagation();
       e.preventDefault();
-      // Find which session index is highlighted (has sp-selected class or is _ctxTargetIndex)
       const selectedRow = document.querySelector('#hp-recent-list .hp-row.sp-selected, #hp-recent-list .hp-row:hover');
       if(selectedRow) {
         const idx = parseInt(selectedRow.dataset.idx, 10);
@@ -656,7 +707,6 @@
           if(s) { _showDetailsModal(s); return; }
         }
       }
-      // Fallback: search all highlighted rows
       const rows = document.querySelectorAll('#hp-recent-list .hp-row');
       rows.forEach(row => {
         if(row.classList.contains('hp-row-selected')) {
@@ -674,22 +724,96 @@
   //  SESSION STATE LISTENER
   // ══════════════════════════════════════════════════════════════
 
-  function _onSessionStateChange(newState) {
+  function _onSessionStateChange(newState, oldState) {
     document.body.dataset.sessionState = newState;
 
-    if(newState === 'PAUSED') {
-      // Don't auto-start break timer here — wait for break type chooser
-      // The chooser is shown by _takeBreak() or _wireBreakButton()
-    } else if(newState === 'ACTIVE') {
+    if (newState === 'ACTIVE') {
+      if (oldState === 'IDLE') {
+        // Fresh session start — read configured durations
+        _wallSecs  = 0;
+        _totalSecs = _getSessionTotalSecs();
+        window._spfWallTimerActive = true;
+
+        // Arm BreakReminder with the break interval (minutes)
+        // unless break schedule is disabled
+        const schedEnabled = _el('break-schedule-enabled');
+        const schedOn = !schedEnabled || schedEnabled.checked;
+        if (typeof BreakReminder !== 'undefined') {
+          if (schedOn) {
+            const intSecs = _getBreakIntervalSecs();
+            BreakReminder.setInterval(intSecs > 0 ? intSecs / 60 : 99999);
+          } else {
+            BreakReminder.setInterval(99999);
+          }
+        }
+      }
+      // Start (or resume) wall-clock
+      _startWallTimer();
+      // Clear buddy override — brain.js takes over in ACTIVE state
+      window._spfBuddyTimerOverride = null;
       _stopBreakTimer();
       _hideGlobalToast();
       _hideBreakOverNotif();
+      _setPipBreakDue(false);
+      _pipBreakPending = false;
+      window._spfPipBreakPending = false;
+
+    } else if (newState === 'PAUSED') {
+      // Break started — stop wall-clock, break timer starts separately
+      _stopWallTimer();
+      // Don't clear buddy override here — break timer will set it
+
     } else {
+      // Terminal: IDLE / COMPLETED / FAILED / ABANDONED
+      _stopWallTimer();
       _stopBreakTimer();
+      window._spfWallTimerActive = false;
+      window._spfBuddyTimerOverride = null;
       _hideGlobalToast();
       _hideBreakOverNotif();
+      _setPipBreakDue(false);
+      _pipBreakPending = false;
+      window._spfPipBreakPending = false;
       _updateIdleStats();
       _drawWeekCalendar();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  BREAK TRIGGER HANDLER (called by BreakReminder.onTrigger)
+  // ══════════════════════════════════════════════════════════════
+
+  function _onBreakTrigger() {
+    // Skip if break schedule is disabled by user
+    const schedEnabled = _el('break-schedule-enabled');
+    if (schedEnabled && !schedEnabled.checked) {
+      if (typeof BreakReminder !== 'undefined') BreakReminder.dismiss();
+      return;
+    }
+
+    // Skip break if session is ending at (or very near) the same time
+    if (_totalSecs > 0 && (_wallSecs + 2) >= _totalSecs) {
+      if (typeof BreakReminder !== 'undefined') BreakReminder.dismiss();
+      return; // Session wall-clock will fire COMPLETED
+    }
+
+    _setPipBreakDue(true);
+
+    const inPip = document.body.classList.contains('pip-mode');
+    if (inPip) {
+      // PiP mode — can't show toast, use badge + OS notification
+      _pipBreakPending = true;
+      window._spfPipBreakPending = true;
+      if (typeof Sounds !== 'undefined') Sounds.play('break_start');
+      _tryOsNotification();
+      if (_el('break-auto-enabled')?.checked) {
+        setTimeout(() => { _takeBreak(); }, 1500);
+      }
+    } else {
+      _showGlobalToast();
+      if (_el('break-auto-enabled')?.checked) {
+        setTimeout(() => { _hideGlobalToast(); _takeBreak(); }, 1500);
+      }
     }
   }
 
@@ -699,7 +823,7 @@
 
   function _init() {
     // 1. State init
-    if(typeof Session !== 'undefined') {
+    if (typeof Session !== 'undefined') {
       Session.onSessionStateChange(_onSessionStateChange);
       const stats = Session.getCurrentStats();
       document.body.dataset.sessionState = stats?.state || 'IDLE';
@@ -708,7 +832,7 @@
       document.body.dataset.sessionState = 'IDLE';
     }
 
-    // 2. Draw week calendar on init and when history refreshes
+    // 2. Draw week calendar
     _drawWeekCalendar();
 
     // 3. Global toast buttons
@@ -716,16 +840,9 @@
     _el('gbt-take-btn')  ?.addEventListener('click', _takeBreak);
     _el('gbt-dismiss-btn')?.addEventListener('click', _hideGlobalToast);
 
-    // 4. BreakReminder → show toast
-    if(typeof BreakReminder !== 'undefined') {
-      BreakReminder.onTrigger(() => {
-        _setPipBreakDue(true);
-        _showGlobalToast();
-        // Auto-start if checkbox enabled
-        if(_el('break-auto-enabled')?.checked) {
-          setTimeout(() => { _hideGlobalToast(); _takeBreak(); }, 1500);
-        }
-      });
+    // 4. BreakReminder → our handler (handles session-total-aware logic)
+    if (typeof BreakReminder !== 'undefined') {
+      BreakReminder.onTrigger(_onBreakTrigger);
 
       BreakReminder.onDismiss(() => {
         _setPipBreakDue(false);
@@ -736,9 +853,34 @@
     // 5. Break over → resume button
     _el('sp-break-over-resume')?.addEventListener('click', () => {
       _hideBreakOverNotif();
-      if(typeof Session!=='undefined'&&typeof Timer!=='undefined'){
-        const s=Session.getCurrentStats();
-        if(s&&s.state==='PAUSED'){ Session.resume(); Timer.resume(); }
+      if (typeof Session !== 'undefined' && typeof Timer !== 'undefined') {
+        const s = Session.getCurrentStats();
+        if (s && s.state === 'PAUSED') {
+          Session.resume();
+          Timer.resume();
+          if (typeof BreakReminder !== 'undefined') BreakReminder.resume();
+        }
+      }
+    });
+
+    // Break over → snooze 5 more minutes (extend break countdown)
+    _el('sp-break-over-snooze')?.addEventListener('click', () => {
+      _hideBreakOverNotif();
+      // Add 5 minutes to the break timer
+      if (_breakIsTimed) {
+        _breakRemSecs += 5 * 60;
+        _updateBreakDisplay();
+        // Restart countdown if it had stopped
+        if (!_breakTimerId) {
+          _breakTimerId = setInterval(() => {
+            _breakRemSecs = Math.max(0, _breakRemSecs - 1);
+            _updateBreakDisplay();
+            if (_breakRemSecs === 0) { _stopBreakTimer(); _onBreakEnd(); }
+          }, 1000);
+        }
+      } else {
+        // Open-ended: just hide the notification and keep counting up
+        _updateBreakDisplay();
       }
     });
 
@@ -757,15 +899,12 @@
       el.addEventListener('change',()=>{ el.value=String(Math.max(0,Math.min(max,parseInt(el.value,10)||0))); });
     });
 
-    // 9. Wire "take a break" button to show chooser first
-    // Intercept the pause-session button before renderer's handler
+    // 9. Pause button → show break type chooser AFTER session.js/renderer.js handle state
     const pauseBtn = _el('pause-session');
-    if(pauseBtn) {
-      pauseBtn.addEventListener('click', (e) => {
-        // renderer.js also listens; Session.pause() will be called by renderer
-        // We just need to show the chooser AFTER the state changes
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
         setTimeout(_showBreakTypeChooser, 100);
-      }, true); // capture phase so we run alongside renderer's bubble handler
+      }, true);
     }
 
     // 10. Details modal close
@@ -776,27 +915,85 @@
     // 11. Quick fill chips
     _wireQuickFillChips();
 
-    // 12. History panel week calendar refresh when panel opens
+    // 12. History panel week calendar refresh
     const histCloseBtn = _el('hp-close-btn');
-    if(histCloseBtn) histCloseBtn.addEventListener('click', ()=>setTimeout(_updateIdleStats,100));
+    if (histCloseBtn) histCloseBtn.addEventListener('click', ()=>setTimeout(_updateIdleStats,100));
 
-    // Watch for history panel opening (MutationObserver on history-panel)
     const histPanel = _el('history-panel');
-    if(histPanel) {
+    if (histPanel) {
       new MutationObserver(()=>{
-        if(histPanel.classList.contains('sidebar-open')||histPanel.style.display!=='none')
+        if (histPanel.classList.contains('sidebar-open') || histPanel.style.display !== 'none')
           _drawWeekCalendar();
-      }).observe(histPanel,{attributes:true,attributeFilter:['class','style']});
+      }).observe(histPanel, {attributes:true, attributeFilter:['class','style']});
     }
 
-    // Expose details modal globally for history-panel.js to call
+    // 13. Expose details modal globally
     window._showDetailsModal = _showDetailsModal;
 
-    // 13. Patch history details
+    // 14. Patch history details
     _patchHistoryDetails();
+
+    // 15. PiP break return — show toast when user switches from PiP back to fullscreen
+    window.addEventListener('spf-pip-break-return', () => {
+      if (_pipBreakPending) {
+        _pipBreakPending = false;
+        window._spfPipBreakPending = false;
+        _setPipBreakDue(false);
+        // Show toast after a brief delay so fullscreen UI is visible
+        setTimeout(() => {
+          const s = typeof Session !== 'undefined' ? Session.getCurrentStats() : null;
+          if (s && s.state === 'ACTIVE') {
+            _showGlobalToast();
+            if (_el('break-auto-enabled')?.checked) {
+              setTimeout(() => { _hideGlobalToast(); _takeBreak(); }, 1500);
+            }
+          }
+        }, 350);
+      }
+    });
+
+    // 16. Session timer mode setting wiring (save/load)
+    const modeSelect = _el('session-timer-mode-select');
+    if (modeSelect) {
+      const saved = (typeof Settings !== 'undefined' && Settings.get)
+        ? (Settings.get('sessionTimerMode') || 'remaining') : 'remaining';
+      modeSelect.value = saved;
+      modeSelect.addEventListener('change', e => {
+        if (typeof Settings !== 'undefined' && Settings.set)
+          Settings.set('sessionTimerMode', e.target.value);
+      });
+    }
+
+    // 17. Break schedule enabled/disabled toggle
+    const schedToggle = _el('break-schedule-enabled');
+    const schedBody   = _el('sp-break-schedule-body');
+
+    function _applyScheduleToggle(enabled) {
+      if (!schedBody) return;
+      schedBody.classList.toggle('spf-schedule-disabled', !enabled);
+      // When disabled, also clear BreakReminder so no breaks fire
+      if (typeof BreakReminder !== 'undefined') {
+        if (!enabled) {
+          BreakReminder.setInterval(99999); // effectively off
+        } else {
+          const intSecs = _getBreakIntervalSecs();
+          if (intSecs > 0) BreakReminder.setInterval(intSecs / 60);
+        }
+      }
+    }
+
+    if (schedToggle) {
+      // Restore from localStorage
+      const savedSched = localStorage.getItem('spf-break-schedule-enabled');
+      if (savedSched === 'false') { schedToggle.checked = false; _applyScheduleToggle(false); }
+      schedToggle.addEventListener('change', e => {
+        localStorage.setItem('spf-break-schedule-enabled', String(e.target.checked));
+        _applyScheduleToggle(e.target.checked);
+      });
+    }
   }
 
-  if(document.readyState==='loading') {
+  if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _init);
   } else {
     setTimeout(_init, 0);
