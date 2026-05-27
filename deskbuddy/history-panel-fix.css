@@ -3,24 +3,26 @@
  * History panel: all content visible, chart fixed, recent sessions scroll
  */
 
-/* ── HISTORY PANEL: natural scroll, no nested sliders ───────────────────── */
+/* ── HISTORY PANEL: natural scroll, visible scrollbar ───────────────────── */
 
 #history-panel {
   overflow-y: auto  !important;
   overflow-x: hidden !important;
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(255,255,255,0.07) transparent !important;
+  scrollbar-color: rgba(144,124,255,0.28) transparent !important;
 }
 
-#history-panel::-webkit-scrollbar { width: 3px !important; }
-#history-panel::-webkit-scrollbar-track { background: transparent !important; }
-#history-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07) !important; border-radius: 3px !important; }
-#history-panel::-webkit-scrollbar-thumb:hover { background: rgba(144,124,255,0.18) !important; }
+#history-panel::-webkit-scrollbar        { width: 4px !important; }
+#history-panel::-webkit-scrollbar-track  { background: transparent !important; }
+#history-panel::-webkit-scrollbar-thumb  { background: rgba(144,124,255,0.28) !important; border-radius: 4px !important; }
+#history-panel::-webkit-scrollbar-thumb:hover { background: rgba(144,124,255,0.55) !important; }
 
-/* History card fills panel, no inner overflow */
+/* History card must NOT clip its own content but must contribute height to
+   the panel's scroll calculation — flex shrink 0 prevents it from collapsing */
 #history-card {
-  overflow:     visible !important;
-  min-height:   0       !important;
+  overflow:    visible !important;
+  min-height:  0       !important;
+  flex-shrink: 0       !important;
 }
 
 /* ── FIX CHART VISIBILITY ────────────────────────────────────────────────── */
