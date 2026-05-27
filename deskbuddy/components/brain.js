@@ -1676,17 +1676,32 @@ const Brain = (() => {
           ? BreakReminder.getElapsedMs()
           : null;
         let displaySecs = _focusSecs;
+        const timerMode = (typeof Settings !== 'undefined' && Settings.get)
+          ? (Settings.get('sessionTimerMode') || 'breakInterval')
+          : 'breakInterval';
+
         const useBreakTimer = (sessionState === 'ACTIVE' || sessionState === 'PAUSED') && intervalSecs > 0 && elapsedMs != null;
         if (useBreakTimer) {
-          displaySecs = Math.min(Math.max(0, Math.round(elapsedMs / 1000)), intervalSecs);
-          // Breaks reset the buddy timer to 0 while paused.
-          if (sessionState === 'PAUSED') displaySecs = 0;
+          if (sessionState === 'PAUSED') {
+            // During break — _spfBuddyTimerOverride handles display; set 0 as fallback
+            displaySecs = 0;
+          } else if (timerMode === 'breakInterval') {
+            // Count DOWN from break interval to 0
+            const elapsedSecs = Math.max(0, Math.round(elapsedMs / 1000));
+            displaySecs = Math.max(0, intervalSecs - elapsedSecs);
+          } else if (timerMode === 'elapsed') {
+            // Count UP — show elapsed in this segment
+            displaySecs = Math.min(Math.max(0, Math.round(elapsedMs / 1000)), intervalSecs);
+          } else {
+            // 'remaining' — fallback to elapsed
+            displaySecs = Math.min(Math.max(0, Math.round(elapsedMs / 1000)), intervalSecs);
+          }
         }
         // session-panel-fix.js may override the buddy timer during breaks
         if (window._spfBuddyTimerOverride) {
           timerEl.textContent = window._spfBuddyTimerOverride;
         } else {
-        const label = useBreakTimer ? 'break' : 'focus';
+        const label = useBreakTimer && sessionState !== 'PAUSED' ? 'focus' : (useBreakTimer ? 'break' : 'focus');
         const h = Math.floor(displaySecs / 3600);
         const m = Math.floor((displaySecs % 3600) / 60);
         const s = displaySecs % 60;
