@@ -554,3 +554,112 @@ body[data-session-state="PAUSED"] #break-toast {
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DISABLED INDIVIDUAL BREAK ROW (Change 8)
+   ═══════════════════════════════════════════════════════════════ */
+.spf-row-disabled {
+  opacity: 0.38 !important;
+  pointer-events: none !important;
+}
+.spf-row-disabled input:not([type="checkbox"]),
+.spf-row-disabled button {
+  cursor: not-allowed !important;
+}
+
+/* Inline row toggle (break-every / break-for enable switch) */
+.sp-row-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.sp-row-inline-toggle input[type="checkbox"] {
+  width: 11px;
+  height: 11px;
+  accent-color: rgba(139,118,255,0.9);
+  cursor: pointer;
+}
+
+/* PiP break badge pulse animation */
+@keyframes pip-break-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;    box-shadow: 0 0 0 0 rgba(139,118,255,0.7); }
+  50%       { transform: scale(1.18); opacity: 0.95; box-shadow: 0 0 0 8px rgba(139,118,255,0);  }
+}
+body.pip-break-due #pip-break-badge {
+  animation: pip-break-pulse 1.4s ease-in-out infinite !important;
+  background: rgba(139,118,255,0.22) !important;
+  border: 1.5px solid rgba(139,118,255,0.55) !important;
+  border-radius: 50% !important;
+  padding: 3px 5px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOOD RATING ROW (Change 12C)
+   ═══════════════════════════════════════════════════════════════ */
+.sp-mood-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+.sp-mood-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(185,168,255,0.60);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sp-mood-stars {
+  display: flex;
+  gap: 8px;
+}
+.sp-mood-star {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.18s, transform 0.15s;
+  border-radius: 50%;
+  padding: 4px;
+}
+.sp-mood-star:hover,
+.sp-mood-star.sp-mood-active {
+  opacity: 1;
+  transform: scale(1.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AFFIRMATION REFRESH BUTTON (Change 13-css)
+   ═══════════════════════════════════════════════════════════════ */
+.sp-break-affirmation-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+.sp-break-affirmation {
+  transition: opacity 0.2s;
+}
+.sp-affirmation-refresh-btn {
+  background: none;
+  border: none;
+  color: rgba(185,168,255,0.40);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.18s, transform 0.2s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.sp-affirmation-refresh-btn:hover {
+  color: rgba(185,168,255,0.85);
+  transform: rotate(180deg);
+}
