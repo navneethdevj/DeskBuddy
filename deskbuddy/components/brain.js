@@ -1682,6 +1682,10 @@ const Brain = (() => {
           // Breaks reset the buddy timer to 0 while paused.
           if (sessionState === 'PAUSED') displaySecs = 0;
         }
+        // session-panel-fix.js may override the buddy timer during breaks
+        if (window._spfBuddyTimerOverride) {
+          timerEl.textContent = window._spfBuddyTimerOverride;
+        } else {
         const label = useBreakTimer ? 'break' : 'focus';
         const h = Math.floor(displaySecs / 3600);
         const m = Math.floor((displaySecs % 3600) / 60);
@@ -1690,6 +1694,7 @@ const Brain = (() => {
           ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
           : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         timerEl.textContent = `${label} ${timeStr}`;
+        }
 
         // Update color to reflect session timer state
         const timerState = (typeof Timer !== 'undefined' && Timer.getState?.()) || 'FOCUSED';
