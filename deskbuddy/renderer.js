@@ -2217,7 +2217,8 @@ const CFG = {
         if (ring) ring.style.strokeDashoffset = '0';
         const inlineTimer = document.getElementById('sp-inline-timer');
         if (inlineTimer) {
-          inlineTimer.textContent = _fmtSecs(_sessionTotalSeconds);
+          const _timerMode = (typeof Settings !== 'undefined' && Settings.get) ? (Settings.get('sessionTimerMode') || 'remaining') : 'remaining';
+          inlineTimer.textContent = _timerMode === 'elapsed' ? '00:00' : _fmtSecs(_sessionTotalSeconds);
         }
         // Reset focus stat bar on fresh start
         if (oldState === 'IDLE') {
@@ -2352,6 +2353,10 @@ const CFG = {
 
     // ── Inline panel timer + progress ring (updated each logical timer-second) ──
     Timer.onTick(() => {
+      // When session-panel-fix.js wall-clock is running, it owns sp-inline-timer and the ring.
+      // Skip here to avoid fighting it every tick.
+      if (window._spfWallTimerActive) return;
+
       const remaining = Timer.getRemainingSeconds();
       const inlineTimer = document.getElementById('sp-inline-timer');
       if (inlineTimer) inlineTimer.textContent = _fmtSecs(remaining);
@@ -2857,6 +2862,10 @@ const CFG = {
           setTimeout(() => {
             if (typeof ShareCard !== 'undefined') ShareCard.show(sessionData, emotion);
           }, 400);
+        }
+        // Notify session-panel-fix.js that PiP ended — show any pending break toast
+        if (window._spfPipBreakPending) {
+          window.dispatchEvent(new CustomEvent('spf-pip-break-return'));
         }
       });
       window.electronAPI.onFullModeExited(() => {
@@ -3770,6 +3779,16 @@ const CFG = {
     Settings.onChange('timerStep', (v) => {
       if (timerStepSel) timerStepSel.value = String(v);
     });
+
+    // ── Session timer mode (remaining vs elapsed) ────────────────────────
+    const sessionTimerModeSel = document.getElementById('session-timer-mode-select');
+    if (sessionTimerModeSel) {
+      const _stmSaved = Settings.get('sessionTimerMode') || 'remaining';
+      sessionTimerModeSel.value = _stmSaved;
+      sessionTimerModeSel.addEventListener('change', (e) => {
+        Settings.set('sessionTimerMode', e.target.value);
+      });
+    }
 
     // ── Daily focus goal ─────────────────────────────────────────────────
     const dailyGoalSel = document.getElementById('daily-goal-select');
