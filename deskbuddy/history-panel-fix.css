@@ -5,17 +5,7 @@
 
 /* ── HISTORY PANEL: natural scroll, visible scrollbar ───────────────────── */
 
-#history-panel {
-  overflow-y: auto  !important;
-  overflow-x: hidden !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: rgba(144,124,255,0.28) transparent !important;
-}
 
-#history-panel::-webkit-scrollbar        { width: 4px !important; }
-#history-panel::-webkit-scrollbar-track  { background: transparent !important; }
-#history-panel::-webkit-scrollbar-thumb  { background: rgba(144,124,255,0.28) !important; border-radius: 4px !important; }
-#history-panel::-webkit-scrollbar-thumb:hover { background: rgba(144,124,255,0.55) !important; }
 
 /* History card must NOT clip its own content but must contribute height to
    the panel's scroll calculation — flex shrink 0 prevents it from collapsing */
@@ -23,7 +13,22 @@
   overflow:    visible !important;
   min-height:  0       !important;
   flex-shrink: 0       !important;
+  /* panels-redesign.css sets overflow:hidden — override it here */
+  /* The card must be fully visible so #history-panel can scroll */
 }
+
+/* Ensure history panel itself scrolls and shows a styled scrollbar */
+#history-panel {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: calc(100vh - 78px) !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(144,124,255,0.45) rgba(255,255,255,0.04) !important;
+}
+#history-panel::-webkit-scrollbar        { width: 6px !important; }
+#history-panel::-webkit-scrollbar-track  { background: rgba(255,255,255,0.03) !important; border-radius: 6px !important; }
+#history-panel::-webkit-scrollbar-thumb  { background: rgba(144,124,255,0.45) !important; border-radius: 6px !important; }
+#history-panel::-webkit-scrollbar-thumb:hover { background: rgba(144,124,255,0.70) !important; }
 
 /* ── FIX CHART VISIBILITY ────────────────────────────────────────────────── */
 
@@ -257,3 +262,8 @@ body.pip-mode.pip-break-due #world::before {
   max-height:     60vh           !important;
   overflow-y:     auto           !important;
 }
+
+/* ── FOCUS % TREND ARROWS (Change 14) ──────────────────────────────────────── */
+.hp-trend-up   { color: rgba(52,211,153,0.85); font-size: 11px; font-weight: 700; }
+.hp-trend-down { color: rgba(248,113,113,0.85); font-size: 11px; font-weight: 700; }
+.hp-trend-flat { color: rgba(255,255,255,0.25); font-size: 11px; }
