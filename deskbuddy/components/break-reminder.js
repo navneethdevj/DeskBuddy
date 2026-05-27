@@ -128,7 +128,7 @@ const BreakReminder = (() => {
   // ── Public API ────────────────────────────────────────────────────────────
 
   function setInterval_(minutes) {
-    _intervalMinutes = parseInt(minutes, 10) || 0;
+    _intervalMinutes = parseFloat(minutes) || 0;
   }
 
   function onTrigger(fn)  { _onTriggerCbs.push(fn); }
