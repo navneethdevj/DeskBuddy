@@ -36,6 +36,8 @@
     <div id="pip-hover-overlay" aria-hidden="true">
       <button id="pip-expand-btn" title="Expand (Ctrl+Shift+P)">⛶</button>
     </div>
+    <!-- PiP break pending badge — visible when a break is due in compact/PiP mode -->
+    <div id="pip-break-badge" style="display:none" aria-label="Break due" title="Break time! Switch to full mode to manage it">☕</div>
   </div>
   <div id="status-bar"></div>
 
@@ -512,6 +514,16 @@
                 <select id="timer-step-select" class="settings-select">
                   <option value="1">1 min</option><option value="5">5 min</option><option value="10">10 min</option>
                   <option value="15">15 min</option><option value="30">30 min</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-row-label">Session timer shows</div>
+                  <div class="settings-row-sublabel">What the in-session countdown displays</div>
+                </div>
+                <select id="session-timer-mode-select" class="settings-select">
+                  <option value="remaining">Remaining</option>
+                  <option value="elapsed">Elapsed</option>
                 </select>
               </div>
               <div class="settings-row">
@@ -1377,6 +1389,15 @@
             </div>
           </div>
 
+          <div class="sp-row sp-autobreak-row sp-break-enable-row">
+            <label class="sp-label" style="margin:0">break schedule</label>
+            <label class="sp-autobreak-label sp-break-enable-label" for="break-schedule-enabled">
+              <input type="checkbox" id="break-schedule-enabled" checked -webkit-app-region="no-drag">
+              enabled
+            </label>
+          </div>
+
+          <div id="sp-break-schedule-body">
           <div class="sp-row sp-row-hms sp-break-divider" id="sp-break-row">
             <label class="sp-label">break every</label>
             <div class="sp-stepper sp-stepper-hms">
@@ -1425,6 +1446,13 @@
               allow snooze
             </label>
           </div>
+          <div class="sp-row sp-autobreak-row">
+            <label class="sp-autobreak-label" for="break-auto-resume-enabled">
+              <input type="checkbox" id="break-auto-resume-enabled" -webkit-app-region="no-drag">
+              auto-resume after break
+            </label>
+          </div>
+          </div><!-- /sp-break-schedule-body -->
         </div>
 
         <!-- Session category selector -->
@@ -1543,7 +1571,10 @@
         <!-- Break over notification -->
         <div id="sp-break-over-notif" class="sp-break-over-notif" style="display:none" role="alert" aria-live="assertive">
           <span class="sp-break-over-text">🔔 break time's up!</span>
-          <button id="sp-break-over-resume" class="sp-break-over-resume-btn">▶ resume now</button>
+          <div class="sp-break-over-actions">
+            <button id="sp-break-over-resume" class="sp-break-over-resume-btn">▶ resume now</button>
+            <button id="sp-break-over-snooze" class="sp-break-over-snooze-btn">💤 snooze 5m</button>
+          </div>
         </div>
       </div>
 
