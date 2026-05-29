@@ -28,6 +28,124 @@
       box-shadow: 0 0 14px rgba(155,135,255,.25);
       transform: translateY(-1px);
     }
+
+    /* ── Daily Tasks v3: session tracking banner ── */
+    #tasks-session-banner {
+      display: none;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px 6px;
+      margin: 0 0 8px;
+      background: rgba(80,230,160,.10);
+      border: 1px solid rgba(80,230,160,.22);
+      border-radius: 10px;
+      font-size: 11px;
+      color: rgba(80,230,160,.85);
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity .25s, transform .25s;
+    }
+    #tasks-session-banner.visible {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #tasks-session-banner::before { content: '🔴'; font-size: 9px; }
+
+    /* ── Task item layout extensions ── */
+    .task-item { display: flex; align-items: flex-start; gap: 9px; }
+    .task-content { flex: 1; min-width: 0; }
+    .task-main-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .task-text { flex: 1; min-width: 0; }
+
+    /* Type badges */
+    .task-type-badge {
+      flex-shrink: 0;
+      font-size: 9.5px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      line-height: 1.4;
+    }
+    .task-badge-auto {
+      background: rgba(100,160,255,.14);
+      color: rgba(130,180,255,.75);
+      border: 1px solid rgba(100,160,255,.20);
+    }
+    .task-badge-verified {
+      background: rgba(80,230,160,.14);
+      color: rgba(80,230,160,.90);
+      border: 1px solid rgba(80,230,160,.22);
+    }
+    .task-badge-honor {
+      background: rgba(255,200,80,.10);
+      color: rgba(255,200,80,.70);
+      border: 1px solid rgba(255,200,80,.18);
+      font-size: 11px;
+      padding: 1px 4px;
+    }
+
+    /* Auto-verified task styling */
+    .task-item.auto-verified .task-check { color: rgba(80,230,160,.90); }
+    .task-item.auto-verified .task-text  { text-decoration: line-through; opacity: .55; }
+    /* Auto tasks — cursor indicates non-interactive */
+    .task-item.auto-task:not(.done) { cursor: default; }
+    .task-item.auto-task:not(.done):hover { background: transparent !important; }
+
+    /* Flash animation for newly-verified tasks */
+    @keyframes taskVerifiedFlash {
+      0%   { background: rgba(80,230,160,.22); }
+      100% { background: transparent; }
+    }
+    .task-item.just-verified { animation: taskVerifiedFlash .7s ease-out; }
+
+    /* Progress bar inside task items */
+    .task-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+    }
+    .task-progress-bar {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,.10);
+      border-radius: 3px;
+      overflow: hidden;
+      max-width: 90px;
+    }
+    .task-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, rgba(100,160,255,.7), rgba(155,135,255,.8));
+      border-radius: 3px;
+      transition: width .5s ease;
+    }
+    .task-progress-bar.indeterminate .tpf-pulse {
+      width: 40%;
+      animation: tpfPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes tpfPulse {
+      0%   { transform: translateX(-100%); opacity: .5; }
+      50%  { opacity: 1; }
+      100% { transform: translateX(350%); opacity: .5; }
+    }
+    .task-progress-label {
+      font-size: 10px;
+      color: rgba(255,255,255,.38);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .task-progress-label.passive {
+      color: rgba(255,255,255,.25);
+      font-style: italic;
+    }
+
+    /* Disable refresh button when locked */
+    #tasks-refresh-btn:disabled {
+      cursor: not-allowed;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -1608,6 +1726,11 @@
         <span class="tasks-date" id="tasks-date-label"></span>
       </div>
       <button class="tasks-close-btn" id="tasks-close-btn" aria-label="Close tasks panel">✕</button>
+    </div>
+
+    <!-- Session tracking banner (shown while session is active) -->
+    <div id="tasks-session-banner" role="status" aria-live="polite">
+      tracking your session — tasks will verify automatically
     </div>
 
     <!-- Progress bar -->
