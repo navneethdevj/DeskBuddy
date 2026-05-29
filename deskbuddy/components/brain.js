@@ -665,6 +665,7 @@ const Brain = (() => {
         if (_deepCozyEnteredAt === 0) {
           _deepCozyEnteredAt = now;
           _nextDeepReactionAt = now + DEEP_REACT_MIN_MS + Math.random() * (DEEP_REACT_MAX_MS - DEEP_REACT_MIN_MS);
+          if (typeof EmotionEngine !== 'undefined') EmotionEngine.logEvent('pat_deep');
           const deepMsgs = [
             'uuuu~♡', '*melts completely*', 'don\'t stop don\'t stop~',
             'uuuuu i\'m so happy~', '*tail wagging intensely*',
@@ -828,14 +829,12 @@ const Brain = (() => {
         break;
 
       case 'Sleepy':
-        // Companion stays wide-awake and motivates the user — alternate emotions
-        // to feel more alive rather than locked to a single expression.
-        // Cycle: curious 10s → focused 8s → happy 4s → repeat (22s period)
-        { const slot = Math.floor(now / 1000) % 22;
-          if      (slot < 10) emotion = 'curious';
-          else if (slot < 18) emotion = 'focused';
-          else                emotion = 'happy';
-        }
+        // Organic concern-escalation: EmotionEngine drives state transitions with
+        // natural variance so expressions change on their own schedule, not a wall-clock
+        // modulo. Each phase holds for a different duration ± jitter.
+        emotion = (typeof EmotionEngine !== 'undefined')
+          ? EmotionEngine.tickSleepyCycle(now)
+          : 'curious';
         if ((now - _lastSleepyNudge) >= 30000) {
           _lastSleepyNudge = now;
           const wakeUpMsgs = [
@@ -843,10 +842,12 @@ const Brain = (() => {
             'you can do it!', '*waves paw*', 'almost there, keep going!',
             'zzz? no no no!', '...hey!', '*pokes*', 'need a break?',
             'you\'re so close!', '*worried chirp*', 'don\'t give up!',
+            '...wake up ♡', '*quietly worried*', 'i believe in you.',
           ];
-          if (Math.random() < 0.65) {
-            showWhisper(wakeUpMsgs[Math.floor(Math.random() * wakeUpMsgs.length)], 4000);
-          }
+          const nudge = (typeof EmotionEngine !== 'undefined')
+            ? EmotionEngine.pickWhisper(wakeUpMsgs)
+            : wakeUpMsgs[Math.floor(Math.random() * wakeUpMsgs.length)];
+          if (Math.random() < 0.65) showWhisper(nudge, 4000);
         }
         break;
 
@@ -888,10 +889,20 @@ const Brain = (() => {
         return;
       }
 
-      // Whisper a personality message for notable emotion transitions
+      // Whisper a personality message for notable emotion transitions.
+      // EmotionEngine.pickWhisper() applies anti-repetition weighting so the
+      // same line is never shown twice in a row (or third, fourth...).
       const whisper = _getWhisperFor(emotion);
       if (whisper && Math.random() < 0.42) {
-        showWhisper(whisper[Math.floor(Math.random() * whisper.length)], 4000);
+        const text = (typeof EmotionEngine !== 'undefined')
+          ? EmotionEngine.pickWhisper(whisper)
+          : whisper[Math.floor(Math.random() * whisper.length)];
+        if (text) showWhisper(text, 4000);
+      }
+      // 15% chance: show a contextual whisper referencing a recent notable event
+      if (typeof EmotionEngine !== 'undefined') {
+        const ctxW = EmotionEngine.getContextualWhisper();
+        if (ctxW) setTimeout(() => showWhisper(ctxW, 3500), 1800 + Math.random() * 1200);
       }
 
       window._emotionChanged = { from: window._lastEmotion, to: emotion };
@@ -1829,6 +1840,8 @@ const Brain = (() => {
     Emotion.setState('overjoyed');
     window._emotionChanged = { from: window._lastEmotion, to: 'overjoyed' };
     window._lastEmotion    = 'overjoyed';
+    // Log milestone to EmotionEngine — boosts valence+arousal so Buddy feels genuinely excited
+    if (typeof EmotionEngine !== 'undefined') EmotionEngine.logEvent('milestone', minutesMark);
     // Sound played by sounds.js _pollEmotion() via _playForTransition — no direct call here
     showWhisper(whisper, 3000);
     _milestoneCallbacks.forEach(fn => { try { fn(minutesMark); } catch (e) {} });
@@ -2131,6 +2144,7 @@ const Brain = (() => {
 
     // Normal single pet
     _loveUntil = now + LOVE_HOLD_MS;
+    if (typeof EmotionEngine !== 'undefined') EmotionEngine.logEvent('pet');
     const msgs = [
       '♡', '*purrs*', '*nuzzles you*', '...♡', 'hehe~♡',
       'i like you~', '*rubs head on you*', 'stay forever.',
@@ -2141,7 +2155,10 @@ const Brain = (() => {
       '...i feel safe.', '*buries face in you*',
     ];
     if (Math.random() < Math.min(0.97, 0.82 * _expressMult)) {
-      showWhisper(msgs[Math.floor(Math.random() * msgs.length)], 3200);
+      const petText = (typeof EmotionEngine !== 'undefined')
+        ? EmotionEngine.pickWhisper(msgs)
+        : msgs[Math.floor(Math.random() * msgs.length)];
+      showWhisper(petText, 3200);
     }
   }
 
@@ -2316,30 +2333,55 @@ const Brain = (() => {
       return;
     }
 
-    // Weighted random selection (sum = 100)
-    const r = Math.random() * 100;
-    if      (r < 14) _doIdleLook();        // look around (14%)
-    else if (r < 24) _doDoubleBlink();     // quick double blink (10%)
-    else if (r < 33) _doHeadTilt();        // cute head tilt (9%)
-    else if (r < 40) _doStretch();         // yawn + stretch (7%)
-    else if (r < 50) _doWhisperCoo();      // murmur something (10%)
-    else if (r < 56) _doWink();            // cheeky wink (6%)
-    else if (r < 61) _doPeek();            // look far away, snap back (5%)
-    else if (r < 67) _doHappyFlash();      // brief joyful expression (6%)
-    else if (r < 71) _doShiver();          // tiny excited shiver (4%)
-    else if (r < 73) _doTripleBlink();     // three rapid blinks (2%)
-    else if (r < 75) _doNuzzle();          // lean toward screen (2%)
-    else if (r < 77) _doDaydream();        // look up dreamily (2%)
-    else if (r < 79) _doSpinOnce();        // gleeful tiny spin (2%)
-    else if (r < 81) _doSlowBlink();       // cat slow-blink — "I love you" (2%)
-    else if (r < 85) _doBounce();          // happy little hop (4%)
-    else if (r < 88) _doEyeRub();          // rub tired eyes (3%)
-    else if (r < 91) _doSniff();           // sniff the air curiously (3%)
-    else if (r < 93) _doGroomSelf();       // groom/fix hair (2%)
-    else if (r < 95) _doHeadShake();       // shake head (2%)
-    else if (r < 97) _doHeadBop();         // bop to imaginary music (2%)
-    else if (r < 99) _doEarPerk();         // perk up at distant sound (2%)
-    else             _doSneeze();          // adorable sneeze (1%)
+    // ── Mood-weighted behavior selection ────────────────────────────────────
+    // Base weights sum to 100. EmotionEngine multipliers shift probabilities
+    // based on valence+arousal mood: high valence → more spins/bounces/winks;
+    // low valence/arousal → more slow blinks/daydreams/eye rubs/stretches.
+    // This means a Buddy that's been crying doesn't start doing gleeful spins.
+    const _bList = [
+      { fn: _doIdleLook,    n: 'idleLook',    w: 14 },
+      { fn: _doDoubleBlink, n: 'doubleBlink',  w: 10 },
+      { fn: _doHeadTilt,    n: 'headTilt',     w:  9 },
+      { fn: _doStretch,     n: 'stretch',      w:  7 },
+      { fn: _doWhisperCoo,  n: 'whisperCoo',   w: 10 },
+      { fn: _doWink,        n: 'wink',         w:  6 },
+      { fn: _doPeek,        n: 'peek',         w:  5 },
+      { fn: _doHappyFlash,  n: 'happyFlash',   w:  6 },
+      { fn: _doShiver,      n: 'shiver',       w:  4 },
+      { fn: _doTripleBlink, n: 'tripleBlink',  w:  2 },
+      { fn: _doNuzzle,      n: 'nuzzle',       w:  2 },
+      { fn: _doDaydream,    n: 'daydream',     w:  2 },
+      { fn: _doSpinOnce,    n: 'spinOnce',     w:  2 },
+      { fn: _doSlowBlink,   n: 'slowBlink',    w:  2 },
+      { fn: _doBounce,      n: 'bounce',       w:  4 },
+      { fn: _doEyeRub,      n: 'eyeRub',       w:  3 },
+      { fn: _doSniff,       n: 'sniff',        w:  3 },
+      { fn: _doGroomSelf,   n: 'groomSelf',    w:  2 },
+      { fn: _doHeadShake,   n: 'headShake',    w:  2 },
+      { fn: _doHeadBop,     n: 'headBop',      w:  2 },
+      { fn: _doEarPerk,     n: 'earPerk',      w:  2 },
+      { fn: _doSneeze,      n: 'sneeze',       w:  1 },
+    ];
+    let _totalW = 0;
+    if (typeof EmotionEngine !== 'undefined') {
+      const mood  = EmotionEngine.getMood();
+      const vBias = (mood.valence - 0.5) * 2;    // −1…+1
+      const aBias = (mood.arousal - 0.28) / 0.72 * 2; // normalised
+      for (const b of _bList) {
+        b.ew = b.w * EmotionEngine.getBehaviorMoodMultiplier(b.n, vBias, aBias);
+        _totalW += b.ew;
+      }
+    } else {
+      for (const b of _bList) { b.ew = b.w; _totalW += b.ew; }
+    }
+    let _rr = Math.random() * _totalW;
+    let _picked = _bList[_bList.length - 1];
+    for (const b of _bList) { _rr -= b.ew; if (_rr <= 0) { _picked = b; break; } }
+    _picked.fn();
+    // Schedule a contextually-appropriate follow-up (behavioral clustering)
+    if (typeof EmotionEngine !== 'undefined') {
+      EmotionEngine.scheduleBehaviorChain(_picked.n);
+    }
   }
 
   /** Look in a random direction then drift back */
@@ -3016,6 +3058,11 @@ const Brain = (() => {
    */
   function applyTimePeriod(period) {
     _currentTimePeriod = period;
+    // Reset sleepy-cycle state machine so Buddy starts fresh each session
+    if (typeof EmotionEngine !== 'undefined') {
+      EmotionEngine.resetSleepyCycle(Date.now());
+      EmotionEngine.logEvent('session_start');
+    }
 
     // Movement speed
     const speedMap = { MORNING: 1.2, AFTERNOON: 1.0, EVENING: 0.85, NIGHT: 0.6 };
@@ -3339,7 +3386,8 @@ const Brain = (() => {
     }
     const blocked = ['scared', 'crying', 'sad', 'overjoyed', 'sulking', 'startled'];
     if (blocked.includes(window._lastEmotion)) { _waveReactActive = false; return; }
-
+    // Log wave to EmotionEngine — boosts mood so Buddy stays happy after a wave
+    if (typeof EmotionEngine !== 'undefined') EmotionEngine.logEvent('wave');
     _waveReactActive = true;
     const el = Companion.getElement();
     const c  = Companion.getCenter();
@@ -3564,5 +3612,22 @@ const Brain = (() => {
            startTearEffect, stopTearEffect,
            triggerWelcomeBack: _welcomeBackSequence,
            triggerLookSequence,
-           setTalkative, setAffectionLevel, setJealousyLevel, setWaveReactionEnabled };
+           setTalkative, setAffectionLevel, setJealousyLevel, setWaveReactionEnabled,
+           // Exposed for EmotionEngine behavioral chaining
+           behaviorIdleLook:    _doIdleLook,
+           behaviorDoubleBlink: _doDoubleBlink,
+           behaviorHeadTilt:    _doHeadTilt,
+           behaviorStretch:     _doStretch,
+           behaviorWhisperCoo:  _doWhisperCoo,
+           behaviorHappyFlash:  _doHappyFlash,
+           behaviorSlowBlink:   _doSlowBlink,
+           behaviorBounce:      _doBounce,
+           behaviorDaydream:    _doDaydream,
+           behaviorSniff:       _doSniff,
+           behaviorNuzzle:      _doNuzzle,
+           behaviorPeek:        _doPeek,
+           behaviorShiver:      _doShiver,
+           behaviorGroomSelf:   _doGroomSelf,
+           behaviorEarPerk:     _doEarPerk,
+  };
 })();
