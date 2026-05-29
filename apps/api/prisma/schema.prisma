@@ -16,11 +16,13 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
-  tasks             Task[]            @relation("TaskAssignee")
-  createdTasks      Task[]            @relation("TaskCreator")
-  createdNotes      Note[]
+  tasks                Task[]            @relation("TaskAssignee")
+  createdTasks         Task[]            @relation("TaskCreator")
+  createdNotes         Note[]
+  stats                UserStats?
+  dailyMissions        DailyMission[]
 }
 
 model Workspace {
@@ -35,6 +37,7 @@ model Workspace {
   members WorkspaceMember[]
   tasks   Task[]
   notes   Note[]
+  labels  Label[]
 }
 
 model WorkspaceMember {
@@ -54,15 +57,42 @@ model Task {
   title       String
   description String?
   status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  position    Int        @default(0)
   assigneeId  String?
   workspaceId String
   createdBy   String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  assignee  User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  creator   User      @relation("TaskCreator", fields: [createdBy], references: [id])
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assignee  User?       @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator   User        @relation("TaskCreator", fields: [createdBy], references: [id])
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  labels    TaskLabel[]
+}
+
+model Label {
+  id          String   @id @default(cuid())
+  name        String
+  color       String
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     TaskLabel[]
+
+  @@unique([name, workspaceId])
+}
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
 }
 
 model Note {
@@ -71,12 +101,39 @@ model Note {
   content     String   @default("")
   workspaceId String
   createdBy   String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   creator   User      @relation(fields: [createdBy], references: [id])
+}
+
+model UserStats {
+  userId           String    @id
+  currentStreak    Int       @default(0)
+  longestStreak    Int       @default(0)
+  totalTasksDone   Int       @default(0)
+  totalXP          Int       @default(0)
+  lastActivityDate DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyMission {
+  id          String   @id @default(cuid())
+  userId      String
+  date        String
+  missionType String
+  target      Int
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  xpReward    Int      @default(50)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, missionType])
 }
 
 enum Role {
@@ -89,4 +146,11 @@ enum TaskStatus {
   TODO
   IN_PROGRESS
   DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
