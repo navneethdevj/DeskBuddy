@@ -22,7 +22,6 @@ export type {
   UpdateNoteInput,
 } from '../schemas/note.schema';
 
-// DTO types (mapped from Prisma — defined alongside mappers in api, re-exported here)
 export interface UserDTO {
   id: string;
   email: string;
@@ -41,11 +40,21 @@ export interface WorkspaceDTO {
   updatedAt: string;
 }
 
+export interface LabelDTO {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface TaskDTO {
   id: string;
   title: string;
   description: string | null;
   status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  dueDate: string | null;
+  position: number;
+  labels: LabelDTO[];
   assignee?: UserDTO;
   workspaceId: string;
   createdBy: string;
@@ -61,4 +70,21 @@ export interface NoteDTO {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserStatsDTO {
+  currentStreak: number;
+  longestStreak: number;
+  totalTasksDone: number;
+  totalXP: number;
+}
+
+export interface DailyMissionDTO {
+  id: string;
+  missionType: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  xpReward: number;
+  label: string;
 }
