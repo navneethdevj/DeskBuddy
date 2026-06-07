@@ -23,7 +23,7 @@ export class TasksService {
     await this._assertMember(userId, workspaceId);
     const tasks = await this.db.task.findMany({
       where: { workspaceId },
-      include: { assignee: true },
+      include: { assignee: true, labels: { include: { label: true } } },
       orderBy: { createdAt: 'asc' },
     });
     return tasks.map(toTaskDTO);
@@ -36,11 +36,14 @@ export class TasksService {
         title: data.title,
         description: data.description ?? null,
         status: (data.status ?? 'TODO') as TaskStatus,
+        priority: data.priority ?? 'MEDIUM',
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        position: data.position ?? 0,
         assigneeId: data.assigneeId ?? null,
         workspaceId,
         createdBy: userId,
       },
-      include: { assignee: true },
+      include: { assignee: true, labels: { include: { label: true } } },
     });
     const dto = toTaskDTO(task);
     getIO().to(workspaceId).emit(SOCKET_EVENTS.TASK_CREATED, dto);
@@ -51,7 +54,7 @@ export class TasksService {
     await this._assertMember(userId, workspaceId);
     const task = await this.db.task.findFirst({
       where: { id: taskId, workspaceId },
-      include: { assignee: true },
+      include: { assignee: true, labels: { include: { label: true } } },
     });
     if (!task) {
       throw new HttpError(404, 'Task not found', 'NOT_FOUND');
@@ -76,9 +79,12 @@ export class TasksService {
         ...(data.title !== undefined && { title: data.title }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.status !== undefined && { status: data.status as TaskStatus }),
+        ...(data.priority !== undefined && { priority: data.priority }),
+        ...(data.dueDate !== undefined && { dueDate: data.dueDate ? new Date(data.dueDate) : null }),
+        ...(data.position !== undefined && { position: data.position }),
         ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
       },
-      include: { assignee: true },
+      include: { assignee: true, labels: { include: { label: true } } },
     });
     const dto = toTaskDTO(task);
     getIO().to(workspaceId).emit(SOCKET_EVENTS.TASK_UPDATED, dto);

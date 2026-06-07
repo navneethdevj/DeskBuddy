@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useWorkspaceStore } from '@web/stores/workspaceStore';
 import type { WorkspaceDTO } from '@shared/types';
+import type { CreateWorkspaceInput } from '@shared/schemas';
 
 interface UseWorkspaceReturn {
   workspaces: WorkspaceDTO[];
@@ -8,10 +9,19 @@ interface UseWorkspaceReturn {
   isLoading: boolean;
   error: string | null;
   setActive: (workspace: WorkspaceDTO) => void;
+  createWorkspace: (data: CreateWorkspaceInput) => Promise<void>;
 }
 
 export const useWorkspace = (): UseWorkspaceReturn => {
-  const { workspaces, activeWorkspace, isLoading, error, fetchWorkspaces, setActiveWorkspace } =
+  const {
+    workspaces,
+    activeWorkspace,
+    isLoading,
+    error,
+    fetchWorkspaces,
+    setActiveWorkspace,
+    createWorkspace,
+  } =
     useWorkspaceStore();
 
   useEffect(() => {
@@ -24,5 +34,6 @@ export const useWorkspace = (): UseWorkspaceReturn => {
     isLoading,
     error,
     setActive: setActiveWorkspace,
+    createWorkspace,
   };
 };

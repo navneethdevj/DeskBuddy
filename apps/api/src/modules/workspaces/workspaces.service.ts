@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { prisma as defaultPrisma } from '@api/db/prisma';
 import { HttpError } from '@api/utils/httpError';
 import { toWorkspaceDTO } from '@api/utils/mappers';
@@ -13,11 +13,11 @@ export class WorkspacesService {
       where: { userId },
       include: { workspace: true },
     });
-    return memberships.map((m) => toWorkspaceDTO(m.workspace));
+    return memberships.map((membership) => toWorkspaceDTO(membership.workspace));
   }
 
   async create(userId: string, data: CreateWorkspaceInput): Promise<WorkspaceDTO> {
-    const workspace = await this.db.$transaction(async (tx) => {
+    const workspace = await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
       const ws = await tx.workspace.create({
         data: {
           name: data.name,

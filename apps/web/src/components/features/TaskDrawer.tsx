@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import type { TaskDTO } from '@shared/types';
 import type { UpdateTaskInput } from '@shared/schemas';
-import { Badge } from '@web/components/ui/Badge';
 import { Avatar } from '@web/components/ui/Avatar';
-import { Button } from '@web/components/ui/Button';
 
 interface TaskDrawerProps {
   task: TaskDTO | null;
@@ -26,7 +24,7 @@ const PRIORITY_CONFIG: Record<TaskDTO['priority'], { label: string; cls: string;
   URGENT: { label: 'Urgent', cls: 'text-ink-3 border-border hover:border-err/50',    activeCls: 'bg-err-muted text-err border-err/50 font-medium' },
 };
 
-const Row = ({ label, children }: { label: string; children: React.ReactNode }): JSX.Element => (
+const Row = ({ label, children }: { label: string; children: ReactNode }): JSX.Element => (
   <div className="flex flex-col gap-1.5">
     <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-3">{label}</p>
     {children}

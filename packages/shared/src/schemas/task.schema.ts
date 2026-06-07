@@ -20,7 +20,7 @@ export const TaskSchema = z.object({
 
 export const CreateTaskSchema = z.object({
   title: z.string().min(1).max(200),
-  description: z.string().max(2000).optional(),
+  description: z.string().max(2000).optional().nullable(),
   status: z.enum(TASK_STATUSES).default('TODO'),
   priority: z.enum(PRIORITIES).default('MEDIUM'),
   dueDate: z.string().datetime().optional().nullable(),
@@ -32,5 +32,5 @@ export const CreateTaskSchema = z.object({
 export const UpdateTaskSchema = CreateTaskSchema.partial();
 
 export type Task = z.infer<typeof TaskSchema>;
-export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
-export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
+export type CreateTaskInput = z.input<typeof CreateTaskSchema>;
+export type UpdateTaskInput = z.input<typeof UpdateTaskSchema>;

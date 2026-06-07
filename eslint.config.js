@@ -106,6 +106,12 @@ module.exports = [
         navigator: 'readonly',
         sessionStorage: 'readonly',
         localStorage: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        requestIdleCallback: 'readonly',
+        cancelIdleCallback: 'readonly',
       },
     },
     plugins: {

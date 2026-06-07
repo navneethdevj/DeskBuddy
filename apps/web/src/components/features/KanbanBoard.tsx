@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, memo, useRef, useEffect, type ReactNode } from 'react';
 import {
   DndContext, DragOverlay, PointerSensor, useDroppable,
   closestCorners, useSensor, useSensors,
@@ -82,7 +82,7 @@ const ColumnIcon = ({ status }: { status: TaskStatus }): JSX.Element => {
 // ── Droppable column container ────────────────────────────────────────────────
 const DroppableArea = ({
   id, children, className,
-}: { id: string; children: React.ReactNode; className?: string }): JSX.Element => {
+}: { id: string; children: ReactNode; className?: string }): JSX.Element => {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
@@ -184,9 +184,6 @@ const AddTaskInline = ({
     </div>
   );
 };
-
-// We need these imports at the top (fixing missing React imports for memo/useRef/useEffect)
-import { memo, useRef, useEffect } from 'react';
 
 // ── Main Board ────────────────────────────────────────────────────────────────
 export const KanbanBoard = ({

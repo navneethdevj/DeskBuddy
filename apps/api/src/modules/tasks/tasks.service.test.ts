@@ -24,6 +24,10 @@ const mockTask = {
   title: 'Do something',
   description: null,
   status: 'TODO' as const,
+  priority: 'MEDIUM' as const,
+  dueDate: null,
+  position: 0,
+  labels: [],
   assigneeId: null,
   assignee: null,
   workspaceId: WS_ID,
@@ -82,7 +86,11 @@ describe('TasksService', () => {
   // ── create ────────────────────────────────────────────────────────────────
   describe('create', () => {
     it('creates a task, emits TASK_CREATED, and returns DTO', async () => {
-      const result = await service.create(USER_ID, WS_ID, { title: 'Do something', status: 'TODO' });
+      const result = await service.create(USER_ID, WS_ID, {
+        title: 'Do something',
+        status: 'TODO',
+        priority: 'MEDIUM',
+      });
 
       expect((mockDb.task.create as jest.Mock)).toHaveBeenCalledTimes(1);
       expect(result.id).toBe(TASK_ID);
@@ -93,7 +101,7 @@ describe('TasksService', () => {
     it('throws 403 when user is not a member', async () => {
       (mockDb.workspaceMember.findUnique as jest.Mock).mockResolvedValue(null);
       await expect(
-        service.create(USER_ID, WS_ID, { title: 'x', status: 'TODO' }),
+        service.create(USER_ID, WS_ID, { title: 'x', status: 'TODO', priority: 'MEDIUM' }),
       ).rejects.toMatchObject({ statusCode: 403 });
     });
   });

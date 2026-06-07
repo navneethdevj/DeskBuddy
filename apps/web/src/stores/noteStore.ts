@@ -13,6 +13,7 @@ interface NoteState {
   createNote: (workspaceId: string, data: CreateNoteInput) => Promise<void>;
   updateNote: (workspaceId: string, noteId: string, data: UpdateNoteInput) => Promise<void>;
   deleteNote: (workspaceId: string, noteId: string) => Promise<void>;
+  clearError: () => void;
   handleSocketNoteCreated: (note: NoteDTO) => void;
   handleSocketNoteUpdated: (note: NoteDTO) => void;
   handleSocketNoteDeleted: (noteId: string) => void;
@@ -102,6 +103,12 @@ export const useNoteStore = create<NoteState>()(
           state.error = getErrorMessage(err);
         });
       }
+    },
+
+    clearError: () => {
+      set((state) => {
+        state.error = null;
+      });
     },
 
     handleSocketNoteCreated: (note) => {

@@ -13,6 +13,7 @@ interface TaskState {
   createTask: (workspaceId: string, data: CreateTaskInput) => Promise<void>;
   updateTask: (workspaceId: string, taskId: string, data: UpdateTaskInput) => Promise<void>;
   deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
+  clearError: () => void;
   handleSocketTaskCreated: (task: TaskDTO) => void;
   handleSocketTaskUpdated: (task: TaskDTO) => void;
   handleSocketTaskDeleted: (taskId: string) => void;
@@ -102,6 +103,12 @@ export const useTaskStore = create<TaskState>()(
           state.error = getErrorMessage(err);
         });
       }
+    },
+
+    clearError: () => {
+      set((state) => {
+        state.error = null;
+      });
     },
 
     handleSocketTaskCreated: (task) => {

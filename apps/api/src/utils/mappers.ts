@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import type { UserDTO, TaskDTO, WorkspaceDTO, NoteDTO } from '@shared/types';
 
 type PrismaUser = Prisma.UserGetPayload<Record<string, never>>;
-type PrismaTask = Prisma.TaskGetPayload<{ include: { assignee: true } }>;
+type PrismaTask = Prisma.TaskGetPayload<{ include: { assignee: true; labels: { include: { label: true } } } }>;
 type PrismaWorkspace = Prisma.WorkspaceGetPayload<Record<string, never>>;
 type PrismaNote = Prisma.NoteGetPayload<Record<string, never>>;
 
@@ -31,6 +31,14 @@ export const toTaskDTO = (
   title: task.title,
   description: task.description ?? null,
   status: task.status as TaskDTO['status'],
+  priority: task.priority as TaskDTO['priority'],
+  dueDate: task.dueDate?.toISOString() ?? null,
+  position: task.position,
+  labels: task.labels.map((taskLabel) => ({
+    id: taskLabel.label.id,
+    name: taskLabel.label.name,
+    color: taskLabel.label.color,
+  })),
   assignee: task.assignee ? toUserDTO(task.assignee) : undefined,
   workspaceId: task.workspaceId,
   createdBy: task.createdBy,

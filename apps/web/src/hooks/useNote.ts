@@ -10,10 +10,11 @@ interface UseNoteReturn {
   createNote: (data: CreateNoteInput) => Promise<void>;
   updateNote: (noteId: string, data: UpdateNoteInput) => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useNote = (workspaceId: string | null): UseNoteReturn => {
-  const { notes, isLoading, error, fetchNotes, createNote, updateNote, deleteNote } =
+  const { notes, isLoading, error, fetchNotes, createNote, updateNote, deleteNote, clearError } =
     useNoteStore();
 
   useEffect(() => {
@@ -31,5 +32,6 @@ export const useNote = (workspaceId: string | null): UseNoteReturn => {
       workspaceId ? updateNote(workspaceId, noteId, data) : Promise.resolve(),
     deleteNote: (noteId) =>
       workspaceId ? deleteNote(workspaceId, noteId) : Promise.resolve(),
+    clearError,
   };
 };

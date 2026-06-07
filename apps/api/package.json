@@ -8,6 +8,7 @@
     "build": "tsc --project tsconfig.json",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
+    "pretest": "prisma generate --schema prisma/schema.prisma",
     "test": "jest --passWithNoTests",
     "test:coverage": "jest --coverage --passWithNoTests",
     "db:generate": "prisma generate",

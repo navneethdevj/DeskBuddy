@@ -111,7 +111,7 @@ export default function Dashboard(): JSX.Element {
     if (!selectedTask) return;
     const updated = tasks.find((t) => t.id === selectedTask.id);
     if (updated) setSelectedTask(updated);
-  }, [tasks, selectedTask?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tasks, selectedTask]);
 
   // Reset filters when workspace changes
   useEffect(() => {

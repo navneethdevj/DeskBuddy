@@ -127,13 +127,17 @@ describe('mappers', () => {
       avatarUrl: null, googleId: null, createdAt: baseDate, updatedAt: baseDate,
     };
 
-    const prismaTask: Prisma.TaskGetPayload<{ include: { assignee: true } }> = {
+    const prismaTask: Prisma.TaskGetPayload<{ include: { assignee: true; labels: { include: { label: true } } } }> = {
       id:          'task-1',
       title:       'Fix bug',
       description: 'See issue #42',
       status:      'IN_PROGRESS',
+      priority:    'MEDIUM',
+      dueDate:     null,
+      position:    0,
       assigneeId:  'u-2',
       assignee:    prismaUser,
+      labels:      [],
       workspaceId: 'ws-1',
       createdBy:   'u-1',
       createdAt:   baseDate,
@@ -146,7 +150,11 @@ describe('mappers', () => {
       expect(dto.title).toBe('Fix bug');
       expect(dto.description).toBe('See issue #42');
       expect(dto.status).toBe('IN_PROGRESS');
+      expect(dto.priority).toBe('MEDIUM');
+      expect(dto.dueDate).toBeNull();
+      expect(dto.position).toBe(0);
       expect(dto.assignee?.id).toBe('u-2');
+      expect(dto.labels).toEqual([]);
       expect(dto.workspaceId).toBe('ws-1');
       expect(dto.createdBy).toBe('u-1');
     });
