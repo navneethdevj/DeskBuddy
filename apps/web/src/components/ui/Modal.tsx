@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { Button } from './Button';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,6 +9,29 @@ interface ModalProps {
 }
 
 export const Modal = ({ isOpen, onClose, title, children, footer }: ModalProps): JSX.Element | null => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      dialogRef.current?.focus();
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -17,24 +39,42 @@ export const Modal = ({ isOpen, onClose, title, children, footer }: ModalProps):
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
+      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-bg/80 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+
+      {/* Panel */}
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-modal animate-scale-in focus:outline-none"
+      >
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 id="modal-title" className="text-base font-semibold text-ink">
             {title}
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close modal">
-            ✕
-          </Button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
+
         <div>{children}</div>
-        {footer ? <div className="mt-6 flex justify-end gap-3">{footer}</div> : null}
+
+        {footer && (
+          <div className="mt-6 flex justify-end gap-2">{footer}</div>
+        )}
       </div>
     </div>
   );
