@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { TaskDTO } from '@shared/types';
 import { Badge } from '@web/components/ui/Badge';
 import { Avatar } from '@web/components/ui/Avatar';
@@ -6,98 +7,120 @@ interface TaskCardProps {
   task: TaskDTO;
   onTaskClick: (task: TaskDTO) => void;
   isLoading?: boolean;
+  index?: number;
 }
 
 const STATUS_VARIANT = {
-  TODO: 'gray',
-  IN_PROGRESS: 'blue',
-  DONE: 'green',
+  TODO:        'gray',
+  IN_PROGRESS: 'yellow',
+  DONE:        'green',
 } as const;
 
 const STATUS_LABEL = {
-  TODO: 'To Do',
+  TODO:        'To Do',
   IN_PROGRESS: 'In Progress',
-  DONE: 'Done',
+  DONE:        'Done',
 } as const;
 
-const PRIORITY_INDICATOR = {
-  LOW: { dot: 'bg-gray-300', label: '' },
-  MEDIUM: { dot: 'bg-blue-400', label: '' },
-  HIGH: { dot: 'bg-amber-400', label: '!' },
-  URGENT: { dot: 'bg-red-500', label: '!!' },
-} as const;
+const PRIORITY_BAR: Record<TaskDTO['priority'], string> = {
+  LOW:    'bg-ink-4',
+  MEDIUM: 'bg-info/50',
+  HIGH:   'bg-warn',
+  URGENT: 'bg-err',
+};
 
-const getAgingDot = (updatedAt: string, status: string): string | null => {
+const PRIORITY_LABEL: Record<TaskDTO['priority'], string> = {
+  LOW:    '',
+  MEDIUM: '',
+  HIGH:   '!',
+  URGENT: '!!',
+};
+
+const getAgingClass = (updatedAt: string, status: string): string | null => {
   if (status === 'DONE') return null;
-  const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-  if (days >= 7) return 'bg-red-400';
-  if (days >= 3) return 'bg-amber-300';
+  const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86_400_000);
+  if (days >= 7) return 'bg-err/70';
+  if (days >= 3) return 'bg-warn/70';
   return null;
 };
 
-export const TaskCard = ({
-  task,
-  onTaskClick,
-  isLoading = false,
-}: TaskCardProps): JSX.Element => {
-  if (isLoading) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm animate-pulse" aria-busy="true">
-        <div className="h-4 w-3/4 rounded bg-gray-200 mb-2" />
-        <div className="h-3 w-1/2 rounded bg-gray-200" />
-      </div>
-    );
-  }
+/** Skeleton */
+const TaskCardSkeleton = (): JSX.Element => (
+  <div className="rounded-xl border border-border bg-surface-2 p-3" aria-busy="true">
+    <div className="skeleton mb-2.5 h-4 w-3/4" />
+    <div className="skeleton h-3 w-1/2" />
+  </div>
+);
 
-  const priority = PRIORITY_INDICATOR[task.priority] ?? PRIORITY_INDICATOR.MEDIUM;
-  const agingDot = getAgingDot(task.updatedAt, task.status);
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+const TaskCardInner = ({ task, onTaskClick, isLoading = false, index = 0 }: TaskCardProps): JSX.Element => {
+  if (isLoading) return <TaskCardSkeleton />;
+
+  const priorityBar  = PRIORITY_BAR[task.priority] ?? 'bg-ink-4';
+  const priorityText = PRIORITY_LABEL[task.priority] ?? '';
+  const agingClass   = getAgingClass(task.updatedAt, task.status);
+  const isOverdue    = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
 
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Task: ${task.title}. Click to view details.`}
+      aria-label={`Task: ${task.title}`}
       onClick={() => onTaskClick(task)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onTaskClick(task); }}
-      className="cursor-pointer rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-blue-200 transition-all select-none"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTaskClick(task); } }}
+      className="group cursor-pointer rounded-xl border border-border bg-surface-2 p-3 shadow-card transition-all duration-150 hover:border-border-2 hover:bg-surface-3 hover:shadow-card-lg select-none animate-slide-up"
+      style={{ animationDelay: `${index * 35}ms` }}
     >
-      <div className="flex gap-2">
-        <div className={`w-0.5 rounded-full self-stretch shrink-0 ${priority.dot}`} />
-        <div className="flex-1 min-w-0">
+      <div className="flex gap-2.5">
+        {/* Priority bar */}
+        <div className={`w-0.5 shrink-0 self-stretch rounded-full ${priorityBar}`} aria-hidden="true" />
+
+        <div className="min-w-0 flex-1">
+          {/* Title row */}
           <div className="flex items-start gap-1.5">
-            <p className="font-medium text-gray-900 text-sm line-clamp-2 flex-1">{task.title}</p>
-            {agingDot && (
-              <span
-                className={`mt-1 h-2 w-2 rounded-full shrink-0 ${agingDot}`}
-                title="Task hasn't been updated recently"
-              />
-            )}
+            <p className="flex-1 text-sm font-medium text-ink line-clamp-2 leading-snug">{task.title}</p>
+            <div className="flex shrink-0 items-center gap-1">
+              {priorityText && (
+                <span className={`text-xs font-bold ${task.priority === 'URGENT' ? 'text-err' : 'text-warn'}`}>
+                  {priorityText}
+                </span>
+              )}
+              {agingClass && (
+                <span className={`h-2 w-2 rounded-full ${agingClass}`} title="Stale task" aria-label="Task hasn't been updated recently" />
+              )}
+            </div>
           </div>
 
+          {/* Description */}
           {task.description && (
-            <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{task.description}</p>
+            <p className="mt-1 text-xs text-ink-3 line-clamp-1">{task.description}</p>
           )}
 
+          {/* Due date */}
           {task.dueDate && (
-            <p className={`mt-0.5 text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
-              {isOverdue ? '⚠ ' : ''}Due {new Date(task.dueDate).toLocaleDateString()}
+            <p className={`mt-1 text-xs font-medium ${isOverdue ? 'text-err' : 'text-ink-3'}`}>
+              {isOverdue ? '⚠ Overdue · ' : 'Due '}
+              {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </p>
           )}
 
-          <div className="mt-2 flex items-center justify-between">
+          {/* Footer */}
+          <div className="mt-2.5 flex items-center justify-between">
             <Badge
-              label={STATUS_LABEL[task.status as keyof typeof STATUS_LABEL]}
-              variant={STATUS_VARIANT[task.status as keyof typeof STATUS_VARIANT]}
+              label={STATUS_LABEL[task.status]}
+              variant={STATUS_VARIANT[task.status]}
             />
-            <div className="flex items-center gap-1">
-              {priority.label && (
-                <span className={`text-xs font-bold ${task.priority === 'URGENT' ? 'text-red-500' : 'text-amber-500'}`}>
-                  {priority.label}
-                </span>
-              )}
+            <div className="flex items-center gap-1.5">
+              {task.labels?.slice(0, 2).map((lbl) => (
+                <span
+                  key={lbl.id}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: lbl.color }}
+                  title={lbl.name}
+                  aria-label={lbl.name}
+                />
+              ))}
               {task.assignee && (
-                <Avatar name={task.assignee.name} src={task.assignee.avatarUrl} size="sm" />
+                <Avatar name={task.assignee.name} src={task.assignee.avatarUrl} size="xs" />
               )}
             </div>
           </div>
@@ -106,3 +129,5 @@ export const TaskCard = ({
     </div>
   );
 };
+
+export const TaskCard = memo(TaskCardInner);
