@@ -6,17 +6,17 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<Variant, string> = {
-  gray: 'bg-gray-100 text-gray-700',
-  blue: 'bg-blue-100 text-blue-700',
-  green: 'bg-green-100 text-green-700',
-  yellow: 'bg-yellow-100 text-yellow-700',
-  red: 'bg-red-100 text-red-700',
+  gray:   'bg-surface-3 text-ink-2 border-border',
+  blue:   'bg-info-muted text-info border-info/20',
+  green:  'bg-ok-muted text-ok border-ok/20',
+  yellow: 'bg-accent-dim text-accent border-accent/20',
+  red:    'bg-err-muted text-err border-err/20',
 };
 
 export const Badge = ({ label, variant = 'gray' }: BadgeProps): JSX.Element => (
   <span
     className={[
-      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+      'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium tracking-wide',
       variantClasses[variant],
     ].join(' ')}
   >
