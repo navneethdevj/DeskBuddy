@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --build --force tsconfig.json",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

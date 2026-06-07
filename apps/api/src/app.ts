@@ -10,8 +10,8 @@ import { usersRouter } from '@api/modules/users/users.router';
 import { workspacesRouter } from '@api/modules/workspaces/workspaces.router';
 import { tasksRouter } from '@api/modules/tasks/tasks.router';
 import { notesRouter } from '@api/modules/notes/notes.router';
-import { statsRouter } from '@api/modules/stats/stats.router';
-import { missionsRouter } from '@api/modules/missions/missions.router';
+import { statsRouter } from '@api/stats/stats.router';
+import { missionsRouter } from '@api/modules/missions.router';
 
 const app: Application = express();
 
